@@ -13,8 +13,15 @@ class AuthRepositoryImpl implements AuthRepository {
   Future<UserCredential> register({
     required String email,
     required String password,
+    required String name,
+    required String role,
   }) {
-    return _dataSource.register(email: email, password: password);
+    return _dataSource.register(
+      email: email,
+      password: password,
+      name: name,
+      role: role,
+    );
   }
 
   @override

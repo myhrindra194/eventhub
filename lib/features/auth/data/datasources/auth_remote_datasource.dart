@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 class AuthRemoteDataSource {
@@ -9,11 +10,30 @@ class AuthRemoteDataSource {
   Future<UserCredential> register({
     required String email,
     required String password,
+    required String name,
+    required String role,
   }) async {
-    return await _firebaseAuth.createUserWithEmailAndPassword(
+    final credential = await _firebaseAuth.createUserWithEmailAndPassword(
       email: email,
       password: password,
     );
+
+    final user = credential.user;
+
+    if (user == null) {
+      throw FirebaseAuthException(
+        code: 'user-creation-failed',
+        message: 'Impossible de créer le compte utilisateur.',
+      );
+    }
+
+    await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
+      'name': name,
+      'email': email,
+      'role': role,
+    });
+
+    return credential;
   }
 
   Future<UserCredential> login({

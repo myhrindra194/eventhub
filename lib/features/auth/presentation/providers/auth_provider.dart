@@ -24,6 +24,8 @@ class AuthNotifier extends Notifier<AsyncValue<User?>> {
   Future<void> register({
     required String email,
     required String password,
+    required String name,
+    required String role,
   }) async {
     state = const AsyncValue.loading();
 
@@ -31,6 +33,8 @@ class AuthNotifier extends Notifier<AsyncValue<User?>> {
       final credential = await _repository.register(
         email: email,
         password: password,
+        name: name,
+        role: role,
       );
 
       state = AsyncValue.data(credential.user);

@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "930281380072",
+    "project_id": "eventhub-d411f",
+    "storage_bucket": "eventhub-d411f.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:930281380072:android:cb45cb9366f6617e79115d",
+        "android_client_info": {
+          "package_name": "com.example.eventhub"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "930281380072-kbo8usgr7ehmeberq4jrhc4lenu7oslr.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAocb8EDI81nMmSgcVwM8vkY62Figkc6Nk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "930281380072-kbo8usgr7ehmeberq4jrhc4lenu7oslr.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

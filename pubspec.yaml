@@ -38,6 +38,8 @@ dependencies:
   firebase_auth: ^6.6.1
   flutter_riverpod: ^3.3.2
   cloud_firestore: ^6.9.0
+  supabase_flutter: ^2.17.2
+  flutter_dotenv: ^6.0.1
 
 dev_dependencies:
   flutter_test:

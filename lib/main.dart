@@ -1,29 +1,38 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/theme/app_theme.dart';
+import 'core/theme/theme_provider.dart';
 import 'features/splash/presentation/views/splash_screen.dart';
 import 'features/onboarding/presentation/views/welcome_screen.dart';
 import 'features/auth/presentation/views/login_screen.dart';
 import 'features/auth/presentation/views/register_screen.dart';
 import 'features/home/presentation/views/home_screen.dart';
+import 'features/home/presentation/views/main_wrapper_screen.dart';
 
 void main() {
-  runApp(const MyApp());
+  runApp(
+    const ProviderScope(
+      child: MyApp(),
+    ),
+  );
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends ConsumerWidget {
   const MyApp({super.key});
 
   // This widget is the root of your application.
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final themeMode = ref.watch(themeModeProvider);
+
     return MaterialApp(
       title: 'EventHub',
       debugShowCheckedModeBanner: false,
 
-      // (Light & Dark  theme)
+      // (Light & Dark theme)
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
-      themeMode: ThemeMode.system,
+      themeMode: themeMode,
 
       initialRoute: '/',
       routes: {
@@ -31,7 +40,8 @@ class MyApp extends StatelessWidget {
         '/welcome': (context) => const WelcomeScreen(),
         '/login': (context) => const LoginScreen(),
         '/register': (context) => const RegisterScreen(),
-        '/home': (context) => const HomeScreen(),
+        '/home': (context) => const MainWrapperScreen(),
+        '/home_screen': (context) => const HomeScreen(),
       },
     );
   }

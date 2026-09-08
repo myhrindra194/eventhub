@@ -42,8 +42,9 @@ class _ChevronPainter extends CustomPainter {
   _ChevronPainter(this.animation) : super(repaint: animation);
 
   final Animation<double> animation;
-  static const _light = Color(0xFFB39DFF);
-  static const _dark = Color(0xFF7C3AED);
+  static const _backgroundTop = Color(0xFF111318);
+  static const _backgroundBottom = Color(0xFF0B0D10);
+  static const _chevron = Color(0xFF241A3D);
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -51,11 +52,11 @@ class _ChevronPainter extends CustomPainter {
       ..shader = const LinearGradient(
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
-        colors: [_light, Color(0xFF9D8AF7)],
+        colors: [_backgroundTop, _backgroundBottom],
       ).createShader(Offset.zero & size);
     canvas.drawRect(Offset.zero & size, bgPaint);
 
-    final darkPaint = Paint()..color = _dark.withValues(alpha: 0.92);
+    final chevronPaint = Paint()..color = _chevron.withValues(alpha: 0.82);
 
     final stripHeight = size.height / 3.4;
     final motion = Curves.easeInOut.transform(animation.value);
@@ -72,7 +73,7 @@ class _ChevronPainter extends CustomPainter {
         ..lineTo(chevronDepth + stripHeight * 0.22, top + stripHeight / 2)
         ..lineTo(size.width, top + stripHeight * 0.28)
         ..close();
-      canvas.drawPath(path, darkPaint);
+      canvas.drawPath(path, chevronPaint);
     }
   }
 

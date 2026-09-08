@@ -112,6 +112,13 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
                             children: [
+                              Image.asset(
+                                'assets/images/logoblanc.png',
+                                width: (size.width * 0.28).clamp(96.0, 150.0),
+                                height: (size.width * 0.28).clamp(96.0, 150.0),
+                                fit: BoxFit.contain,
+                              ),
+                              const SizedBox(height: 24),
                               Text(
                                 'Welcome to EventHub',
                                 textAlign: TextAlign.center,
@@ -152,8 +159,8 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                             child: ElevatedButton(
                               onPressed: _goToLogin,
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.white,
-                                foregroundColor: const Color(0xFF7C3AED),
+                                backgroundColor: const Color(0xFF7C4DFF),
+                                foregroundColor: Colors.white,
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(16),
                                 ),

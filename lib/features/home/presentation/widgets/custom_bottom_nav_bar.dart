@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../../core/theme/theme_provider.dart';
 
-class CustomBottomNavBar extends ConsumerWidget {
+class CustomBottomNavBar extends StatelessWidget {
   final int currentIndex;
   final ValueChanged<int> onTap;
 
@@ -13,9 +11,8 @@ class CustomBottomNavBar extends ConsumerWidget {
   });
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isDark = ref.watch(themeModeProvider) == ThemeMode.dark;
 
     return Container(
       decoration: BoxDecoration(
@@ -82,22 +79,6 @@ class CustomBottomNavBar extends ConsumerWidget {
                 ],
               ),
             ),
-            IconButton(
-              onPressed: () {
-                ref.read(themeModeProvider.notifier).state =
-                    isDark ? ThemeMode.light : ThemeMode.dark;
-              },
-              icon: AnimatedSwitcher(
-                duration: const Duration(milliseconds: 250),
-                child: Icon(
-                  isDark ? Icons.light_mode : Icons.dark_mode,
-                  key: ValueKey(isDark),
-                  color: isDark ? Colors.amber : theme.colorScheme.primary,
-                ),
-              ),
-              tooltip: isDark ? 'Activer le mode clair' : 'Activer le mode sombre',
-            ),
-            const SizedBox(width: 8),
           ],
         ),
       ),

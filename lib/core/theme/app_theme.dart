@@ -63,6 +63,23 @@ abstract class AppTheme {
         ),
       ),
 
+      chipTheme: ChipThemeData(
+        backgroundColor: AppColors.darkSurface,
+        selectedColor: AppColors.accentIndigo,
+        disabledColor: AppColors.darkSurface.withValues(alpha: 0.5),
+        labelStyle: const TextStyle(color: AppColors.darkTextSecondary),
+        secondaryLabelStyle: const TextStyle(color: AppColors.darkTextPrimary),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        side: BorderSide.none,
+      ),
+
+      iconButtonTheme: IconButtonThemeData(
+        style: IconButton.styleFrom(
+          foregroundColor: AppColors.darkTextPrimary,
+        ),
+      ),
+
       cardTheme: CardThemeData(
         color: AppColors.darkSurface,
         elevation: 0,
@@ -128,6 +145,23 @@ abstract class AppTheme {
           minimumSize: const Size(double.infinity, 52),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+        ),
+      ),
+
+      chipTheme: ChipThemeData(
+        backgroundColor: const Color(0xFFE5E7EB),
+        selectedColor: AppColors.accentIndigo,
+        disabledColor: Colors.grey.shade300,
+        labelStyle: const TextStyle(color: AppColors.lightTextSecondary),
+        secondaryLabelStyle: const TextStyle(color: Colors.white),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        side: BorderSide.none,
+      ),
+
+      iconButtonTheme: IconButtonThemeData(
+        style: IconButton.styleFrom(
+          foregroundColor: AppColors.lightTextPrimary,
         ),
       ),
 

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'dart:math' as math;
-import '../../../../core/theme/app_colors.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -13,12 +12,7 @@ class _SplashScreenState extends State<SplashScreen>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
 
-  late final Animation<double> _cardAppear;
   late final Animation<double> _cardScale;
-  late final Animation<double> _glowRadius;
-  late final Animation<double> _glowOpacity;
-  late final Animation<double> _floodScale;
-  late final Animation<double> _cardFade;
   late final Animation<double> _whiteLogoOpacity;
   late final Animation<Offset> _textSlide;
   late final Animation<double> _textOpacity;
@@ -33,10 +27,6 @@ class _SplashScreenState extends State<SplashScreen>
 
     _controller = AnimationController(vsync: this, duration: _totalDuration);
 
-    _cardAppear = CurvedAnimation(
-      parent: _controller,
-      curve: const Interval(0.0, 0.20, curve: Curves.easeOut),
-    );
     _cardScale = Tween<double>(begin: 0.7, end: 1.0).animate(
       CurvedAnimation(
         parent: _controller,
@@ -44,31 +34,6 @@ class _SplashScreenState extends State<SplashScreen>
       ),
     );
 
-    _glowRadius = Tween<double>(begin: 0.0, end: 90.0).animate(
-      CurvedAnimation(
-        parent: _controller,
-        curve: const Interval(0.18, 0.45, curve: Curves.easeOut),
-      ),
-    );
-    _glowOpacity = Tween<double>(begin: 0.0, end: 0.55).animate(
-      CurvedAnimation(
-        parent: _controller,
-        curve: const Interval(0.18, 0.38, curve: Curves.easeOut),
-      ),
-    );
-
-    _floodScale = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _controller,
-        curve: const Interval(0.42, 0.68, curve: Curves.easeInCubic),
-      ),
-    );
-    _cardFade = Tween<double>(begin: 1.0, end: 0.0).animate(
-      CurvedAnimation(
-        parent: _controller,
-        curve: const Interval(0.42, 0.55, curve: Curves.easeIn),
-      ),
-    );
     _whiteLogoOpacity = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
         parent: _controller,
@@ -133,121 +98,90 @@ class _SplashScreenState extends State<SplashScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.lightBackground,
+      backgroundColor: const Color(0xFF111318),
       body: LayoutBuilder(
         builder: (context, constraints) {
           final width = constraints.maxWidth;
           final height = constraints.maxHeight;
-          final shortestSide = math.min(width, height);
-
-          final logoBoxSize = math.min(shortestSide * 0.32, 170.0);
-          final cardSize = logoBoxSize * 0.68;
-          final glowSize = logoBoxSize * 0.75;
-          final whiteLogoSize = logoBoxSize * 0.62;
-          final brandFontSize = math.min(width * 0.085, 36.0);
-
-          const baseDiameter = 40.0;
-          final diagonal = math.sqrt(width * width + height * height);
-          final maxScale = (diagonal / baseDiameter) * 1.3;
+          final logoSize = math.min(width * 0.48, 220.0);
+          final brandFontSize = math.min(width * 0.085, 34.0);
 
           return AnimatedBuilder(
             animation: _controller,
             builder: (context, child) {
               return Stack(
                 fit: StackFit.expand,
-                alignment: Alignment.center,
                 children: [
-                  Transform.scale(
-                    scale: 1 + (_floodScale.value * (maxScale - 1)),
-                    child: Container(
-                      width: baseDiameter,
-                      height: baseDiameter,
-                      decoration: const BoxDecoration(
-                        shape: BoxShape.circle,
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [Color(0xFF9C8CFF), _purple],
-                        ),
-                      ),
-                    ),
-                  ),
                   Center(
-                    child: SizedBox(
-                      width: logoBoxSize,
-                      height: logoBoxSize,
-                      child: Stack(
-                        alignment: Alignment.center,
+                    child: Transform.translate(
+                      offset: Offset(0, height * 0.01),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
-                          Opacity(
-                            opacity: _glowOpacity.value,
-                            child: Container(
-                              width: glowSize,
-                              height: glowSize,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: _purple.withValues(alpha: 0.9),
-                                    blurRadius: _glowRadius.value,
-                                    spreadRadius: _glowRadius.value * 0.6,
-                                  ),
-                                ],
+                          FadeTransition(
+                            opacity: _whiteLogoOpacity,
+                            child: ScaleTransition(
+                              scale: _cardScale,
+                              child: _asset(
+                                'assets/images/logoblanc.png',
+                                width: logoSize,
+                                height: logoSize,
                               ),
                             ),
                           ),
-                          Opacity(
-                            opacity: _cardAppear.value * _cardFade.value,
-                            child: Transform.scale(
-                              scale: _cardScale.value,
-                              child: Container(
-                                width: cardSize,
-                                height: cardSize,
-                                decoration: BoxDecoration(
+                          const SizedBox(height: 8),
+                          FadeTransition(
+                            opacity: _textOpacity,
+                            child: SlideTransition(
+                              position: _textSlide,
+                              child: Text(
+                                'EventHub',
+                                style: TextStyle(
+                                  fontSize: brandFontSize,
+                                  fontWeight: FontWeight.w800,
                                   color: Colors.white,
-                                  borderRadius: BorderRadius.circular(cardSize * 0.2),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black.withValues(alpha: 0.08),
-                                      blurRadius: 16,
-                                      offset: const Offset(0, 6),
-                                    ),
-                                  ],
+                                  height: 1,
                                 ),
-                                padding: EdgeInsets.all(cardSize * 0.16),
-                                child: _asset('assets/images/logoev.png'),
                               ),
                             ),
                           ),
-                          Opacity(
-                            opacity: _whiteLogoOpacity.value,
-                            child: _asset(
-                              'assets/images/logoblanc.png',
-                              width: whiteLogoSize,
-                              height: whiteLogoSize,
+                          const SizedBox(height: 18),
+                          FadeTransition(
+                            opacity: _textOpacity,
+                            child: Container(
+                              width: 36,
+                              height: 3,
+                              decoration: BoxDecoration(
+                                color: _purple,
+                                borderRadius: BorderRadius.circular(3),
+                              ),
                             ),
                           ),
                         ],
                       ),
                     ),
                   ),
-                  Align(
-                    alignment: Alignment.center,
-                    child: Transform.translate(
-                      offset: Offset(0, logoBoxSize * 0.62),
-                      child: Opacity(
-                        opacity: _textOpacity.value,
-                        child: SlideTransition(
-                          position: _textSlide,
-                          child: Text(
-                            'EventHub',
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    bottom: 40,
+                    child: FadeTransition(
+                      opacity: _textOpacity,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.circle_outlined, color: Colors.white38, size: 19),
+                          const SizedBox(width: 10),
+                          Text(
+                            'PREMIUM EXPERIENCES',
                             style: TextStyle(
-                              fontSize: brandFontSize,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
+                              color: Colors.white.withValues(alpha: 0.28),
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 2.2,
                             ),
                           ),
-                        ),
+                        ],
                       ),
                     ),
                   ),

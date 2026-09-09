@@ -36,6 +36,9 @@ dependencies:
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
 
+  lucide_icons: ^0.257.0
+  flutter_riverpod: ^3.4.3
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -73,6 +76,10 @@ flutter:
   assets:
     - assets/images/logoev.png
     - assets/images/logoblanc.png
+    - assets/images/tech.jpg
+    - assets/images/music.jpg
+    - assets/images/user_avatar.jpg
+
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
 

@@ -12,14 +12,33 @@ import '../../../reservations/presentation/providers/reservation_provider.dart';
 import '../../../home/presentation/providers/navigation_provider.dart';
 import '../../../home/presentation/widgets/custom_bottom_nav_bar.dart';
 
-class EventDetailScreen extends ConsumerWidget {
+class EventDetailScreen extends ConsumerStatefulWidget {
   final String eventId;
 
   const EventDetailScreen({super.key, required this.eventId});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final eventAsync = ref.watch(eventDetailProvider(eventId));
+  ConsumerState<EventDetailScreen> createState() => _EventDetailScreenState();
+}
+
+class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
+  int _quantity = 1;
+
+  void _incrementQuantity(int availablePlaces) {
+    setState(() {
+      if (_quantity < availablePlaces) _quantity++;
+    });
+  }
+
+  void _decrementQuantity() {
+    setState(() {
+      if (_quantity > 1) _quantity--;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final eventAsync = ref.watch(eventDetailProvider(widget.eventId));
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
@@ -40,6 +59,17 @@ class EventDetailScreen extends ConsumerWidget {
 
           const ReservationStatus? userStatus = null;
           final int availablePlaces = event.availablePlaces;
+
+          if (_quantity > availablePlaces && availablePlaces > 0) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              setState(() => _quantity = availablePlaces);
+            });
+          }
+
+          final double unitPrice = event.price;
+          final double totalPrice = unitPrice * _quantity;
+          final bool canOrder = availablePlaces > 0 &&
+              userStatus != ReservationStatus.confirmed;
 
           return Column(
             children: [
@@ -118,9 +148,10 @@ class EventDetailScreen extends ConsumerWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            if (availablePlaces > 0) ...[
-                              Row(
-                                children: [
+                            // --- Ligne du haut : badge dispo + panier ---
+                            Row(
+                              children: [
+                                if (availablePlaces > 0) ...[
                                   Container(
                                     padding: const EdgeInsets.symmetric(
                                       horizontal: 10,
@@ -143,45 +174,87 @@ class EventDetailScreen extends ConsumerWidget {
                                     ),
                                   ),
                                   const SizedBox(width: 8),
-                                  Text(
-                                    '• $availablePlaces seats left',
-                                    style: AppTypography.body(isDark).copyWith(
-                                      color: theme.colorScheme.onSurface
-                                          .withValues(alpha: 0.55),
-                                      fontSize: 12,
+                                  Flexible(
+                                    child: Text(
+                                      '• $availablePlaces seats left',
+                                      overflow: TextOverflow.ellipsis,
+                                      style: AppTypography.body(isDark)
+                                          .copyWith(
+                                        color: theme.colorScheme.onSurface
+                                            .withValues(alpha: 0.55),
+                                        fontSize: 12,
+                                      ),
                                     ),
                                   ),
-                                ],
-                              ),
-                              const SizedBox(height: 16),
-                            ],
-                            if (availablePlaces <= 0) ...[
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 10,
-                                  vertical: 5,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.redAccent.withValues(
-                                    alpha: 0.15,
+                                ] else
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 10,
+                                      vertical: 5,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.redAccent.withValues(
+                                        alpha: 0.15,
+                                      ),
+                                      borderRadius: BorderRadius.circular(20),
+                                    ),
+                                    child: const Text(
+                                      'NO VACANCY',
+                                      style: TextStyle(
+                                        color: Colors.redAccent,
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.bold,
+                                        letterSpacing: 0.5,
+                                      ),
+                                    ),
                                   ),
-                                  borderRadius: BorderRadius.circular(20),
-                                ),
-                                child: const Text(
-                                  'NO VACANCY',
-                                  style: TextStyle(
-                                    color: Colors.redAccent,
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.bold,
-                                    letterSpacing: 0.5,
+                                const Spacer(),
+                                if (canOrder)
+                                  _CartStepper(
+                                    quantity: _quantity,
+                                    isDark: isDark,
+                                    onIncrement: () =>
+                                        _incrementQuantity(availablePlaces),
+                                    onDecrement: _decrementQuantity,
+                                    canIncrement:
+                                        _quantity < availablePlaces,
+                                    canDecrement: _quantity > 1,
                                   ),
-                                ),
-                              ),
-                              const SizedBox(height: 16),
-                            ],
+                              ],
+                            ),
+                            const SizedBox(height: 16),
                             Text(
                               event.title,
                               style: AppTypography.heading1(isDark),
+                            ),
+                            const SizedBox(height: 8),
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                Text(
+                                  '\$${unitPrice.toStringAsFixed(2)}',
+                                  style: const TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppColors.accentIndigo,
+                                  ),
+                                ),
+                                if (canOrder && _quantity > 1) ...[
+                                  const SizedBox(width: 8),
+                                  Padding(
+                                    padding: const EdgeInsets.only(bottom: 2),
+                                    child: Text(
+                                      '· Total \$${totalPrice.toStringAsFixed(2)} for $_quantity',
+                                      style: AppTypography.body(isDark)
+                                          .copyWith(
+                                        fontSize: 12,
+                                        color: theme.colorScheme.onSurface
+                                            .withValues(alpha: 0.55),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ],
                             ),
                             const SizedBox(height: 12),
                             Row(
@@ -248,7 +321,7 @@ class EventDetailScreen extends ConsumerWidget {
                       eventTitle: event.title,
                       date: '${event.date} • ${event.time}',
                       status: 'CONFIRMED',
-                      seatInfo: 'GENERAL ACCESS',
+                      seatInfo: '$_quantity x GENERAL ACCESS',
                     );
 
                     await ref
@@ -291,7 +364,6 @@ class EventDetailScreen extends ConsumerWidget {
     required VoidCallback onCancel,
     required VoidCallback onWaitlist,
   }) {
-    // Type 1: confirmed reservation -> cancel
     if (status == ReservationStatus.confirmed) {
       return SizedBox(
         width: double.infinity,
@@ -312,7 +384,6 @@ class EventDetailScreen extends ConsumerWidget {
       );
     }
 
-    // Type 2: sold out -> disabled action
     if (availablePlaces <= 0) {
       return SizedBox(
         width: double.infinity,
@@ -335,7 +406,6 @@ class EventDetailScreen extends ConsumerWidget {
       );
     }
 
-    // Type 3: already on the waitlist
     if (status == ReservationStatus.waitlist) {
       return SizedBox(
         width: double.infinity,
@@ -356,7 +426,105 @@ class EventDetailScreen extends ConsumerWidget {
       );
     }
 
-    // Type 4: standard registration
     return AppButton(text: 'Book Ticket Now', onPressed: onReserve, height: 50);
+  }
+}
+
+/// Panier compact (+/-) à afficher en haut, à côté du badge de
+/// disponibilité — design pilule moderne avec dégradé indigo.
+class _CartStepper extends StatelessWidget {
+  final int quantity;
+  final bool isDark;
+  final VoidCallback onIncrement;
+  final VoidCallback onDecrement;
+  final bool canIncrement;
+  final bool canDecrement;
+
+  const _CartStepper({
+    required this.quantity,
+    required this.isDark,
+    required this.onIncrement,
+    required this.onDecrement,
+    required this.canIncrement,
+    required this.canDecrement,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(30),
+        gradient: LinearGradient(
+          colors: [
+            AppColors.accentIndigo.withValues(alpha: 0.14),
+            AppColors.accentIndigo.withValues(alpha: 0.06),
+          ],
+        ),
+        border: Border.all(
+          color: AppColors.accentIndigo.withValues(alpha: 0.25),
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _StepperIcon(
+            icon: Icons.remove_rounded,
+            onTap: canDecrement ? onDecrement : null,
+          ),
+          Container(
+            constraints: const BoxConstraints(minWidth: 22),
+            alignment: Alignment.center,
+            child: Text(
+              '$quantity',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                color: isDark ? Colors.white : AppColors.lightTextPrimary,
+              ),
+            ),
+          ),
+          _StepperIcon(
+            icon: Icons.add_rounded,
+            onTap: canIncrement ? onIncrement : null,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StepperIcon extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback? onTap;
+
+  const _StepperIcon({required this.icon, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final bool enabled = onTap != null;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(20),
+        onTap: onTap,
+        child: Container(
+          width: 26,
+          height: 26,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: enabled
+                ? AppColors.accentIndigo
+                : AppColors.accentIndigo.withValues(alpha: 0.25),
+          ),
+          child: Icon(
+            icon,
+            size: 15,
+            color: enabled ? Colors.white : Colors.white54,
+          ),
+        ),
+      ),
+    );
   }
 }

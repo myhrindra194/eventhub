@@ -10,6 +10,7 @@ class Event {
   final String imageUrl;
   final String imagePath;
   final String category;
+  final double price;
   final int capacity;
   final int availablePlaces;
   final String organizerId;
@@ -26,6 +27,7 @@ class Event {
     required this.imageUrl,
     required this.imagePath,
     required this.category,
+    this.price = 0.0,
     this.capacity = 0,
     this.availablePlaces = 0,
     this.organizerId = '',

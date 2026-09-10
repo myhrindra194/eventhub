@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/router/app_router.dart';
 import '../../../../core/widgets/app_filter_chip.dart';
 import '../../../../core/widgets/app_header.dart';
 import '../../../../core/widgets/app_search_field.dart';
 import '../../../../core/widgets/state_card.dart';
-import '../../../events/presentation/views/event_detail_screen.dart';
 import '../../../events/presentation/providers/events_provider.dart';
 import '../../../events/presentation/widgets/event_card.dart';
 import '../widgets/home_skeleton.dart';
@@ -112,12 +112,10 @@ class HomeScreen extends ConsumerWidget {
                                 category: event.category,
                                 categoryColor: theme.colorScheme.primary,
                                 onTap: () {
-                                  Navigator.push(
+                                  Navigator.pushNamed(
                                     context,
-                                    MaterialPageRoute(
-                                      builder: (_) =>
-                                          EventDetailScreen(eventId: event.id),
-                                    ),
+                                    AppRouter.eventDetail,
+                                    arguments: event.id,
                                   );
                                 },
                               );

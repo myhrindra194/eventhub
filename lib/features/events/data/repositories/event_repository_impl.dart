@@ -9,18 +9,22 @@ class EventRepositoryImpl implements EventRepository {
 
   @override
   Future<List<Event>> getEvents({String? category}) async {
-    final models = await dataSource.getEvents();
+    final events = (await dataSource.getEvents())
+        .map((model) => model.toEntity())
+        .toList();
     if (category == null || category == 'All') {
-      return models;
+      return events;
     }
-    return models.where((event) => event.category == category).toList();
+    return events.where((event) => event.category == category).toList();
   }
 
   @override
   Future<List<Event>> searchEvents(String query) async {
-    final models = await dataSource.getEvents();
+    final events = (await dataSource.getEvents())
+        .map((model) => model.toEntity())
+        .toList();
     final normalizedQuery = query.toLowerCase();
-    return models
+    return events
         .where((event) => event.title.toLowerCase().contains(normalizedQuery))
         .toList();
   }

@@ -1,14 +1,19 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'dart:math' as math;
 
-class SplashScreen extends StatefulWidget {
+import '../../../../core/router/app_router.dart';
+import '../../../auth/domain/entities/user.dart';
+import '../../../auth/presentation/providers/auth_provider.dart';
+
+class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
 
   @override
-  State<SplashScreen> createState() => _SplashScreenState();
+  ConsumerState<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen>
+class _SplashScreenState extends ConsumerState<SplashScreen>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
 
@@ -16,6 +21,10 @@ class _SplashScreenState extends State<SplashScreen>
   late final Animation<double> _whiteLogoOpacity;
   late final Animation<Offset> _textSlide;
   late final Animation<double> _textOpacity;
+  bool _authReady = false;
+  bool _animationReady = false;
+  bool _authenticated = false;
+  bool _hasNavigated = false;
 
   // Intentionally longer duration for readability.
   static const _totalDuration = Duration(milliseconds: 3500);
@@ -55,13 +64,30 @@ class _SplashScreenState extends State<SplashScreen>
       ),
     );
 
-    _controller.forward();
+    ref.listenManual<AsyncValue<User?>>(authProvider, (_, next) {
+      if (next.isLoading) return;
 
-    Future.delayed(_totalDuration + const Duration(milliseconds: 400), () {
-      if (mounted) {
-        Navigator.of(context).pushReplacementNamed('/welcome');
+      _authReady = true;
+      _authenticated = next.value != null;
+      _navigateWhenReady();
+    }, fireImmediately: true);
+
+    _controller.addStatusListener((status) {
+      if (status == AnimationStatus.completed) {
+        _animationReady = true;
+        _navigateWhenReady();
       }
     });
+    _controller.forward();
+  }
+
+  void _navigateWhenReady() {
+    if (!_authReady || !_animationReady || _hasNavigated || !mounted) return;
+
+    _hasNavigated = true;
+    Navigator.of(
+      context,
+    ).pushReplacementNamed(_authenticated ? AppRouter.home : AppRouter.welcome);
   }
 
   @override

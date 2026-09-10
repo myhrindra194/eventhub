@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
+import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../domain/entities/event.dart';
-import '../views/event_detail_screen.dart';
 
 class EventSearchCard extends StatelessWidget {
   final Event event;
@@ -17,11 +17,10 @@ class EventSearchCard extends StatelessWidget {
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
         onTap: () {
-          Navigator.push(
+          Navigator.pushNamed(
             context,
-            MaterialPageRoute(
-              builder: (_) => EventDetailScreen(eventId: event.id),
-            ),
+            AppRouter.eventDetail,
+            arguments: event.id,
           );
         },
         child: Container(

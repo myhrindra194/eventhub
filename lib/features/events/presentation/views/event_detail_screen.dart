@@ -1,13 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/widgets/app_button.dart';
 import '../../../../core/widgets/app_header.dart';
-import '../../data/models/reservation_model.dart';
 import '../providers/events_provider.dart';
-import '../../../reservations/presentation/views/confirmation_reservation_screen.dart';
-import '../../../reservations/domain/entities/reservation.dart';
 import '../../../reservations/presentation/providers/reservation_provider.dart';
 import '../../../home/presentation/providers/navigation_provider.dart';
 import '../../../home/presentation/widgets/custom_bottom_nav_bar.dart';
@@ -57,7 +55,7 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
             return const Center(child: Text('Event not found'));
           }
 
-          const ReservationStatus? userStatus = null;
+          const String? userStatus = null;
           final int availablePlaces = event.availablePlaces;
 
           if (_quantity > availablePlaces && availablePlaces > 0) {
@@ -68,8 +66,8 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
 
           final double unitPrice = event.price;
           final double totalPrice = unitPrice * _quantity;
-          final bool canOrder = availablePlaces > 0 &&
-              userStatus != ReservationStatus.confirmed;
+          final bool canOrder =
+              availablePlaces > 0 && userStatus != 'CONFIRMED';
 
           return Column(
             children: [
@@ -180,10 +178,10 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
                                       overflow: TextOverflow.ellipsis,
                                       style: AppTypography.body(isDark)
                                           .copyWith(
-                                        color: theme.colorScheme.onSurface
-                                            .withValues(alpha: 0.55),
-                                        fontSize: 12,
-                                      ),
+                                            color: theme.colorScheme.onSurface
+                                                .withValues(alpha: 0.55),
+                                            fontSize: 12,
+                                          ),
                                     ),
                                   ),
                                 ] else
@@ -216,8 +214,7 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
                                     onIncrement: () =>
                                         _incrementQuantity(availablePlaces),
                                     onDecrement: _decrementQuantity,
-                                    canIncrement:
-                                        _quantity < availablePlaces,
+                                    canIncrement: _quantity < availablePlaces,
                                     canDecrement: _quantity > 1,
                                   ),
                               ],
@@ -247,10 +244,10 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
                                       '· Total \$${totalPrice.toStringAsFixed(2)} for $_quantity',
                                       style: AppTypography.body(isDark)
                                           .copyWith(
-                                        fontSize: 12,
-                                        color: theme.colorScheme.onSurface
-                                            .withValues(alpha: 0.55),
-                                      ),
+                                            fontSize: 12,
+                                            color: theme.colorScheme.onSurface
+                                                .withValues(alpha: 0.55),
+                                          ),
                                     ),
                                   ),
                                 ],
@@ -316,13 +313,9 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
                   status: userStatus,
                   availablePlaces: availablePlaces,
                   onReserve: () async {
-                    final reservation = Reservation(
-                      id: event.id,
-                      eventTitle: event.title,
-                      date: '${event.date} • ${event.time}',
-                      status: 'CONFIRMED',
-                      seatInfo: '$_quantity x GENERAL ACCESS',
-                    );
+                    final reservation = ref
+                        .read(createReservationUseCaseProvider)
+                        .call(event: event, quantity: _quantity);
 
                     await ref
                         .read(effectuerReservationUseCaseProvider)
@@ -330,12 +323,10 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
                     ref.invalidate(mesBilletsProvider);
 
                     if (!context.mounted) return;
-                    Navigator.push(
+                    Navigator.pushNamed(
                       context,
-                      MaterialPageRoute(
-                        builder: (context) =>
-                            ConfirmationReservationScreen(event: event),
-                      ),
+                      AppRouter.reservationConfirmation,
+                      arguments: event,
                     );
                   },
                   onCancel: () {},
@@ -358,13 +349,13 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
 
   Widget _buildActionButton({
     required BuildContext context,
-    required ReservationStatus? status,
+    required String? status,
     required int availablePlaces,
     required VoidCallback onReserve,
     required VoidCallback onCancel,
     required VoidCallback onWaitlist,
   }) {
-    if (status == ReservationStatus.confirmed) {
+    if (status == 'CONFIRMED') {
       return SizedBox(
         width: double.infinity,
         height: 50,
@@ -406,7 +397,7 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
       );
     }
 
-    if (status == ReservationStatus.waitlist) {
+    if (status == 'WAITLIST') {
       return SizedBox(
         width: double.infinity,
         height: 50,

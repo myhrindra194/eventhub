@@ -10,7 +10,8 @@ class ReservationRepositoryImpl implements ReservationRepository {
 
   @override
   Future<List<Reservation>> getMesBillets() async {
-    return await remoteDataSource.fetchUserReservations();
+    final models = await remoteDataSource.fetchUserReservations();
+    return models.map((model) => model.toEntity()).toList();
   }
 
   @override

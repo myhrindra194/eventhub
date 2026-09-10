@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/datasources/event_local_datasource.dart';
 import '../../data/repositories/event_repository_impl.dart';
 import '../../domain/entities/event.dart';
+import '../../domain/repositories/event_repository.dart';
 import '../../domain/usecases/get_events_usecase.dart';
 import '../../domain/usecases/get_event_detail_usecase.dart';
 
@@ -21,7 +22,7 @@ final selectedCategoryProvider =
     );
 
 // Injection des UseCases
-final eventRepositoryProvider = Provider<EventRepositoryImpl>((ref) {
+final eventRepositoryProvider = Provider<EventRepository>((ref) {
   final dataSource = EventLocalDataSourceImpl();
   return EventRepositoryImpl(dataSource);
 });

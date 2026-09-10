@@ -1,19 +1,22 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/router/app_router.dart';
+import '../../../../core/di/auth_dependencies.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/widgets/app_button.dart';
 import '../widgets/auth_text_field.dart';
-import 'forgot_password_screen.dart';
-import 'register_screen.dart';
+import '../providers/auth_provider.dart';
+import '../utils/auth_error_message.dart';
 
-class LoginScreen extends StatefulWidget {
+class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
 
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+  ConsumerState<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
@@ -57,27 +60,78 @@ class _LoginScreenState extends State<LoginScreen> {
     return emailError == null && passwordError == null;
   }
 
-  void _handleSignIn() {
+  Future<void> _handleSignIn() async {
+    if (!_ensureFirebaseAuthAvailable()) return;
     if (!_validate()) return;
 
     setState(() => _isLoading = true);
-    // TODO: connect the real authentication flow.
-    Future.delayed(const Duration(seconds: 1), () {
-      if (!mounted) return;
-      Navigator.of(context).pushNamedAndRemoveUntil('/home', (route) => false);
-    });
+    await ref
+        .read(authProvider.notifier)
+        .login(
+          email: _emailController.text.trim(),
+          password: _passwordController.text,
+        );
+
+    if (!mounted) return;
+    final authState = ref.read(authProvider);
+    if (authState.hasError) {
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(authErrorMessage(authState.error))),
+      );
+      return;
+    }
+
+    Navigator.of(
+      context,
+    ).pushNamedAndRemoveUntil(AppRouter.home, (route) => false);
+  }
+
+  Future<void> _handleGoogleSignIn() async {
+    if (!_ensureFirebaseAuthAvailable()) return;
+    setState(() => _isLoading = true);
+    final user = await ref.read(authProvider.notifier).loginWithGoogle();
+
+    if (!mounted) return;
+    final authState = ref.read(authProvider);
+    if (authState.hasError) {
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(authErrorMessage(authState.error))),
+      );
+      return;
+    }
+
+    if (user == null) {
+      setState(() => _isLoading = false);
+      return;
+    }
+
+    Navigator.of(
+      context,
+    ).pushNamedAndRemoveUntil(AppRouter.home, (route) => false);
+  }
+
+  bool _ensureFirebaseAuthAvailable() {
+    if (ref.read(authAvailabilityProvider)) return true;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(
+          'Firebase Auth is not available on Linux or Windows. '
+          'Use Chrome, Android, iOS, or macOS.',
+        ),
+      ),
+    );
+    return false;
   }
 
   void _goToRegister() {
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (context) => const RegisterScreen()),
-    );
+    Navigator.of(context).pushReplacementNamed(AppRouter.register);
   }
 
   void _goToForgotPassword() {
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (context) => const ForgotPasswordScreen()),
-    );
+    Navigator.of(context).pushNamed(AppRouter.forgotPassword);
   }
 
   @override
@@ -222,9 +276,8 @@ class _LoginScreenState extends State<LoginScreen> {
               AppButton(
                 text: 'Continue with Google',
                 variant: AppButtonVariant.secondary,
-                onPressed: () {
-                  // TODO: brancher l'authentification Google
-                },
+                isLoading: _isLoading,
+                onPressed: _handleGoogleSignIn,
                 icon: Icons.g_mobiledata_rounded,
               ),
               const SizedBox(height: 32),

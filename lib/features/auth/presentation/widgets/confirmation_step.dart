@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/widgets/app_button.dart';
@@ -40,10 +41,9 @@ class _ConfirmationStepState extends State<ConfirmationStep> {
 
   void _navigateHome() {
     if (!mounted) return;
-    // TODO: replace '/home' with the real event list route or screen,
-    // declare that route in MaterialApp, or import the screen directly here.
-    // Navigator.pushAndRemoveUntil(MaterialPageRoute(...)).
-    Navigator.of(context).pushNamedAndRemoveUntil('/home', (route) => false);
+    Navigator.of(
+      context,
+    ).pushNamedAndRemoveUntil(AppRouter.home, (route) => false);
   }
 
   @override

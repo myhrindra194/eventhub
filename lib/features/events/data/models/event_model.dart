@@ -1,21 +1,38 @@
 import '../../domain/entities/event.dart';
 
-class EventModel extends Event {
+class EventModel {
+  final String id;
+  final String title;
+  final String description;
+  final String date;
+  final String month;
+  final String day;
+  final String time;
+  final String location;
+  final String imageUrl;
+  final String imagePath;
+  final String category;
+  final double price;
+  final int capacity;
+  final int availablePlaces;
+  final String organizerId;
+
   const EventModel({
-    required super.id,
-    required super.title,
-    required super.description,
-    required super.date,
-    required super.month,
-    required super.day,
-    required super.time,
-    required super.location,
-    required super.imageUrl,
-    required super.imagePath,
-    required super.category,
-    super.capacity = 0,
-    super.availablePlaces = 0,
-    super.organizerId = '',
+    required this.id,
+    required this.title,
+    required this.description,
+    required this.date,
+    required this.month,
+    required this.day,
+    required this.time,
+    required this.location,
+    required this.imageUrl,
+    required this.imagePath,
+    required this.category,
+    this.price = 0.0,
+    this.capacity = 0,
+    this.availablePlaces = 0,
+    this.organizerId = '',
   });
 
   factory EventModel.fromJson(Map<String, dynamic> json) {
@@ -33,9 +50,30 @@ class EventModel extends Event {
       imageUrl: image,
       imagePath: image,
       category: json['category'] as String? ?? 'All',
+      price: (json['price'] as num?)?.toDouble() ?? 0.0,
       capacity: json['capacity'] as int? ?? 0,
       availablePlaces: json['availablePlaces'] as int? ?? 0,
       organizerId: json['organizerId'] as String? ?? '',
+    );
+  }
+
+  Event toEntity() {
+    return Event(
+      id: id,
+      title: title,
+      description: description,
+      date: date,
+      month: month,
+      day: day,
+      time: time,
+      location: location,
+      imageUrl: imageUrl,
+      imagePath: imagePath,
+      category: category,
+      price: price,
+      capacity: capacity,
+      availablePlaces: availablePlaces,
+      organizerId: organizerId,
     );
   }
 
@@ -52,6 +90,7 @@ class EventModel extends Event {
       'imageUrl': imageUrl,
       'imagePath': imagePath,
       'category': category,
+      'price': price,
       'capacity': capacity,
       'availablePlaces': availablePlaces,
       'organizerId': organizerId,

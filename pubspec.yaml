@@ -19,15 +19,10 @@ dependencies:
   firebase_core: ^4.14.0
   firebase_auth: ^6.6.1
   cloud_firestore: ^6.9.0
+  google_sign_in: ^7.2.0
 
   # State management
   flutter_riverpod: ^3.3.2
-
-  # Supabase
-  supabase_flutter: ^2.17.2
-
-  # Environment variables
-  flutter_dotenv: ^6.0.1
 
   # Icons
   lucide_icons: ^0.257.0

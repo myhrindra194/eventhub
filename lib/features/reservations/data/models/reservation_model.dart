@@ -1,12 +1,18 @@
 import '../../domain/entities/reservation.dart';
 
-class ReservationModel extends Reservation {
+class ReservationModel {
+  final String id;
+  final String eventTitle;
+  final String date;
+  final String status;
+  final String seatInfo;
+
   const ReservationModel({
-    required super.id,
-    required super.eventTitle,
-    required super.date,
-    required super.status,
-    required super.seatInfo,
+    required this.id,
+    required this.eventTitle,
+    required this.date,
+    required this.status,
+    required this.seatInfo,
   });
 
   factory ReservationModel.fromJson(Map<String, dynamic> json) {
@@ -16,6 +22,16 @@ class ReservationModel extends Reservation {
       date: json['date'] ?? '',
       status: json['status'] ?? 'CONFIRMED',
       seatInfo: json['seatInfo'] ?? '',
+    );
+  }
+
+  Reservation toEntity() {
+    return Reservation(
+      id: id,
+      eventTitle: eventTitle,
+      date: date,
+      status: status,
+      seatInfo: seatInfo,
     );
   }
 

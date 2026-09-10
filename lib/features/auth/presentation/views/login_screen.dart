@@ -22,8 +22,7 @@ class _LoginScreenState extends State<LoginScreen> {
   String? _emailError;
   String? _passwordError;
 
-  static final _emailRegex =
-      RegExp(r'^[\w\.\-]+@[\w\-]+\.[a-zA-Z]{2,}$');
+  static final _emailRegex = RegExp(r'^[\w\.\-]+@[\w\-]+\.[a-zA-Z]{2,}$');
 
   @override
   void dispose() {
@@ -62,7 +61,7 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!_validate()) return;
 
     setState(() => _isLoading = true);
-    // TODO: brancher la logique d'authentification réelle
+    // TODO: connect the real authentication flow.
     Future.delayed(const Duration(seconds: 1), () {
       if (!mounted) return;
       Navigator.of(context).pushNamedAndRemoveUntil('/home', (route) => false);
@@ -86,10 +85,12 @@ class _LoginScreenState extends State<LoginScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final size = MediaQuery.of(context).size;
 
-    final backgroundColor =
-        isDark ? AppColors.darkBackground : AppColors.lightBackground;
-    final textSecondary =
-        isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary;
+    final backgroundColor = isDark
+        ? AppColors.darkBackground
+        : AppColors.lightBackground;
+    final textSecondary = isDark
+        ? AppColors.darkTextSecondary
+        : AppColors.lightTextSecondary;
 
     return Scaffold(
       backgroundColor: backgroundColor,
@@ -167,13 +168,16 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 4),
 
-              // Forgot password button 
+              // Forgot password button
               Align(
                 alignment: Alignment.centerRight,
                 child: TextButton(
                   onPressed: _goToForgotPassword,
                   style: TextButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 4.0),
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 8.0,
+                      horizontal: 4.0,
+                    ),
                     minimumSize: Size.zero,
                     tapTargetSize: MaterialTapTargetSize.padded,
                   ),

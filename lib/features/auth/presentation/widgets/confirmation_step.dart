@@ -4,8 +4,8 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/widgets/app_button.dart';
 
-/// Étape 3 de l'inscription : écran de confirmation "You're All Set!"
-/// avec redirection automatique après quelques secondes.
+/// Step 3 of registration: the "You're All Set!" confirmation screen
+/// with automatic redirection after a few seconds.
 class ConfirmationStep extends StatefulWidget {
   final bool isDark;
 
@@ -40,9 +40,8 @@ class _ConfirmationStepState extends State<ConfirmationStep> {
 
   void _navigateHome() {
     if (!mounted) return;
-    // TODO: remplacer '/home' par la vraie route (ou écran) de la liste
-    // des événements, et déclarer cette route dans ton MaterialApp
-    // (routes: {...}), ou importer directement l'écran ici et utiliser
+    // TODO: replace '/home' with the real event list route or screen,
+    // declare that route in MaterialApp, or import the screen directly here.
     // Navigator.pushAndRemoveUntil(MaterialPageRoute(...)).
     Navigator.of(context).pushNamedAndRemoveUntil('/home', (route) => false);
   }
@@ -51,8 +50,9 @@ class _ConfirmationStepState extends State<ConfirmationStep> {
   Widget build(BuildContext context) {
     final isDark = widget.isDark;
     final size = MediaQuery.of(context).size;
-    final textSecondary =
-        isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary;
+    final textSecondary = isDark
+        ? AppColors.darkTextSecondary
+        : AppColors.lightTextSecondary;
 
     return Center(
       child: Padding(

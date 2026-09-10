@@ -32,13 +32,13 @@ class _WelcomeScreenState extends State<WelcomeScreen>
       parent: _controller,
       curve: const Interval(0.0, 0.6, curve: Curves.easeOut),
     );
-    _textSlide = Tween<Offset>(
-      begin: const Offset(0, 0.15),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: _controller,
-      curve: const Interval(0.0, 0.6, curve: Curves.easeOutCubic),
-    ));
+    _textSlide = Tween<Offset>(begin: const Offset(0, 0.15), end: Offset.zero)
+        .animate(
+          CurvedAnimation(
+            parent: _controller,
+            curve: const Interval(0.0, 0.6, curve: Curves.easeOutCubic),
+          ),
+        );
     _textScale = Tween<double>(begin: 0.94, end: 1.0).animate(
       CurvedAnimation(
         parent: _controller,
@@ -50,13 +50,13 @@ class _WelcomeScreenState extends State<WelcomeScreen>
       parent: _controller,
       curve: const Interval(0.4, 1.0, curve: Curves.easeOut),
     );
-    _buttonSlide = Tween<Offset>(
-      begin: const Offset(0, 0.3),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: _controller,
-      curve: const Interval(0.4, 1.0, curve: Curves.easeOutCubic),
-    ));
+    _buttonSlide = Tween<Offset>(begin: const Offset(0, 0.3), end: Offset.zero)
+        .animate(
+          CurvedAnimation(
+            parent: _controller,
+            curve: const Interval(0.4, 1.0, curve: Curves.easeOutCubic),
+          ),
+        );
     _buttonScale = Tween<double>(begin: 0.92, end: 1.0).animate(
       CurvedAnimation(
         parent: _controller,
@@ -172,14 +172,18 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                                   Text(
                                     'Get Started',
                                     style: TextStyle(
-                                      fontSize: (size.width * 0.042)
-                                          .clamp(14.0, 18.0),
+                                      fontSize: (size.width * 0.042).clamp(
+                                        14.0,
+                                        18.0,
+                                      ),
                                       fontWeight: FontWeight.w600,
                                     ),
                                   ),
                                   const SizedBox(width: 8),
-                                  const Icon(Icons.arrow_forward_rounded,
-                                      size: 20),
+                                  const Icon(
+                                    Icons.arrow_forward_rounded,
+                                    size: 20,
+                                  ),
                                 ],
                               ),
                             ),

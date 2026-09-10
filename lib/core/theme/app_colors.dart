@@ -11,16 +11,16 @@ abstract class AppColors {
   static const Color lightSurface = Color(0xFFFFFFFF);
   static const Color lightSurfaceLight = Color(0xFFF3F4F6);
 
-  // Couleurs d'accentuation & États
+  // Accent and state colors.
   static const Color accentIndigo = Color.fromRGBO(103, 58, 183, 1.0);
   static const Color success = Color(0xFF10B981);
   static const Color error = Color(0xFFEF4444);
 
-  // Textes - Mode Sombre
+  // Dark mode text colors.
   static const Color darkTextPrimary = Color(0xFFF3F4F6);
   static const Color darkTextSecondary = Color(0xFF9CA3AF);
 
-  // Textes - Mode Clair
+  // Light mode text colors.
   static const Color lightTextPrimary = Color(0xFF111827);
   static const Color lightTextSecondary = Color(0xFF6B7280);
 }

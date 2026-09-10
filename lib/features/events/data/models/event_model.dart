@@ -13,10 +13,14 @@ class EventModel extends Event {
     required super.imageUrl,
     required super.imagePath,
     required super.category,
+    super.capacity = 0,
+    super.availablePlaces = 0,
+    super.organizerId = '',
   });
 
   factory EventModel.fromJson(Map<String, dynamic> json) {
-    final image = json['imageUrl'] as String? ?? json['imagePath'] as String? ?? '';
+    final image =
+        json['imageUrl'] as String? ?? json['imagePath'] as String? ?? '';
     return EventModel(
       id: json['id'] as String? ?? '',
       title: json['title'] as String? ?? '',
@@ -29,6 +33,9 @@ class EventModel extends Event {
       imageUrl: image,
       imagePath: image,
       category: json['category'] as String? ?? 'All',
+      capacity: json['capacity'] as int? ?? 0,
+      availablePlaces: json['availablePlaces'] as int? ?? 0,
+      organizerId: json['organizerId'] as String? ?? '',
     );
   }
 
@@ -45,6 +52,9 @@ class EventModel extends Event {
       'imageUrl': imageUrl,
       'imagePath': imagePath,
       'category': category,
+      'capacity': capacity,
+      'availablePlaces': availablePlaces,
+      'organizerId': organizerId,
     };
   }
 }

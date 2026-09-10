@@ -4,6 +4,7 @@ import '../widgets/create_account_step.dart';
 import '../widgets/role_selection_step.dart';
 import '../widgets/confirmation_step.dart';
 import 'login_screen.dart';
+import '../../domain/entities/user_role.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -73,7 +74,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
 
     setState(() => _isLoading = true);
-    // TODO: brancher la logique de création de compte réelle
+    // TODO: connect the real account creation flow.
 
     Future.delayed(const Duration(milliseconds: 900), () {
       if (mounted) {

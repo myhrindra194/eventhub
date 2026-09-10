@@ -2,11 +2,10 @@ import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/widgets/app_button.dart';
+import '../../domain/entities/user_role.dart';
 
-enum UserRole { participant, organizer }
-
-/// Étape 2 de l'inscription : "Your Profile" — choix du rôle
-/// (Participant ou Organisateur).
+/// Step 2 of registration: "Your Profile" and role selection
+/// (participant or organizer).
 class RoleSelectionStep extends StatelessWidget {
   final bool isDark;
   final UserRole selectedRole;
@@ -28,8 +27,9 @@ class RoleSelectionStep extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
-    final textSecondary =
-        isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary;
+    final textSecondary = isDark
+        ? AppColors.darkTextSecondary
+        : AppColors.lightTextSecondary;
 
     return SingleChildScrollView(
       padding: EdgeInsets.symmetric(
@@ -49,17 +49,16 @@ class RoleSelectionStep extends StatelessWidget {
 
           Text(
             'CHOOSE YOUR ROLE',
-            style: AppTypography.caption(isDark).copyWith(
-              color: textSecondary,
-              letterSpacing: 1.2,
-            ),
+            style: AppTypography.caption(
+              isDark,
+            ).copyWith(color: textSecondary, letterSpacing: 1.2),
           ),
           const SizedBox(height: 12),
 
           _RoleCard(
             isDark: isDark,
             title: 'Participant',
-            description: 'Découvrir et réserver des événements uniques.',
+            description: 'Discover and book unique events.',
             icon: Icons.confirmation_number_outlined,
             isSelected: selectedRole == UserRole.participant,
             onTap: () => onRoleChanged(UserRole.participant),
@@ -67,8 +66,8 @@ class RoleSelectionStep extends StatelessWidget {
           const SizedBox(height: 16),
           _RoleCard(
             isDark: isDark,
-            title: 'Organisateur',
-            description: 'Créer et gérer vos propres événements.',
+            title: 'Organizer',
+            description: 'Create and manage your own events.',
             icon: Icons.event_available_outlined,
             isSelected: selectedRole == UserRole.organizer,
             onTap: () => onRoleChanged(UserRole.organizer),
@@ -88,9 +87,9 @@ class RoleSelectionStep extends StatelessWidget {
               onPressed: onGoBack,
               child: Text(
                 'Go Back',
-                style: AppTypography.heading3(isDark).copyWith(
-                  color: textSecondary,
-                ),
+                style: AppTypography.heading3(
+                  isDark,
+                ).copyWith(color: textSecondary),
               ),
             ),
           ),
@@ -119,10 +118,12 @@ class _RoleCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final surfaceColor =
-        isDark ? AppColors.darkSurface : AppColors.lightSurface;
-    final textSecondary =
-        isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary;
+    final surfaceColor = isDark
+        ? AppColors.darkSurface
+        : AppColors.lightSurface;
+    final textSecondary = isDark
+        ? AppColors.darkTextSecondary
+        : AppColors.lightTextSecondary;
 
     return GestureDetector(
       onTap: onTap,
@@ -169,7 +170,9 @@ class _RoleCard extends StatelessWidget {
             ),
             const SizedBox(width: 8),
             _RadioIndicator(
-                isSelected: isSelected, textSecondary: textSecondary),
+              isSelected: isSelected,
+              textSecondary: textSecondary,
+            ),
           ],
         ),
       ),

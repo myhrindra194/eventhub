@@ -33,7 +33,9 @@ class AppButton extends StatelessWidget {
       backgroundColor = const Color(0xFF6B65F6);
       textColor = Colors.white;
     } else {
-      backgroundColor = isDark ? const Color(0xFF1E222B) : const Color(0xFFEFEFF4);
+      backgroundColor = isDark
+          ? const Color(0xFF1E222B)
+          : const Color(0xFFEFEFF4);
       textColor = isDark ? Colors.white : Colors.black87;
     }
 

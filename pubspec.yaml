@@ -30,7 +30,8 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-
+  shimmer: ^4.0.0
+  animated_text_kit: ^4.2.2
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
@@ -41,16 +42,30 @@ dependencies:
   supabase_flutter: ^2.17.2
   flutter_dotenv: ^6.0.1
 
+  lucide_icons: ^0.257.0
+  flutter_riverpod: ^3.4.3
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
-
+    
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is
   # activated in the `analysis_options.yaml` file located at the root of your
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^5.0.0
+  flutter_launcher_icons: ^0.13.1
+
+# Configuration pour générer le logo de l'application
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/images/logoev.png"
+  min_sdk_android: 21
+  web:
+    generate: true
+    image_path: "assets/images/logoev.png"
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
@@ -61,12 +76,15 @@ flutter:
   # The following line ensures that the Material Icons font is
   # included with your application, so that you can use the icons in
   # the material Icons class.
+
   uses-material-design: true
 
-  # To add assets to your application, add an assets section, like this:
-  # assets:
-  #   - images/a_dot_burr.jpeg
-  #   - images/a_dot_ham.jpeg
+  assets:
+    - assets/images/logoev.png
+    - assets/images/logoblanc.png
+    - assets/images/tech.jpg
+    - assets/images/music.jpg
+    - assets/images/user_avatar.jpg
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

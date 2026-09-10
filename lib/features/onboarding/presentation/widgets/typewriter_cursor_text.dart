@@ -37,7 +37,6 @@ class _TypewriterCursorTextState extends State<TypewriterCursorText>
   void initState() {
     super.initState();
 
-    
     _cursorController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 500),
@@ -48,7 +47,6 @@ class _TypewriterCursorTextState extends State<TypewriterCursorText>
 
   void _startLoop() async {
     while (!_disposed) {
-      
       for (int i = 0; i <= widget.text.length; i++) {
         if (_disposed) return;
         setState(() => _charCount = i);

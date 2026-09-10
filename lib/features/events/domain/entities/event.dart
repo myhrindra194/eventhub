@@ -10,6 +10,9 @@ class Event {
   final String imageUrl;
   final String imagePath;
   final String category;
+  final int capacity;
+  final int availablePlaces;
+  final String organizerId;
 
   const Event({
     required this.id,
@@ -23,5 +26,8 @@ class Event {
     required this.imageUrl,
     required this.imagePath,
     required this.category,
+    this.capacity = 0,
+    this.availablePlaces = 0,
+    this.organizerId = '',
   });
 }

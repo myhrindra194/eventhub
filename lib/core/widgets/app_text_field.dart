@@ -70,12 +70,19 @@ class _AppTextFieldState extends State<AppTextField> {
               fontSize: 14,
             ),
             filled: true,
-            fillColor: isDark ? const Color(0xFF14171C) : const Color(0xFFF9FAFB),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            fillColor: isDark
+                ? const Color(0xFF14171C)
+                : const Color(0xFFF9FAFB),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 14,
+            ),
             prefixIcon: widget.prefixIcon != null
                 ? Icon(
                     widget.prefixIcon,
-                    color: isDark ? const Color(0xFF6C727F) : const Color(0xFF9CA3AF),
+                    color: isDark
+                        ? const Color(0xFF6C727F)
+                        : const Color(0xFF9CA3AF),
                   )
                 : null,
             suffixIcon: widget.isPassword
@@ -84,7 +91,9 @@ class _AppTextFieldState extends State<AppTextField> {
                       _obscureText
                           ? Icons.visibility_outlined
                           : Icons.visibility_off_outlined,
-                      color: isDark ? const Color(0xFF6C727F) : const Color(0xFF9CA3AF),
+                      color: isDark
+                          ? const Color(0xFF6C727F)
+                          : const Color(0xFF9CA3AF),
                     ),
                     onPressed: () {
                       setState(() {

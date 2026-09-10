@@ -17,8 +17,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   bool _isLoading = false;
   String? _emailError;
 
-  static final _emailRegex =
-      RegExp(r'^[\w\.\-]+@[\w\-]+\.[a-zA-Z]{2,}$');
+  static final _emailRegex = RegExp(r'^[\w\.\-]+@[\w\-]+\.[a-zA-Z]{2,}$');
 
   @override
   void dispose() {
@@ -48,15 +47,14 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
 
     setState(() => _isLoading = true);
 
-    // TODO: brancher la logique d'envoi de mail de réinitialisation
+    // TODO: connect the password reset email flow.
     Future.delayed(const Duration(seconds: 1), () {
       if (mounted) {
         setState(() => _isLoading = false);
         Navigator.of(context).push(
           MaterialPageRoute(
-            builder: (context) => ResetPasswordScreen(
-              email: _emailController.text.trim(),
-            ),
+            builder: (context) =>
+                ResetPasswordScreen(email: _emailController.text.trim()),
           ),
         );
       }
@@ -68,8 +66,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final size = MediaQuery.of(context).size;
 
-    final backgroundColor =
-        isDark ? AppColors.darkBackground : AppColors.lightBackground;
+    final backgroundColor = isDark
+        ? AppColors.darkBackground
+        : AppColors.lightBackground;
 
     return Scaffold(
       backgroundColor: backgroundColor,
@@ -79,7 +78,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         leading: IconButton(
           icon: Icon(
             Icons.arrow_back_ios_new_rounded,
-            color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
+            color: isDark
+                ? AppColors.darkTextPrimary
+                : AppColors.lightTextPrimary,
           ),
           onPressed: () => Navigator.of(context).pop(),
         ),

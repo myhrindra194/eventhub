@@ -15,4 +15,13 @@ class EventRepositoryImpl implements EventRepository {
     }
     return models.where((event) => event.category == category).toList();
   }
+
+  @override
+  Future<List<Event>> searchEvents(String query) async {
+    final models = await dataSource.getEvents();
+    final normalizedQuery = query.toLowerCase();
+    return models
+        .where((event) => event.title.toLowerCase().contains(normalizedQuery))
+        .toList();
+  }
 }

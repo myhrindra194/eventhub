@@ -17,7 +17,7 @@ class _SplashScreenState extends State<SplashScreen>
   late final Animation<Offset> _textSlide;
   late final Animation<double> _textOpacity;
 
-  // Durée volontairement plus longue et lisible
+  // Intentionally longer duration for readability.
   static const _totalDuration = Duration(milliseconds: 3500);
   static const _purple = Color(0xFF7C4DFF);
 
@@ -41,15 +41,13 @@ class _SplashScreenState extends State<SplashScreen>
       ),
     );
 
-    _textSlide = Tween<Offset>(
-      begin: const Offset(0, 0.3),
-      end: Offset.zero,
-    ).animate(
-      CurvedAnimation(
-        parent: _controller,
-        curve: const Interval(0.68, 0.95, curve: Curves.easeOutCubic),
-      ),
-    );
+    _textSlide = Tween<Offset>(begin: const Offset(0, 0.3), end: Offset.zero)
+        .animate(
+          CurvedAnimation(
+            parent: _controller,
+            curve: const Interval(0.68, 0.95, curve: Curves.easeOutCubic),
+          ),
+        );
     _textOpacity = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
         parent: _controller,
@@ -72,7 +70,12 @@ class _SplashScreenState extends State<SplashScreen>
     super.dispose();
   }
 
-  Widget _asset(String path, {double? width, double? height, BoxFit fit = BoxFit.contain}) {
+  Widget _asset(
+    String path, {
+    double? width,
+    double? height,
+    BoxFit fit = BoxFit.contain,
+  }) {
     return Image.asset(
       path,
       width: width,
@@ -170,7 +173,11 @@ class _SplashScreenState extends State<SplashScreen>
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          const Icon(Icons.circle_outlined, color: Colors.white38, size: 19),
+                          const Icon(
+                            Icons.circle_outlined,
+                            color: Colors.white38,
+                            size: 19,
+                          ),
                           const SizedBox(width: 10),
                           Text(
                             'PREMIUM EXPERIENCES',

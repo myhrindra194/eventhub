@@ -11,7 +11,8 @@ class EventLocalDataSourceImpl implements EventLocalDataSource {
       const EventModel(
         id: '1',
         title: 'Tech Conference 2026',
-        description: 'Une grande conférence sur le développement mobile et le Cloud.',
+        description:
+            'A major conference about mobile development and the cloud.',
         date: '15 OCT',
         month: 'OCT',
         day: '15',
@@ -20,11 +21,13 @@ class EventLocalDataSourceImpl implements EventLocalDataSource {
         imageUrl: 'assets/images/tech.jpg',
         imagePath: 'assets/images/tech.jpg',
         category: 'Tech',
+        capacity: 120,
+        availablePlaces: 120,
       ),
       const EventModel(
         id: '2',
         title: 'Music Festival',
-        description: 'Festival de musique live avec plusieurs artistes internationaux.',
+        description: 'A live music festival featuring international artists.',
         date: '20 NOV',
         month: 'NOV',
         day: '20',
@@ -33,6 +36,8 @@ class EventLocalDataSourceImpl implements EventLocalDataSource {
         imageUrl: 'assets/images/music.jpg',
         imagePath: 'assets/images/music.jpg',
         category: 'Music',
+        capacity: 500,
+        availablePlaces: 0,
       ),
     ];
   }

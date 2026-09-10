@@ -1,20 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
 import 'core/theme/theme_provider.dart';
 import 'features/splash/presentation/views/splash_screen.dart';
 import 'features/onboarding/presentation/views/welcome_screen.dart';
 import 'features/auth/presentation/views/login_screen.dart';
 import 'features/auth/presentation/views/register_screen.dart';
-import 'features/home/presentation/views/home_screen.dart';
+import 'features/events/presentation/views/search_screen.dart';
 import 'features/home/presentation/views/main_wrapper_screen.dart';
 
 void main() {
-  runApp(
-    const ProviderScope(
-      child: MyApp(),
-    ),
-  );
+  runApp(const ProviderScope(child: MyApp()));
 }
 
 class MyApp extends ConsumerWidget {
@@ -35,22 +32,23 @@ class MyApp extends ConsumerWidget {
       themeMode: themeMode,
 
       initialRoute: '/',
+      onGenerateRoute: AppRouter.generateRoute,
       routes: {
         '/': (context) => const SplashScreen(),
         '/welcome': (context) => const WelcomeScreen(),
         '/login': (context) => const LoginScreen(),
         '/register': (context) => const RegisterScreen(),
         '/home': (context) => const MainWrapperScreen(),
-        '/home_screen': (context) => const HomeScreen(),
+        '/home_screen': (context) => const MainWrapperScreen(),
+        '/search': (context) => const SearchScreen(),
       },
     );
   }
 }
 
-// NOTE: MyHomePage n'est plus branché sur la route '/home' (remplacé par
-// HomeScreen, features/home/presentation/views/home_screen.dart). Je la
-// laisse ici telle quelle si tu veux réutiliser ce code plus tard ;
-// tu peux la supprimer une fois que tu n'en as plus besoin.
+// NOTE: MyHomePage is no longer connected to the '/home' route. It was
+// replaced by HomeScreen in features/home/presentation/views/home_screen.dart.
+// It is kept here for possible reuse and can be removed when no longer needed.
 class MyHomePage extends StatefulWidget {
   const MyHomePage({super.key, required this.title});
 

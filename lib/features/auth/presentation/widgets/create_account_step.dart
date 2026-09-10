@@ -4,7 +4,6 @@ import '../../../../core/theme/app_typography.dart';
 import '../../../../core/widgets/app_button.dart';
 import 'auth_text_field.dart';
 
-
 class CreateAccountStep extends StatelessWidget {
   final bool isDark;
   final TextEditingController firstNameController;

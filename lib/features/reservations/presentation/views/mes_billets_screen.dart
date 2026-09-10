@@ -22,7 +22,7 @@ class MesBilletsScreen extends ConsumerWidget {
       body: Column(
         children: [
           const AppHeader(
-            title: 'Tickets',
+            title: 'My Tickets',
             subtitle: 'Your bookings and tickets',
           ),
           Expanded(
@@ -52,7 +52,6 @@ class MesBilletsScreen extends ConsumerWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            // Dark circular icon container.
             Container(
               width: 110,
               height: 110,
@@ -86,7 +85,6 @@ class MesBilletsScreen extends ConsumerWidget {
               ),
             ),
             const SizedBox(height: 36),
-            // Explore events action button.
             SizedBox(
               width: double.infinity,
               height: 52,
@@ -121,14 +119,49 @@ class MesBilletsScreen extends ConsumerWidget {
     BuildContext context,
     List<Reservation> loadedReservations,
   ) {
-    return ListView.separated(
-      padding: const EdgeInsets.all(20.0),
-      itemCount: loadedReservations.length,
-      separatorBuilder: (context, index) => const SizedBox(height: 16),
-      itemBuilder: (context, index) {
-        final reservation = loadedReservations[index];
-        return _buildTicketCard(context, reservation);
-      },
+    // Séparation upcoming / past selon le statut de la réservation.
+    // Adaptez cette condition si votre entité Reservation expose une
+    // date exploitable (ex. reservation.eventDate.isBefore(DateTime.now())).
+    final upcoming = loadedReservations
+        .where((r) => r.status.toUpperCase() != 'PAST')
+        .toList();
+    final past = loadedReservations
+        .where((r) => r.status.toUpperCase() == 'PAST')
+        .toList();
+
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
+      children: [
+        if (upcoming.isNotEmpty) ...[
+          _sectionLabel(context, 'UPCOMING EVENTS'),
+          const SizedBox(height: 14),
+          for (final reservation in upcoming) ...[
+            _buildTicketCard(context, reservation),
+            const SizedBox(height: 16),
+          ],
+        ],
+        if (past.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          _sectionLabel(context, 'PAST EVENTS'),
+          const SizedBox(height: 14),
+          for (final reservation in past) ...[
+            _buildPastTicketCard(context, reservation),
+            const SizedBox(height: 12),
+          ],
+        ],
+      ],
+    );
+  }
+
+  Widget _sectionLabel(BuildContext context, String label) {
+    return Text(
+      label,
+      style: TextStyle(
+        color: Theme.of(context).colorScheme.onSurfaceVariant,
+        fontSize: 12,
+        fontWeight: FontWeight.bold,
+        letterSpacing: 1.4,
+      ),
     );
   }
 
@@ -137,87 +170,100 @@ class MesBilletsScreen extends ConsumerWidget {
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+        border: Border(
+          left: BorderSide(
+            color: Theme.of(context).colorScheme.primary,
+            width: 3,
+          ),
+        ),
       ),
+      clipBehavior: Clip.antiAlias,
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          borderRadius: BorderRadius.circular(16),
           onTap: () {},
           child: Padding(
-            padding: const EdgeInsets.all(16.0),
+            padding: const EdgeInsets.fromLTRB(18, 18, 16, 16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            reservation.eventTitle,
+                            style: TextStyle(
+                              color: Theme.of(context).colorScheme.onSurface,
+                              fontSize: 19,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            reservation.date,
+                            style: TextStyle(
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 12),
                     Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 4,
-                      ),
+                      width: 52,
+                      height: 52,
                       decoration: BoxDecoration(
-                        color: const Color(0xFF00C853).withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(20),
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(14),
                       ),
-                      child: const Text(
-                        'Confirmed',
-                        style: TextStyle(
+                      child: const Icon(
+                        Icons.qr_code_2,
+                        color: Colors.black87,
+                        size: 30,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                _dashedDivider(context),
+                const SizedBox(height: 14),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.check_circle,
+                          size: 16,
                           color: Color(0xFF00C853),
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
                         ),
-                      ),
+                        const SizedBox(width: 6),
+                        const Text(
+                          'CONFIRMED',
+                          style: TextStyle(
+                            color: Color(0xFF00C853),
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 0.6,
+                          ),
+                        ),
+                      ],
                     ),
-                    Icon(
-                      Icons.qr_code_2,
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      size: 28,
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  reservation.eventTitle,
-                  style: TextStyle(
-                    color: Theme.of(context).colorScheme.onSurface,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Icon(
-                      Icons.calendar_today,
-                      size: 14,
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
-                    const SizedBox(width: 6),
                     Text(
-                      reservation.date,
+                      reservation.seatInfo,
                       style: TextStyle(
                         color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        fontSize: 14,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 6),
-                Row(
-                  children: [
-                    Icon(
-                      Icons.event_seat,
-                      size: 14,
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      '${reservation.seatInfo} • Ticket #${reservation.id}',
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        fontSize: 14,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 0.4,
                       ),
                     ),
                   ],
@@ -227,6 +273,91 @@ class MesBilletsScreen extends ConsumerWidget {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildPastTicketCard(BuildContext context, Reservation reservation) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: Theme.of(context)
+                  .colorScheme
+                  .onSurfaceVariant
+                  .withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(
+              Icons.history,
+              size: 22,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  reservation.eventTitle,
+                  style: TextStyle(
+                    color: Theme.of(context)
+                        .colorScheme
+                        .onSurfaceVariant,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  reservation.date,
+                  style: TextStyle(
+                    color: Theme.of(context)
+                        .colorScheme
+                        .onSurfaceVariant
+                        .withValues(alpha: 0.7),
+                    fontSize: 13,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _dashedDivider(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        const dashWidth = 5.0;
+        const dashSpace = 4.0;
+        final dashCount =
+            (constraints.maxWidth / (dashWidth + dashSpace)).floor();
+        return Row(
+          children: List.generate(dashCount, (_) {
+            return Padding(
+              padding: const EdgeInsets.only(right: dashSpace),
+              child: Container(
+                width: dashWidth,
+                height: 1,
+                color: Theme.of(context)
+                    .colorScheme
+                    .onSurfaceVariant
+                    .withValues(alpha: 0.25),
+              ),
+            );
+          }),
+        );
+      },
     );
   }
 }

@@ -1,0 +1,129 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ─────────────────────────────────────────────
+    // HELPERS
+    // ─────────────────────────────────────────────
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated()
+        && request.auth.uid == userId;
+    }
+
+    function userRole() {
+      return get(
+        /databases/$(database)/documents/users/$(request.auth.uid)
+      ).data.role;
+    }
+
+    function isParticipant() {
+      return isAuthenticated()
+        && userRole() == 'participant';
+    }
+
+    function isOrganizer() {
+      return isAuthenticated()
+        && userRole() == 'organizer';
+    }
+
+
+    // ─────────────────────────────────────────────
+    // USERS
+    // ─────────────────────────────────────────────
+
+    match /users/{userId} {
+
+      // Un utilisateur peut créer son propre profil.
+      allow create: if isOwner(userId);
+
+      // Un utilisateur peut consulter et modifier
+      // uniquement son propre profil.
+      allow read, update: if isOwner(userId);
+
+      // Suppression d'un profil interdite dans le MVP.
+      allow delete: if false;
+    }
+
+
+    // ─────────────────────────────────────────────
+    // EVENTS
+    // ─────────────────────────────────────────────
+
+    match /events/{eventId} {
+
+      // Les utilisateurs connectés peuvent consulter
+      // les événements.
+      allow read: if isAuthenticated();
+
+      // Seul un organisateur peut créer un événement.
+      // organizerId doit correspondre à son UID.
+      allow create: if isOrganizer()
+        && request.resource.data.organizerId == request.auth.uid;
+
+      // Un organisateur peut modifier uniquement
+      // ses propres événements.
+      // organizerId ne peut pas être changé.
+      allow update: if isOrganizer()
+        && resource.data.organizerId == request.auth.uid
+        && request.resource.data.organizerId
+            == resource.data.organizerId;
+
+      // Un organisateur peut supprimer uniquement
+      // ses propres événements.
+      allow delete: if isOrganizer()
+        && resource.data.organizerId == request.auth.uid;
+    }
+
+
+    // ─────────────────────────────────────────────
+    // RESERVATIONS
+    // ─────────────────────────────────────────────
+
+    match /reservations/{reservationId} {
+
+      // Un participant peut créer une réservation
+      // uniquement pour lui-même.
+      //
+      // L'événement doit exister.
+      // Le statut initial doit être "confirmed".
+      allow create: if isParticipant()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.eventId is string
+        && exists(
+          /databases/$(database)/documents/events/$(request.resource.data.eventId)
+        )
+        && request.resource.data.status == 'confirmed'
+        && request.resource.data.reservedAt != null;
+
+      // Lecture :
+      //
+      // Participant :
+      // uniquement ses propres réservations.
+      //
+      // Organisateur :
+      // uniquement les réservations liées
+      // à ses propres événements.
+      allow read: if isAuthenticated()
+        && (
+          resource.data.userId == request.auth.uid
+          ||
+          (
+            isOrganizer()
+            && get(
+              /databases/$(database)/documents/events/$(resource.data.eventId)
+            ).data.organizerId == request.auth.uid
+          )
+        );
+
+      // Les réservations ne sont pas modifiables
+      // ou supprimables directement par les utilisateurs.
+      allow update, delete: if false;
+    }
+  }
+}

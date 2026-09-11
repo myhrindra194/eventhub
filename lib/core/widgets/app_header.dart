@@ -5,8 +5,14 @@ import '../theme/theme_provider.dart';
 class AppHeader extends ConsumerWidget {
   final String title;
   final String subtitle;
+  final bool showBackButton;
 
-  const AppHeader({super.key, required this.title, required this.subtitle});
+  const AppHeader({
+    super.key,
+    required this.title,
+    required this.subtitle,
+    this.showBackButton = false,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -33,6 +39,14 @@ class AppHeader extends ConsumerWidget {
         bottom: false,
         child: Row(
           children: [
+            if (showBackButton) ...[
+              IconButton(
+                onPressed: () => Navigator.of(context).pop(),
+                tooltip: 'Back',
+                icon: const Icon(Icons.arrow_back_rounded),
+              ),
+              const SizedBox(width: 4),
+            ],
             Container(
               width: 58,
               height: 58,

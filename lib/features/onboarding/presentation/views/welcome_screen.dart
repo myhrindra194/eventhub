@@ -100,99 +100,106 @@ class _WelcomeScreenState extends State<WelcomeScreen>
             ),
             child: LayoutBuilder(
               builder: (context, constraints) {
-                return Column(
-                  children: [
-                    const Spacer(flex: 3),
-                    FadeTransition(
-                      opacity: _textOpacity,
-                      child: SlideTransition(
-                        position: _textSlide,
-                        child: ScaleTransition(
-                          scale: _textScale,
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Image.asset(
-                                'assets/images/logoblanc.png',
-                                width: (size.width * 0.28).clamp(96.0, 150.0),
-                                height: (size.width * 0.28).clamp(96.0, 150.0),
-                                fit: BoxFit.contain,
-                              ),
-                              const SizedBox(height: 24),
-                              Text(
-                                'Welcome to EventHub',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  fontSize: titleFontSize,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.white,
-                                  letterSpacing: 0.3,
-                                ),
-                              ),
-                              const SizedBox(height: 12),
-                              TypewriterCursorText(
-                                text:
-                                    'From planning to booking, it all happens on EventHub',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  fontSize: subtitleFontSize,
-                                  fontWeight: FontWeight.w400,
-                                  color: Colors.white.withValues(alpha: 0.85),
-                                  height: 1.4,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
+                return SingleChildScrollView(
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(
+                      minHeight: constraints.maxHeight,
                     ),
-                    const Spacer(flex: 4),
-                    FadeTransition(
-                      opacity: _buttonOpacity,
-                      child: SlideTransition(
-                        position: _buttonSlide,
-                        child: ScaleTransition(
-                          scale: _buttonScale,
-                          child: SizedBox(
-                            width: double.infinity,
-                            height: buttonHeight,
-                            child: ElevatedButton(
-                              onPressed: _goToLogin,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF7C4DFF),
-                                foregroundColor: Colors.white,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(16),
-                                ),
-                                elevation: 0,
-                              ),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
+                    child: Column(
+                      children: [
+                        SizedBox(height: constraints.maxHeight * 0.15),
+                        FadeTransition(
+                          opacity: _textOpacity,
+                          child: SlideTransition(
+                            position: _textSlide,
+                            child: ScaleTransition(
+                              scale: _textScale,
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
                                 children: [
+                                  Image.asset(
+                                    'assets/images/logoblanc.png',
+                                    width: (size.width * 0.28).clamp(96.0, 150.0),
+                                    height: (size.width * 0.28).clamp(96.0, 150.0),
+                                    fit: BoxFit.contain,
+                                  ),
+                                  const SizedBox(height: 24),
                                   Text(
-                                    'Get Started',
+                                    'Welcome to EventHub',
+                                    textAlign: TextAlign.center,
                                     style: TextStyle(
-                                      fontSize: (size.width * 0.042).clamp(
-                                        14.0,
-                                        18.0,
-                                      ),
+                                      fontSize: titleFontSize,
                                       fontWeight: FontWeight.w600,
+                                      color: Colors.white,
+                                      letterSpacing: 0.3,
                                     ),
                                   ),
-                                  const SizedBox(width: 8),
-                                  const Icon(
-                                    Icons.arrow_forward_rounded,
-                                    size: 20,
+                                  const SizedBox(height: 12),
+                                  TypewriterCursorText(
+                                    text:
+                                        'From planning to booking, it all happens on EventHub',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      fontSize: subtitleFontSize,
+                                      fontWeight: FontWeight.w400,
+                                      color: Colors.white.withValues(alpha: 0.85),
+                                      height: 1.4,
+                                    ),
                                   ),
                                 ],
                               ),
                             ),
                           ),
                         ),
-                      ),
+                        SizedBox(height: constraints.maxHeight * 0.2),
+                        FadeTransition(
+                          opacity: _buttonOpacity,
+                          child: SlideTransition(
+                            position: _buttonSlide,
+                            child: ScaleTransition(
+                              scale: _buttonScale,
+                              child: SizedBox(
+                                width: double.infinity,
+                                height: buttonHeight,
+                                child: ElevatedButton(
+                                  onPressed: _goToLogin,
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const Color(0xFF7C4DFF),
+                                    foregroundColor: Colors.white,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(16),
+                                    ),
+                                    elevation: 0,
+                                  ),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Text(
+                                        'Get Started',
+                                        style: TextStyle(
+                                          fontSize: (size.width * 0.042).clamp(
+                                            14.0,
+                                            18.0,
+                                          ),
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      const Icon(
+                                        Icons.arrow_forward_rounded,
+                                        size: 20,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        SizedBox(height: size.height * 0.02),
+                      ],
                     ),
-                    SizedBox(height: size.height * 0.015),
-                  ],
+                  ),
                 );
               },
             ),

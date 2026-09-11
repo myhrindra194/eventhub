@@ -105,6 +105,15 @@ abstract class AppTheme {
         style: IconButton.styleFrom(foregroundColor: AppColors.darkTextPrimary),
       ),
 
+      bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+        backgroundColor: AppColors.darkSurface,
+        selectedItemColor: AppColors.accentIndigo,
+        unselectedItemColor: AppColors.darkTextSecondary,
+        selectedLabelStyle: TextStyle(fontWeight: FontWeight.w600),
+        unselectedLabelStyle: TextStyle(fontWeight: FontWeight.w400),
+        type: BottomNavigationBarType.fixed,
+      ),
+
       cardTheme: CardThemeData(
         color: AppColors.darkSurface,
         elevation: 0,
@@ -218,6 +227,15 @@ abstract class AppTheme {
         style: IconButton.styleFrom(
           foregroundColor: AppColors.lightTextPrimary,
         ),
+      ),
+
+      bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+        backgroundColor: AppColors.lightSurface,
+        selectedItemColor: AppColors.accentIndigo,
+        unselectedItemColor: AppColors.lightTextSecondary,
+        selectedLabelStyle: TextStyle(fontWeight: FontWeight.w600),
+        unselectedLabelStyle: TextStyle(fontWeight: FontWeight.w400),
+        type: BottomNavigationBarType.fixed,
       ),
 
       cardTheme: CardThemeData(

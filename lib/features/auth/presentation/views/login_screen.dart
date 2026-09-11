@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/widgets/app_button.dart';
+import '../../../organizer/presentation/views/organizer_main_screen.dart';
 import '../widgets/auth_text_field.dart';
 import 'forgot_password_screen.dart';
 import 'register_screen.dart';
@@ -57,15 +59,30 @@ class _LoginScreenState extends State<LoginScreen> {
     return emailError == null && passwordError == null;
   }
 
-  void _handleSignIn() {
+  Future<void> _handleSignIn() async {
     if (!_validate()) return;
 
     setState(() => _isLoading = true);
-    // TODO: connect the real authentication flow.
-    Future.delayed(const Duration(seconds: 1), () {
-      if (!mounted) return;
+
+    final email = _emailController.text.trim().toLowerCase();
+    
+    // Récupération du rôle sauvegardé en local
+    final prefs = await SharedPreferences.getInstance();
+    final savedRole = prefs.getString('user_role');
+
+    await Future.delayed(const Duration(seconds: 1));
+
+    if (!mounted) return;
+
+    // Redirection vers l'espace Organisateur si le rôle sauvegardé est 'organizer' 
+    // ou si l'e-mail saisi contient le mot 'organizer'
+    if (savedRole == 'organizer' || email.contains('organizer')) {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (context) => const OrganizerMainScreen()),
+      );
+    } else {
       Navigator.of(context).pushNamedAndRemoveUntil('/home', (route) => false);
-    });
+    }
   }
 
   void _goToRegister() {
@@ -222,9 +239,7 @@ class _LoginScreenState extends State<LoginScreen> {
               AppButton(
                 text: 'Continue with Google',
                 variant: AppButtonVariant.secondary,
-                onPressed: () {
-                  // TODO: brancher l'authentification Google
-                },
+                onPressed: () {},
                 icon: Icons.g_mobiledata_rounded,
               ),
               const SizedBox(height: 32),

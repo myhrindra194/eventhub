@@ -1,0 +1,15 @@
+// PLACEHOLDER - replaced by the FlutterFire CLI.
+//
+// Run once per Firebase project:
+//   dart pub global activate flutterfire_cli
+//   flutterfire configure --project=<firebase-project-id>
+//
+// The generated file is git-ignored (see .gitignore). Until then the app
+// boots into a "Firebase non configuré" screen instead of crashing.
+import 'package:firebase_core/firebase_core.dart' show FirebaseOptions;
+
+class DefaultFirebaseOptions {
+  static FirebaseOptions get currentPlatform => throw UnsupportedError(
+        'Firebase n\'est pas configuré. Exécutez `flutterfire configure`.',
+      );
+}

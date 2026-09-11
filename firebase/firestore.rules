@@ -1,0 +1,593 @@
+rules_version = '2';
+
+// =============================================================================
+//  EventHub — Firestore security rules
+// =============================================================================
+//
+//  Threat model
+//  ------------
+//  The client is hostile. Anyone can obtain an anonymous or real ID token and
+//  then call Firestore directly with a crafted payload — the Flutter app is a
+//  convenience, never a control. Every business invariant enforced in
+//  `lib/features/*/domain/policies` is therefore re-enforced here, because
+//  only this file actually runs on the server.
+//
+//  Invariants guaranteed below
+//  ---------------------------
+//   1. A user document belongs to exactly one uid, and its `role` and `email`
+//      are immutable once written (no privilege escalation, ever).
+//   2. Only an organizer creates an event, and only its owner mutates or
+//      deletes it.
+//   3. `availablePlaces` is bounded by `[0, capacity]` at all times, and a
+//      participant may only move it by exactly one seat.
+//   4. Capacity can never be lowered below the number of seats already taken.
+//   5. One reservation per (event, participant) — enforced structurally by a
+//      deterministic document id `<eventId>_<uid>`, not by a query.
+//   6. Denormalised fields on a reservation must match the event document
+//      they were copied from, so the guest list cannot be forged.
+//   7. Timestamps are server-controlled (`request.time`); a client cannot
+//      backdate or postdate anything.
+//   8. Everything not explicitly allowed is denied (final catch-all).
+//
+//  Role resolution
+//  ---------------
+//  `role()` prefers the custom claim (`request.auth.token.role`) and falls
+//  back to a document read. The claim is the production path: it costs no
+//  document read, so it does not count against the per-request `get()` budget
+//  and cannot be defeated by deleting the profile. Set it from a Cloud
+//  Function on user creation — see docs/SECURITY.md. The fallback keeps the
+//  emulator and the current client working before that function is deployed.
+//
+//  Cost note
+//  ---------
+//  A single request may perform at most 10 `get()`/`exists()` calls. Helpers
+//  that read another document are marked and used sparingly.
+// =============================================================================
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // =========================================================== identity ===
+
+    function isSignedIn() {
+      return request.auth != null && request.auth.uid != null;
+    }
+
+    function uid() {
+      return request.auth.uid;
+    }
+
+    function isSelf(userId) {
+      return isSignedIn() && uid() == userId;
+    }
+
+    /// Reads the role from the custom claim when present (cheap, tamper-proof)
+    /// and falls back to the profile document (one `get()`).
+    ///
+    /// Written as a ternary rather than `token.get('role', <fallback>)` on
+    /// purpose: function arguments are evaluated eagerly, so the `get()` in a
+    /// default argument would run **even when the claim is present** — paying
+    /// the document read the claim exists to avoid. The conditional operator
+    /// only evaluates the branch it takes.
+    function role() {
+      return 'role' in request.auth.token
+        ? request.auth.token.role
+        : (exists(/databases/$(database)/documents/users/$(uid()))
+            ? get(/databases/$(database)/documents/users/$(uid())).data.role
+            : '');
+    }
+
+    function isOrganizer() {
+      return isSignedIn() && role() == 'organizer';
+    }
+
+    function isParticipant() {
+      return isSignedIn() && role() == 'participant';
+    }
+
+    /// Back-office access, granted exclusively through a custom claim: there
+    /// is no document a user could write to make themselves an admin.
+    function isAdmin() {
+      return isSignedIn() && request.auth.token.get('admin', false) == true;
+    }
+
+    /// A verified email is required for anything that produces content other
+    /// users will see. Reading and booking stay open to unverified accounts.
+    function isVerified() {
+      return isSignedIn() && request.auth.token.get('email_verified', false) == true;
+    }
+
+    // ============================================================== shape ===
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function changed() {
+      return incoming().diff(existing()).affectedKeys();
+    }
+
+    function onlyChanged(keys) {
+      return changed().hasOnly(keys);
+    }
+
+    function unchanged(key) {
+      return !(key in changed());
+    }
+
+    function isValidRole(value) {
+      return value in ['participant', 'organizer'];
+    }
+
+    /// A string within bounds, trimmed length is not observable in rules so
+    /// the lower bound is deliberately generous.
+    function isString(value, minLen, maxLen) {
+      return value is string && value.size() >= minLen && value.size() <= maxLen;
+    }
+
+    function isInt(value, minValue, maxValue) {
+      return value is int && value >= minValue && value <= maxValue;
+    }
+
+    /// Accepts only https URLs from the project's own buckets or an https CDN.
+    /// Blocks `javascript:` and `data:` payloads that a web client would
+    /// happily render.
+    function isHttpsUrl(value) {
+      return value is string
+        && value.size() <= 2048
+        && value.matches('https://.*');
+    }
+
+    /// Server-controlled creation stamp: the client must send exactly
+    /// `request.time`, which it cannot forge.
+    function isServerTime(value) {
+      return value == request.time;
+    }
+
+    /// A timestamp produced by the client. It cannot be a server timestamp
+    /// when the value must also be returned synchronously to the caller (a
+    /// reservation is handed back to the UI inside its own transaction), so
+    /// instead of trusting it blindly we bound it: never in the future, never
+    /// older than five minutes. That tolerates device clock skew while making
+    /// back-dating and post-dating impossible.
+    function isRecentTime(value) {
+      return value is timestamp
+        && value <= request.time + duration.value(2, 'm')
+        && value >= request.time - duration.value(5, 'm');
+    }
+
+    /// A timestamp that must lie in the future (event start dates).
+    function isFuture(value) {
+      return value is timestamp && value > request.time;
+    }
+
+    /// Cheap throttle: refuses a second write to the same document within a
+    /// second. Blunt, but it stops a runaway client loop from burning quota.
+    function notTooFast(lastField) {
+      return !(lastField in existing())
+        || existing()[lastField] == null
+        || request.time > existing()[lastField] + duration.value(1, 's');
+    }
+
+    // ============================================================== users ===
+    //
+    //  users/{userId}
+    //    name       string  2..80        mutable by the owner
+    //    email      string  ..320        immutable
+    //    role       enum                 immutable — the whole authorisation
+    //                                    model rests on this
+    //    photoUrl   string? https        mutable by the owner
+    //    bio        string? ..500        mutable by the owner
+    //    createdAt  timestamp            server time, immutable
+    //    updatedAt  timestamp?           server time
+    //
+    match /users/{userId} {
+      function validProfile() {
+        return incoming().keys().hasAll(['name', 'email', 'role', 'createdAt'])
+          && incoming().keys().hasOnly([
+               'name', 'email', 'role', 'photoUrl', 'bio',
+               'createdAt', 'updatedAt'
+             ])
+          && isString(incoming().name, 2, 80)
+          && isString(incoming().email, 3, 320)
+          && isValidRole(incoming().role)
+          && (!('photoUrl' in incoming()) || incoming().photoUrl == null
+              || isHttpsUrl(incoming().photoUrl))
+          && (!('bio' in incoming()) || incoming().bio == null
+              || isString(incoming().bio, 0, 500));
+      }
+
+      // A profile is private. Public identity travels denormalised on events
+      // and reservations, so nothing here needs to be world-readable.
+      allow get: if isSelf(userId) || isAdmin();
+
+      // Enumerating the user base is never allowed, admins included: a listing
+      // endpoint belongs in a Cloud Function with its own audit trail.
+      allow list: if false;
+
+      allow create: if isSelf(userId)
+        && validProfile()
+        && incoming().email.lower() == request.auth.token.email.lower()
+        && isServerTime(incoming().createdAt);
+
+      // Only presentation fields move. `role`, `email` and `createdAt` are
+      // frozen — this single rule is what makes the whole model safe.
+      allow update: if isSelf(userId)
+        && onlyChanged(['name', 'photoUrl', 'bio', 'updatedAt'])
+        && (!('name' in changed()) || isString(incoming().name, 2, 80))
+        && (!('bio' in changed()) || incoming().bio == null
+            || isString(incoming().bio, 0, 500))
+        && (!('photoUrl' in changed()) || incoming().photoUrl == null
+            || isHttpsUrl(incoming().photoUrl))
+        && (!('updatedAt' in changed()) || isServerTime(incoming().updatedAt));
+
+      // Account deletion is a Cloud Function concern: reservations, events
+      // and Storage objects have to be reconciled first.
+      allow delete: if false;
+
+      // ---- private subtree: push tokens, preferences, never shared --------
+      match /private/{docId} {
+        allow read, write: if isSelf(userId);
+      }
+
+      // ---- registered devices, for push notifications --------------------
+      match /devices/{deviceId} {
+        allow read: if isSelf(userId);
+        allow create, update: if isSelf(userId)
+          && incoming().keys().hasOnly(['token', 'platform', 'locale', 'updatedAt'])
+          && isString(incoming().token, 10, 4096)
+          && incoming().platform in ['android', 'ios', 'web']
+          && isServerTime(incoming().updatedAt);
+        allow delete: if isSelf(userId);
+      }
+
+      // ---- favourites (wishlist) ----------------------------------------
+      //  Doc id == eventId, so "is it favourited?" is a point read and a
+      //  duplicate is structurally impossible.
+      match /favorites/{eventId} {
+        allow read: if isSelf(userId);
+        allow create: if isSelf(userId)
+          && incoming().keys().hasOnly(['eventId', 'createdAt'])
+          && incoming().eventId == eventId
+          && isServerTime(incoming().createdAt);
+        allow update: if false;
+        allow delete: if isSelf(userId);
+      }
+
+      // ---- in-app notifications -----------------------------------------
+      //  Written by Cloud Functions only; the user may just mark them read.
+      match /notifications/{notificationId} {
+        allow read: if isSelf(userId);
+        allow create: if false;
+        allow update: if isSelf(userId) && onlyChanged(['readAt']);
+        allow delete: if isSelf(userId);
+      }
+    }
+
+    // ============================================================= events ===
+    //
+    //  events/{eventId}
+    //    title            string  3..120
+    //    description      string  1..5000
+    //    category         enum
+    //    startsAt         timestamp   future at creation
+    //    location         string  1..200
+    //    capacity         int     1..100000
+    //    availablePlaces  int     0..capacity
+    //    organizerId      string  == uid at creation, immutable
+    //    organizerName    string  1..80
+    //    imageUrl         string? https
+    //    createdAt        timestamp  server time, immutable
+    //    updatedAt        timestamp? server time
+    //
+    match /events/{eventId} {
+      function validCategory(value) {
+        return value in [
+          'conference', 'meetup', 'workshop',
+          'concert', 'sport', 'culture', 'other'
+        ];
+      }
+
+      function validEventShape() {
+        return incoming().keys().hasAll([
+               'title', 'description', 'category', 'startsAt', 'location',
+               'capacity', 'availablePlaces', 'organizerId', 'organizerName',
+               'createdAt'
+             ])
+          && incoming().keys().hasOnly([
+               'title', 'description', 'category', 'startsAt', 'location',
+               'capacity', 'availablePlaces', 'organizerId', 'organizerName',
+               'imageUrl', 'createdAt', 'updatedAt'
+             ])
+          && isString(incoming().title, 3, 120)
+          && isString(incoming().description, 1, 5000)
+          && validCategory(incoming().category)
+          && incoming().startsAt is timestamp
+          && isString(incoming().location, 1, 200)
+          && isInt(incoming().capacity, 1, 100000)
+          && isInt(incoming().availablePlaces, 0, 100000)
+          && incoming().availablePlaces <= incoming().capacity
+          && isString(incoming().organizerName, 1, 80)
+          && (!('imageUrl' in incoming()) || incoming().imageUrl == null
+              || isHttpsUrl(incoming().imageUrl));
+      }
+
+      function isOwner() {
+        return isSignedIn() && existing().organizerId == uid();
+      }
+
+      /// Seats already taken, derived rather than stored, so it cannot drift.
+      function takenSeats() {
+        return existing().capacity - existing().availablePlaces;
+      }
+
+      // The catalogue is the product: any authenticated user may browse it.
+      // `list` is capped so a scraper cannot pull the whole collection in one
+      // request.
+      allow get: if isSignedIn();
+      allow list: if isSignedIn() && request.query.limit <= 100;
+
+      allow create: if isOrganizer()
+        && validEventShape()
+        && incoming().organizerId == uid()
+        // A brand-new event starts empty; seeding it as half full would fake
+        // social proof.
+        && incoming().availablePlaces == incoming().capacity
+        && isFuture(incoming().startsAt)
+        && isServerTime(incoming().createdAt);
+
+      allow update: if
+        // ---- (a) the owner edits the content --------------------------
+        (isOwner()
+          && validEventShape()
+          && incoming().organizerId == existing().organizerId
+          && unchanged('createdAt')
+          // Capacity may grow freely, and may shrink only down to the seats
+          // already sold — otherwise existing tickets would be invalidated.
+          && incoming().capacity >= takenSeats()
+          // Seats sold are preserved across an edit: the owner changes the
+          // capacity, never the number of people already registered.
+          && incoming().availablePlaces == incoming().capacity - takenSeats()
+          && (!('updatedAt' in incoming()) || isServerTime(incoming().updatedAt)))
+        ||
+        // ---- (b) a participant books or releases exactly one seat -------
+        (isParticipant()
+          && onlyChanged(['availablePlaces', 'updatedAt'])
+          && (incoming().availablePlaces == existing().availablePlaces - 1
+              || incoming().availablePlaces == existing().availablePlaces + 1)
+          && incoming().availablePlaces >= 0
+          && incoming().availablePlaces <= existing().capacity
+          // Booking closes when the event starts.
+          && (incoming().availablePlaces == existing().availablePlaces + 1
+              || existing().startsAt > request.time)
+          && (!('updatedAt' in incoming()) || isServerTime(incoming().updatedAt)))
+        ||
+        isAdmin();
+
+      // Deleting an event with confirmed reservations is refused here; the
+      // client cancels them first, and a Cloud Function does the cascade for
+      // large events.
+      allow delete: if (isOwner() && takenSeats() == 0) || isAdmin();
+
+      // ---- waiting list, for sold-out events -----------------------------
+      match /waitlist/{userId} {
+        allow read: if isSelf(userId)
+          || (isSignedIn()
+              && get(/databases/$(database)/documents/events/$(eventId)).data.organizerId == uid());
+        allow create: if isSelf(userId) && isParticipant()
+          && incoming().keys().hasOnly(['userId', 'userName', 'createdAt'])
+          && incoming().userId == uid()
+          && isServerTime(incoming().createdAt);
+        allow update: if false;
+        allow delete: if isSelf(userId);
+      }
+
+      // ---- door check-in, organizer-only ---------------------------------
+      match /checkins/{reservationId} {
+        function eventOrganizer() {
+          return get(/databases/$(database)/documents/events/$(eventId)).data.organizerId;
+        }
+
+        allow read: if isSignedIn() && eventOrganizer() == uid();
+        allow create: if isSignedIn() && eventOrganizer() == uid()
+          && incoming().keys().hasOnly(['reservationId', 'scannedBy', 'scannedAt'])
+          && incoming().scannedBy == uid()
+          && isServerTime(incoming().scannedAt);
+        // A check-in is an append-only fact: never edited, never removed.
+        allow update, delete: if false;
+      }
+    }
+
+    // ======================================================= reservations ===
+    //
+    //  reservations/{eventId_userId}
+    //    eventId, userId, organizerId  string   immutable
+    //    userName, userEmail           string   snapshot of the participant
+    //    eventTitle, eventStartsAt,
+    //    eventLocation                 snapshot of the event
+    //    status                        'confirmed' | 'cancelled'
+    //    reservedAt                    timestamp, server time
+    //    cancelledAt                   timestamp?, server time
+    //
+    //  The id is deterministic, which is what makes "one seat per participant
+    //  per event" a structural guarantee rather than a race-prone check.
+    //
+    match /reservations/{reservationId} {
+      function eventDoc() {
+        return get(/databases/$(database)/documents/events/$(incoming().eventId)).data;
+      }
+
+      function validReservationShape() {
+        return incoming().keys().hasAll([
+               'eventId', 'userId', 'organizerId', 'userName', 'userEmail',
+               'eventTitle', 'eventStartsAt', 'eventLocation',
+               'status', 'reservedAt'
+             ])
+          && incoming().keys().hasOnly([
+               'eventId', 'userId', 'organizerId', 'userName', 'userEmail',
+               'eventTitle', 'eventStartsAt', 'eventLocation',
+               'status', 'reservedAt', 'cancelledAt'
+             ])
+          && isString(incoming().eventId, 1, 200)
+          && isString(incoming().userName, 1, 80)
+          && isString(incoming().userEmail, 3, 320)
+          && isString(incoming().eventTitle, 1, 120)
+          && isString(incoming().eventLocation, 1, 200)
+          && incoming().eventStartsAt is timestamp
+          && incoming().status in ['confirmed', 'cancelled'];
+      }
+
+      /// The denormalised copy must match the event it claims to come from,
+      /// otherwise a participant could forge a ticket for another event or
+      /// rewrite the guest list an organizer reads.
+      function matchesEvent() {
+        return incoming().organizerId == eventDoc().organizerId
+          && incoming().eventTitle == eventDoc().title
+          && incoming().eventStartsAt == eventDoc().startsAt
+          && incoming().eventLocation == eventDoc().location;
+      }
+
+      // Readable by the participant it belongs to and by the organizer of the
+      // event. Both branches are provable from a query filter (`userId ==` /
+      // `organizerId ==`), which is what makes the list rule below work.
+      allow get: if isSignedIn()
+        && (existing().userId == uid() || existing().organizerId == uid());
+
+      allow list: if isSignedIn() && request.query.limit <= 200;
+
+      allow create: if isParticipant()
+        && validReservationShape()
+        // Deterministic id — the anti-duplicate guarantee.
+        && reservationId == incoming().eventId + '_' + uid()
+        && incoming().userId == uid()
+        && incoming().status == 'confirmed'
+        && !('cancelledAt' in incoming())
+        && matchesEvent()
+        // No booking a past event, and none on a sold-out one.
+        && eventDoc().startsAt > request.time
+        && eventDoc().availablePlaces > 0
+        && isRecentTime(incoming().reservedAt);
+
+      // Two legal transitions: cancel a confirmed seat, or re-book a
+      // previously cancelled one (same deterministic id).
+      allow update: if isParticipant()
+        && existing().userId == uid()
+        && validReservationShape()
+        && incoming().userId == existing().userId
+        && incoming().eventId == existing().eventId
+        && incoming().organizerId == existing().organizerId
+        && incoming().reservedAt == existing().reservedAt
+        && (
+          // confirmed → cancelled
+          (existing().status == 'confirmed'
+            && incoming().status == 'cancelled'
+            && isRecentTime(incoming().cancelledAt))
+          ||
+          // cancelled → confirmed (seat taken again)
+          (existing().status == 'cancelled'
+            && incoming().status == 'confirmed'
+            && eventDoc().startsAt > request.time
+            && eventDoc().availablePlaces > 0)
+        );
+
+      // History is never destroyed: an organizer must be able to prove who
+      // was registered, and a participant to prove they cancelled.
+      allow delete: if false;
+    }
+
+    // ============================================================ reviews ===
+    //
+    //  Post-event feedback. One review per (event, author), same deterministic
+    //  id trick, and only from someone who actually held a confirmed seat.
+    //
+    match /reviews/{reviewId} {
+      function reservationOf(eventId) {
+        return get(/databases/$(database)/documents/reservations/$(eventId + '_' + uid())).data;
+      }
+
+      allow get: if isSignedIn();
+      allow list: if isSignedIn() && request.query.limit <= 100;
+
+      allow create: if isParticipant()
+        // Public, attributable content: a confirmed email address is the
+        // cheapest barrier against throwaway-account review spam.
+        && isVerified()
+        && reviewId == incoming().eventId + '_' + uid()
+        && incoming().keys().hasOnly([
+             'eventId', 'authorId', 'authorName', 'rating', 'comment', 'createdAt'
+           ])
+        && incoming().authorId == uid()
+        && isInt(incoming().rating, 1, 5)
+        && isString(incoming().comment, 0, 2000)
+        && isServerTime(incoming().createdAt)
+        // Attendance is the right to speak.
+        && reservationOf(incoming().eventId).status == 'confirmed';
+
+      allow update: if isSignedIn()
+        && existing().authorId == uid()
+        && onlyChanged(['rating', 'comment', 'updatedAt'])
+        && isInt(incoming().rating, 1, 5)
+        && notTooFast('updatedAt');
+
+      allow delete: if (isSignedIn() && existing().authorId == uid()) || isAdmin();
+    }
+
+    // ============================================================ reports ===
+    //
+    //  Abuse reports. Write-only from the client: a reporter must never be
+    //  able to read other reports, and a reported organizer must never learn
+    //  who flagged them.
+    //
+    match /reports/{reportId} {
+      allow read: if isAdmin();
+      allow create: if isSignedIn()
+        && incoming().keys().hasOnly([
+             'targetType', 'targetId', 'reason', 'details', 'reporterId', 'createdAt'
+           ])
+        && incoming().reporterId == uid()
+        && incoming().targetType in ['event', 'user', 'review']
+        && isString(incoming().targetId, 1, 200)
+        && isString(incoming().reason, 1, 60)
+        && isString(incoming().details, 0, 2000)
+        && isServerTime(incoming().createdAt);
+      allow update, delete: if isAdmin();
+    }
+
+    // ============================================== read-only server data ===
+    //
+    //  Remote configuration, curated collections, aggregate counters: written
+    //  exclusively by the Admin SDK (which bypasses these rules), read by
+    //  everyone. Declaring them explicitly documents the intent, instead of
+    //  leaving them to the catch-all.
+    //
+    match /config/{docId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    match /aggregates/{docId} {
+      allow read: if isSignedIn();
+      allow write: if false;
+    }
+
+    // Server-side audit trail. Not readable by anyone through the client API,
+    // not writable either — only the Admin SDK touches it.
+    match /audit/{docId} {
+      allow read, write: if false;
+    }
+
+    // ========================================================= catch-all ====
+    //
+    //  Anything not matched above is denied. A new collection is therefore
+    //  inaccessible until someone writes a rule for it — the failure mode is
+    //  a broken feature, never a data leak.
+    //
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

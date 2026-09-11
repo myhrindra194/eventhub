@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../widgets/create_account_step.dart';
 import '../widgets/role_selection_step.dart';
@@ -52,13 +53,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
       _emailError = email.isEmpty
           ? 'Email address is required.'
           : (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(email)
-                ? 'Enter a valid email address.'
-                : null);
+              ? 'Enter a valid email address.'
+              : null);
       _passwordError = password.isEmpty
           ? 'Password is required.'
           : (password.length < 8
-                ? 'Password must contain at least 8 characters.'
-                : null);
+              ? 'Password must contain at least 8 characters.'
+              : null);
     });
 
     return _firstNameError == null &&
@@ -67,23 +68,30 @@ class _RegisterScreenState extends State<RegisterScreen> {
         _passwordError == null;
   }
 
-  void _handleCreateAccount() {
+  Future<void> _handleCreateAccount() async {
     if (!_validateAccountForm()) {
       _goToStep(0);
       return;
     }
 
     setState(() => _isLoading = true);
-    // TODO: connect the real account creation flow.
 
-    Future.delayed(const Duration(milliseconds: 900), () {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-          _currentStep = 2;
-        });
-      }
-    });
+    // Enregistrement des informations en local avec SharedPreferences
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('user_first_name', _firstNameController.text.trim());
+    await prefs.setString('user_last_name', _lastNameController.text.trim());
+    await prefs.setString('user_email', _emailController.text.trim());
+    await prefs.setString('user_role', _selectedRole.name); // Sauvegarde 'participant' ou 'organizer'
+    await prefs.setBool('is_logged_in', true);
+
+    await Future.delayed(const Duration(milliseconds: 900));
+
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+        _currentStep = 2; // Passe à l'étape de confirmation
+      });
+    }
   }
 
   @override

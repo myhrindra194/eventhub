@@ -9,6 +9,7 @@ import 'features/auth/presentation/views/login_screen.dart';
 import 'features/auth/presentation/views/register_screen.dart';
 import 'features/events/presentation/views/search_screen.dart';
 import 'features/home/presentation/views/main_wrapper_screen.dart';
+import 'features/organizer/presentation/views/organizer_main_screen.dart';
 
 void main() {
   runApp(const ProviderScope(child: MyApp()));
@@ -41,6 +42,7 @@ class MyApp extends ConsumerWidget {
         '/home': (context) => const MainWrapperScreen(),
         '/home_screen': (context) => const MainWrapperScreen(),
         '/search': (context) => const SearchScreen(),
+        '/organizer': (context) => const OrganizerMainScreen(),
       },
     );
   }

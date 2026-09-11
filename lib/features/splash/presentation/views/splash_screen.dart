@@ -170,25 +170,31 @@ class _SplashScreenState extends State<SplashScreen>
                     bottom: 40,
                     child: FadeTransition(
                       opacity: _textOpacity,
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(
-                            Icons.circle_outlined,
-                            color: Colors.white38,
-                            size: 19,
-                          ),
-                          const SizedBox(width: 10),
-                          Text(
-                            'PREMIUM EXPERIENCES',
-                            style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.28),
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: 2.2,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(
+                              Icons.circle_outlined,
+                              color: Colors.white38,
+                              size: 19,
                             ),
-                          ),
-                        ],
+                            const SizedBox(width: 10),
+                            Flexible(
+                              child: Text(
+                                'PREMIUM EXPERIENCES',
+                                style: TextStyle(
+                                  color: Colors.white.withValues(alpha: 0.28),
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: 2.2,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),

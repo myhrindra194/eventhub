@@ -1,45 +1,64 @@
-# Miscellaneous
-*.class
-*.log
-*.pyc
-*.swp
-.DS_Store
-.atom/
-.build/
-.buildlog/
-.history
-.svn/
-.swiftpm/
-migrate_working_dir/
-
-# IntelliJ related
-*.iml
-*.ipr
-*.iws
-.idea/
-
-# The .vscode folder contains launch configuration and tasks you configure in
-# VS Code which you may wish to be included in version control, so this line
-# is commented out by default.
-#.vscode/
-
-# Flutter/Dart/Pub related
-**/doc/api/
-**/ios/Flutter/.last_build_id
+# Flutter / Dart
 .dart_tool/
+.packages
+build/
+.flutter-plugins
 .flutter-plugins-dependencies
-.pub-cache/
-.pub/
-/build/
-/coverage/
+*.iml
+.idea/
+.vscode/settings.json
+pubspec_overrides.yaml
 
-# Symbolication related
-app.*.symbols
+# Generated code is committed on purpose for CI reproducibility? No: regenerate.
+# Uncomment the two lines below if the team decides NOT to commit generated files.
+# *.g.dart
+# *.freezed.dart
 
-# Obfuscation related
-app.*.map.json
+# Firebase (secrets & local config)
+lib/firebase_options.dart
+android/app/google-services.json
+ios/Runner/GoogleService-Info.plist
+macos/Runner/GoogleService-Info.plist
+.firebase/
+firebase-debug.log
+*.env
+.env.*
 
-# Android Studio will place build artifacts here
-/android/app/debug
-/android/app/profile
-/android/app/release
+# OS
+.DS_Store
+Thumbs.db
+
+# Android
+android/.gradle/
+android/local.properties
+android/key.properties
+**/*.keystore
+**/*.jks
+
+# iOS
+ios/Pods/
+ios/.symlinks/
+ios/Flutter/ephemeral/
+**/Flutter/ephemeral/
+
+# Coverage
+coverage/
+
+# Local documents
+*.pdf
+*.jpeg
+*.jpg
+!assets/**
+
+# Security-rules test suite (Node)
+firebase/tests/node_modules/
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+storage-debug.log
+
+# Artefacts locaux de l'outil de design (hors projet Flutter)
+/uploads/
+/screenshots/
+/.thumbnail
+/support.js

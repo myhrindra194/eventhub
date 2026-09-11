@@ -1,0 +1,117 @@
+rules_version = '2';
+
+// =============================================================================
+//  EventHub — Cloud Storage security rules
+// =============================================================================
+//
+//  What Storage rules can and cannot do
+//  ------------------------------------
+//  They gate the *authenticated* Storage API (`getData`, `putData`,
+//  `getDownloadURL`, `delete`). They do **not** gate a tokenised download URL:
+//  `getDownloadURL()` returns `...?alt=media&token=<uuid>`, and anyone holding
+//  that URL can fetch the object regardless of what is written here. Event
+//  covers are embedded in public event documents, so they are effectively
+//  public by design — which is fine, they are promotional images.
+//
+//  The consequence worth stating: never store anything confidential in a
+//  bucket path whose download URL is handed to a client. Private artefacts
+//  (exports, invoices) belong behind a Cloud Function issuing short-lived
+//  signed URLs, which is why `private/` below is closed to every client.
+//
+//  Write-side guarantees
+//  ---------------------
+//   * a user can only write inside their own prefix (path-based ownership);
+//   * only a real image type is accepted — an SVG is refused on purpose,
+//     because SVG is executable markup in a browser context;
+//   * a hard size ceiling mirrors the one the client enforces, so a crafted
+//     request cannot bypass the picker;
+//   * `contentType` is validated on the *incoming* object, not read back from
+//     an attacker-controlled metadata field after the fact;
+//   * everything else is denied by the catch-all.
+// =============================================================================
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // ---------------------------------------------------------- helpers --
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    /// Raster images only. `image/svg+xml` is deliberately excluded: it can
+    /// carry scripts, and it would execute in the web build's origin.
+    function isRasterImage() {
+      return request.resource.contentType in [
+        'image/jpeg', 'image/jpg', 'image/png',
+        'image/webp', 'image/heic', 'image/heif'
+      ];
+    }
+
+    function underSize(maxBytes) {
+      return request.resource.size > 0 && request.resource.size < maxBytes;
+    }
+
+    /// Rejects traversal-ish and absurd names before they reach the bucket.
+    function isSaneName(name) {
+      return name.size() > 0
+        && name.size() <= 128
+        && name.matches('[A-Za-z0-9._-]+')
+        && !name.matches('.*\\.\\..*');
+    }
+
+    // ------------------------------------------------------ event covers --
+    //
+    //  events/{organizerId}/{fileName}
+    //  Written only by the organizer whose uid is in the path — path-based
+    //  ownership means no document read is needed to authorise the write.
+    //
+    match /events/{organizerId}/{fileName} {
+      allow read: if isSignedIn();
+
+      allow create, update: if isOwner(organizerId)
+        && isRasterImage()
+        && underSize(5 * 1024 * 1024)
+        && isSaneName(fileName);
+
+      // Removing a cover still referenced by a published event is the
+      // organizer's call; the app replaces rather than deletes.
+      allow delete: if isOwner(organizerId);
+    }
+
+    // ---------------------------------------------------------- avatars --
+    //
+    //  Smaller ceiling: an avatar is displayed at 64 px, 2 MB is already
+    //  generous and keeps the feed light.
+    //
+    match /avatars/{userId}/{fileName} {
+      allow read: if isSignedIn();
+
+      allow create, update: if isOwner(userId)
+        && isRasterImage()
+        && underSize(2 * 1024 * 1024)
+        && isSaneName(fileName);
+
+      allow delete: if isOwner(userId);
+    }
+
+    // ------------------------------------------------- private artefacts --
+    //
+    //  Guest-list exports, invoices, anything generated server-side. Closed
+    //  to every client: access is granted through a signed URL minted by a
+    //  Cloud Function, which can check ownership and expire.
+    //
+    match /private/{allPaths=**} {
+      allow read, write: if false;
+    }
+
+    // -------------------------------------------------------- catch-all --
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

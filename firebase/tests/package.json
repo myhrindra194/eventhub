@@ -1,0 +1,16 @@
+{
+  "name": "eventhub-rules-tests",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Security-rules test suite for EventHub (Firestore + Cloud Storage), run against the Firebase emulators.",
+  "type": "module",
+  "scripts": {
+    "test": "node --test --test-concurrency=1 --test-reporter=spec firestore.rules.test.js subcollections.rules.test.js storage.rules.test.js",
+    "emulate": "firebase --project demo-eventhub emulators:exec --only firestore,storage \"npm test\""
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "^5.0.2",
+    "firebase": "^12.19.0",
+    "firebase-tools": "^15.30.0"
+  }
+}

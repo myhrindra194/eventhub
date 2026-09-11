@@ -1,0 +1,41 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "EventHub (dev)",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main_dev.dart",
+      "args": ["--dart-define=FLAVOR=dev"]
+    },
+    {
+      "name": "EventHub (dev, simulation sans Firebase)",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main_dev.dart",
+      "args": ["--dart-define=FLAVOR=dev", "--dart-define=MOCK=true"]
+    },
+    {
+      "name": "EventHub (dev, emulators)",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main_dev.dart",
+      "args": ["--dart-define=FLAVOR=dev", "--dart-define=USE_EMULATORS=true"]
+    },
+    {
+      "name": "EventHub (staging)",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main_staging.dart",
+      "args": ["--dart-define=FLAVOR=staging"]
+    },
+    {
+      "name": "EventHub (prod, profile)",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main_prod.dart",
+      "flutterMode": "profile",
+      "args": ["--dart-define=FLAVOR=prod"]
+    }
+  ]
+}

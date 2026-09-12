@@ -3,7 +3,7 @@ import 'dart:typed_data';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class EventImageStorageDataSource {
-  static const defaultBucketName = 'event-images';
+  static const defaultBucketName = 'eventhub-images';
 
   final SupabaseClient client;
   final String bucketName;
@@ -33,14 +33,27 @@ class EventImageStorageDataSource {
         ),
       );
     } catch (error) {
-      if (error.toString().contains('Bucket not found')) {
+      final message = error.toString();
+
+      if (message.contains('Bucket not found')) {
         throw StateError(
           'Supabase bucket "$bucketName" not found. '
           'Create it in Supabase Storage or set SUPABASE_EVENT_BUCKET.',
         );
       }
+
+      if (message.contains('403') ||
+          message.contains('row level security') ||
+          message.contains('Unauthorized')) {
+        throw StateError(
+          'Supabase Storage upload denied by RLS. '
+          'Check the Supabase Storage policies.',
+        );
+      }
+
       rethrow;
     }
+
     return storage.getPublicUrl(path);
   }
 

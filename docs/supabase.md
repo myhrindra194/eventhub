@@ -151,8 +151,16 @@ Le bucket `event-images` doit être public pour que l'URL enregistrée dans
 Firestore puisse être affichée par les participants. Les politiques Storage
 doivent autoriser l'upload aux organizers authentifiés.
 
-Si le bucket porte un autre nom, ajoutez `SUPABASE_EVENT_BUCKET=nom-du-bucket`
-dans `.env`. Le bucket doit être créé manuellement dans Supabase Storage.
+Le bucket utilisé localement est `eventhub-images`. Si le bucket porte un autre
+nom, ajoutez `SUPABASE_EVENT_BUCKET=nom-du-bucket` dans `.env`. Le bucket doit
+être créé manuellement dans Supabase Storage.
+
+Comme l'application utilise Firebase Auth et non Supabase Auth, les requêtes
+Storage arrivent en rôle `anon`. Exécutez les policies de
+`docs/supabase_storage_policies.sql` dans le SQL Editor Supabase pour autoriser
+l'upload dans `events/`. Cette policy est adaptée au MVP; en production,
+l'upload doit passer par une Edge Function ou par une configuration JWT
+Firebase reconnue par Supabase.
 
 | Service           | Utilisation         | MVP |
 | ----------------- | ------------------- | --- |

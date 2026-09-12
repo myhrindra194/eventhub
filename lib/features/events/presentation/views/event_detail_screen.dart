@@ -82,22 +82,7 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
                     children: [
                       Stack(
                         children: [
-                          Image.asset(
-                            event.imageUrl,
-                            height: 280,
-                            width: double.infinity,
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) =>
-                                Container(
-                                  height: 280,
-                                  color: Colors.grey[800],
-                                  child: const Icon(
-                                    Icons.image_not_supported,
-                                    color: Colors.white38,
-                                    size: 60,
-                                  ),
-                                ),
-                          ),
+                          _buildEventImage(event.imageUrl),
                           if (availablePlaces <= 0)
                             Positioned.fill(
                               child: Center(
@@ -344,6 +329,38 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
           Navigator.of(context).pop();
         },
       ),
+    );
+  }
+
+  Widget _buildEventImage(String imageUrl) {
+    Container errorBuilder(
+      BuildContext context,
+      Object error,
+      StackTrace? stackTrace,
+    ) => Container(
+      height: 280,
+      color: Colors.grey[800],
+      child: const Icon(
+        Icons.image_not_supported,
+        color: Colors.white38,
+        size: 60,
+      ),
+    );
+    if (imageUrl.startsWith('http')) {
+      return Image.network(
+        imageUrl,
+        height: 280,
+        width: double.infinity,
+        fit: BoxFit.cover,
+        errorBuilder: errorBuilder,
+      );
+    }
+    return Image.asset(
+      imageUrl,
+      height: 280,
+      width: double.infinity,
+      fit: BoxFit.cover,
+      errorBuilder: errorBuilder,
     );
   }
 

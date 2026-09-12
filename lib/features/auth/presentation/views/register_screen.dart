@@ -83,7 +83,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       );
       return;
     }
-
     if (!_validateAccountForm()) {
       _goToStep(0);
       return;

@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../data/datasources/event_local_datasource.dart';
+import '../../../../core/di/auth_dependencies.dart';
+import '../../data/datasources/event_remote_datasource.dart';
 import '../../data/repositories/event_repository_impl.dart';
 import '../../domain/entities/event.dart';
 import '../../domain/repositories/event_repository.dart';
@@ -23,7 +24,7 @@ final selectedCategoryProvider =
 
 // Injection des UseCases
 final eventRepositoryProvider = Provider<EventRepository>((ref) {
-  final dataSource = EventLocalDataSourceImpl();
+  final dataSource = EventRemoteDataSource(ref.watch(firestoreProvider));
   return EventRepositoryImpl(dataSource);
 });
 

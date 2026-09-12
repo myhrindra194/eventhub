@@ -82,15 +82,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       return;
     }
 
-    Navigator.of(
-      context,
-    ).pushNamedAndRemoveUntil(AppRouter.home, (route) => false);
+    _openRoleHome(ref.read(authProvider).value);
   }
 
   Future<void> _handleGoogleSignIn() async {
     if (!_ensureFirebaseAuthAvailable()) return;
+
     setState(() => _isLoading = true);
-    final user = await ref.read(authProvider.notifier).loginWithGoogle();
+    await ref.read(authProvider.notifier).loginWithGoogle();
 
     if (!mounted) return;
     final authState = ref.read(authProvider);
@@ -102,14 +101,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       return;
     }
 
-    if (user == null) {
-      setState(() => _isLoading = false);
-      return;
-    }
+    _openRoleHome(ref.read(authProvider).value);
+  }
 
+  void _openRoleHome(dynamic user) {
+    final destination = user?.isOrganizer == true
+        ? AppRouter.organizer
+        : AppRouter.home;
     Navigator.of(
       context,
-    ).pushNamedAndRemoveUntil(AppRouter.home, (route) => false);
+    ).pushNamedAndRemoveUntil(destination, (route) => false);
   }
 
   bool _ensureFirebaseAuthAvailable() {

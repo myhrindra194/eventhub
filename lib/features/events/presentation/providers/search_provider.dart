@@ -27,7 +27,7 @@ final searchQueryProvider = NotifierProvider<SearchQueryNotifier, String>(
 class SearchNotifier extends AsyncNotifier<List<Event>> {
   @override
   Future<List<Event>> build() async {
-    return search('Jazz Night');
+    return search('');
   }
 
   Future<List<Event>> search(String query) async {

@@ -1,22 +1,24 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/widgets/app_button.dart';
+import '../providers/auth_provider.dart';
 
 /// Step 3 of registration: the "You're All Set!" confirmation screen
 /// with automatic redirection after a few seconds.
-class ConfirmationStep extends StatefulWidget {
+class ConfirmationStep extends ConsumerStatefulWidget {
   final bool isDark;
 
   const ConfirmationStep({super.key, required this.isDark});
 
   @override
-  State<ConfirmationStep> createState() => _ConfirmationStepState();
+  ConsumerState<ConfirmationStep> createState() => _ConfirmationStepState();
 }
 
-class _ConfirmationStepState extends State<ConfirmationStep> {
+class _ConfirmationStepState extends ConsumerState<ConfirmationStep> {
   int _secondsLeft = 3;
   Timer? _timer;
 
@@ -41,9 +43,13 @@ class _ConfirmationStepState extends State<ConfirmationStep> {
 
   void _navigateHome() {
     if (!mounted) return;
+    final user = ref.read(authProvider).value;
+    final destination = user?.isOrganizer == true
+        ? AppRouter.organizer
+        : AppRouter.home;
     Navigator.of(
       context,
-    ).pushNamedAndRemoveUntil(AppRouter.home, (route) => false);
+    ).pushNamedAndRemoveUntil(destination, (route) => false);
   }
 
   @override

@@ -136,6 +136,24 @@ Aucune clé secrète ne doit être commitée dans Git.
 
 ## 8. Périmètre MVP
 
+### Configuration locale
+
+L'application initialise Supabase avec des variables de compilation. Lancez-la
+avec les valeurs de votre projet :
+
+```bash
+flutter run \
+    --dart-define=SUPABASE_URL=https://your-project.supabase.co \
+    --dart-define=SUPABASE_ANON_KEY=your-publishable-key
+```
+
+Le bucket `event-images` doit être public pour que l'URL enregistrée dans
+Firestore puisse être affichée par les participants. Les politiques Storage
+doivent autoriser l'upload aux organizers authentifiés.
+
+Si le bucket porte un autre nom, ajoutez `SUPABASE_EVENT_BUCKET=nom-du-bucket`
+dans `.env`. Le bucket doit être créé manuellement dans Supabase Storage.
+
 | Service           | Utilisation         | MVP |
 | ----------------- | ------------------- | --- |
 | Supabase Storage  | Stockage des images | ✅   |

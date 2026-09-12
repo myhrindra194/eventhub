@@ -98,22 +98,7 @@ class ConfirmationReservationScreen extends ConsumerWidget {
                         children: [
                           ClipRRect(
                             borderRadius: BorderRadius.circular(12),
-                            child: Image.asset(
-                              event.imageUrl,
-                              width: 64,
-                              height: 64,
-                              fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) =>
-                                  Container(
-                                    width: 64,
-                                    height: 64,
-                                    color: Colors.grey[800],
-                                    child: const Icon(
-                                      Icons.event,
-                                      color: Colors.white54,
-                                    ),
-                                  ),
-                            ),
+                            child: _buildEventImage(event.imageUrl),
                           ),
                           const SizedBox(width: 14),
                           Expanded(
@@ -191,6 +176,35 @@ class ConfirmationReservationScreen extends ConsumerWidget {
           Navigator.of(context).popUntil((route) => route.isFirst);
         },
       ),
+    );
+  }
+
+  Widget _buildEventImage(String imageUrl) {
+    Container errorBuilder(
+      BuildContext context,
+      Object error,
+      StackTrace? stackTrace,
+    ) => Container(
+      width: 64,
+      height: 64,
+      color: Colors.grey[800],
+      child: const Icon(Icons.event, color: Colors.white54),
+    );
+    if (imageUrl.startsWith('http')) {
+      return Image.network(
+        imageUrl,
+        width: 64,
+        height: 64,
+        fit: BoxFit.cover,
+        errorBuilder: errorBuilder,
+      );
+    }
+    return Image.asset(
+      imageUrl,
+      width: 64,
+      height: 64,
+      fit: BoxFit.cover,
+      errorBuilder: errorBuilder,
     );
   }
 }

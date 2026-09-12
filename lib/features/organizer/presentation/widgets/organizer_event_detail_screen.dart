@@ -17,6 +17,7 @@ class OrganizerEventDetailScreen extends StatelessWidget {
   final int placesTotal;
   final int participantsCount;
   final VoidCallback? onParticipantsTap;
+  final VoidCallback? onStatusChange;
   final VoidCallback? onEditTap;
   final VoidCallback? onDeleteTap;
 
@@ -35,6 +36,7 @@ class OrganizerEventDetailScreen extends StatelessWidget {
     required this.placesTotal,
     required this.participantsCount,
     this.onParticipantsTap,
+    this.onStatusChange,
     this.onEditTap,
     this.onDeleteTap,
   });
@@ -271,6 +273,31 @@ class OrganizerEventDetailScreen extends StatelessWidget {
                         const Icon(
                           Icons.chevron_right_rounded,
                           color: _accentAmber,
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+
+                  _actionButton(
+                    onTap: onStatusChange,
+                    borderColor: _accentAmber.withValues(alpha: 0.45),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(
+                          Icons.swap_vert_rounded,
+                          color: _accentAmber,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 10),
+                        const Text(
+                          'Change status',
+                          style: TextStyle(
+                            color: _accentAmber,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ],
                     ),

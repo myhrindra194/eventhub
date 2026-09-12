@@ -61,14 +61,69 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
   }
 
   Future<void> _publishEvent() async {
-    await ref
-        .read(organizerEventRepositoryProvider)
-        .publishEvent(widget.eventId);
-    await _loadEventData();
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Event published successfully')),
-      );
+    await _changeStatus(EventStatus.live);
+  }
+
+  Future<void> _changeStatus(EventStatus status) async {
+    final event = _event;
+    if (event == null || event.status == status) return;
+
+    try {
+      await ref
+          .read(organizerEventRepositoryProvider)
+          .updateEvent(event.copyWith(status: status));
+      await _loadEventData();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Event status changed to ${status.name}.')),
+        );
+      }
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Unable to update status: $error')),
+        );
+      }
+    }
+  }
+
+  Future<void> _showStatusPicker() async {
+    final event = _event;
+    if (event == null) return;
+
+    final selectedStatus = await showModalBottomSheet<EventStatus>(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: EventStatus.values
+              .map(
+                (status) => ListTile(
+                  leading: Icon(_statusIcon(status)),
+                  title: Text(status.name.toUpperCase()),
+                  trailing: status == event.status
+                      ? const Icon(Icons.check)
+                      : null,
+                  onTap: () => Navigator.of(context).pop(status),
+                ),
+              )
+              .toList(),
+        ),
+      ),
+    );
+    if (selectedStatus != null) await _changeStatus(selectedStatus);
+  }
+
+  IconData _statusIcon(EventStatus status) {
+    switch (status) {
+      case EventStatus.draft:
+        return Icons.edit_note;
+      case EventStatus.live:
+        return Icons.public;
+      case EventStatus.completed:
+        return Icons.check_circle_outline;
+      case EventStatus.cancelled:
+        return Icons.cancel_outlined;
     }
   }
 
@@ -192,6 +247,7 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
             ),
           );
         },
+        onStatusChange: _showStatusPicker,
         onEditTap: _editEvent,
         onDeleteTap: _deleteEvent,
       );

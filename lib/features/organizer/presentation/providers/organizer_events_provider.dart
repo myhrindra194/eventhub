@@ -35,7 +35,13 @@ final getOrganizerEventsUseCaseProvider = Provider<GetOrganizerEventsUseCase>(
 );
 
 final organizerEventsProvider = FutureProvider<List<Event>>((ref) async {
-  return ref.watch(getOrganizerEventsUseCaseProvider).call();
+  final user = ref.watch(firebaseAuthProvider).currentUser;
+  if (user == null) {
+    throw StateError('An authenticated organizer is required.');
+  }
+
+  final events = await ref.watch(getOrganizerEventsUseCaseProvider).call();
+  return events.where((event) => event.organizerId == user.uid).toList();
 });
 
 final organizerEventDetailProvider = FutureProvider.family<Event?, String>((

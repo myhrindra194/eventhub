@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'dart:convert';
 import '../../../../core/router/app_router.dart';
+import '../../../../core/di/auth_dependencies.dart';
 import '../../../../core/widgets/app_header.dart';
 import '../../domain/entities/event.dart';
 import '../providers/organizer_events_provider.dart';
@@ -28,10 +29,18 @@ class _OrganizerEventsScreenState extends ConsumerState<OrganizerEventsScreen> {
 
   Future<void> _loadEvents() async {
     try {
+      final organizerId = ref.read(firebaseAuthProvider).currentUser?.uid;
+      if (organizerId == null) {
+        throw StateError('An authenticated organizer is required.');
+      }
+
       final events = await ref.read(organizerEventsProvider.future);
+      final ownEvents = events
+          .where((event) => event.organizerId == organizerId)
+          .toList();
       if (!mounted) return;
       setState(() {
-        _events = events;
+        _events = ownEvents;
         _isLoading = false;
       });
     } catch (error) {

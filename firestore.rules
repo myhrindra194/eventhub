@@ -57,9 +57,15 @@ service cloud.firestore {
 
     match /events/{eventId} {
 
-      // Les utilisateurs connectés peuvent consulter
-      // les événements.
-      allow read: if isAuthenticated();
+      // Un participant ne voit que les événements publiés.
+      // Un organizer ne voit que ses propres événements.
+      allow read: if (
+          isParticipant()
+          && resource.data.status == 'live'
+        ) || (
+          isOrganizer()
+          && resource.data.organizerId == request.auth.uid
+        );
 
       // Seul un organisateur peut créer un événement.
       // organizerId doit correspondre à son UID.

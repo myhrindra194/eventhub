@@ -3,7 +3,6 @@ import '../../features/splash/presentation/views/splash_screen.dart';
 import '../../features/onboarding/presentation/views/welcome_screen.dart';
 import '../../features/auth/presentation/views/login_screen.dart';
 import '../../features/auth/presentation/views/register_screen.dart';
-import '../../features/auth/presentation/views/forgot_password_screen.dart';
 import '../../features/auth/presentation/widgets/auth_guard.dart';
 import '../../features/auth/domain/entities/user_role.dart';
 import '../../features/events/presentation/views/search_screen.dart';
@@ -27,7 +26,6 @@ class AppRouter {
   static const String welcome = '/welcome';
   static const String login = '/login';
   static const String register = '/register';
-  static const String forgotPassword = '/forgot-password';
   static const String home = '/home';
   static const String search = '/search';
   static const String tickets = '/tickets';
@@ -57,9 +55,6 @@ class AppRouter {
 
       case register:
         return MaterialPageRoute(builder: (_) => const RegisterScreen());
-
-      case forgotPassword:
-        return MaterialPageRoute(builder: (_) => const ForgotPasswordScreen());
 
       case home:
         return MaterialPageRoute(

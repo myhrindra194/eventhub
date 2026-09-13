@@ -121,11 +121,6 @@ class AppHeader extends ConsumerWidget {
               ),
             ),
             const SizedBox(width: 4),
-            CircleAvatar(
-              radius: 20,
-              backgroundColor: theme.colorScheme.primary,
-              child: const Icon(Icons.person_rounded, color: Colors.white),
-            ),
             if (onLogout != null) ...[
               const SizedBox(width: 4),
               IconButton(

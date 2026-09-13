@@ -15,6 +15,10 @@ class SelectedCategoryNotifier extends Notifier<String> {
   void setCategory(String category) {
     state = category;
   }
+
+  void reset() {
+    state = 'All';
+  }
 }
 
 final selectedCategoryProvider =
@@ -45,11 +49,11 @@ final eventsFutureProvider = FutureProvider<List<Event>>((ref) async {
   return await useCase(category: category);
 });
 
-/// Flux temps réel : le home se met à jour quand un organisateur publie,
-/// modifie (places restantes) ou supprime un événement.
+/// Flux temps réel de tous les événements publiés.
+/// Le filtrage par catégorie est fait côté UI pour ne pas recréer
+/// le Stream à chaque changement de catégorie (évite le flash de rechargement).
 final eventsStreamProvider = StreamProvider<List<Event>>((ref) {
-  final category = ref.watch(selectedCategoryProvider);
-  return ref.watch(eventRepositoryProvider).watchEvents(category: category);
+  return ref.watch(eventRepositoryProvider).watchEvents();
 });
 
 // Retrieve an event by ID.

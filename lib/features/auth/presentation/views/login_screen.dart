@@ -131,10 +131,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     Navigator.of(context).pushReplacementNamed(AppRouter.register);
   }
 
-  void _goToForgotPassword() {
-    Navigator.of(context).pushNamed(AppRouter.forgotPassword);
-  }
-
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -221,32 +217,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   },
                 ),
               ),
-              const SizedBox(height: 4),
-
-              // Forgot password button
-              Align(
-                alignment: Alignment.centerRight,
-                child: TextButton(
-                  onPressed: _goToForgotPassword,
-                  style: TextButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(
-                      vertical: 8.0,
-                      horizontal: 4.0,
-                    ),
-                    minimumSize: Size.zero,
-                    tapTargetSize: MaterialTapTargetSize.padded,
-                  ),
-                  child: const Text(
-                    'Forgot Password?',
-                    style: TextStyle(
-                      color: AppColors.accentIndigo,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 14,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 40),
 
               // Sign In button
               AppButton(
@@ -256,7 +227,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               ),
               const SizedBox(height: 24),
 
-              // Divider "OR"
               Row(
                 children: [
                   Expanded(

@@ -3,19 +3,42 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../core/widgets/app_filter_chip.dart';
 import '../../../../core/widgets/app_header.dart';
-import '../../../../core/widgets/app_search_field.dart';
 import '../../../../core/widgets/state_card.dart';
+import '../../../events/domain/entities/event.dart';
 import '../../../events/presentation/providers/events_provider.dart';
+import '../../../events/presentation/providers/search_provider.dart';
 import '../../../events/presentation/widgets/event_card.dart';
 import '../widgets/home_skeleton.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
+  /// Converts an [EventCategory] enum value to a human-readable label
+  /// matching the filter chips shown in the UI.
+  String _categoryName(EventCategory category) {
+    return category.name.isNotEmpty
+        ? category.name[0].toUpperCase() +
+            category.name.substring(1).toLowerCase()
+        : category.name;
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final eventsAsync = ref.watch(eventsStreamProvider);
     final selectedCategory = ref.watch(selectedCategoryProvider);
+    final searchQuery = ref.watch(searchQueryProvider);
+    final searchResults = ref.watch(searchEventsNotifierProvider);
+
+    // On utilise la recherche si le query est non vide, sinon le flux temps réel.
+    final displayAsync = searchQuery.isNotEmpty
+        ? searchResults
+        : ref.watch(eventsStreamProvider).whenData(
+            (events) => events.where((event) {
+              final categoryName = _categoryName(event.category);
+              return selectedCategory == 'All' ||
+                  categoryName == selectedCategory;
+            }).toList(),
+          );
+
     // Aligné avec EventCategory : conference, concert, sport, workshop,
     // festival, other. On garde des labels lisibles.
     final categories = [
@@ -30,7 +53,7 @@ class HomeScreen extends ConsumerWidget {
     final theme = Theme.of(context);
 
     // Show the skeleton loader while data is loading.
-    if (eventsAsync.isLoading) {
+    if (displayAsync.isLoading) {
       return Scaffold(
         backgroundColor: theme.scaffoldBackgroundColor,
         body: const Column(
@@ -55,12 +78,6 @@ class HomeScreen extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const SizedBox(height: 20),
-                    // Search bar.
-                    const AppSearchField(
-                      hintText: 'Search music, tech, art...',
-                    ),
-                    const SizedBox(height: 16),
                     // Category filters.
                     SizedBox(
                       height: 38,
@@ -88,11 +105,19 @@ class HomeScreen extends ConsumerWidget {
                     const SizedBox(height: 20),
                     // Event list.
                     Expanded(
-                      child: eventsAsync.when(
+                      child: displayAsync.when(
                         loading: () => const HomeSkeleton(),
                         error: (err, stack) => Center(
                           child: StateCard.connectionLost(
-                            onRetry: () => ref.invalidate(eventsStreamProvider),
+                            onRetry: () {
+                              if (searchQuery.isNotEmpty) {
+                                ref
+                                    .read(searchEventsNotifierProvider.notifier)
+                                    .search(searchQuery);
+                              } else {
+                                ref.invalidate(eventsStreamProvider);
+                              }
+                            },
                           ),
                         ),
                         data: (events) {
@@ -103,6 +128,9 @@ class HomeScreen extends ConsumerWidget {
                                   ref
                                       .read(selectedCategoryProvider.notifier)
                                       .setCategory('All');
+                                  ref
+                                      .read(searchQueryProvider.notifier)
+                                      .setQuery('');
                                 },
                               ),
                             );

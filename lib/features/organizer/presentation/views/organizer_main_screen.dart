@@ -25,15 +25,14 @@ class _OrganizerMainScreenState extends State<OrganizerMainScreen> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final backgroundColor = isDark ? const Color(0xFF0F1117) : const Color(0xFFF8F9FA);
+    final backgroundColor = isDark
+        ? const Color(0xFF0F1117)
+        : const Color(0xFFF8F9FA);
 
     return Scaffold(
       backgroundColor: backgroundColor,
       body: SafeArea(
-        child: IndexedStack(
-          index: _currentIndex,
-          children: _screens,
-        ),
+        child: IndexedStack(index: _currentIndex, children: _screens),
       ),
       bottomNavigationBar: OrganizerBottomNavBar(
         currentIndex: _currentIndex,

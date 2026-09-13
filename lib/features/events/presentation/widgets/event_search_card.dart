@@ -56,7 +56,7 @@ class EventSearchCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      event.category.toUpperCase(),
+                      event.category.name.toUpperCase(),
                       style: const TextStyle(
                         color: AppColors.accentIndigo,
                         fontSize: 11,

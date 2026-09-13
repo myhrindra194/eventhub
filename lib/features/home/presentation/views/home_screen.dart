@@ -109,7 +109,7 @@ class HomeScreen extends ConsumerWidget {
                                 location: event.location,
                                 time: event.time,
                                 imagePath: event.imageUrl,
-                                category: event.category,
+                                category: event.category.name,
                                 categoryColor: theme.colorScheme.primary,
                                 onTap: () {
                                   Navigator.pushNamed(

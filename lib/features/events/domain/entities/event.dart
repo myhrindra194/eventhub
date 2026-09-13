@@ -1,3 +1,5 @@
+enum EventCategory { conference, concert, sport, workshop, festival, other }
+
 class Event {
   final String id;
   final String title;
@@ -9,7 +11,7 @@ class Event {
   final String location;
   final String imageUrl;
   final String imagePath;
-  final String category;
+  final EventCategory category;
   final double price;
   final int capacity;
   final int availablePlaces;

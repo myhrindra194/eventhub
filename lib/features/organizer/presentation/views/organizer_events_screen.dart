@@ -1,23 +1,76 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'dart:convert';
-import '../../../../core/router/app_router.dart';
+
 import '../../../../core/di/auth_dependencies.dart';
+import '../../../../core/router/app_router.dart';
 import '../../../../core/widgets/app_header.dart';
 import '../../domain/entities/event.dart';
 import '../providers/organizer_events_provider.dart';
-import 'create_event_screen.dart';
+import '../widgets/organizer_bottom_nav_bar.dart';
 import 'event_detail_screen.dart';
+import 'organizer_alerts_screen.dart';
+import 'organizer_settings_screen.dart';
+import 'organizer_stats_screen.dart';
 
-class OrganizerEventsScreen extends ConsumerStatefulWidget {
+/// Main entry point for the Organizer section.
+///
+/// This screen replaces the previous OrganizerMainScreen.
+/// It contains the bottom navigation and the different organizer sections.
+class OrganizerEventsScreen extends StatefulWidget {
   const OrganizerEventsScreen({super.key});
 
   @override
-  ConsumerState<OrganizerEventsScreen> createState() =>
-      _OrganizerEventsScreenState();
+  State<OrganizerEventsScreen> createState() => _OrganizerEventsScreenState();
 }
 
-class _OrganizerEventsScreenState extends ConsumerState<OrganizerEventsScreen> {
+class _OrganizerEventsScreenState extends State<OrganizerEventsScreen> {
+  int _currentIndex = 0;
+
+  final List<Widget> _screens = const [
+    OrganizerEventsContent(),
+    OrganizerStatsScreen(),
+    OrganizerAlertsScreen(),
+    OrganizerSettingsScreen(),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    final backgroundColor = isDark
+        ? const Color(0xFF0F1117)
+        : const Color(0xFFF8F9FA);
+
+    return Scaffold(
+      backgroundColor: backgroundColor,
+      body: SafeArea(
+        child: IndexedStack(index: _currentIndex, children: _screens),
+      ),
+      bottomNavigationBar: OrganizerBottomNavBar(
+        currentIndex: _currentIndex,
+        onTap: (index) {
+          setState(() {
+            _currentIndex = index;
+          });
+        },
+      ),
+    );
+  }
+}
+
+/// Events tab content.
+class OrganizerEventsContent extends ConsumerStatefulWidget {
+  const OrganizerEventsContent({super.key});
+
+  @override
+  ConsumerState<OrganizerEventsContent> createState() =>
+      _OrganizerEventsContentState();
+}
+
+class _OrganizerEventsContentState
+    extends ConsumerState<OrganizerEventsContent> {
   List<Event> _events = [];
   bool _isLoading = true;
 
@@ -28,24 +81,40 @@ class _OrganizerEventsScreenState extends ConsumerState<OrganizerEventsScreen> {
   }
 
   Future<void> _loadEvents() async {
+    if (mounted) {
+      setState(() {
+        _isLoading = true;
+      });
+    }
     try {
       final organizerId = ref.read(firebaseAuthProvider).currentUser?.uid;
+
       if (organizerId == null) {
         throw StateError('An authenticated organizer is required.');
       }
 
+      // Force a fresh request from the repository/Firestore.
+      ref.invalidate(organizerEventsProvider);
+
       final events = await ref.read(organizerEventsProvider.future);
+
       final ownEvents = events
           .where((event) => event.organizerId == organizerId)
           .toList();
+
       if (!mounted) return;
+
       setState(() {
         _events = ownEvents;
         _isLoading = false;
       });
     } catch (error) {
       if (!mounted) return;
-      setState(() => _isLoading = false);
+
+      setState(() {
+        _isLoading = false;
+      });
+
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('Unable to load events: $error')));
@@ -55,21 +124,25 @@ class _OrganizerEventsScreenState extends ConsumerState<OrganizerEventsScreen> {
   Future<void> _publishEvent(Event event) async {
     try {
       await ref.read(organizerEventRepositoryProvider).publishEvent(event.id);
+
       await _loadEvents();
     } catch (error) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Unable to publish event: $error')),
-        );
-      }
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Unable to publish event: $error')),
+      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+
     final cardColor = isDark ? const Color(0xFF1A1D26) : Colors.white;
+
     final textColor = isDark ? Colors.white : Colors.black87;
+
     final subtextColor = isDark ? Colors.grey[400] : Colors.grey[600];
 
     return Column(
@@ -78,6 +151,7 @@ class _OrganizerEventsScreenState extends ConsumerState<OrganizerEventsScreen> {
           title: 'Organizer Events',
           subtitle: 'Manage your active listings',
         ),
+
         Expanded(
           child: _isLoading
               ? const Center(child: CircularProgressIndicator())
@@ -94,7 +168,9 @@ class _OrganizerEventsScreenState extends ConsumerState<OrganizerEventsScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         _buildHeader(textColor, subtextColor),
+
                         const SizedBox(height: 24),
+
                         ..._events.map(
                           (event) => _buildEventCard(
                             context: context,
@@ -136,7 +212,9 @@ class _OrganizerEventsScreenState extends ConsumerState<OrganizerEventsScreen> {
               color: Colors.white70,
             ),
           ),
+
           const SizedBox(height: 32),
+
           Text(
             'No Events Yet',
             style: TextStyle(
@@ -146,24 +224,24 @@ class _OrganizerEventsScreenState extends ConsumerState<OrganizerEventsScreen> {
             ),
             textAlign: TextAlign.center,
           ),
+
           const SizedBox(height: 12),
+
           Text(
             'Ready to host something amazing? Create your first event and start selling tickets.',
             style: TextStyle(fontSize: 14, color: subtextColor, height: 1.4),
             textAlign: TextAlign.center,
           ),
+
           const SizedBox(height: 32),
+
           SizedBox(
             width: double.infinity,
             height: 52,
             child: ElevatedButton(
               onPressed: () {
                 Navigator.of(context)
-                    .push(
-                      MaterialPageRoute(
-                        builder: (context) => const CreateEventScreen(),
-                      ),
-                    )
+                    .pushNamed(AppRouter.organizerCreateEvent)
                     .then((_) => _loadEvents());
               },
               style: ElevatedButton.styleFrom(
@@ -201,13 +279,16 @@ class _OrganizerEventsScreenState extends ConsumerState<OrganizerEventsScreen> {
                 color: textColor,
               ),
             ),
+
             const SizedBox(height: 4),
+
             Text(
               'Manage your active listings',
               style: TextStyle(fontSize: 14, color: subtextColor),
             ),
           ],
         ),
+
         GestureDetector(
           onTap: () {
             Navigator.of(context)
@@ -257,56 +338,8 @@ class _OrganizerEventsScreenState extends ConsumerState<OrganizerEventsScreen> {
             children: [
               Stack(
                 children: [
-                  event.isBase64
-                      ? Image.memory(
-                          base64Decode(event.imageUrl),
-                          height: 180,
-                          width: double.infinity,
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) =>
-                              Container(
-                                height: 180,
-                                color: Colors.grey[800],
-                                child: const Icon(
-                                  Icons.image,
-                                  color: Colors.white54,
-                                  size: 50,
-                                ),
-                              ),
-                        )
-                      : event.imageUrl.startsWith('http')
-                      ? Image.network(
-                          event.imageUrl,
-                          height: 180,
-                          width: double.infinity,
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) =>
-                              Container(
-                                height: 180,
-                                color: Colors.grey[800],
-                                child: const Icon(
-                                  Icons.image,
-                                  color: Colors.white54,
-                                  size: 50,
-                                ),
-                              ),
-                        )
-                      : Image.asset(
-                          event.imageUrl,
-                          height: 180,
-                          width: double.infinity,
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) =>
-                              Container(
-                                height: 180,
-                                color: Colors.grey[800],
-                                child: const Icon(
-                                  Icons.image,
-                                  color: Colors.white54,
-                                  size: 50,
-                                ),
-                              ),
-                        ),
+                  _buildEventImage(event),
+
                   Positioned(
                     top: 12,
                     left: 12,
@@ -332,6 +365,7 @@ class _OrganizerEventsScreenState extends ConsumerState<OrganizerEventsScreen> {
                   ),
                 ],
               ),
+
               Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: Column(
@@ -347,7 +381,9 @@ class _OrganizerEventsScreenState extends ConsumerState<OrganizerEventsScreen> {
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
+
                     const SizedBox(height: 16),
+
                     Wrap(
                       spacing: 16,
                       runSpacing: 10,
@@ -358,11 +394,13 @@ class _OrganizerEventsScreenState extends ConsumerState<OrganizerEventsScreen> {
                           text: '${event.currentAttendees}/${event.capacity}',
                           color: subtextColor,
                         ),
+
                         _buildEventMeta(
                           icon: Icons.euro,
                           text: event.formattedPrice,
                           color: subtextColor,
                         ),
+
                         _buildEventMeta(
                           icon: Icons.calendar_today_outlined,
                           text:
@@ -371,7 +409,9 @@ class _OrganizerEventsScreenState extends ConsumerState<OrganizerEventsScreen> {
                         ),
                       ],
                     ),
+
                     const SizedBox(height: 12),
+
                     Align(
                       alignment: Alignment.centerRight,
                       child: _buildActions(context, event, isDark),
@@ -386,6 +426,51 @@ class _OrganizerEventsScreenState extends ConsumerState<OrganizerEventsScreen> {
     );
   }
 
+  Widget _buildEventImage(Event event) {
+    if (event.isBase64) {
+      return Image.memory(
+        base64Decode(event.imageUrl),
+        height: 180,
+        width: double.infinity,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) {
+          return _buildImageError();
+        },
+      );
+    }
+
+    if (event.imageUrl.startsWith('http')) {
+      return Image.network(
+        event.imageUrl,
+        height: 180,
+        width: double.infinity,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) {
+          return _buildImageError();
+        },
+      );
+    }
+
+    return Image.asset(
+      event.imageUrl,
+      height: 180,
+      width: double.infinity,
+      fit: BoxFit.cover,
+      errorBuilder: (context, error, stackTrace) {
+        return _buildImageError();
+      },
+    );
+  }
+
+  Widget _buildImageError() {
+    return Container(
+      height: 180,
+      width: double.infinity,
+      color: Colors.grey[800],
+      child: const Icon(Icons.image, color: Colors.white54, size: 50),
+    );
+  }
+
   Widget _buildEventMeta({
     required IconData icon,
     required String text,
@@ -395,7 +480,9 @@ class _OrganizerEventsScreenState extends ConsumerState<OrganizerEventsScreen> {
       mainAxisSize: MainAxisSize.min,
       children: [
         Icon(icon, size: 16, color: color),
+
         const SizedBox(width: 6),
+
         Text(
           text,
           style: TextStyle(
@@ -455,7 +542,9 @@ class _OrganizerEventsScreenState extends ConsumerState<OrganizerEventsScreen> {
                 .then((_) => _loadEvents());
           },
         ),
+
         const SizedBox(width: 8),
+
         _buildIconButton(
           icon: Icons.bar_chart_rounded,
           isDark: isDark,
@@ -497,10 +586,13 @@ class _OrganizerEventsScreenState extends ConsumerState<OrganizerEventsScreen> {
     switch (status) {
       case EventStatus.live:
         return Colors.green;
+
       case EventStatus.draft:
         return Colors.orange;
+
       case EventStatus.completed:
         return Colors.blue;
+
       case EventStatus.cancelled:
         return Colors.red;
     }

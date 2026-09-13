@@ -15,6 +15,7 @@ class EventRepositoryImpl implements EventRepository {
     if (category == null || category == 'All') {
       return events;
     }
+    // ignore: unrelated_type_equality_checks
     return events.where((event) => event.category == category).toList();
   }
 

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../../../../core/router/app_router.dart';
 
 class EventPublishedScreen extends StatelessWidget {
   final String eventTitle;
@@ -182,10 +181,7 @@ class EventPublishedScreen extends StatelessWidget {
                 height: 56,
                 child: ElevatedButton(
                   onPressed: () {
-                    Navigator.of(context).pushNamedAndRemoveUntil(
-                      AppRouter.organizer,
-                      (route) => false,
-                    );
+                    Navigator.of(context).pop(true);
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF6C5CE7),

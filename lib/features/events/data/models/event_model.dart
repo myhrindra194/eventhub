@@ -69,7 +69,10 @@ class EventModel {
       location: location,
       imageUrl: imageUrl,
       imagePath: imagePath,
-      category: category,
+      category: EventCategory.values.firstWhere(
+        (e) => e.toString().split('.').last == category,
+        orElse: () => EventCategory.other,
+      ),
       price: price,
       capacity: capacity,
       availablePlaces: availablePlaces,

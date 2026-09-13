@@ -18,14 +18,23 @@ class EventRemoteDataSource {
     final snapshot = await _events
         .where('organizerId', isEqualTo: organizerId)
         .get();
+
     return snapshot.docs.map(_fromDocument).toList();
   }
 
   Future<Event?> getEventById(String id) async {
     final document = await _events.doc(id).get();
-    if (!document.exists) return null;
+
+    if (!document.exists) {
+      return null;
+    }
+
     final data = document.data();
-    if (data == null || data['organizerId'] != organizerId) return null;
+
+    if (data == null || data['organizerId'] != organizerId) {
+      return null;
+    }
+
     return _fromDocument(document);
   }
 
@@ -36,46 +45,64 @@ class EventRemoteDataSource {
     required EventImageStorageDataSource imageStorage,
   }) async {
     final reference = event.id.isEmpty ? _events.doc() : _events.doc(event.id);
+
     var saved = event.copyWith(id: reference.id, organizerId: organizerId);
+
     if (imageBytes != null) {
       if (imageExtension == null || imageExtension.isEmpty) {
         throw ArgumentError('An image extension is required for uploads.');
       }
+
       final imageUrl = await imageStorage.upload(
         bytes: imageBytes,
         organizerId: organizerId,
         eventId: reference.id,
         fileExtension: imageExtension,
       );
+
       saved = saved.copyWith(imageUrl: imageUrl, isBase64: false);
     }
+
     await reference.set(_toMap(saved));
+
     return saved;
   }
 
   Future<Event> updateEvent(Event event) async {
     final reference = _events.doc(event.id);
+
     final existing = await reference.get();
+
     if (!existing.exists || existing.data()?['organizerId'] != organizerId) {
       throw StateError('Event not found or access denied.');
     }
+
     final saved = event.copyWith(organizerId: organizerId);
+
     await reference.update(_toMap(saved));
+
     return saved;
   }
 
   Future<void> deleteEvent(String id) async {
     final reference = _events.doc(id);
+
     final existing = await reference.get();
+
     if (!existing.exists || existing.data()?['organizerId'] != organizerId) {
       throw StateError('Event not found or access denied.');
     }
+
     await reference.delete();
   }
 
   Future<Event> publishEvent(String id) async {
     final event = await getEventById(id);
-    if (event == null) throw StateError('Event not found or access denied.');
+
+    if (event == null) {
+      throw StateError('Event not found or access denied.');
+    }
+
     return updateEvent(event.copyWith(status: EventStatus.live));
   }
 
@@ -86,6 +113,7 @@ class EventRemoteDataSource {
         .collection('reservations')
         .where('eventId', isEqualTo: eventId)
         .get();
+
     return snapshot.docs.map((document) {
       return {'id': document.id, ...document.data()};
     }).toList();
@@ -93,14 +121,23 @@ class EventRemoteDataSource {
 
   Event _fromDocument(DocumentSnapshot<Map<String, dynamic>> document) {
     final data = document.data()!;
+
     final timestamp = data['date'];
+
     final date = timestamp is Timestamp
         ? timestamp.toDate()
         : DateTime.tryParse(timestamp?.toString() ?? '') ?? DateTime.now();
+
     final status = EventStatus.values.firstWhere(
       (value) => value.name == data['status'],
       orElse: () => EventStatus.draft,
     );
+
+    final category = EventCategory.values.firstWhere(
+      (value) => value.name == data['category'],
+      orElse: () => EventCategory.other,
+    );
+
     return Event(
       id: document.id,
       title: data['title'] as String? ?? '',
@@ -114,6 +151,7 @@ class EventRemoteDataSource {
       price: (data['price'] as num?)?.toDouble() ?? 0,
       isBase64: data['isBase64'] as bool? ?? false,
       organizerId: data['organizerId'] as String? ?? '',
+      category: category,
     );
   }
 
@@ -130,6 +168,10 @@ class EventRemoteDataSource {
       'price': event.price,
       'isBase64': event.isBase64,
       'organizerId': event.organizerId,
+
+      // Event category
+      'category': event.category.name,
+
       'updatedAt': FieldValue.serverTimestamp(),
     };
   }

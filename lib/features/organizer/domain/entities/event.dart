@@ -1,3 +1,7 @@
+enum EventCategory { conference, concert, sport, workshop, festival, other }
+
+enum EventStatus { draft, live, completed, cancelled }
+
 class Event {
   final String id;
   final String title;
@@ -11,6 +15,7 @@ class Event {
   final double price;
   final bool isBase64;
   final String organizerId;
+  final EventCategory category;
 
   const Event({
     required this.id,
@@ -25,11 +30,15 @@ class Event {
     required this.price,
     this.isBase64 = false,
     this.organizerId = '',
+    this.category = EventCategory.other,
   });
 
   double get attendanceRate => capacity > 0 ? currentAttendees / capacity : 0;
+
   bool get isFull => currentAttendees >= capacity;
+
   bool get isLive => status == EventStatus.live;
+
   String get formattedPrice => '€${price.toStringAsFixed(2)}';
 
   Event copyWith({
@@ -45,6 +54,7 @@ class Event {
     double? price,
     bool? isBase64,
     String? organizerId,
+    EventCategory? category,
   }) {
     return Event(
       id: id ?? this.id,
@@ -59,8 +69,7 @@ class Event {
       price: price ?? this.price,
       isBase64: isBase64 ?? this.isBase64,
       organizerId: organizerId ?? this.organizerId,
+      category: category ?? this.category,
     );
   }
 }
-
-enum EventStatus { draft, live, completed, cancelled }

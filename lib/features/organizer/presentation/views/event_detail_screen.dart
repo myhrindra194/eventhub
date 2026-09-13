@@ -1,5 +1,7 @@
+import 'package:eventhub/core/router/app_router.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import 'event_participants_screen.dart';
 import '../../domain/entities/event.dart';
 import '../providers/organizer_events_provider.dart';
@@ -33,95 +35,175 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
   }
 
   Future<void> _loadEventData() async {
-    final event = await ref.read(
-      organizerEventDetailProvider(widget.eventId).future,
-    );
-    if (mounted) {
+    try {
+      ref.invalidate(organizerEventDetailProvider(widget.eventId));
+
+      final event = await ref.read(
+        organizerEventDetailProvider(widget.eventId).future,
+      );
+
+      if (!mounted) return;
+
       setState(() {
         _event = event;
         _isLoading = false;
       });
+    } catch (error) {
+      if (!mounted) return;
+
+      setState(() {
+        _isLoading = false;
+      });
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Unable to load event: $error')));
     }
   }
 
   Future<void> _deleteEvent() async {
     final confirmed = await showDeleteEventDialog(context);
 
-    if (confirmed == true) {
+    if (confirmed != true) return;
+
+    try {
       await ref
           .read(organizerEventRepositoryProvider)
           .deleteEvent(widget.eventId);
-      if (mounted) {
-        Navigator.of(context).pop();
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Event deleted successfully')),
-        );
-      }
+
+      if (!mounted) return;
+
+      Navigator.of(context).pop(true);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Event deleted successfully')),
+      );
+    } catch (error) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Unable to delete event: $error')));
     }
   }
 
+  /// Publie un événement DRAFT.
+  ///
+  /// C'est la seule transition qui ouvre EventPublishedScreen.
   Future<void> _publishEvent() async {
-    await _changeStatus(EventStatus.live);
+    final event = _event;
+
+    if (event == null || event.status != EventStatus.draft) {
+      return;
+    }
+
+    try {
+      await ref
+          .read(organizerEventRepositoryProvider)
+          .updateEvent(event.copyWith(status: EventStatus.live));
+
+      if (!mounted) return;
+
+      Navigator.of(context).pushReplacementNamed(
+        AppRouter.organizerEventPublished,
+        arguments: {
+          'eventTitle': event.title,
+          'publicUrl': 'eventhub.com/e/${event.id}',
+        },
+      );
+    } catch (error) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Unable to publish event: $error')),
+      );
+    }
   }
 
+  /// Gère les autres changements de statut.
+  ///
+  /// DRAFT -> LIVE passe obligatoirement par _publishEvent().
+  /// Les autres changements restent sur EventDetailScreen.
   Future<void> _changeStatus(EventStatus status) async {
     final event = _event;
-    if (event == null || event.status == status) return;
+
+    if (event == null || event.status == status) {
+      return;
+    }
+
+    // Première publication.
+    if (event.status == EventStatus.draft && status == EventStatus.live) {
+      await _publishEvent();
+      return;
+    }
 
     try {
       await ref
           .read(organizerEventRepositoryProvider)
           .updateEvent(event.copyWith(status: status));
+
       await _loadEventData();
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Event status changed to ${status.name}.')),
-        );
-      }
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Event status changed to ${status.name}.')),
+      );
     } catch (error) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Unable to update status: $error')),
-        );
-      }
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Unable to update status: $error')),
+      );
     }
   }
 
   Future<void> _showStatusPicker() async {
     final event = _event;
+
     if (event == null) return;
 
     final selectedStatus = await showModalBottomSheet<EventStatus>(
       context: context,
-      builder: (context) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: EventStatus.values
-              .map(
-                (status) => ListTile(
-                  leading: Icon(_statusIcon(status)),
-                  title: Text(status.name.toUpperCase()),
-                  trailing: status == event.status
-                      ? const Icon(Icons.check)
-                      : null,
-                  onTap: () => Navigator.of(context).pop(status),
-                ),
-              )
-              .toList(),
-        ),
-      ),
+      builder: (context) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: EventStatus.values
+                .map(
+                  (status) => ListTile(
+                    leading: Icon(_statusIcon(status)),
+                    title: Text(status.name.toUpperCase()),
+                    trailing: status == event.status
+                        ? const Icon(Icons.check)
+                        : null,
+                    onTap: () {
+                      Navigator.of(context).pop(status);
+                    },
+                  ),
+                )
+                .toList(),
+          ),
+        );
+      },
     );
-    if (selectedStatus != null) await _changeStatus(selectedStatus);
+
+    if (selectedStatus != null) {
+      await _changeStatus(selectedStatus);
+    }
   }
 
   IconData _statusIcon(EventStatus status) {
     switch (status) {
       case EventStatus.draft:
         return Icons.edit_note;
+
       case EventStatus.live:
         return Icons.public;
+
       case EventStatus.completed:
         return Icons.check_circle_outline;
+
       case EventStatus.cancelled:
         return Icons.cancel_outlined;
     }
@@ -129,6 +211,7 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
 
   void _editEvent() {
     final event = _event;
+
     if (event == null) return;
 
     Navigator.of(context).push(
@@ -138,9 +221,12 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
           initialDescription: event.description,
           initialCategory: event.status.name,
           initialDate:
-              '${event.date.day.toString().padLeft(2, '0')}/${event.date.month.toString().padLeft(2, '0')}/${event.date.year}',
+              '${event.date.day.toString().padLeft(2, '0')}/'
+              '${event.date.month.toString().padLeft(2, '0')}/'
+              '${event.date.year}',
           initialTime:
-              '${event.date.hour.toString().padLeft(2, '0')}:${event.date.minute.toString().padLeft(2, '0')}',
+              '${event.date.hour.toString().padLeft(2, '0')}:'
+              '${event.date.minute.toString().padLeft(2, '0')}',
           initialLocation: event.location,
           initialCapacity: event.capacity.toString(),
           initialPrice: event.price.toStringAsFixed(2),
@@ -184,11 +270,17 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
   }) async {
     final dateParts = date.split('/');
     final timeParts = time.split(':');
+
     final parsedDate = dateParts.length == 3 && timeParts.length == 2
         ? DateTime.tryParse(
-            '${dateParts[2]}-${dateParts[1]}-${dateParts[0]} ${timeParts[0]}:${timeParts[1]}',
+            '${dateParts[2]}-'
+            '${dateParts[1]}-'
+            '${dateParts[0]} '
+            '${timeParts[0]}:'
+            '${timeParts[1]}',
           )
         : null;
+
     final updatedEvent = Event(
       id: event.id,
       title: title,
@@ -203,14 +295,28 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
       isBase64: event.isBase64,
     );
 
-    await ref.read(organizerEventRepositoryProvider).updateEvent(updatedEvent);
-    if (!mounted) return;
-    Navigator.of(context).pop();
-    await _loadEventData();
-    if (mounted) {
+    try {
+      await ref
+          .read(organizerEventRepositoryProvider)
+          .updateEvent(updatedEvent);
+
+      if (!mounted) return;
+
+      Navigator.of(context).pop();
+
+      await _loadEventData();
+
+      if (!mounted) return;
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Event updated successfully')),
       );
+    } catch (error) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Unable to update event: $error')));
     }
   }
 
@@ -218,10 +324,13 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
   Widget build(BuildContext context) {
     if (!_isLoading && _event != null) {
       final event = _event!;
+
       final titleParts = event.title.trim().split(RegExp(r'\s+'));
+
       final titleFirstPart = titleParts.length > 1
           ? titleParts.first
           : event.title;
+
       final titleSecondPart = titleParts.length > 1
           ? titleParts.skip(1).join(' ')
           : '';
@@ -232,9 +341,13 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
         eventTitleFirstPart: titleFirstPart,
         eventTitleSecondPart: titleSecondPart,
         category: event.status.name,
-        date: '${event.date.day}/${event.date.month}/${event.date.year}',
+        date:
+            '${event.date.day}/'
+            '${event.date.month}/'
+            '${event.date.year}',
         time:
-            '${event.date.hour.toString().padLeft(2, '0')}:${event.date.minute.toString().padLeft(2, '0')}',
+            '${event.date.hour.toString().padLeft(2, '0')}:'
+            '${event.date.minute.toString().padLeft(2, '0')}',
         location: event.location,
         description: event.description,
         placesTaken: event.currentAttendees,
@@ -243,7 +356,9 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
         onParticipantsTap: () {
           Navigator.of(context).push(
             MaterialPageRoute(
-              builder: (context) => EventParticipantsScreen(eventId: event.id),
+              builder: (context) {
+                return EventParticipantsScreen(eventId: event.id);
+              },
             ),
           );
         },
@@ -338,7 +453,9 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
                       _buildInfoRow(
                         Icons.calendar_today,
                         'Date',
-                        '${_event!.date.month}/${_event!.date.day}/${_event!.date.year}',
+                        '${_event!.date.month}/'
+                            '${_event!.date.day}/'
+                            '${_event!.date.year}',
                       ),
                       _buildInfoRow(
                         Icons.location_on,
@@ -353,7 +470,8 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
                       _buildInfoRow(
                         Icons.people,
                         'Attendees',
-                        '${_event!.currentAttendees}/${_event!.capacity}',
+                        '${_event!.currentAttendees}/'
+                            '${_event!.capacity}',
                       ),
                       const SizedBox(height: 32),
                       Card(
@@ -364,9 +482,11 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
                           onTap: () {
                             Navigator.of(context).push(
                               MaterialPageRoute(
-                                builder: (context) => EventParticipantsScreen(
-                                  eventId: widget.eventId,
-                                ),
+                                builder: (context) {
+                                  return EventParticipantsScreen(
+                                    eventId: widget.eventId,
+                                  );
+                                },
                               ),
                             );
                           },
@@ -407,12 +527,16 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
     switch (status.toLowerCase()) {
       case 'live':
         return Colors.green;
+
       case 'draft':
         return Colors.orange;
+
       case 'completed':
         return Colors.blue;
+
       case 'cancelled':
         return Colors.red;
+
       default:
         return Colors.grey;
     }

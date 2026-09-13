@@ -19,7 +19,6 @@ import '../../features/organizer/presentation/views/event_participants_screen.da
 import '../../features/organizer/presentation/views/event_published_screen.dart';
 import '../../features/organizer/presentation/views/organizer_alerts_screen.dart';
 import '../../features/organizer/presentation/views/organizer_events_screen.dart';
-import '../../features/organizer/presentation/views/organizer_main_screen.dart';
 import '../../features/organizer/presentation/views/organizer_settings_screen.dart';
 import '../../features/organizer/presentation/views/organizer_stats_screen.dart';
 
@@ -121,12 +120,9 @@ class AppRouter {
           builder: (_) => const AuthGuard(
             redirectRoute: welcome,
             requiredRole: UserRole.organizer,
-            child: OrganizerMainScreen(),
+            child: OrganizerEventsScreen(),
           ),
         );
-
-      case organizerEvents:
-        return _organizerRoute(const OrganizerEventsScreen());
 
       case organizerAlerts:
         return _organizerRoute(const OrganizerAlertsScreen());

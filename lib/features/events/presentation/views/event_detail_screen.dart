@@ -248,7 +248,7 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
                                 ),
                                 const SizedBox(width: 8),
                                 Text(
-                                  '${event.date} • ${event.time}',
+                                  '${event.displayDate} • ${event.time}',
                                   style: AppTypography.body(isDark),
                                 ),
                               ],
@@ -298,21 +298,33 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
                   status: userStatus,
                   availablePlaces: availablePlaces,
                   onReserve: () async {
-                    final reservation = ref
-                        .read(createReservationUseCaseProvider)
-                        .call(event: event, quantity: _quantity);
+                    try {
+                      final reservation = ref
+                          .read(createReservationUseCaseProvider)
+                          .call(event: event, quantity: _quantity);
 
-                    await ref
-                        .read(effectuerReservationUseCaseProvider)
-                        .call(reservation);
-                    ref.invalidate(mesBilletsProvider);
+                      await ref
+                          .read(effectuerReservationUseCaseProvider)
+                          .call(reservation);
+                      ref.invalidate(mesBilletsProvider);
+                      ref.invalidate(eventDetailProvider(widget.eventId));
+                      ref.invalidate(eventsFutureProvider);
+                      // Le home utilise désormais le flux temps réel : on le
+                      // relance pour refléter immédiatement les places restantes.
+                      ref.invalidate(eventsStreamProvider);
 
-                    if (!context.mounted) return;
-                    Navigator.pushNamed(
-                      context,
-                      AppRouter.reservationConfirmation,
-                      arguments: event,
-                    );
+                      if (!context.mounted) return;
+                      Navigator.pushNamed(
+                        context,
+                        AppRouter.reservationConfirmation,
+                        arguments: event,
+                      );
+                    } catch (error) {
+                      if (!context.mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Unable to book: $error')),
+                      );
+                    }
                   },
                   onCancel: () {},
                   onWaitlist: () {},

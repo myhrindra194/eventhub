@@ -117,7 +117,7 @@ class ConfirmationReservationScreen extends ConsumerWidget {
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
-                                  '${event.date} • ${event.time}',
+                                  '${event.displayDate} • ${event.time}',
                                   style: TextStyle(
                                     color: Colors.grey[400],
                                     fontSize: 13,

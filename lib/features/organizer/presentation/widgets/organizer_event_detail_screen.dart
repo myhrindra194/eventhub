@@ -1,11 +1,7 @@
-import 'dart:convert';
-import 'dart:typed_data';
-
 import 'package:flutter/material.dart';
 
 class OrganizerEventDetailScreen extends StatelessWidget {
   final String imageUrl;
-  final bool isBase64;
   final String eventTitleFirstPart;
   final String eventTitleSecondPart;
   final String category;
@@ -24,7 +20,6 @@ class OrganizerEventDetailScreen extends StatelessWidget {
   const OrganizerEventDetailScreen({
     super.key,
     required this.imageUrl,
-    this.isBase64 = false,
     required this.eventTitleFirstPart,
     required this.eventTitleSecondPart,
     required this.category,
@@ -373,19 +368,6 @@ class OrganizerEventDetailScreen extends StatelessWidget {
         size: 48,
       ),
     );
-
-    if (isBase64) {
-      try {
-        final bytes = base64Decode(imageUrl);
-        return Image.memory(
-          Uint8List.fromList(bytes),
-          fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) => errorFallback,
-        );
-      } on FormatException {
-        return errorFallback;
-      }
-    }
 
     if (imageUrl.startsWith('http')) {
       return Image.network(

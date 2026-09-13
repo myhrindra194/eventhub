@@ -1,6 +1,6 @@
 import 'dart:typed_data';
 
-import '../../domain/entities/event.dart';
+import '../../../events/domain/entities/event.dart';
 import '../../domain/repositories/event_repository.dart';
 import '../datasources/event_image_storage_datasource.dart';
 import '../datasources/event_remote_datasource.dart';
@@ -14,6 +14,11 @@ class EventRepositoryImpl implements EventRepository {
   @override
   Future<List<Event>> getEvents() async {
     return dataSource.getEvents();
+  }
+
+  @override
+  Stream<List<Event>> watchEvents() {
+    return dataSource.watchEvents();
   }
 
   @override

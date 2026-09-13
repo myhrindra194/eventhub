@@ -39,6 +39,12 @@ dev_dependencies:
   flutter_lints: ^5.0.0
   flutter_launcher_icons: ^0.13.1
 
+  # Tests : mocks + Firestore en mémoire + règles de sécurité.
+  mocktail: ^1.0.4
+  fake_cloud_firestore: ^4.0.0
+  fake_firebase_security_rules: ^0.5.4
+  firebase_auth_mocks: ^0.15.2
+
 # Configuration pour générer le logo de l'application
 flutter_launcher_icons:
   android: true

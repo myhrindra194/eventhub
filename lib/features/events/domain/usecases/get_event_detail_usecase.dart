@@ -6,12 +6,7 @@ class GetEventDetailUseCase {
 
   GetEventDetailUseCase(this.repository);
 
-  Future<Event?> call(String id) async {
-    final events = await repository.getEvents();
-    try {
-      return events.firstWhere((event) => event.id == id);
-    } catch (_) {
-      return null;
-    }
+  Future<Event?> call(String id) {
+    return repository.getEventById(id);
   }
 }

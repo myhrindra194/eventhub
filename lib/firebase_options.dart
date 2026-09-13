@@ -64,7 +64,8 @@ class DefaultFirebaseOptions {
     messagingSenderId: '930281380072',
     projectId: 'eventhub-d411f',
     storageBucket: 'eventhub-d411f.firebasestorage.app',
-    iosClientId: '930281380072-i20pglc1crsues71usoe3gs14a4fvvic.apps.googleusercontent.com',
+    iosClientId:
+        '930281380072-i20pglc1crsues71usoe3gs14a4fvvic.apps.googleusercontent.com',
     iosBundleId: 'com.example.eventhub',
   );
 
@@ -74,7 +75,8 @@ class DefaultFirebaseOptions {
     messagingSenderId: '930281380072',
     projectId: 'eventhub-d411f',
     storageBucket: 'eventhub-d411f.firebasestorage.app',
-    iosClientId: '930281380072-i20pglc1crsues71usoe3gs14a4fvvic.apps.googleusercontent.com',
+    iosClientId:
+        '930281380072-i20pglc1crsues71usoe3gs14a4fvvic.apps.googleusercontent.com',
     iosBundleId: 'com.example.eventhub',
   );
 

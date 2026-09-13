@@ -1,12 +1,9 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../core/di/auth_dependencies.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../core/widgets/app_header.dart';
-import '../../domain/entities/event.dart';
+import '../../../events/domain/entities/event.dart';
 import '../providers/organizer_events_provider.dart';
 import '../widgets/organizer_bottom_nav_bar.dart';
 import 'event_detail_screen.dart';
@@ -73,59 +70,50 @@ class _OrganizerEventsContentState
     extends ConsumerState<OrganizerEventsContent> {
   List<Event> _events = [];
   bool _isLoading = true;
+  ProviderSubscription<AsyncValue<List<Event>>>? _eventsSubscription;
 
   @override
   void initState() {
     super.initState();
-    _loadEvents();
+    // Écoute réactive : la liste se met à jour après create/update/delete
+    // sans setState manuel + invalidate.
+    _eventsSubscription = ref.listenManual(organizerEventsStreamProvider, (
+      _,
+      next,
+    ) {
+      if (!mounted) return;
+      next.when(
+        data: (events) => setState(() {
+          _events = events;
+          _isLoading = false;
+        }),
+        loading: () => setState(() => _isLoading = true),
+        error: (error, _) {
+          setState(() => _isLoading = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Unable to load events: $error')),
+          );
+        },
+      );
+    }, fireImmediately: true);
+  }
+
+  @override
+  void dispose() {
+    _eventsSubscription?.close();
+    super.dispose();
   }
 
   Future<void> _loadEvents() async {
-    if (mounted) {
-      setState(() {
-        _isLoading = true;
-      });
-    }
-    try {
-      final organizerId = ref.read(firebaseAuthProvider).currentUser?.uid;
-
-      if (organizerId == null) {
-        throw StateError('An authenticated organizer is required.');
-      }
-
-      // Force a fresh request from the repository/Firestore.
-      ref.invalidate(organizerEventsProvider);
-
-      final events = await ref.read(organizerEventsProvider.future);
-
-      final ownEvents = events
-          .where((event) => event.organizerId == organizerId)
-          .toList();
-
-      if (!mounted) return;
-
-      setState(() {
-        _events = ownEvents;
-        _isLoading = false;
-      });
-    } catch (error) {
-      if (!mounted) return;
-
-      setState(() {
-        _isLoading = false;
-      });
-
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Unable to load events: $error')));
-    }
+    // Conservé pour le pull-to-refresh explicite si besoin futur.
+    // Le stream met déjà à jour la liste automatiquement.
+    ref.invalidate(organizerEventsStreamProvider);
   }
 
   Future<void> _publishEvent(Event event) async {
     try {
       await ref.read(organizerEventRepositoryProvider).publishEvent(event.id);
-
-      await _loadEvents();
+      // Pas de reload manuel : le stream Firestore pousse la mise à jour.
     } catch (error) {
       if (!mounted) return;
 
@@ -427,18 +415,6 @@ class _OrganizerEventsContentState
   }
 
   Widget _buildEventImage(Event event) {
-    if (event.isBase64) {
-      return Image.memory(
-        base64Decode(event.imageUrl),
-        height: 180,
-        width: double.infinity,
-        fit: BoxFit.cover,
-        errorBuilder: (context, error, stackTrace) {
-          return _buildImageError();
-        },
-      );
-    }
-
     if (event.imageUrl.startsWith('http')) {
       return Image.network(
         event.imageUrl,

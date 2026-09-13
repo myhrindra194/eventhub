@@ -117,8 +117,14 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                                 children: [
                                   Image.asset(
                                     'assets/images/logoblanc.png',
-                                    width: (size.width * 0.28).clamp(96.0, 150.0),
-                                    height: (size.width * 0.28).clamp(96.0, 150.0),
+                                    width: (size.width * 0.28).clamp(
+                                      96.0,
+                                      150.0,
+                                    ),
+                                    height: (size.width * 0.28).clamp(
+                                      96.0,
+                                      150.0,
+                                    ),
                                     fit: BoxFit.contain,
                                   ),
                                   const SizedBox(height: 24),
@@ -140,7 +146,9 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                                     style: TextStyle(
                                       fontSize: subtitleFontSize,
                                       fontWeight: FontWeight.w400,
-                                      color: Colors.white.withValues(alpha: 0.85),
+                                      color: Colors.white.withValues(
+                                        alpha: 0.85,
+                                      ),
                                       height: 1.4,
                                     ),
                                   ),

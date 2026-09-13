@@ -2,7 +2,7 @@ import 'dart:typed_data';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-import '../../domain/entities/event.dart';
+import '../../../events/domain/entities/event.dart';
 import 'event_image_storage_datasource.dart';
 
 class EventRemoteDataSource {
@@ -13,6 +13,15 @@ class EventRemoteDataSource {
 
   CollectionReference<Map<String, dynamic>> get _events =>
       firestore.collection('events');
+
+  /// Stream temps réel des événements de l'organizer : plus besoin de
+  /// invalidate() manuel après create/update/delete/publish.
+  Stream<List<Event>> watchEvents() {
+    return _events
+        .where('organizerId', isEqualTo: organizerId)
+        .snapshots()
+        .map((snapshot) => snapshot.docs.map(_fromDocument).toList());
+  }
 
   Future<List<Event>> getEvents() async {
     final snapshot = await _events
@@ -60,7 +69,7 @@ class EventRemoteDataSource {
         fileExtension: imageExtension,
       );
 
-      saved = saved.copyWith(imageUrl: imageUrl, isBase64: false);
+      saved = saved.copyWith(imageUrl: imageUrl);
     }
 
     await reference.set(_toMap(saved));
@@ -109,6 +118,15 @@ class EventRemoteDataSource {
   Future<List<Map<String, dynamic>>> getEventParticipants(
     String eventId,
   ) async {
+    // On vérifie d'abord que l'événement appartient bien à cet organisateur :
+    // les règles Firestore l'autorisent implicitement, mais un organizerId
+    // erroné (session changée) produirait sinon une liste vide trompeuse.
+    final event = await getEventById(eventId);
+
+    if (event == null) {
+      throw StateError('Event not found or access denied.');
+    }
+
     final snapshot = await firestore
         .collection('reservations')
         .where('eventId', isEqualTo: eventId)
@@ -128,15 +146,12 @@ class EventRemoteDataSource {
         ? timestamp.toDate()
         : DateTime.tryParse(timestamp?.toString() ?? '') ?? DateTime.now();
 
-    final status = EventStatus.values.firstWhere(
-      (value) => value.name == data['status'],
-      orElse: () => EventStatus.draft,
-    );
+    final status = eventStatusFromString(data['status']?.toString());
 
-    final category = EventCategory.values.firstWhere(
-      (value) => value.name == data['category'],
-      orElse: () => EventCategory.other,
-    );
+    final category = eventCategoryFromString(data['category']?.toString());
+
+    final capacity = (data['capacity'] as num?)?.toInt() ?? 0;
+    final currentAttendees = (data['currentAttendees'] as num?)?.toInt() ?? 0;
 
     return Event(
       id: document.id,
@@ -144,12 +159,13 @@ class EventRemoteDataSource {
       description: data['description'] as String? ?? '',
       imageUrl: data['imageUrl'] as String? ?? '',
       date: date,
-      capacity: (data['capacity'] as num?)?.toInt() ?? 0,
-      currentAttendees: (data['currentAttendees'] as num?)?.toInt() ?? 0,
+      capacity: capacity < 0 ? 0 : capacity,
+      // Clamp : une donnée corrompue ne doit pas produire
+      // negative availablePlaces plus loin dans l'UI.
+      currentAttendees: currentAttendees.clamp(0, capacity < 0 ? 0 : capacity),
       status: status,
       location: data['location'] as String? ?? '',
       price: (data['price'] as num?)?.toDouble() ?? 0,
-      isBase64: data['isBase64'] as bool? ?? false,
       organizerId: data['organizerId'] as String? ?? '',
       category: category,
     );
@@ -166,7 +182,6 @@ class EventRemoteDataSource {
       'status': event.status.name,
       'location': event.location,
       'price': event.price,
-      'isBase64': event.isBase64,
       'organizerId': event.organizerId,
 
       // Event category

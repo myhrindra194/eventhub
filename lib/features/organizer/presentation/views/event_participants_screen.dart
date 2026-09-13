@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../domain/entities/event.dart';
+import '../../../events/domain/entities/event.dart';
 import '../../../../core/widgets/app_header.dart';
 import '../providers/organizer_events_provider.dart';
 
@@ -29,16 +29,27 @@ class _EventParticipantsScreenState
   }
 
   Future<void> _loadData() async {
-    final repository = ref.read(organizerEventRepositoryProvider);
-    final event = await repository.getEventById(widget.eventId);
-    final participants = await repository.getEventParticipants(widget.eventId);
+    try {
+      final repository = ref.read(organizerEventRepositoryProvider);
+      final event = await repository.getEventById(widget.eventId);
+      final participants = await repository.getEventParticipants(
+        widget.eventId,
+      );
 
-    setState(() {
-      _event = event;
-      _participants = participants;
-      _filteredParticipants = participants;
-      _isLoading = false;
-    });
+      if (!mounted) return;
+      setState(() {
+        _event = event;
+        _participants = participants;
+        _filteredParticipants = participants;
+        _isLoading = false;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Unable to load data: $error')));
+    }
   }
 
   void _filterParticipants(String query) {
@@ -47,8 +58,8 @@ class _EventParticipantsScreenState
         _filteredParticipants = _participants;
       } else {
         _filteredParticipants = _participants.where((participant) {
-          final name = participant['name'].toString().toLowerCase();
-          final email = participant['email'].toString().toLowerCase();
+          final name = (participant['name'] ?? '').toString().toLowerCase();
+          final email = (participant['email'] ?? '').toString().toLowerCase();
           final searchQuery = query.toLowerCase();
           return name.contains(searchQuery) || email.contains(searchQuery);
         }).toList();
@@ -59,15 +70,22 @@ class _EventParticipantsScreenState
   double _calculateRevenue() {
     if (_event == null) return 0.0;
     final paidParticipants = _participants
-        .where((p) => p['status'] == 'confirmed')
+        .where(
+          (p) => (p['status'] ?? '').toString().toLowerCase() == 'confirmed',
+        )
         .length;
     return paidParticipants * _event!.price;
   }
 
   void _exportGuestList() {
-    // Export functionality placeholder
+    // TODO MVP : générer un CSV et le partager via share_plus.
+    // Pour l'instant on confirme que la liste affichée est exportable.
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Guest list exported successfully')),
+      SnackBar(
+        content: Text(
+          'Guest list ready: ${_filteredParticipants.length} attendee(s)',
+        ),
+      ),
     );
   }
 
@@ -279,8 +297,9 @@ class _ParticipantTile extends StatelessWidget {
                 'assets/images/user_avatar.jpg',
               ),
               backgroundColor: secondaryTextColor.withValues(alpha: 0.18),
-              child: participant['name'] != null
-                  ? Text(participant['name'][0])
+              onBackgroundImageError: (_, __) {},
+              child: (participant['name']?.toString().isNotEmpty == true)
+                  ? Text(participant['name'].toString()[0])
                   : null,
             ),
             const SizedBox(width: 12),
@@ -307,11 +326,13 @@ class _ParticipantTile extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
-                color: _getStatusColor(participant['status']),
+                color: _getStatusColor(
+                  (participant['status'] ?? 'unknown').toString(),
+                ),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Text(
-                participant['status'].toUpperCase(),
+                (participant['status'] ?? 'unknown').toString().toUpperCase(),
                 style: const TextStyle(
                   color: Colors.white,
                   fontSize: 10,

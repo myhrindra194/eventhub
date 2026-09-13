@@ -17,9 +17,11 @@ service cloud.firestore {
     }
 
     function userRole() {
-      return get(
+      return exists(
         /databases/$(database)/documents/users/$(request.auth.uid)
-      ).data.role;
+      ) ? get(
+        /databases/$(database)/documents/users/$(request.auth.uid)
+      ).data.role : '';
     }
 
     function isParticipant() {
@@ -40,7 +42,10 @@ service cloud.firestore {
     match /users/{userId} {
 
       // Un utilisateur peut créer son propre profil.
-      allow create: if isOwner(userId);
+      // Le rôle est validé : participant ou organizer uniquement.
+      allow create: if isOwner(userId)
+        && request.resource.data.keys().hasOnly(['name', 'email', 'role'])
+        && request.resource.data.role in ['participant', 'organizer'];
 
       // Un utilisateur peut consulter et modifier
       // uniquement son propre profil.
@@ -70,15 +75,33 @@ service cloud.firestore {
       // Seul un organisateur peut créer un événement.
       // organizerId doit correspondre à son UID.
       allow create: if isOrganizer()
-        && request.resource.data.organizerId == request.auth.uid;
+        && request.resource.data.organizerId == request.auth.uid
+        && request.resource.data.status in ['draft', 'live', 'completed', 'cancelled']
+        && request.resource.data.capacity is int
+        && request.resource.data.capacity > 0;
 
       // Un organisateur peut modifier uniquement
       // ses propres événements.
       // organizerId ne peut pas être changé.
-      allow update: if isOrganizer()
-        && resource.data.organizerId == request.auth.uid
-        && request.resource.data.organizerId
-            == resource.data.organizerId;
+      //
+      // Un participant ne peut qu'incrémenter currentAttendees, sur un
+      // événement publié, sans dépasser la capacité : c'est ce que fait la
+      // transaction de réservation. Toute autre écriture est refusée.
+      allow update: if (
+          isOrganizer()
+          && resource.data.organizerId == request.auth.uid
+          && request.resource.data.organizerId
+              == resource.data.organizerId
+        ) || (
+          isParticipant()
+          && resource.data.status == 'live'
+          && request.resource.data.diff(resource.data).affectedKeys()
+              .hasOnly(['currentAttendees', 'updatedAt'])
+          && request.resource.data.currentAttendees is int
+          && request.resource.data.currentAttendees
+              > resource.data.currentAttendees
+          && request.resource.data.currentAttendees <= resource.data.capacity
+        );
 
       // Un organisateur peut supprimer uniquement
       // ses propres événements.
@@ -115,12 +138,17 @@ service cloud.firestore {
       // Organisateur :
       // uniquement les réservations liées
       // à ses propres événements.
+      // On vérifie que l'événement existe pour éviter un get() sur un doc absent.
       allow read: if isAuthenticated()
         && (
           resource.data.userId == request.auth.uid
           ||
           (
             isOrganizer()
+            && resource.data.eventId is string
+            && exists(
+              /databases/$(database)/documents/events/$(resource.data.eventId)
+            )
             && get(
               /databases/$(database)/documents/events/$(resource.data.eventId)
             ).data.organizerId == request.auth.uid

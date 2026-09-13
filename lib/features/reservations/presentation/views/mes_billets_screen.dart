@@ -119,15 +119,10 @@ class MesBilletsScreen extends ConsumerWidget {
     BuildContext context,
     List<Reservation> loadedReservations,
   ) {
-    // Séparation upcoming / past selon le statut de la réservation.
-    // Adaptez cette condition si votre entité Reservation expose une
-    // date exploitable (ex. reservation.eventDate.isBefore(DateTime.now())).
-    final upcoming = loadedReservations
-        .where((r) => r.status.toUpperCase() != 'PAST')
-        .toList();
-    final past = loadedReservations
-        .where((r) => r.status.toUpperCase() == 'PAST')
-        .toList();
+    // Statut normalisé en minuscules côté Firestore ('confirmed', ...).
+    // On utilise l'extension isPast / displayStatus de l'entité.
+    final upcoming = loadedReservations.where((r) => !r.isPast).toList();
+    final past = loadedReservations.where((r) => r.isPast).toList();
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
@@ -207,9 +202,9 @@ class MesBilletsScreen extends ConsumerWidget {
                           Text(
                             reservation.date,
                             style: TextStyle(
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .onSurfaceVariant,
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurfaceVariant,
                               fontSize: 14,
                             ),
                           ),
@@ -246,9 +241,9 @@ class MesBilletsScreen extends ConsumerWidget {
                           color: Color(0xFF00C853),
                         ),
                         const SizedBox(width: 6),
-                        const Text(
-                          'CONFIRMED',
-                          style: TextStyle(
+                        Text(
+                          reservation.displayStatus,
+                          style: const TextStyle(
                             color: Color(0xFF00C853),
                             fontSize: 12,
                             fontWeight: FontWeight.bold,
@@ -289,10 +284,9 @@ class MesBilletsScreen extends ConsumerWidget {
             width: 48,
             height: 48,
             decoration: BoxDecoration(
-              color: Theme.of(context)
-                  .colorScheme
-                  .onSurfaceVariant
-                  .withValues(alpha: 0.08),
+              color: Theme.of(
+                context,
+              ).colorScheme.onSurfaceVariant.withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(
@@ -309,9 +303,7 @@ class MesBilletsScreen extends ConsumerWidget {
                 Text(
                   reservation.eventTitle,
                   style: TextStyle(
-                    color: Theme.of(context)
-                        .colorScheme
-                        .onSurfaceVariant,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
                   ),
@@ -320,10 +312,9 @@ class MesBilletsScreen extends ConsumerWidget {
                 Text(
                   reservation.date,
                   style: TextStyle(
-                    color: Theme.of(context)
-                        .colorScheme
-                        .onSurfaceVariant
-                        .withValues(alpha: 0.7),
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
                     fontSize: 13,
                   ),
                 ),
@@ -340,8 +331,8 @@ class MesBilletsScreen extends ConsumerWidget {
       builder: (context, constraints) {
         const dashWidth = 5.0;
         const dashSpace = 4.0;
-        final dashCount =
-            (constraints.maxWidth / (dashWidth + dashSpace)).floor();
+        final dashCount = (constraints.maxWidth / (dashWidth + dashSpace))
+            .floor();
         return Row(
           children: List.generate(dashCount, (_) {
             return Padding(
@@ -349,10 +340,9 @@ class MesBilletsScreen extends ConsumerWidget {
               child: Container(
                 width: dashWidth,
                 height: 1,
-                color: Theme.of(context)
-                    .colorScheme
-                    .onSurfaceVariant
-                    .withValues(alpha: 0.25),
+                color: Theme.of(
+                  context,
+                ).colorScheme.onSurfaceVariant.withValues(alpha: 0.25),
               ),
             );
           }),

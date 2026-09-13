@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'event_participants_screen.dart';
-import '../../domain/entities/event.dart';
+import '../../../events/domain/entities/event.dart';
 import '../providers/organizer_events_provider.dart';
 import '../../../../core/widgets/app_header.dart';
 import '../widgets/organizer_event_detail_screen.dart';
@@ -219,7 +219,7 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
         builder: (_) => EditEventScreen(
           initialTitle: event.title,
           initialDescription: event.description,
-          initialCategory: event.status.name,
+          initialCategory: event.category.name,
           initialDate:
               '${event.date.day.toString().padLeft(2, '0')}/'
               '${event.date.month.toString().padLeft(2, '0')}/'
@@ -230,7 +230,7 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
           initialLocation: event.location,
           initialCapacity: event.capacity.toString(),
           initialPrice: event.price.toStringAsFixed(2),
-          headerImageUrl: event.isBase64 ? null : event.imageUrl,
+          headerImageUrl: event.imageUrl.isEmpty ? null : event.imageUrl,
           onSave:
               ({
                 required title,
@@ -281,18 +281,13 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
           )
         : null;
 
-    final updatedEvent = Event(
-      id: event.id,
+    final updatedEvent = event.copyWith(
       title: title,
       description: description,
-      imageUrl: event.imageUrl,
       date: parsedDate ?? event.date,
       capacity: int.tryParse(capacity) ?? event.capacity,
-      currentAttendees: event.currentAttendees,
-      status: event.status,
       location: location,
       price: double.tryParse(price.replaceAll(',', '.')) ?? event.price,
-      isBase64: event.isBase64,
     );
 
     try {
@@ -337,10 +332,9 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
 
       return OrganizerEventDetailScreen(
         imageUrl: event.imageUrl,
-        isBase64: event.isBase64,
         eventTitleFirstPart: titleFirstPart,
         eventTitleSecondPart: titleSecondPart,
-        category: event.status.name,
+        category: event.category.name,
         date:
             '${event.date.day}/'
             '${event.date.month}/'

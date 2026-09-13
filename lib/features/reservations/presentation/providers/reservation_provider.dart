@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/di/auth_dependencies.dart';
 import '../../data/datasources/reservation_remote_data_source.dart';
 import '../../data/repositories/reservation_repository_impl.dart';
 import '../../domain/entities/reservation.dart';
@@ -9,26 +10,29 @@ import '../../domain/usecases/create_reservation_usecase.dart';
 
 final reservationRepositoryProvider = Provider<ReservationRepository>((ref) {
   return ReservationRepositoryImpl(
-    remoteDataSource: ReservationRemoteDataSourceImpl(),
+    remoteDataSource: ReservationRemoteDataSourceImpl(
+      firestore: ref.watch(firestoreProvider),
+      firebaseAuth: ref.watch(firebaseAuthProvider),
+    ),
   );
 });
 
 final obtenirBilletsUseCaseProvider =
     Provider<ObtenirBilletsUtilisateurUseCase>((ref) {
       return ObtenirBilletsUtilisateurUseCase(
-        ref.read(reservationRepositoryProvider),
+        ref.watch(reservationRepositoryProvider),
       );
     });
 
 final mesBilletsProvider = FutureProvider<List<Reservation>>((ref) async {
-  final useCase = ref.read(obtenirBilletsUseCaseProvider);
-  return await useCase();
+  final useCase = ref.watch(obtenirBilletsUseCaseProvider);
+  return useCase();
 });
 
 final effectuerReservationUseCaseProvider =
     Provider<EffectuerReservationUseCase>((ref) {
       return EffectuerReservationUseCase(
-        ref.read(reservationRepositoryProvider),
+        ref.watch(reservationRepositoryProvider),
       );
     });
 

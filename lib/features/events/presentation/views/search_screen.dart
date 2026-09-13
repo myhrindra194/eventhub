@@ -19,6 +19,10 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
   void initState() {
     super.initState();
     _searchController = TextEditingController();
+    // Rebuild pour mettre à jour la croix (suffixIcon) quand le texte change.
+    _searchController.addListener(() {
+      if (mounted) setState(() {});
+    });
   }
 
   @override

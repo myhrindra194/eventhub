@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
-import 'dart:io';
 import 'dart:typed_data';
 
-import '../../domain/entities/event.dart';
+import '../../../events/domain/entities/event.dart';
 import '../providers/organizer_events_provider.dart';
 
 class CreateEventScreen extends ConsumerStatefulWidget {
@@ -30,7 +29,6 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
 
   final ImagePicker _imagePicker = ImagePicker();
 
-  File? _selectedImage;
   Uint8List? _imageBytes;
   String? _imageExtension;
 
@@ -93,9 +91,11 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
         final bytes = await image.readAsBytes();
 
         setState(() {
-          _selectedImage = File(image.path);
+          // Pas de File() ici : incompatible Web. On garde uniquement
+          // les bytes pour l'upload + preview via Image.memory.
           _imageBytes = bytes;
-          _imageExtension = image.name.split('.').last;
+          final parts = image.name.split('.');
+          _imageExtension = parts.length > 1 ? parts.last : 'jpg';
         });
       }
     } catch (e) {
@@ -177,7 +177,6 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
       status: EventStatus.draft,
       location: _locationController.text.trim(),
       price: price,
-      isBase64: false,
       organizerId: '',
       category: _selectedCategory,
     );
@@ -273,15 +272,15 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
                     border: Border.all(color: borderColor, width: 1.5),
                   ),
 
-                  child: _selectedImage != null
+                  child: _imageBytes != null
                       ? Stack(
                           children: [
                             Positioned.fill(
                               child: ClipRRect(
                                 borderRadius: BorderRadius.circular(16),
 
-                                child: Image.file(
-                                  _selectedImage!,
+                                child: Image.memory(
+                                  _imageBytes!,
                                   fit: BoxFit.cover,
                                 ),
                               ),
@@ -294,7 +293,6 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
                               child: GestureDetector(
                                 onTap: () {
                                   setState(() {
-                                    _selectedImage = null;
                                     _imageBytes = null;
                                     _imageExtension = null;
                                   });

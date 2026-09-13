@@ -62,20 +62,22 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
     if (!_validate()) return;
 
     setState(() => _isLoading = true);
-    await ref
-        .read(authProvider.notifier)
-        .sendPasswordResetEmail(_emailController.text.trim());
 
-    if (!mounted) return;
-    final authState = ref.read(authProvider);
-    setState(() => _isLoading = false);
-
-    if (authState.hasError) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(authErrorMessage(authState.error))),
-      );
+    try {
+      await ref
+          .read(authProvider.notifier)
+          .sendPasswordResetEmail(_emailController.text.trim());
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(authErrorMessage(error))));
       return;
     }
+
+    if (!mounted) return;
+    setState(() => _isLoading = false);
 
     ScaffoldMessenger.of(
       context,

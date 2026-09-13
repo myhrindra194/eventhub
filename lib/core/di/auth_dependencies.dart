@@ -13,12 +13,19 @@ import '../../features/auth/domain/usecases/logout_usecase.dart';
 import '../../features/auth/domain/usecases/register_usecase.dart';
 import '../../features/auth/domain/usecases/send_password_reset_email_usecase.dart';
 
+/// Overrides pour les tests (fake Firestore / fake FirebaseAuth).
+/// Ne pas utiliser en prod : les providers ci-dessous utilisent les
+/// singletons Firebase par défaut.
+final firebaseAuthOverrideProvider = Provider<FirebaseAuth?>((ref) => null);
+
+final firestoreOverrideProvider = Provider<FirebaseFirestore?>((ref) => null);
+
 final firebaseAuthProvider = Provider<FirebaseAuth>(
-  (ref) => FirebaseAuth.instance,
+  (ref) => ref.watch(firebaseAuthOverrideProvider) ?? FirebaseAuth.instance,
 );
 
 final firestoreProvider = Provider<FirebaseFirestore>(
-  (ref) => FirebaseFirestore.instance,
+  (ref) => ref.watch(firestoreOverrideProvider) ?? FirebaseFirestore.instance,
 );
 
 final authAvailabilityProvider = Provider<bool>(

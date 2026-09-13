@@ -14,9 +14,18 @@ class HomeScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final eventsAsync = ref.watch(eventsFutureProvider);
+    final eventsAsync = ref.watch(eventsStreamProvider);
     final selectedCategory = ref.watch(selectedCategoryProvider);
-    final categories = ['All', 'Music', 'Tech', 'Sport'];
+    // Aligné avec EventCategory : conference, concert, sport, workshop,
+    // festival, other. On garde des labels lisibles.
+    final categories = [
+      'All',
+      'Concert',
+      'Conference',
+      'Sport',
+      'Workshop',
+      'Festival',
+    ];
 
     final theme = Theme.of(context);
 
@@ -83,7 +92,7 @@ class HomeScreen extends ConsumerWidget {
                         loading: () => const HomeSkeleton(),
                         error: (err, stack) => Center(
                           child: StateCard.connectionLost(
-                            onRetry: () => ref.refresh(eventsFutureProvider),
+                            onRetry: () => ref.invalidate(eventsStreamProvider),
                           ),
                         ),
                         data: (events) {

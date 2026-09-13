@@ -100,17 +100,25 @@ class AuthNotifier extends Notifier<AsyncValue<User?>> {
     }
   }
 
+  /// Envoie l'email de réinitialisation sans jamais casser la session.
+  ///
+  /// L'erreur éventuelle est relayée à l'appelant (voir
+  /// ForgotPasswordScreen) au lieu d'être stockée dans [state] : mettre
+  /// [state] en erreur écrase l'utilisateur courant et déclenche une
+  /// redirection par AuthGuard.
   Future<void> sendPasswordResetEmail(String email) async {
-    final previousUser = state is AsyncData<User?>
-        ? (state as AsyncData<User?>).value
-        : null;
+    final previousState = state;
     state = const AsyncValue.loading();
 
     try {
       await _sendPasswordResetEmailUseCase(email);
-      state = AsyncValue.data(previousUser);
     } catch (error, stackTrace) {
-      state = AsyncValue.error(error, stackTrace);
+      state = previousState;
+      Error.throwWithStackTrace(error, stackTrace);
     }
+
+    // Ne pas écraser la session : on restaure l'état précédent,
+    // sinon l'utilisateur connecté est déconnecté visuellement.
+    state = previousState;
   }
 }

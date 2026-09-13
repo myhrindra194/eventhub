@@ -66,6 +66,11 @@ class AuthRemoteDataSource {
       );
     }
 
+    // S'assurer que le profil Firestore existe, comme pour le login Google,
+    // pour que les règles `userRole()` / `isParticipant()` puissent
+    // s'évaluer (elles dépendent de l'existence du document users/{uid}).
+    await _ensureProfile(user);
+
     return _toModel(user);
   }
 
@@ -95,14 +100,29 @@ class AuthRemoteDataSource {
   }
 
   Future<void> logout() async {
-    if (!kIsWeb) await _googleSignIn.signOut();
+    // GoogleSignIn.signOut() peut échouer sur certaines plateformes si non
+    // initialisé ; on l'isole pour ne pas bloquer le signOut Firebase.
+    if (!kIsWeb) {
+      try {
+        await _googleSignIn.signOut();
+      } catch (_) {
+        // Échec silencieux : le signOut Firebase est le critère principal.
+      }
+    }
     await _firebaseAuth.signOut();
   }
 
   Stream<UserModel?> authStateChanges() {
     return _firebaseAuth.authStateChanges().asyncMap((user) async {
       if (user == null) return null;
-      return _toModel(user);
+      // Si le document utilisateur n'est pas encore disponible
+      // (race condition après création/inscription), on retourne un modèle
+      // minimal plutôt que de faire échouer le stream.
+      try {
+        return await _toModel(user);
+      } catch (e) {
+        return UserModel.fromFirebase(user, profile: null);
+      }
     });
   }
 

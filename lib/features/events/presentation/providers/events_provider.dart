@@ -45,6 +45,13 @@ final eventsFutureProvider = FutureProvider<List<Event>>((ref) async {
   return await useCase(category: category);
 });
 
+/// Flux temps réel : le home se met à jour quand un organisateur publie,
+/// modifie (places restantes) ou supprime un événement.
+final eventsStreamProvider = StreamProvider<List<Event>>((ref) {
+  final category = ref.watch(selectedCategoryProvider);
+  return ref.watch(eventRepositoryProvider).watchEvents(category: category);
+});
+
 // Retrieve an event by ID.
 final eventDetailProvider = FutureProvider.family<Event?, String>((
   ref,

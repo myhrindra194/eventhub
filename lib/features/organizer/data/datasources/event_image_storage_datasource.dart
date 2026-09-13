@@ -5,13 +5,25 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 class EventImageStorageDataSource {
   static const defaultBucketName = 'eventhub-images';
 
-  final SupabaseClient client;
+  final SupabaseClient? client;
   final String bucketName;
 
   EventImageStorageDataSource(
     this.client, {
     this.bucketName = defaultBucketName,
   });
+
+  SupabaseClient get _client {
+    final c = client;
+    if (c == null) {
+      throw StateError(
+        'Supabase Storage is not configured. '
+        'Set SUPABASE_URL / SUPABASE_ANON_KEY (.env ou --dart-define) '
+        'pour uploader une image, ou créez l\'événement sans image.',
+      );
+    }
+    return c;
+  }
 
   Future<String> upload({
     required Uint8List bytes,
@@ -21,7 +33,7 @@ class EventImageStorageDataSource {
   }) async {
     final extension = fileExtension.toLowerCase().replaceFirst('.', '');
     final path = 'events/$organizerId/$eventId.$extension';
-    final storage = client.storage.from(bucketName);
+    final storage = _client.storage.from(bucketName);
 
     try {
       await storage.uploadBinary(
@@ -58,7 +70,7 @@ class EventImageStorageDataSource {
   }
 
   Future<void> delete(String storagePath) async {
-    await client.storage.from(bucketName).remove([storagePath]);
+    await _client.storage.from(bucketName).remove([storagePath]);
   }
 
   String _contentType(String extension) {
@@ -73,4 +85,10 @@ class EventImageStorageDataSource {
         return 'image/jpeg';
     }
   }
+}
+
+/// Fallback quand Supabase n'est pas initialisé : null client => _client
+/// lève un message clair au lieu de crasher le provider.
+class EventImageStorageNop extends EventImageStorageDataSource {
+  EventImageStorageNop() : super(null);
 }

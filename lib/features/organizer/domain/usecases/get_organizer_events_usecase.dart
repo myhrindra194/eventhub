@@ -1,4 +1,4 @@
-import '../entities/event.dart';
+import '../../../events/domain/entities/event.dart';
 import '../repositories/event_repository.dart';
 
 class GetOrganizerEventsUseCase {

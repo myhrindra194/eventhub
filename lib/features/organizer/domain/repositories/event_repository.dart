@@ -1,11 +1,13 @@
 import 'dart:typed_data';
 
-import '../entities/event.dart';
+import '../../../events/domain/entities/event.dart';
 
 abstract class EventRepository {
   Future<List<Event>> getEvents();
 
   Future<Event?> getEventById(String id);
+
+  Stream<List<Event>> watchEvents();
 
   Future<Event> createEvent(
     Event event, {

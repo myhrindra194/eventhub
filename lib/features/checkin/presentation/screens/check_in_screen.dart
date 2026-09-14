@@ -298,6 +298,11 @@ class _VerdictBand extends StatelessWidget {
                 AppDateFormats.time(verdict.checkedInAt ?? DateTime.now()),
               ),
             ),
+            CheckInStatus.unpaid => (
+              AppTone.danger,
+              Icons.credit_card_off_rounded,
+              AppStrings.ticketUnpaidAtDoor,
+            ),
             CheckInStatus.cancelled => (
               AppTone.danger,
               Icons.block_rounded,

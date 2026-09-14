@@ -42,6 +42,8 @@
                 <data android:host="eventhub-d411f.web.app"/>
                 <data android:host="eventhub-d411f.firebaseapp.com"/>
                 <data android:pathPrefix="/e/"/>
+                <!-- Return from Stripe Checkout (F-11). -->
+                <data android:pathPrefix="/pay/"/>
             </intent-filter>
         </activity>
 

@@ -1,5 +1,6 @@
 import 'package:eventhub/core/result/result.dart';
 import 'package:eventhub/features/auth/domain/entities/app_user.dart';
+import 'package:eventhub/features/reservations/domain/entities/checkout.dart';
 import 'package:eventhub/features/reservations/domain/entities/reservation.dart';
 
 abstract interface class ReservationRepository {
@@ -28,15 +29,29 @@ abstract interface class ReservationRepository {
   Stream<Reservation?> watchById(String reservationId);
 
   /// Atomically creates the reservation and decrements the event's
-  /// `availablePlaces`, after checking `ReservationPolicy`.
+  /// `availablePlaces` (and the ticket type's), after checking
+  /// `ReservationPolicy`. Free seats only.
   AsyncResult<Reservation> reserve({
     required String eventId,
     required AppUser participant,
+    String? tierId,
   });
 
-  /// Atomically cancels and releases the seat.
+  /// Atomically cancels and releases the seat. Free seats only.
   AsyncResult<void> cancel({
     required String reservationId,
     required AppUser participant,
   });
+
+  /// Holds a paid seat and opens a Stripe Checkout session for it.
+  AsyncResult<CheckoutStart> startCheckout({
+    required String eventId,
+    required String tierId,
+  });
+
+  /// Gives up a held seat before paying.
+  AsyncResult<void> cancelPendingCheckout({required String eventId});
+
+  /// Refunds a paid ticket and releases the seat.
+  AsyncResult<void> refund({required String eventId});
 }

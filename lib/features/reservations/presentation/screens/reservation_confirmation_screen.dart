@@ -1,6 +1,7 @@
 import 'package:eventhub/app/theme/theme.dart';
 import 'package:eventhub/core/l10n/app_strings.dart';
 import 'package:eventhub/core/utils/date_formats.dart';
+import 'package:eventhub/core/utils/money.dart';
 import 'package:eventhub/core/widgets/design_system.dart';
 import 'package:eventhub/features/events/application/event_providers.dart';
 import 'package:eventhub/features/reservations/application/reservation_providers.dart';
@@ -106,6 +107,16 @@ class _Body extends ConsumerWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
+                      if (reservation.tierName != null) ...[
+                        const SizedBox(height: AppSpacing.xs),
+                        Text(
+                          reservation.isPaid
+                              ? '${reservation.accessLabel} · '
+                                    '${Money.format(reservation.pricePaid, reservation.currency ?? 'EUR')}'
+                              : '${reservation.accessLabel} · ${AppStrings.free}',
+                          style: text.labelMedium,
+                        ),
+                      ],
                     ],
                   ),
                 ),

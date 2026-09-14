@@ -125,9 +125,13 @@ class _Content extends StatelessWidget {
   final ValueChanged<_TicketTab> onTabChanged;
 
   List<Reservation> _slice(_TicketTab tab) => switch (tab) {
+    // A held purchase belongs with upcoming tickets: it is where the user
+    // looks for it, and where they finish paying.
     _TicketTab.upcoming =>
       reservations
-          .where((r) => r.isActive && r.eventStartsAt.isAfter(now))
+          .where(
+            (r) => (r.isActive || r.isPending) && r.eventStartsAt.isAfter(now),
+          )
           .toList(),
     _TicketTab.past =>
       reservations
@@ -173,7 +177,11 @@ class _Content extends StatelessWidget {
               child: TicketCard(
                 reservation: r,
                 isPast: tab != _TicketTab.upcoming,
-                onTap: () => context.push(AppRoutes.ticketPath(r.id)),
+                onTap: () => context.push(
+                  r.isPending
+                      ? AppRoutes.paymentPath(r.id)
+                      : AppRoutes.ticketPath(r.id),
+                ),
               ),
             ),
             const SizedBox(height: AppSpacing.md),

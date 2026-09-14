@@ -5,6 +5,7 @@ import 'package:eventhub/core/config/app_config.dart';
 import 'package:eventhub/core/extensions/context_x.dart';
 import 'package:eventhub/core/l10n/app_strings.dart';
 import 'package:eventhub/core/utils/date_formats.dart';
+import 'package:eventhub/core/utils/money.dart';
 import 'package:eventhub/core/widgets/design_system.dart';
 import 'package:eventhub/features/organizer/application/organizer_providers.dart';
 import 'package:eventhub/features/organizer/domain/organizer_insights.dart';
@@ -209,6 +210,20 @@ class _Figures extends StatelessWidget {
               note: 'sur ${s.upcomingCount} à venir',
             ),
           ),
+          if (s.revenue.isNotEmpty) ...[
+            Divider(height: 1, color: t.borderSubtle),
+            SizedBox(
+              width: double.infinity,
+              child: _Figure(
+                label: AppStrings.revenueLabel,
+                value: [
+                  for (final entry in s.revenue.entries)
+                    Money.format(entry.value, entry.key),
+                ].join(' · '),
+                note: AppStrings.revenueNote,
+              ),
+            ),
+          ],
         ],
       ),
     );

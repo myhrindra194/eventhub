@@ -156,6 +156,14 @@ class _NotificationRow extends ConsumerWidget {
         Icons.event_busy_rounded,
         AppTone.danger,
       ),
+      NotificationRoute.paymentConfirmed => (
+        Icons.credit_score_rounded,
+        AppTone.success,
+      ),
+      NotificationRoute.paymentRefunded => (
+        Icons.currency_exchange_rounded,
+        AppTone.info,
+      ),
       NotificationRoute.staffInvite => (
         Icons.mail_outline_rounded,
         AppTone.info,

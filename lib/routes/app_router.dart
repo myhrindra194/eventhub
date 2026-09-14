@@ -32,6 +32,7 @@ import 'package:eventhub/features/organizers/presentation/screens/following_scre
 import 'package:eventhub/features/organizers/presentation/screens/organizer_profile_screen.dart';
 import 'package:eventhub/features/participant/presentation/participant_shell.dart';
 import 'package:eventhub/features/reservations/presentation/screens/my_reservations_screen.dart';
+import 'package:eventhub/features/reservations/presentation/screens/payment_screen.dart';
 import 'package:eventhub/features/reservations/presentation/screens/reservation_confirmation_screen.dart';
 import 'package:eventhub/features/reservations/presentation/screens/ticket_screen.dart';
 import 'package:eventhub/features/support/presentation/screens/about_screen.dart';
@@ -229,6 +230,17 @@ final _commonRoutes = <RouteBase>[
     parentNavigatorKey: rootNavigatorKey,
     pageBuilder: (_, state) => AppPage.screen(state, const AdminRolesScreen()),
   ),
+  // Return from Stripe Checkout (F-11), delivered by Android App Links.
+  GoRoute(
+    path: AppRoutes.paySuccess,
+    name: AppRoutes.paySuccessName,
+    redirect: (_, state) => _paymentLocation(state),
+  ),
+  GoRoute(
+    path: AppRoutes.payCancel,
+    name: AppRoutes.payCancelName,
+    redirect: (_, state) => _paymentLocation(state),
+  ),
   // Shared link https://<host>/e/{id}, delivered by Android App Links.
   GoRoute(
     path: AppRoutes.publicEventLink,
@@ -262,6 +274,15 @@ final _commonRoutes = <RouteBase>[
     ),
   ),
 ];
+
+/// `/pay/success?reservation=…` → the payment screen, which shows the real
+/// state (the webhook, not the redirect, decides whether it is paid).
+String _paymentLocation(GoRouterState state) {
+  final id = state.uri.queryParameters['reservation'];
+  return id == null || id.isEmpty
+      ? AppRoutes.reservations
+      : AppRoutes.paymentPath(id);
+}
 
 // ----------------------------------------------------------- participant --
 
@@ -361,6 +382,17 @@ final _participantLeafRoutes = <RouteBase>[
     name: AppRoutes.favoritesName,
     parentNavigatorKey: rootNavigatorKey,
     pageBuilder: (_, state) => AppPage.screen(state, const FavoritesScreen()),
+  ),
+  GoRoute(
+    path: AppRoutes.payment,
+    name: AppRoutes.paymentName,
+    parentNavigatorKey: rootNavigatorKey,
+    pageBuilder: (_, state) => AppPage.screen(
+      state,
+      PaymentScreen(
+        reservationId: state.pathParameters[AppRoutes.reservationIdParam]!,
+      ),
+    ),
   ),
   GoRoute(
     path: AppRoutes.ticket,

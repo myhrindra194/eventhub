@@ -10,6 +10,7 @@
 // is exactly what these tests observe.
 
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { after, before, beforeEach, describe, it } from 'node:test';
 import { createRequire } from 'node:module';
 
@@ -727,6 +728,188 @@ describe('co-organizers (F-16)', () => {
       userId: owner.uid,
     });
     assert.equal(ownerLeaves.status, 400);
+  });
+});
+
+describe('ticket types and payments (F-12, F-11)', () => {
+  const tiers = () => ({
+    free: { name: 'Standard', price: 0, capacity: 10, available: 10, order: 0 },
+    vip: { name: 'VIP', price: 2500, capacity: 5, available: 5, order: 1 },
+  });
+  const tieredEvent = (overrides = {}) =>
+    eventDoc({ capacity: 15, availablePlaces: 15, currency: 'EUR', tiers: tiers(), ...overrides });
+  const lib = () => require('../lib/index.js');
+  const hold = (uid = 'p1', tierId = 'vip', nowMillis = Date.now()) =>
+    lib().holdSeat({
+      eventId: 'e1',
+      tierId,
+      uid,
+      name: 'Jean Rakoto',
+      email: `${uid}@example.com`,
+      nowMillis,
+    });
+  const eventData = async () => (await db.doc('events/e1').get()).data();
+
+  /** Same placeholder the emulator reads (functions/.secret.local). */
+  const webhookSecret = () => {
+    const file = readFileSync(new URL('../.secret.local', import.meta.url), 'utf8');
+    return /STRIPE_WEBHOOK_SECRET=(.+)/.exec(file)[1].trim();
+  };
+
+  it('re-imposes capacity and availability from the ticket types', async () => {
+    await db.doc('events/e1').set(tieredEvent({ capacity: 99, availablePlaces: 42 }));
+    const fixed = await eventually(async () => {
+      const e = await eventData();
+      return e.capacity === 15 && e.availablePlaces === 15;
+    });
+    assert.ok(fixed, 'sums restored');
+  });
+
+  it('holds a paid seat in its type, then releases it once', async () => {
+    await db.doc('events/e1').set(tieredEvent());
+    const held = await hold();
+    assert.equal(held.price, 2500);
+    assert.equal(held.currency, 'EUR');
+
+    let e = await eventData();
+    assert.equal(e.availablePlaces, 14);
+    assert.equal(e.tiers.vip.available, 4);
+    const r = (await db.doc('reservations/e1_p1').get()).data();
+    assert.equal(r.status, 'pending');
+    assert.equal(r.amountDue, 2500);
+    assert.equal(r.tierName, 'VIP');
+
+    assert.equal(await lib().releaseHold('e1_p1', 'cancelled'), true);
+    assert.equal(await lib().releaseHold('e1_p1', 'cancelled'), false, 'idempotent');
+    e = await eventData();
+    assert.equal(e.availablePlaces, 15);
+    assert.equal(e.tiers.vip.available, 5);
+  });
+
+  it('refuses holding a free type, a sold-out type, or a second seat', async () => {
+    await db.doc('events/e1').set(tieredEvent());
+    await assert.rejects(hold('p1', 'free'), /gratuit/);
+
+    await db.doc('events/e1').update({ 'tiers.vip.available': 0, availablePlaces: 10 });
+    await assert.rejects(hold('p2', 'vip'), /complet/);
+
+    await db.doc('events/e1').update({ 'tiers.vip.available': 5, availablePlaces: 15 });
+    await db.doc('reservations/e1_p3').set(reservationDoc({ userId: 'p3' }));
+    await assert.rejects(hold('p3', 'vip'), /déjà/);
+  });
+
+  it('confirms the seat from a signed Stripe webhook, and ignores a replay', async () => {
+    await db.doc('events/e1').set(tieredEvent());
+    await hold();
+    const payload = JSON.stringify({
+      id: 'evt_test_1',
+      object: 'event',
+      type: 'checkout.session.completed',
+      data: {
+        object: {
+          id: 'cs_test_1',
+          object: 'checkout.session',
+          payment_status: 'paid',
+          amount_total: 2500,
+          currency: 'eur',
+          payment_intent: 'pi_test_1',
+          metadata: { reservationId: 'e1_p1', eventId: 'e1', tierId: 'vip', userId: 'p1' },
+        },
+      },
+    });
+    const Stripe = require('stripe');
+    const header = new Stripe('sk_test_unused').webhooks.generateTestHeaderString({
+      payload,
+      secret: webhookSecret(),
+    });
+    const host = process.env.FUNCTIONS_EMULATOR_HOST ?? '127.0.0.1:5001';
+    const post = (signature) =>
+      fetch(`http://${host}/${PROJECT_ID}/${REGION}/stripeWebhook`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'stripe-signature': signature },
+        body: payload,
+      });
+
+    assert.equal((await post('t=1,v1=forged')).status, 400, 'unsigned refused');
+    assert.equal((await post(header)).status, 200);
+
+    const r = (await db.doc('reservations/e1_p1').get()).data();
+    assert.equal(r.status, 'confirmed');
+    assert.equal(r.pricePaid, 2500);
+    assert.equal(r.paymentStatus, 'paid');
+    assert.equal(r.paymentIntentId, 'pi_test_1');
+    assert.equal(r.holdExpiresAt, undefined);
+
+    const told = await eventually(async () =>
+      (await notificationsOf('p1')).some((n) => n.type === 'paymentConfirmed'),
+    );
+    assert.ok(told, 'buyer notified');
+    const organizer = await eventually(async () =>
+      (await notificationsOf('o1')).some((n) => n.type === 'booking'),
+    );
+    assert.ok(organizer, 'organizer notified of the booking');
+
+    assert.equal((await post(header)).status, 200);
+    assert.equal((await eventData()).tiers.vip.available, 4, 'replay changes nothing');
+  });
+
+  it('seats a payment that lands after its hold was released', async () => {
+    await db.doc('events/e1').set(tieredEvent());
+    await hold();
+    await lib().releaseHold('e1_p1', 'expired');
+    const outcome = await lib().fulfillCheckout('e1_p1', {
+      paymentIntentId: 'pi_late',
+      amountTotal: 2500,
+      currency: 'eur',
+      sessionId: 'cs_late',
+    });
+    assert.equal(outcome, 'confirmed');
+    const e = await eventData();
+    assert.equal(e.tiers.vip.available, 4);
+    assert.equal(e.availablePlaces, 14);
+  });
+
+  it('releases expired holds on schedule and leaves live ones', async () => {
+    await db.doc('events/e1').set(tieredEvent());
+    await hold('p1', 'vip', Date.now() - 2 * HOUR);
+    await hold('p2', 'vip');
+    const result = await lib().runReleaseExpiredHolds(Date.now());
+    assert.deepEqual(result, { candidates: 1, released: 1 });
+    assert.equal((await db.doc('reservations/e1_p1').get()).get('status'), 'cancelled');
+    assert.equal((await db.doc('reservations/e1_p2').get()).get('status'), 'pending');
+    assert.equal((await eventData()).tiers.vip.available, 4);
+  });
+
+  it('refuses a refund once the event started, and a checkout for a free type', async () => {
+    const buyer = await signUp(`buyer-${Date.now()}@example.com`);
+    await db.doc(`users/${buyer.uid}`).set({
+      name: 'Jean',
+      email: buyer.email,
+      role: 'participant',
+      createdAt: Timestamp.now(),
+    });
+    await db.doc('events/e1').set(tieredEvent());
+    await db.doc(`reservations/e1_${buyer.uid}`).set(
+      reservationDoc({
+        userId: buyer.uid,
+        tierId: 'vip',
+        tierName: 'VIP',
+        pricePaid: 2500,
+        paymentStatus: 'paid',
+        paymentIntentId: 'pi_x',
+        eventStartsAt: Timestamp.fromMillis(Date.now() - HOUR),
+      }),
+    );
+    const refund = await callFn('cancelPaidReservation', buyer.idToken, { eventId: 'e1' });
+    assert.equal(refund.status, 400);
+    assert.match(refund.body.error.message, /plus remboursable/);
+
+    await db.doc(`reservations/e1_${buyer.uid}`).delete();
+    const free = await callFn('createCheckoutSession', buyer.idToken, {
+      eventId: 'e1',
+      tierId: 'free',
+    });
+    assert.equal(free.status, 400);
   });
 });
 

@@ -7,6 +7,7 @@ import 'package:eventhub/core/utils/app_logger.dart';
 import 'package:eventhub/core/utils/date_formats.dart';
 import 'package:eventhub/core/widgets/design_system.dart';
 import 'package:eventhub/features/events/domain/entities/event.dart';
+import 'package:eventhub/features/events/presentation/widgets/ticket_types.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -100,7 +101,7 @@ String _invitation(Event event) {
       '${AppDateFormats.time(event.startsAt)}\n'
       '${event.location}\n'
       '\n'
-      'Entrée gratuite. $seats\n'
+      '${event.isFree ? 'Entrée gratuite' : eventPriceLabel(event)}. $seats\n'
       'Réserver : ${AppLinks.event(event.id)}';
 }
 

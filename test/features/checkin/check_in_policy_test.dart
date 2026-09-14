@@ -74,6 +74,10 @@ void main() {
         CheckInStatus.invalidCode,
       );
       expect(
+        status(r: reservation(status: ReservationStatus.pending)),
+        CheckInStatus.unpaid,
+      );
+      expect(
         status(r: reservation(status: ReservationStatus.cancelled)),
         CheckInStatus.cancelled,
       );

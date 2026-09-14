@@ -6,6 +6,7 @@ import 'package:eventhub/core/result/result.dart';
 import 'package:eventhub/features/events/data/dtos/event_dto.dart';
 import 'package:eventhub/features/events/domain/entities/event.dart';
 import 'package:eventhub/features/events/domain/entities/event_draft.dart';
+import 'package:eventhub/features/events/domain/entities/event_tier.dart';
 import 'package:eventhub/features/events/domain/policies/event_policy.dart';
 
 /// Firestore access for `events/{id}`. Throws; the repository maps errors.
@@ -111,14 +112,32 @@ class EventRemoteDataSource {
           ),
         );
       }
-      final availablePlaces =
-          switch (EventPolicy.availablePlacesAfterCapacityChange(
-            event: current,
-            newCapacity: draft.capacity,
-          )) {
-            Ok(:final value) => value,
-            Err(:final failure) => throw FailureException(failure),
-          };
+      // Ticket types (F-12): every seat already sold stays sold, in its type.
+      final plan = switch (TierPlanner.apply(
+        soldWithoutTiers: current.hasTiers ? 0 : current.reservedCount,
+        current: current.tiers,
+        drafts: draft.tiers,
+      )) {
+        Ok(:final value) => value,
+        Err(:final failure) => throw FailureException(failure),
+      };
+
+      final int capacity;
+      final int availablePlaces;
+      if (plan == null) {
+        capacity = draft.capacity;
+        availablePlaces =
+            switch (EventPolicy.availablePlacesAfterCapacityChange(
+              event: current,
+              newCapacity: draft.capacity,
+            )) {
+              Ok(:final value) => value,
+              Err(:final failure) => throw FailureException(failure),
+            };
+      } else {
+        capacity = plan.capacity;
+        availablePlaces = plan.available;
+      }
 
       tx.update(ref, {
         EventFields.title: draft.title,
@@ -126,9 +145,15 @@ class EventRemoteDataSource {
         EventFields.category: draft.category.name,
         EventFields.startsAt: Timestamp.fromDate(draft.startsAt),
         EventFields.location: draft.location,
-        EventFields.capacity: draft.capacity,
+        EventFields.capacity: capacity,
         EventFields.availablePlaces: availablePlaces,
         EventFields.imageUrl: draft.imageUrl,
+        EventFields.tiers: plan == null
+            ? const <String, Object?>{}
+            : EventDto.tiersToMap(plan.tiers),
+        EventFields.currency: (plan?.hasPaid ?? false)
+            ? draft.currency
+            : FieldValue.delete(),
         EventFields.updatedAt: FieldValue.serverTimestamp(),
       });
     });

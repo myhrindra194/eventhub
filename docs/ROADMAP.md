@@ -219,8 +219,8 @@ bouton « suivre ».
 
 | Réf | Fonctionnalité | Inspiration | Note |
 |---|---|---|---|
-| F-11 | Billetterie payante (Stripe Connect, remboursements) | Eventbrite | Change le modèle économique : nécessite Cloud Functions, webhooks, conformité |
-| F-12 | Types de billets multiples (early bird, VIP, gratuit) | Shotgun | Sous-collection `events/{id}/tiers` |
+| F-11 | Billetterie payante (Stripe Connect, remboursements) | Eventbrite | ✅ **v1.6** : Stripe Checkout hébergé, place tenue 30 min, confirmation par webhook signé, remboursement par le participant avant le début, remboursements automatiques (retrait, suppression de compte, paiement tardif sans place), recettes dans les stats ; reste **Stripe Connect** (reversement aux organisateurs) |
+| F-12 | Types de billets multiples (early bird, VIP, gratuit) | Shotgun | ✅ **v1.6** : jusqu'à 6 types en map `tiers` sur l'événement (choix documenté : une seule lecture transactionnelle), prix en unités mineures, EUR/USD/MGA, ventes protégées à l'édition, totaux normalisés par `normalizeEventTiers` ; reste les dates de vente (early bird) |
 | F-13 | Événements récurrents et séries | Meetup | Modèle `series` + génération d'occurrences |
 | F-14 | Carte et géolocalisation (« près de moi ») | Airbnb | Geohash + `geoflutterfire`; l'index `location + startsAt` est déjà là |
 | F-15 | Export CSV de la liste des participants | Eventbrite | ✅ **v1.4 : fichier via la feuille de partage**, généré sur l'appareil (aucune donnée personnelle déposée dans Storage, pas d'URL signée à gérer) ; copie conservée |

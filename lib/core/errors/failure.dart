@@ -107,6 +107,14 @@ enum BusinessRule {
   eventNotStarted,
   waitlistNotAvailable,
   cannotFollowSelf,
+
+  /// Ticket types and payments (F-12, F-11).
+  tierRequired,
+  tierSoldOut,
+  paymentRequired,
+  paymentPending,
+  refundRequired,
+  tiersLocked,
   cannotReportSelf,
   alreadyReported,
 }

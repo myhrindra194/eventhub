@@ -26,6 +26,8 @@ _EventDto _$EventDtoFromJson(Map<String, dynamic> json) => _EventDto(
   staffIds:
       (json['staffIds'] as List<dynamic>?)?.map((e) => e as String).toList() ??
       const <String>[],
+  tiers: json['tiers'] as Map<String, dynamic>? ?? const <String, dynamic>{},
+  currency: json['currency'] as String?,
 );
 
 Map<String, dynamic> _$EventDtoToJson(_EventDto instance) => <String, dynamic>{
@@ -42,6 +44,8 @@ Map<String, dynamic> _$EventDtoToJson(_EventDto instance) => <String, dynamic>{
   'createdAt': const NullableTimestampConverter().toJson(instance.createdAt),
   'updatedAt': const NullableTimestampConverter().toJson(instance.updatedAt),
   'staffIds': instance.staffIds,
+  'tiers': instance.tiers,
+  'currency': ?instance.currency,
 };
 
 const _$EventCategoryEnumMap = {

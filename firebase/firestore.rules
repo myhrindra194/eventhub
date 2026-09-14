@@ -356,12 +356,21 @@ service cloud.firestore {
           && incoming().keys().hasOnly([
                'title', 'description', 'category', 'startsAt', 'location',
                'capacity', 'availablePlaces', 'organizerId', 'organizerName',
-               'imageUrl', 'createdAt', 'updatedAt', 'staffIds'
+               'imageUrl', 'createdAt', 'updatedAt', 'staffIds', 'tiers',
+               'currency'
              ])
           // Co-organizers: at most 10, never written by a client (see the
           // create and update branches).
           && (!('staffIds' in incoming())
               || (incoming().staffIds is list && incoming().staffIds.size() <= 10))
+          // Ticket types (F-12): a map tierId → {name, price, capacity,
+          // available, …}, at most 6. The sums are kept equal to `capacity`
+          // and `availablePlaces` by the client transaction and re-imposed
+          // by the `normalizeEventTiers` function.
+          && (!('tiers' in incoming())
+              || (incoming().tiers is map && incoming().tiers.size() <= 6))
+          && (!('currency' in incoming())
+              || incoming().currency in ['EUR', 'USD', 'MGA'])
           && isString(incoming().title, 3, 120)
           && isString(incoming().description, 1, 5000)
           && validCategory(incoming().category)
@@ -387,6 +396,34 @@ service cloud.firestore {
       /// Seats already taken, derived rather than stored, so it cannot drift.
       function takenSeats() {
         return existing().capacity - existing().availablePlaces;
+      }
+
+      function hasTiers(data) {
+        return data.get('tiers', {}).size() > 0;
+      }
+
+      /// A participant's seat moved in exactly one ticket type: the one named
+      /// by their own reservation *as it will be at the end of this batch*
+      /// (`getAfter`), by the same ±1 as `availablePlaces`, within bounds.
+      /// A participant takes a seat only in a free type — a paid seat is
+      /// held and confirmed by the payment functions.
+      function seatTierConsistent() {
+        return !hasTiers(existing())
+          ? unchanged('tiers')
+          : tierMoved(
+              getAfter(/databases/$(database)/documents/reservations/$(eventId + '_' + uid()))
+                .data.get('tierId', ''),
+              incoming().availablePlaces - existing().availablePlaces);
+      }
+
+      function tierMoved(tierId, delta) {
+        return tierId in existing().tiers
+          && incoming().tiers.diff(existing().tiers).affectedKeys().hasOnly([tierId])
+          && incoming().tiers[tierId].diff(existing().tiers[tierId]).affectedKeys().hasOnly(['available'])
+          && incoming().tiers[tierId].available == existing().tiers[tierId].available + delta
+          && incoming().tiers[tierId].available >= 0
+          && incoming().tiers[tierId].available <= existing().tiers[tierId].capacity
+          && (delta > 0 || existing().tiers[tierId].get('price', 0) == 0);
       }
 
       // The catalogue is the product: any authenticated user may browse it.
@@ -430,7 +467,8 @@ service cloud.firestore {
         ||
         // ---- (b) a participant books or releases exactly one seat -------
         (isParticipant()
-          && onlyChanged(['availablePlaces', 'updatedAt'])
+          && onlyChanged(['availablePlaces', 'updatedAt', 'tiers'])
+          && seatTierConsistent()
           && (incoming().availablePlaces == existing().availablePlaces - 1
               || incoming().availablePlaces == existing().availablePlaces + 1)
           && incoming().availablePlaces >= 0
@@ -511,7 +549,12 @@ service cloud.firestore {
           && incoming().keys().hasOnly([
                'eventId', 'userId', 'organizerId', 'userName', 'userEmail',
                'eventTitle', 'eventStartsAt', 'eventLocation',
-               'status', 'reservedAt', 'cancelledAt'
+               'status', 'reservedAt', 'cancelledAt',
+               // Ticket type (F-12) and payment (F-11). Everything below
+               // `pricePaid` is written by the payment functions only.
+               'tierId', 'tierName', 'pricePaid', 'currency', 'amountDue',
+               'paymentStatus', 'checkoutSessionId', 'checkoutUrl',
+               'holdExpiresAt', 'paymentIntentId', 'refundId', 'cancelledBy'
              ])
           && isString(incoming().eventId, 1, 200)
           && isString(incoming().userName, 1, 80)
@@ -519,7 +562,26 @@ service cloud.firestore {
           && isString(incoming().eventTitle, 1, 120)
           && isString(incoming().eventLocation, 1, 200)
           && incoming().eventStartsAt is timestamp
-          && incoming().status in ['confirmed', 'cancelled'];
+          && incoming().status in ['confirmed', 'cancelled', 'pending'];
+      }
+
+      /// Fields only the payment functions write.
+      function serverPaymentFields() {
+        return ['amountDue', 'paymentStatus', 'checkoutSessionId', 'checkoutUrl',
+                'holdExpiresAt', 'paymentIntentId', 'refundId', 'cancelledBy'];
+      }
+
+      /// A client books by itself only a free seat: no ticket type on a
+      /// simple event, or a free type with seats left whose name is copied
+      /// faithfully.
+      function tierBookable() {
+        return !(eventDoc().get('tiers', {}).size() > 0)
+          ? !('tierId' in incoming()) && incoming().get('pricePaid', 0) == 0
+          : (incoming().get('tierId', '') in eventDoc().tiers
+             && eventDoc().tiers[incoming().tierId].get('price', 0) == 0
+             && eventDoc().tiers[incoming().tierId].available > 0
+             && incoming().tierName == eventDoc().tiers[incoming().tierId].name
+             && incoming().get('pricePaid', 0) == 0);
       }
 
       /// The denormalised copy must match the event it claims to come from,
@@ -573,6 +635,8 @@ service cloud.firestore {
         && incoming().status == 'confirmed'
         // Serialisers emit `cancelledAt: null` for an active reservation.
         && (!('cancelledAt' in incoming()) || incoming().cancelledAt == null)
+        && !incoming().keys().hasAny(serverPaymentFields())
+        && tierBookable()
         && matchesEvent()
         // No booking a past event, and none on a sold-out one.
         && eventDoc().startsAt > request.time
@@ -587,10 +651,15 @@ service cloud.firestore {
         && incoming().userId == existing().userId
         && incoming().eventId == existing().eventId
         && incoming().organizerId == existing().organizerId
+        && !changed().hasAny(serverPaymentFields())
         && (
-          // confirmed → cancelled: the booking time is history and stays.
+          // confirmed → cancelled: the booking time is history and stays. A
+          // paid ticket is cancelled through `cancelPaidReservation`, which
+          // refunds it — never by a direct write.
           (existing().status == 'confirmed'
             && incoming().status == 'cancelled'
+            && existing().get('pricePaid', 0) == 0
+            && incoming().get('tierId', '') == existing().get('tierId', '')
             && incoming().reservedAt == existing().reservedAt
             && isRecentTime(incoming().cancelledAt))
           ||
@@ -598,7 +667,11 @@ service cloud.firestore {
           // timeline and alerts count it on the day it happens), with the
           // cancellation stamp cleared and the event copy re-checked.
           (existing().status == 'cancelled'
+            // A document that went through payment is rewritten by the
+            // payment functions, not re-booked by hand.
+            && !('paymentStatus' in existing())
             && incoming().status == 'confirmed'
+            && tierBookable()
             && isRecentTime(incoming().reservedAt)
             && (!('cancelledAt' in incoming()) || incoming().cancelledAt == null)
             && matchesEvent()

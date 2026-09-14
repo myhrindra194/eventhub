@@ -1,5 +1,9 @@
 {
   "projects": {
-    "default": "eventhub-d411f"
-  }
+    "default": "eventhub-d411f",
+    "eventhub-61cdb": "eventhub-61cdb",
+    " eventhub-61cdb": "eventhub-61cdb"
+  },
+  "targets": {},
+  "etags": {}
 }

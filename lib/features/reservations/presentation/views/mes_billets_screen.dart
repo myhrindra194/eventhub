@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/router/app_router.dart';
 import '../../../../core/widgets/app_header.dart';
+import '../../../home/presentation/providers/navigation_provider.dart';
 import '../../domain/entities/reservation.dart';
 import '../providers/reservation_provider.dart';
 
@@ -35,7 +37,7 @@ class MesBilletsScreen extends ConsumerWidget {
                 ),
               ),
               data: (loadedReservations) => loadedReservations.isEmpty
-                  ? _buildEmptyState(context)
+                  ? _buildEmptyState(context, ref)
                   : _buildTicketsList(context, loadedReservations),
             ),
           ),
@@ -44,7 +46,7 @@ class MesBilletsScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildEmptyState(BuildContext context) {
+  Widget _buildEmptyState(BuildContext context, WidgetRef ref) {
     return Center(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 32.0),
@@ -97,7 +99,11 @@ class MesBilletsScreen extends ConsumerWidget {
                   elevation: 0,
                 ),
                 onPressed: () {
-                  // Navigate to event search or the event list.
+                  ref.read(navigationIndexProvider.notifier).state = 0;
+                  Navigator.of(context).pushNamedAndRemoveUntil(
+                    AppRouter.home,
+                    (route) => false,
+                  );
                 },
                 child: const Text(
                   'Explore Events',

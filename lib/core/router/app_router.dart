@@ -18,7 +18,6 @@ import '../../features/organizer/presentation/views/event_participants_screen.da
 import '../../features/organizer/presentation/views/event_published_screen.dart';
 import '../../features/organizer/presentation/views/organizer_alerts_screen.dart';
 import '../../features/organizer/presentation/views/organizer_events_screen.dart';
-import '../../features/organizer/presentation/views/organizer_settings_screen.dart';
 import '../../features/organizer/presentation/views/organizer_stats_screen.dart';
 
 class AppRouter {
@@ -35,7 +34,6 @@ class AppRouter {
   static const String organizerEvents = '/organizer/events';
   static const String organizerAlerts = '/organizer/alerts';
   static const String organizerStats = '/organizer/stats';
-  static const String organizerSettings = '/organizer/settings';
   static const String organizerCreateEvent = '/organizer/events/create';
   static const String organizerEventDetail = '/organizer/events/detail';
   static const String organizerEventParticipants =
@@ -124,9 +122,6 @@ class AppRouter {
 
       case organizerStats:
         return _organizerRoute(const OrganizerStatsScreen());
-
-      case organizerSettings:
-        return _organizerRoute(const OrganizerSettingsScreen());
 
       case organizerCreateEvent:
         return _organizerRoute(const CreateEventScreen());

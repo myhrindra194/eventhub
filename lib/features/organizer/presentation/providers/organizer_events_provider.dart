@@ -63,6 +63,12 @@ final organizerEventsProvider = FutureProvider<List<Event>>((ref) async {
 
 /// Stream temps réel : la UI se met à jour sans invalidate() manuel.
 final organizerEventsStreamProvider = StreamProvider<List<Event>>((ref) {
+  // Pendant la déconnexion, AuthNotifier passe brièvement par loading puis
+  // data(null). Ne construisons pas le repository sans organisateur connecté.
+  if (ref.watch(authProvider).value == null) {
+    return Stream.value(const <Event>[]);
+  }
+
   return ref.watch(organizerEventRepositoryProvider).watchEvents();
 });
 

@@ -5,6 +5,7 @@ import '../../../../core/theme/app_typography.dart';
 import '../../../../core/widgets/app_header.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../events/presentation/views/search_screen.dart';
+import '../../../reservations/presentation/providers/reservation_provider.dart';
 import '../../../reservations/presentation/views/mes_billets_screen.dart';
 import '../providers/navigation_provider.dart';
 import '../widgets/custom_bottom_nav_bar.dart';
@@ -59,17 +60,11 @@ class MainWrapperScreen extends ConsumerWidget {
         currentIndex: currentIndex,
         onTap: (index) {
           ref.read(navigationIndexProvider.notifier).state = index;
+          if (index == 2) {
+            ref.invalidate(mesBilletsProvider);
+          }
         },
       ),
-      floatingActionButton: currentIndex == 3
-          ? FloatingActionButton.extended(
-              onPressed: () => _logout(context, ref),
-              icon: const Icon(Icons.logout_rounded),
-              label: const Text('Log out'),
-              tooltip: 'Log out',
-            )
-          : null,
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
     );
   }
 

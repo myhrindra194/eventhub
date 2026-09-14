@@ -3,6 +3,7 @@
     "platforms": {
       "android": {
         "default": {
+      
           "projectId": "eventhub-d411f",
           "appId": "1:930281380072:android:cb45cb9366f6617e79115d",
           "fileOutput": "android/app/google-services.json"

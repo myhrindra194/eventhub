@@ -3,33 +3,34 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/router/app_router.dart';
 import '../../../../core/widgets/app_header.dart';
+import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../events/domain/entities/event.dart';
 import '../providers/organizer_events_provider.dart';
 import '../widgets/organizer_bottom_nav_bar.dart';
 import 'event_detail_screen.dart';
 import 'organizer_alerts_screen.dart';
-import 'organizer_settings_screen.dart';
 import 'organizer_stats_screen.dart';
 
 /// Main entry point for the Organizer section.
 ///
 /// This screen replaces the previous OrganizerMainScreen.
 /// It contains the bottom navigation and the different organizer sections.
-class OrganizerEventsScreen extends StatefulWidget {
+class OrganizerEventsScreen extends ConsumerStatefulWidget {
   const OrganizerEventsScreen({super.key});
 
   @override
-  State<OrganizerEventsScreen> createState() => _OrganizerEventsScreenState();
+  ConsumerState<OrganizerEventsScreen> createState() =>
+      _OrganizerEventsScreenState();
 }
 
-class _OrganizerEventsScreenState extends State<OrganizerEventsScreen> {
+class _OrganizerEventsScreenState
+    extends ConsumerState<OrganizerEventsScreen> {
   int _currentIndex = 0;
 
   final List<Widget> _screens = const [
     OrganizerEventsContent(),
     OrganizerStatsScreen(),
     OrganizerAlertsScreen(),
-    OrganizerSettingsScreen(),
   ];
 
   @override
@@ -48,11 +49,59 @@ class _OrganizerEventsScreenState extends State<OrganizerEventsScreen> {
       bottomNavigationBar: OrganizerBottomNavBar(
         currentIndex: _currentIndex,
         onTap: (index) {
+          if (index == 3) {
+            _confirmLogout();
+            return;
+          }
+
           setState(() {
             _currentIndex = index;
           });
         },
       ),
+    );
+  }
+
+  Future<void> _confirmLogout() async {
+    final navigator = Navigator.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+    final shouldLogout = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Log out'),
+        content: const Text('Do you want to log out?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Log out'),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldLogout != true) return;
+    await ref.read(authProvider.notifier).logout();
+    if (!mounted) return;
+
+    final authState = ref.read(authProvider);
+    if (authState.hasError) {
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            'Unable to log out: ${authState.error ?? 'Please try again.'}',
+          ),
+        ),
+      );
+      return;
+    }
+
+    navigator.pushNamedAndRemoveUntil(
+      AppRouter.welcome,
+      (route) => false,
     );
   }
 }
@@ -89,6 +138,10 @@ class _OrganizerEventsContentState
         }),
         loading: () => setState(() => _isLoading = true),
         error: (error, _) {
+          // Une erreur peut arriver pendant la transition de déconnexion,
+          // alors que l'ancien abonnement Firestore n'est pas encore fermé.
+          if (ref.read(authProvider).value == null) return;
+
           setState(() => _isLoading = false);
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('Unable to load events: $error')),

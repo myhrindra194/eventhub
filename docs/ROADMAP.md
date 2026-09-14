@@ -51,6 +51,13 @@
 | Organisateur | Création / édition, publication, liste des participants avec recherche | ✅ |
 | Système | **Thème clair + sombre + automatique**, persisté | ✅ nouveau |
 | Système | Écran Paramètres, préférences de notification (UI) | ✅ nouveau |
+| Billets | **Écran billet** : QR code (`qr_flutter`), code court `EH-XXXX-XXXX`, états annulé / passé | ✅ v1.1 — QR non signé, voir F-01 |
+| Partage | Feuille de partage : lien public + invitation prête à coller (presse-papiers) | ✅ v1.1 — partiel, voir F-08 |
+| Organisateur | **Export CSV** de la liste des participants (presse-papiers) | ✅ v1.1 — partiel, voir F-15 |
+| Organisateur | **Onglet Stats** : remplissage global, 14 jours de réservations, annulations, classement | ✅ v1.1 |
+| Organisateur | **Onglet Alertes** : « à surveiller » (J-1, dernières places, complet) + journal d'activité | ✅ v1.1 |
+| Compte | Modifier son nom ; centre d'aide, confidentialité, à propos | ✅ v1.1 |
+| Sécurité | Règle `list` des réservations : la requête doit prouver l'appartenance | ✅ v1.1 — correctif |
 
 ---
 
@@ -74,6 +81,9 @@ luminosité forcée, et donner à l'organisateur un scanner qui écrit dans
   `checkins` (déjà écrites : append-only, organisateur uniquement).
 - **Point d'attention** : le scan doit marcher hors ligne — mettre la liste
   des participants en cache local et réconcilier au retour du réseau.
+- **État (v1.1)** : l'affichage est livré (écran billet, QR + code court). Le
+  QR encode `eventhub://ticket/<id>?code=…` **sans signature** : il identifie,
+  il ne prouve pas. Restent la signature HMAC et le scanner organisateur.
 
 #### F-02 · Notifications push et rappels
 *Inspiré de : Dice, Partiful*
@@ -148,6 +158,10 @@ Deep link `eventhub.app/e/{id}`, aperçu Open Graph, bouton natif de partage.
 - **Impact** : premier canal d'acquisition gratuit d'une plateforme d'événements.
 - **Technique** : `share_plus`, Firebase Hosting + Dynamic Links, route
   `/events/:eventId` déjà compatible deep link (GoRouter).
+- **État (v1.1)** : le lien `eventhub.app/e/{id}` (`AppLinks.event`) et une
+  invitation texte se copient depuis la fiche et l'écran « Événement publié ».
+  Restent la feuille de partage native, l'hébergement de la page publique et
+  l'aperçu Open Graph.
 
 #### F-09 · Avis après l'événement
 *Inspiré de : Airbnb, Eventbrite*
@@ -175,7 +189,7 @@ bouton « suivre ».
 | F-12 | Types de billets multiples (early bird, VIP, gratuit) | Shotgun | Sous-collection `events/{id}/tiers` |
 | F-13 | Événements récurrents et séries | Meetup | Modèle `series` + génération d'occurrences |
 | F-14 | Carte et géolocalisation (« près de moi ») | Airbnb | Geohash + `geoflutterfire`; l'index `location + startsAt` est déjà là |
-| F-15 | Export CSV de la liste des participants | Eventbrite | Cloud Function + URL signée, prefix `private/` (Storage déjà fermé au client) |
+| F-15 | Export CSV de la liste des participants | Eventbrite | **v1.1 : CSV copié dans le presse-papiers** (`GuestListCsv`). Reste le fichier téléchargeable : Cloud Function + URL signée, préfixe `private/` (Storage déjà fermé au client) |
 | F-16 | Co-organisateurs / équipe | Eventbrite | Passage d'un `organizerId` à un tableau `staffIds` — impacte les règles |
 | F-17 | Chat ou fil de discussion par événement | Meetup | Coût de modération élevé : à ne lancer qu'avec F-19 |
 | F-18 | Recommandations personnalisées | Luma, Airbnb | À partir des favoris et de l'historique ; commencer par des heuristiques |
@@ -191,8 +205,10 @@ bouton « suivre ».
 - **Widget d'accueil / Live Activity** — le prochain billet sur l'écran de
   verrouillage (Dice le fait, c'est spectaculaire).
 - **Apple / Google Wallet** — le billet dans le portefeuille système.
-- **Analytique organisateur** — courbe de remplissage dans le temps, taux de
-  no-show, sources de trafic.
+- **Analytique organisateur** — la base est livrée en v1.1 (onglet Stats :
+  14 jours de réservations, annulations, classement des événements). Restent
+  le taux de no-show (dépend de F-01), les sources de trafic, et un agrégat
+  serveur quand 200 réservations ne suffiront plus.
 
 ---
 

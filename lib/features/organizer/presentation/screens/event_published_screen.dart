@@ -1,9 +1,11 @@
 import 'package:eventhub/app/theme/theme.dart';
+import 'package:eventhub/core/config/app_links.dart';
 import 'package:eventhub/core/extensions/context_x.dart';
 import 'package:eventhub/core/l10n/app_strings.dart';
 import 'package:eventhub/core/utils/date_formats.dart';
 import 'package:eventhub/core/widgets/design_system.dart';
 import 'package:eventhub/features/events/application/event_providers.dart';
+import 'package:eventhub/features/events/presentation/widgets/share_event_sheet.dart';
 import 'package:eventhub/routes/routes.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -92,6 +94,8 @@ class EventPublishedScreen extends ConsumerWidget {
                     ],
                   ),
                 ),
+              const SizedBox(height: AppSpacing.md),
+              PublicLinkField(url: AppLinks.event(eventId)),
               const Spacer(flex: 2),
               AppButton.primary(
                 label: AppStrings.viewDashboard,
@@ -102,7 +106,9 @@ class EventPublishedScreen extends ConsumerWidget {
               AppButton.secondary(
                 label: AppStrings.share,
                 icon: Icons.ios_share_rounded,
-                onPressed: () => context.showToast(AppStrings.comingSoon),
+                onPressed: event == null
+                    ? null
+                    : () => showShareEventSheet(context, event),
               ),
               const SizedBox(height: AppSpacing.xxl),
             ],

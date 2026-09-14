@@ -342,6 +342,7 @@ class _FilterSheet extends ConsumerWidget {
                 vertical: AppSpacing.sm,
               ),
               elevation: SurfaceElevation.flat,
+              radius: AppRadius.button,
               color: t.surfaceSunken,
               child: SwitchListTile.adaptive(
                 contentPadding: EdgeInsets.zero,
@@ -377,7 +378,7 @@ class _Choice extends StatelessWidget {
     final t = context.tokens;
     return Material(
       color: selected ? t.brandSoft : t.surfaceSunken,
-      borderRadius: AppRadius.brPill,
+      borderRadius: AppRadius.brButton,
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onTap,
@@ -387,7 +388,7 @@ class _Choice extends StatelessWidget {
             vertical: AppSpacing.md,
           ),
           decoration: BoxDecoration(
-            borderRadius: AppRadius.brPill,
+            borderRadius: AppRadius.brButton,
             border: Border.all(color: selected ? t.brand : t.border),
           ),
           child: Row(

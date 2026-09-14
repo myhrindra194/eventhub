@@ -28,6 +28,14 @@ abstract interface class AuthRepository {
     required UserRole role,
   });
 
+  /// Updates the presentation fields of the signed-in user's profile.
+  ///
+  /// Only the display name moves: `email` and `role` are frozen by the
+  /// security rules, so the contract does not even offer to change them.
+  /// Names already denormalised on past reservations are left untouched —
+  /// a ticket keeps the name it was issued under.
+  AsyncResult<AppUser> updateProfile({required String name});
+
   AsyncResult<void> sendPasswordReset({required String email});
 
   /// Changes the password of the currently signed-in account.

@@ -82,6 +82,14 @@
       "queryScope": "COLLECTION",
       "fields": [
         { "fieldPath": "organizerId", "order": "ASCENDING" },
+        { "fieldPath": "reservedAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "reservations",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "organizerId", "order": "ASCENDING" },
         { "fieldPath": "status", "order": "ASCENDING" },
         { "fieldPath": "reservedAt", "order": "DESCENDING" }
       ]

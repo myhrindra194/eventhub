@@ -43,6 +43,41 @@ abstract class Reservation with _$Reservation {
   static String composeId({required String eventId, required String userId}) =>
       '${eventId}_$userId';
 
+  /// Human-readable ticket code, e.g. `EH-7K2Q-M9XD`.
+  ///
+  /// Derived from the id rather than stored: the id is already unique and
+  /// immutable, so the code needs no migration and cannot drift from it. The
+  /// alphabet drops `0/O` and `1/I/L` — this is read aloud at a door, and
+  /// those are exactly the characters people get wrong.
+  String get ticketCode {
+    const alphabet = '23456789ABCDEFGHJKMNPQRSTUVWXYZ';
+    // FNV-1a, 32 bits, twice with different offsets: stable across runs and
+    // platforms, unlike `String.hashCode`.
+    int fnv(int seed) {
+      var hash = seed;
+      for (final unit in id.codeUnits) {
+        hash ^= unit;
+        hash = (hash * 0x01000193) & 0xFFFFFFFF;
+      }
+      return hash;
+    }
+
+    String chunk(int value) {
+      final buffer = StringBuffer();
+      var v = value;
+      for (var i = 0; i < 4; i++) {
+        buffer.write(alphabet[v % alphabet.length]);
+        v ~/= alphabet.length;
+      }
+      return buffer.toString();
+    }
+
+    return 'EH-${chunk(fnv(0x811C9DC5))}-${chunk(fnv(0x050C5D1F))}';
+  }
+
+  /// Payload encoded in the ticket's QR code.
+  String get ticketPayload => 'eventhub://ticket/$id?code=$ticketCode';
+
   bool get isActive => status == ReservationStatus.confirmed;
   bool get isCancelled => status == ReservationStatus.cancelled;
 }

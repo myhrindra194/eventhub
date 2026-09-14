@@ -21,6 +21,17 @@ abstract final class AppRoutes {
   static const completeProfile = '/complete-profile';
   static const welcome = '/welcome';
 
+  // Account & support — shared by both roles.
+  static const editProfile = '/account/edit';
+  static const help = '/help';
+  static const privacyPolicy = '/privacy';
+  static const about = '/about';
+
+  static const editProfileName = 'edit-profile';
+  static const helpName = 'help';
+  static const privacyPolicyName = 'privacy';
+  static const aboutName = 'about';
+
   static const splashName = 'splash';
   static const onboardingName = 'onboarding';
   static const loginName = 'login';
@@ -39,6 +50,7 @@ abstract final class AppRoutes {
   static const eventDetail = '/events/:eventId';
   static const reservationConfirmation =
       '/reservations/:reservationId/confirmation';
+  static const ticket = '/reservations/:reservationId/ticket';
 
   static const eventsName = 'events';
   static const searchName = 'search';
@@ -48,6 +60,7 @@ abstract final class AppRoutes {
   static const changePasswordName = 'change-password';
   static const eventDetailName = 'event-detail';
   static const reservationConfirmationName = 'reservation-confirmation';
+  static const ticketName = 'ticket';
 
   // ------------------------------------------------------------- organizer
   static const organizerPrefix = '/organizer';
@@ -59,6 +72,10 @@ abstract final class AppRoutes {
   static const organizerEventParticipants =
       '/organizer/events/:eventId/participants';
   static const organizerEventPublished = '/organizer/events/:eventId/published';
+  static const organizerStats = '/organizer/stats';
+  static const organizerAlerts = '/organizer/alerts';
+  static const organizerStatsName = 'organizer-stats';
+  static const organizerAlertsName = 'organizer-alerts';
 
   static const organizerEventsName = 'organizer-events';
   static const organizerProfileName = 'organizer-profile';
@@ -78,6 +95,9 @@ abstract final class AppRoutes {
 
   static String reservationConfirmationPath(String reservationId) =>
       '/reservations/${Uri.encodeComponent(reservationId)}/confirmation';
+
+  static String ticketPath(String reservationId) =>
+      '/reservations/${Uri.encodeComponent(reservationId)}/ticket';
 
   static String organizerEventEditPath(String eventId) =>
       '/organizer/events/${Uri.encodeComponent(eventId)}/edit';
@@ -103,7 +123,14 @@ abstract final class AppRoutes {
   /// set, the role-confinement rule would bounce an organizer out of
   /// `/change-password` simply because the path does not start with
   /// `/organizer`.
-  static const _roleAgnosticPaths = <String>{welcome, changePassword};
+  static const _roleAgnosticPaths = <String>{
+    welcome,
+    changePassword,
+    editProfile,
+    help,
+    privacyPolicy,
+    about,
+  };
 
   static bool isRoleAgnostic(String location) =>
       _roleAgnosticPaths.contains(location);
@@ -123,7 +150,12 @@ abstract final class AppRoutes {
     profile,
   ];
 
-  static const organizerTabs = <String>[organizerEvents, organizerProfile];
+  static const organizerTabs = <String>[
+    organizerEvents,
+    organizerStats,
+    organizerAlerts,
+    organizerProfile,
+  ];
 }
 
 /// Where a role lands once authenticated.

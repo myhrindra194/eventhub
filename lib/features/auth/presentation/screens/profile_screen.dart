@@ -74,7 +74,7 @@ class ProfileScreen extends ConsumerWidget {
                 _MenuItem(
                   icon: Icons.badge_outlined,
                   label: AppStrings.editProfile,
-                  onTap: () => context.showToast(AppStrings.comingSoon),
+                  onTap: () => context.push(AppRoutes.editProfile),
                 ),
                 _MenuItem(
                   icon: Icons.tune_rounded,
@@ -96,17 +96,17 @@ class ProfileScreen extends ConsumerWidget {
                 _MenuItem(
                   icon: Icons.help_outline_rounded,
                   label: AppStrings.helpCenter,
-                  onTap: () => context.showToast(AppStrings.comingSoon),
+                  onTap: () => context.push(AppRoutes.help),
                 ),
                 _MenuItem(
                   icon: Icons.shield_outlined,
                   label: AppStrings.privacy,
-                  onTap: () => context.showToast(AppStrings.comingSoon),
+                  onTap: () => context.push(AppRoutes.privacyPolicy),
                 ),
                 _MenuItem(
                   icon: Icons.info_outline_rounded,
                   label: AppStrings.about,
-                  onTap: () => context.showToast(AppStrings.comingSoon),
+                  onTap: () => context.push(AppRoutes.about),
                 ),
               ],
             ),

@@ -9,10 +9,12 @@ import {
   getDoc,
   getDocs,
   limit,
+  orderBy,
   query,
   serverTimestamp,
   setDoc,
   updateDoc,
+  where,
 } from 'firebase/firestore';
 
 import {
@@ -596,6 +598,43 @@ describe('reservations', () => {
         ),
       ),
     );
+  });
+
+  it('lists only reservations the query proves belong to the caller', async () => {
+    await seedReservation(reservationId('e1', 'p1'));
+    await seedReservation(reservationId('e1', 'p2'), {
+      userId: 'p2',
+      userName: 'Autre Personne',
+      userEmail: 'p2@example.com',
+    });
+    const db = asParticipant(env, 'p1').firestore();
+    const reservations = collection(db, 'reservations');
+
+    await assertSucceeds(
+      getDocs(query(reservations, where('userId', '==', 'p1'), limit(50))),
+    );
+    // A bounded but unfiltered query used to pass, handing every guest list
+    // (names and emails) to any signed-in account.
+    await assertFails(getDocs(query(reservations, limit(50))));
+    await assertFails(
+      getDocs(query(reservations, where('userId', '==', 'p2'), limit(50))),
+    );
+  });
+
+  it('lets an organizer list the reservations of their own events only', async () => {
+    await seedReservation(reservationId('e1', 'p1'));
+    const byOrganizer = (ctx, organizerId) =>
+      getDocs(
+        query(
+          collection(ctx.firestore(), 'reservations'),
+          where('organizerId', '==', organizerId),
+          orderBy('reservedAt', 'desc'),
+          limit(200),
+        ),
+      );
+
+    await assertSucceeds(byOrganizer(asOrganizer(env, 'o1'), 'o1'));
+    await assertFails(byOrganizer(asOrganizer(env, 'o2'), 'o1'));
   });
 });
 

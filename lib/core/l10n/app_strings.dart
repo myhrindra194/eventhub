@@ -219,7 +219,63 @@ abstract final class AppStrings {
   static const logoutConfirm =
       'Vous devrez saisir à nouveau vos identifiants à la prochaine ouverture.';
   static const editProfile = 'Modifier mon profil';
-  static const comingSoon = 'Bientôt disponible';
+
+  // Modifier le profil
+  static const editProfileTitle = 'Votre identité.';
+  static const editProfileLead =
+      'Le nom qui apparaîtra sur vos prochains billets et événements.';
+  static const profileUpdated = 'Profil mis à jour.';
+  static const lockedFields = 'Non modifiables';
+  static const lockedFieldsHint =
+      "L'email sert d'identifiant et le rôle définit votre espace : ils sont "
+      'fixés à la création du compte.';
+  static const nameUnchanged = 'Aucun changement à enregistrer.';
+
+  // Billet
+  static const ticketTitle = 'Billet';
+  static const ticketCode = 'Code billet';
+  static const ticketHolder = 'Titulaire';
+  static const ticketEntrance =
+      "Présentez ce code à l'entrée. Montez la luminosité : le scan est plus "
+      'rapide.';
+  static const ticketCancelledNotice =
+      "Ce billet a été annulé. Il ne donne plus accès à l'événement.";
+  static const ticketPastNotice =
+      'Événement terminé. Le billet est conservé pour mémoire.';
+  static const ticketNotFound = 'Ce billet est introuvable.';
+  static const viewEvent = "Voir l'événement";
+  static const copyCode = 'Copier le code';
+  static const codeCopied = 'Code billet copié.';
+
+  // Partage
+  static const shareTitle = "Partager l'événement";
+  static const shareLead =
+      'Le lien ouvre la fiche publique. Les réservations se font dans '
+      "l'application.";
+  static const publicLink = 'Lien public';
+  static const copy = 'Copier';
+  static const linkCopied = 'Lien copié dans le presse-papiers.';
+  static const copyInvitation = 'Copier une invitation prête à envoyer';
+  static const invitationCopied =
+      "Invitation copiée — il n'y a plus qu'à la coller.";
+
+  // Export
+  static const exportGuestList = 'Exporter la liste';
+  static const guestListCopied = 'Liste copiée au format CSV';
+
+  // Organisateur — statistiques et alertes
+  static const stats = 'Stats';
+  static const statsTitle = 'Statistiques';
+  static const statsSubtitle = 'Vos jauges et vos réservations, en direct.';
+  static const alerts = 'Alertes';
+  static const alertsTitle = 'Alertes';
+  static const alertsSubtitle = 'Ce qui bouge sur vos événements.';
+  static const watchlist = 'À surveiller';
+  static const activity = 'Activité';
+  static const noActivityTitle = 'Tout est calme';
+  static const noActivity =
+      "Rien de neuf pour l'instant. Chaque réservation et chaque annulation "
+      'sur vos événements apparaîtra ici.';
 
   // Forgot password
   static const forgotPasswordTitle = 'Mot de passe oublié';

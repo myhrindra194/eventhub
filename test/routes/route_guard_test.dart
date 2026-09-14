@@ -120,6 +120,40 @@ void main() {
       );
     });
 
+    test('opens account and support pages to both roles', () {
+      for (final path in [
+        AppRoutes.editProfile,
+        AppRoutes.help,
+        AppRoutes.privacyPolicy,
+        AppRoutes.about,
+        AppRoutes.changePassword,
+      ]) {
+        expect(redirect(signedIn(participant), path), isNull, reason: path);
+        expect(redirect(signedIn(organizer), path), isNull, reason: path);
+      }
+    });
+
+    test('keeps statistics and alerts inside the organizer area', () {
+      for (final path in [
+        AppRoutes.organizerStats,
+        AppRoutes.organizerAlerts,
+      ]) {
+        expect(redirect(signedIn(organizer), path), isNull, reason: path);
+        expect(
+          redirect(signedIn(participant), path),
+          AppRoutes.events,
+          reason: path,
+        );
+      }
+    });
+
+    test('keeps tickets inside the participant area', () {
+      final ticket = AppRoutes.ticketPath('evt_u1');
+      expect(ticket, '/reservations/evt_u1/ticket');
+      expect(redirect(signedIn(participant), ticket), isNull);
+      expect(redirect(signedIn(organizer), ticket), AppRoutes.organizerEvents);
+    });
+
     test('routes the end of the sign-up funnel to the welcome screen', () {
       expect(
         redirect(signedIn(participant), AppRoutes.register),

@@ -21,6 +21,9 @@ abstract final class AppDateFormats {
   static String monthAbbr(DateTime d) =>
       _month.format(d).replaceAll('.', '').toUpperCase();
 
+  /// "24 oct." — chart axis labels.
+  static String dayMonth(DateTime d) => _dayMonth.format(d);
+
   /// "24 oct. • 20:00" — card meta line.
   static String dayMonthTime(DateTime d) =>
       '${_dayMonth.format(d)} • ${_time.format(d)}';

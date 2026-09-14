@@ -59,6 +59,18 @@ class ReservationRemoteDataSource {
         .map(_toDomainList);
   }
 
+  /// All statuses: cancellations are part of what an organizer monitors.
+  /// Backed by the `(organizerId, reservedAt desc)` composite index; the
+  /// equality on `organizerId` is what lets the list rule prove access.
+  Stream<List<Reservation>> watchByOrganizer(String organizerId) {
+    return _reservations
+        .where(ReservationFields.organizerId, isEqualTo: organizerId)
+        .orderBy(ReservationFields.reservedAt, descending: true)
+        .limit(maxPageSize)
+        .snapshots()
+        .map(_toDomainList);
+  }
+
   Stream<Reservation?> watchById(String reservationId) =>
       _reservations.doc(reservationId).snapshots().map(_toDomainOrNull);
 

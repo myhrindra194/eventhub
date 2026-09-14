@@ -79,6 +79,7 @@ class MockStore {
       'art-gala': 'photo-1460661419201-fd4cecdf8a8b',
       'basket-derby': 'photo-1504450758481-7338eba7524a',
       'ux-workshop': 'photo-1531482615713-2afd69097998',
+      'design-sprint': 'photo-1531482615713-2afd69097998',
     };
     String img(String seed) =>
         'https://images.unsplash.com/${photos[seed]}?w=1000&q=80&auto=format&fit=crop';
@@ -224,6 +225,81 @@ class MockStore {
         organizer: _organizer,
         description: 'Atelier passé : prototypage rapide sur Figma.',
       ),
+      e(
+        id: 'design-sprint',
+        title: 'Design Sprint Express',
+        category: EventCategory.workshop,
+        // Always inside the organizer's 24 h "starts soon" window, whatever
+        // the time the demo is launched.
+        startsAt: _now.add(const Duration(hours: 20)),
+        location: 'Habitat Coworking',
+        capacity: 24,
+        available: 2,
+        organizer: _organizer,
+        description:
+            'Une journée pour passer d’un problème à un prototype testé. '
+            'Groupe volontairement réduit.',
+      ),
+    ]);
+
+    _seedOrganizerActivity();
+  }
+
+  /// Guests who are not demo accounts: they only exist as names on the
+  /// organizer's reservations, so the statistics and alerts screens have
+  /// something to show from the first launch.
+  static const _guests = [
+    (id: 'guest-hanta', name: 'Hanta Ravelo', email: 'hanta@exemple.mg'),
+    (id: 'guest-tojo', name: 'Tojo Andriamanana', email: 'tojo@exemple.mg'),
+    (id: 'guest-fara', name: 'Fara Rasoanaivo', email: 'fara@exemple.mg'),
+    (id: 'guest-lova', name: 'Lova Rakotobe', email: 'lova@exemple.mg'),
+    (id: 'guest-mialy', name: 'Mialy Randria', email: 'mialy@exemple.mg'),
+    (id: 'guest-nomena', name: 'Nomena Rabe', email: 'nomena@exemple.mg'),
+  ];
+
+  void _seedOrganizerActivity() {
+    Reservation booking(
+      String eventId,
+      int guest, {
+      required Duration ago,
+      Duration? cancelledAgo,
+    }) {
+      final event = events.value.firstWhere((e) => e.id == eventId);
+      final g = _guests[guest];
+      return Reservation(
+        id: Reservation.composeId(eventId: eventId, userId: g.id),
+        eventId: eventId,
+        userId: g.id,
+        organizerId: event.organizerId,
+        userName: g.name,
+        userEmail: g.email,
+        eventTitle: event.title,
+        eventStartsAt: event.startsAt,
+        eventLocation: event.location,
+        status: cancelledAgo == null
+            ? ReservationStatus.confirmed
+            : ReservationStatus.cancelled,
+        reservedAt: _now.subtract(ago),
+        cancelledAt: cancelledAgo == null ? null : _now.subtract(cancelledAgo),
+      );
+    }
+
+    const h = Duration(hours: 1);
+    const d = Duration(days: 1);
+    reservations.add([
+      booking('design-sprint', 0, ago: h * 0.5),
+      booking('design-sprint', 1, ago: h * 9),
+      booking('design-sprint', 2, ago: d * 2),
+      booking('startup-conf', 0, ago: h * 2),
+      booking('startup-conf', 1, ago: h * 5),
+      booking('startup-conf', 2, ago: d + h * 3),
+      booking('startup-conf', 3, ago: d * 3),
+      booking('startup-conf', 4, ago: d * 6),
+      booking('startup-conf', 5, ago: d * 4, cancelledAgo: h * 20),
+      booking('basket-derby', 3, ago: d),
+      booking('basket-derby', 4, ago: d * 8),
+      booking('ux-workshop', 1, ago: d * 10),
+      booking('ux-workshop', 5, ago: d * 12),
     ]);
   }
 }

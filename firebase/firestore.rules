@@ -457,7 +457,14 @@ service cloud.firestore {
       allow get: if isSignedIn()
         && (existing().userId == uid() || existing().organizerId == uid());
 
-      allow list: if isSignedIn() && request.query.limit <= 200;
+      // The same two branches, and they are mandatory. Firestore evaluates a
+      // `list` rule against the query's constraints, so a query that does not
+      // itself pin `userId == uid` or `organizerId == uid` is refused outright.
+      // Without this clause any signed-in account could page through every
+      // guest list — names and emails included.
+      allow list: if isSignedIn()
+        && request.query.limit <= 200
+        && (resource.data.userId == uid() || resource.data.organizerId == uid());
 
       allow create: if isParticipant()
         && validReservationShape()

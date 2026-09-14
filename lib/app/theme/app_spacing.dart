@@ -65,6 +65,13 @@ abstract final class AppRadius {
   /// Top-only rounding used by bottom sheets and content sheets that
   /// overlap a hero image.
   static const brSheet = BorderRadius.vertical(top: Radius.circular(xxxl));
+
+  /// Modal bottom sheets use the control radius, not [brSheet]: a sheet is
+  /// a panel the user acts in, and it takes the same drawn 6 px edge as the
+  /// buttons and fields it holds.
+  static const brModalSheet = BorderRadius.vertical(
+    top: Radius.circular(button),
+  );
 }
 
 /// Touch-target and control sizing.

@@ -97,6 +97,26 @@ class MockAuthRepository implements AuthRepository {
   }) => Future.value(const Err<AppUser>(AuthFailure.notSignedIn()));
 
   @override
+  AsyncResult<AppUser> updateProfile({required String name}) {
+    return guard(
+      () => _simulate(() {
+        final user = _store.session.value.userOrNull;
+        final account = user == null ? null : _store.accounts[user.email];
+        if (user == null || account == null) {
+          throw const FailureException(AuthFailure.notSignedIn());
+        }
+        final updated = user.copyWith(name: name.trim());
+        _store.accounts[user.email] = (
+          user: updated,
+          password: account.password,
+        );
+        _store.session.add(SignedIn(updated));
+        return updated;
+      }),
+    );
+  }
+
+  @override
   AsyncResult<void> sendPasswordReset({required String email}) =>
       guard(() => _simulate(() {}));
 
@@ -318,6 +338,14 @@ class MockReservationRepository implements ReservationRepository {
             .toList()
           ..sort((a, b) => b.reservedAt.compareTo(a.reservedAt)),
   );
+
+  @override
+  Stream<List<Reservation>> watchByOrganizer(String organizerId) =>
+      _store.reservations.map(
+        (list) =>
+            list.where((r) => r.organizerId == organizerId).toList()
+              ..sort((a, b) => b.reservedAt.compareTo(a.reservedAt)),
+      );
 
   @override
   Stream<Reservation?> watchForEvent({

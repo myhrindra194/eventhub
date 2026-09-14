@@ -138,8 +138,18 @@ un listener non borné facture une lecture par document à **chaque** snapshot.
 
 Les deux branches de lecture des réservations (`userId ==` / `organizerId ==`)
 sont **prouvables depuis un filtre de requête**, ce qui est exactement pourquoi
-les requêtes du client portent ces égalités et pourquoi l'index composite
-`(eventId, organizerId, status, reservedAt)` existe.
+les requêtes du client portent ces égalités et pourquoi les index composites
+`(eventId, organizerId, status, reservedAt)` et `(organizerId, reservedAt)`
+existent.
+
+> ⚠️ **Correctif v1.1.** La règle `list` des réservations ne vérifiait que
+> `request.query.limit <= 200`. Une requête bornée mais **sans filtre**
+> passait : n'importe quel compte connecté pouvait lire toutes les listes
+> d'invités, noms et emails compris. La règle exige désormais
+> `resource.data.userId == uid() || resource.data.organizerId == uid()`, que
+> Firestore évalue contre les contraintes de la requête : une requête qui ne
+> fixe pas l'une de ces égalités est refusée d'office. Deux tests de règles
+> couvrent le cas (participant et organisateur).
 
 ---
 
@@ -229,7 +239,7 @@ make rules-setup   # une seule fois : npm install
 make test-rules    # démarre les émulateurs, exécute la suite, les arrête
 ```
 
-**70 tests, 0 échec.** Elle tourne aussi en CI (job `Security rules`), sans
+**110 tests, 0 échec.** Elle tourne aussi en CI (job `Security rules`), sans
 aucun secret : l'identifiant de projet `demo-eventhub` indique au SDK qu'aucun
 projet réel n'existe derrière, donc les émulateurs ne demandent pas
 d'identifiants — la suite passe même sur un fork.

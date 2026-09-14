@@ -4,9 +4,11 @@ import 'package:eventhub/core/l10n/app_strings.dart';
 import 'package:eventhub/core/utils/date_formats.dart';
 import 'package:eventhub/core/widgets/design_system.dart';
 import 'package:eventhub/features/events/application/event_providers.dart';
+import 'package:eventhub/features/organizer/domain/guest_list_csv.dart';
 import 'package:eventhub/features/reservations/application/reservation_providers.dart';
 import 'package:eventhub/features/reservations/domain/entities/reservation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 /// Guest list for one event.
@@ -36,13 +38,42 @@ class _EventParticipantsScreenState
     super.dispose();
   }
 
+  /// The whole list, not the filtered view: an export that silently drops
+  /// the people hidden by a search query would be a nasty surprise at the
+  /// door.
+  Future<void> _export(List<Reservation> guests) async {
+    await Clipboard.setData(ClipboardData(text: GuestListCsv.build(guests)));
+    if (!mounted) return;
+    final rows = guests.length;
+    context.showSuccess(
+      '${AppStrings.guestListCopied} · $rows ligne${rows > 1 ? 's' : ''}.',
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final event = ref.watch(eventByIdProvider(widget.eventId)).value;
     final participants = ref.watch(eventParticipantsProvider(widget.eventId));
+    final guests = participants.value ?? const <Reservation>[];
 
     return AppScaffold(
       dense: true,
+      extendBody: false,
+      bottomBar: FrostedBar(
+        padding: EdgeInsets.fromLTRB(
+          AppSpacing.gutter,
+          AppSpacing.md,
+          AppSpacing.gutter,
+          MediaQuery.paddingOf(context).bottom + AppSpacing.md,
+        ),
+        child: AppButton.secondary(
+          label: AppStrings.exportGuestList,
+          icon: Icons.file_download_outlined,
+          size: AppButtonSize.medium,
+          elevated: false,
+          onPressed: guests.isEmpty ? null : () => _export(guests),
+        ),
+      ),
       appBar: AppBar(
         title: const Text(AppStrings.participants),
         bottom: event == null

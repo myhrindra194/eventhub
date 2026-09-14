@@ -1,6 +1,7 @@
 import 'package:eventhub/features/auth/application/auth_providers.dart';
 import 'package:eventhub/features/auth/presentation/screens/change_password_screen.dart';
 import 'package:eventhub/features/auth/presentation/screens/complete_profile_screen.dart';
+import 'package:eventhub/features/auth/presentation/screens/edit_profile_screen.dart';
 import 'package:eventhub/features/auth/presentation/screens/forgot_password_screen.dart';
 import 'package:eventhub/features/auth/presentation/screens/login_screen.dart';
 import 'package:eventhub/features/auth/presentation/screens/profile_screen.dart';
@@ -17,10 +18,16 @@ import 'package:eventhub/features/onboarding/presentation/onboarding_screen.dart
 import 'package:eventhub/features/organizer/presentation/organizer_shell.dart';
 import 'package:eventhub/features/organizer/presentation/screens/event_participants_screen.dart';
 import 'package:eventhub/features/organizer/presentation/screens/event_published_screen.dart';
+import 'package:eventhub/features/organizer/presentation/screens/organizer_alerts_screen.dart';
 import 'package:eventhub/features/organizer/presentation/screens/organizer_dashboard_screen.dart';
+import 'package:eventhub/features/organizer/presentation/screens/organizer_stats_screen.dart';
 import 'package:eventhub/features/participant/presentation/participant_shell.dart';
 import 'package:eventhub/features/reservations/presentation/screens/my_reservations_screen.dart';
 import 'package:eventhub/features/reservations/presentation/screens/reservation_confirmation_screen.dart';
+import 'package:eventhub/features/reservations/presentation/screens/ticket_screen.dart';
+import 'package:eventhub/features/support/presentation/screens/about_screen.dart';
+import 'package:eventhub/features/support/presentation/screens/help_center_screen.dart';
+import 'package:eventhub/features/support/presentation/screens/privacy_screen.dart';
 import 'package:eventhub/routes/app_routes.dart';
 import 'package:eventhub/routes/route_guard.dart';
 import 'package:eventhub/routes/route_observer.dart';
@@ -130,6 +137,31 @@ final _commonRoutes = <RouteBase>[
     parentNavigatorKey: rootNavigatorKey,
     pageBuilder: (_, state) =>
         AppPage.screen(state, const ChangePasswordScreen()),
+  ),
+  // Account and support pages, opened from the profile of either role.
+  GoRoute(
+    path: AppRoutes.editProfile,
+    name: AppRoutes.editProfileName,
+    parentNavigatorKey: rootNavigatorKey,
+    pageBuilder: (_, state) => AppPage.screen(state, const EditProfileScreen()),
+  ),
+  GoRoute(
+    path: AppRoutes.help,
+    name: AppRoutes.helpName,
+    parentNavigatorKey: rootNavigatorKey,
+    pageBuilder: (_, state) => AppPage.screen(state, const HelpCenterScreen()),
+  ),
+  GoRoute(
+    path: AppRoutes.privacyPolicy,
+    name: AppRoutes.privacyPolicyName,
+    parentNavigatorKey: rootNavigatorKey,
+    pageBuilder: (_, state) => AppPage.screen(state, const PrivacyScreen()),
+  ),
+  GoRoute(
+    path: AppRoutes.about,
+    name: AppRoutes.aboutName,
+    parentNavigatorKey: rootNavigatorKey,
+    pageBuilder: (_, state) => AppPage.screen(state, const AboutScreen()),
   ),
   GoRoute(
     path: AppRoutes.forgotPassword,
@@ -250,6 +282,17 @@ final _participantLeafRoutes = <RouteBase>[
       transition: AppTransition.fadeThrough,
     ),
   ),
+  GoRoute(
+    path: AppRoutes.ticket,
+    name: AppRoutes.ticketName,
+    parentNavigatorKey: rootNavigatorKey,
+    pageBuilder: (_, state) => AppPage.screen(
+      state,
+      TicketScreen(
+        reservationId: state.pathParameters[AppRoutes.reservationIdParam]!,
+      ),
+    ),
+  ),
 ];
 
 // ------------------------------------------------------------- organizer --
@@ -267,6 +310,32 @@ final _organizerShell = StatefulShellRoute.indexedStack(
           pageBuilder: (_, state) => AppPage.of(
             state,
             const OrganizerDashboardScreen(),
+            transition: AppTransition.none,
+          ),
+        ),
+      ],
+    ),
+    StatefulShellBranch(
+      routes: [
+        GoRoute(
+          path: AppRoutes.organizerStats,
+          name: AppRoutes.organizerStatsName,
+          pageBuilder: (_, state) => AppPage.of(
+            state,
+            const OrganizerStatsScreen(),
+            transition: AppTransition.none,
+          ),
+        ),
+      ],
+    ),
+    StatefulShellBranch(
+      routes: [
+        GoRoute(
+          path: AppRoutes.organizerAlerts,
+          name: AppRoutes.organizerAlertsName,
+          pageBuilder: (_, state) => AppPage.of(
+            state,
+            const OrganizerAlertsScreen(),
             transition: AppTransition.none,
           ),
         ),

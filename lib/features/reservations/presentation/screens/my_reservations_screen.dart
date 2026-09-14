@@ -173,7 +173,7 @@ class _Content extends StatelessWidget {
               child: TicketCard(
                 reservation: r,
                 isPast: tab != _TicketTab.upcoming,
-                onTap: () => context.push(AppRoutes.eventDetailPath(r.eventId)),
+                onTap: () => context.push(AppRoutes.ticketPath(r.id)),
               ),
             ),
             const SizedBox(height: AppSpacing.md),

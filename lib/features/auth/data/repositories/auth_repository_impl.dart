@@ -109,6 +109,27 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
+  AsyncResult<AppUser> updateProfile({required String name}) {
+    return guard(() async {
+      final user = _auth.currentUser;
+      if (user == null) throw const FailureException(AuthFailure.notSignedIn());
+      await _users.updateName(user.uid, name.trim());
+      // Read back rather than rebuilding locally: the document is the source
+      // of truth, and the session stream will emit the same value anyway.
+      final dto = await _users.get(user.uid);
+      if (dto == null) {
+        throw const FailureException(
+          AuthFailure(
+            code: AuthFailureCode.profileMissing,
+            message: 'Profil introuvable. Veuillez compléter votre profil.',
+          ),
+        );
+      }
+      return dto.toDomain(user.uid);
+    });
+  }
+
+  @override
   AsyncResult<void> sendPasswordReset({required String email}) =>
       guard(() => _auth.sendPasswordReset(email));
 

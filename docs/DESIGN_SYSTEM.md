@@ -72,7 +72,20 @@ Plus une constante `gutter = 20` : la marge horizontale de **tous** les
 
 ### 2.3 Rayons
 
-`xs 8 · sm 12 · md 16 · lg 20 · xl 24 · xxl 28 · xxxl 34 · pill 999`
+**`button = input = 6 px`** — la valeur de référence du produit.
+
+Tout ce que l'utilisateur **touche ou remplit** a le même bord net de 6 px :
+boutons, champs, puces de filtre, bouton de fermeture. Les **feuilles modales**
+aussi (`AppRadius.brModalSheet`, coins supérieurs à 6 px), ainsi que tout ce
+qu'elles contiennent, et les nouveaux blocs (billet, statistiques, alertes).
+Un grand rayon sur un bouton est le signe le plus sûr d'un gabarit par
+défaut ; l'identité du produit tient à sa photographie et à sa typographie, pas
+à des coins mous.
+
+Échelle secondaire, pour les surfaces héritées et les imbrications :
+`xs 8 · sm 12 · md 16 · lg 20 · xl 24 · xxl 28 · xxxl 34 · pill 999`.
+`brSheet` (34 px) reste réservé au bloc de contenu qui chevauche l'image de la
+fiche événement — ce n'est pas une modale.
 
 L'échelle est **consciente de l'imbrication** : un enfant dans un conteneur de
 rayon `r` prend le cran juste en dessous, ce qui garde les angles concentriques
@@ -166,7 +179,9 @@ tout le vocabulaire.
 | `AppButton` | 5 variantes (`primary`, `secondary`, `tonal`, `ghost`, `danger`), 3 tailles, état de chargement qui bloque le double-envoi |
 | `IconActionButton` / `OverlayIconButton` / `GradientFab` | Actions iconiques |
 | `LabeledField` / `AppSearchField` / `PickerField` | Formulaires |
-| `showAppSheet` / `AppSheet` / `showConfirmSheet` | Feuilles modales |
+| `showAppSheet` / `AppSheet` / `showConfirmSheet` | Feuilles modales : coins à 6 px, **sans poignée**, en-tête / contenu / actions séparés par des filets |
+| `SheetCloseButton` | ✕ carré à 6 px, sortie explicite de toute feuille (remplace la poignée) |
+| `FieldGroup` / `FieldRow` / `PasswordFieldRow` | Formulaires groupés (connexion, profil, mot de passe) |
 | `EmptyStateView` / `ErrorStateView` / `LoadingStateView` | États de rien-à-afficher |
 
 ---
@@ -192,6 +207,25 @@ question au moment où il y répond. C'est une cause classique d'abandon.
 **Dans une feuille de confirmation destructive, l'action dangereuse est
 au-dessus de « Annuler ».**
 L'option sûre est la plus proche du pouce.
+
+**Les feuilles modales n'ont pas de poignée.**
+La barre de préhension est une convention iOS qui se lit comme du décor de
+gabarit. Chaque feuille porte un bouton ✕ explicite ; le glisser vers le bas et
+le tap sur le voile ferment toujours. La feuille de confirmation est alignée à
+gauche, comme une lettre, plutôt que centrée comme une pop-up.
+
+**Le billet est toujours noir sur blanc, quel que soit le thème.**
+Les scanners lisent mal un QR code inversé. Le code court sous le QR
+(`EH-XXXX-XXXX`, sans `0/O/1/I/L`) sert quand le scan échoue : il se lit à voix
+haute sans ambiguïté.
+
+**Les graphiques suivent une règle, pas un goût.**
+L'histogramme des statistiques n'a qu'une série, donc une seule teinte (la
+marque) : colonnes ≤ 24 px, bout arrondi à 4 px et base carrée, écart de 2 px,
+valeurs affichées seulement sur le pic et sur le jour sélectionné, et une vue
+**tableau** qui porte exactement les mêmes valeurs. Un seul chiffre-héros par
+écran, en chiffres proportionnels ; les chiffres tabulaires sont réservés aux
+colonnes qui doivent s'aligner.
 
 **Les états vides ont une action.**
 Un état vide sans issue est un cul-de-sac. Chacun propose un bouton qui en

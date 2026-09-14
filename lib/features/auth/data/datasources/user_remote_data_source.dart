@@ -16,6 +16,15 @@ class UserRemoteDataSource {
     });
   }
 
+  /// Touches `name` and `updatedAt` only — the exact field set the security
+  /// rules accept on update.
+  Future<void> updateName(String uid, String name) {
+    return _users.doc(uid).update({
+      UserFields.name: name,
+      UserFields.updatedAt: FieldValue.serverTimestamp(),
+    });
+  }
+
   Future<UserDto?> get(String uid) async {
     final snapshot = await _users.doc(uid).get();
     return _fromSnapshot(snapshot);

@@ -95,10 +95,13 @@ abstract final class AppTheme {
         surfaceTintColor: Colors.transparent,
         modalBarrierColor: t.scrim,
         elevation: 0,
-        showDragHandle: true,
-        dragHandleColor: t.borderStrong,
-        dragHandleSize: const Size(40, 4),
-        shape: const RoundedRectangleBorder(borderRadius: AppRadius.brSheet),
+        // No grabber: sheets close with their own ✕ button, a tap on the
+        // scrim or a downward drag.
+        showDragHandle: false,
+        clipBehavior: Clip.antiAlias,
+        shape: const RoundedRectangleBorder(
+          borderRadius: AppRadius.brModalSheet,
+        ),
       ),
       popupMenuTheme: PopupMenuThemeData(
         color: t.surfaceRaised,

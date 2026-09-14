@@ -11,6 +11,7 @@ import 'package:eventhub/features/auth/application/auth_providers.dart';
 import 'package:eventhub/features/events/application/event_providers.dart';
 import 'package:eventhub/features/events/domain/entities/event.dart';
 import 'package:eventhub/features/events/presentation/widgets/event_card.dart';
+import 'package:eventhub/features/events/presentation/widgets/share_event_sheet.dart';
 import 'package:eventhub/features/reservations/application/reservation_providers.dart';
 import 'package:eventhub/features/reservations/domain/entities/reservation.dart';
 import 'package:eventhub/routes/routes.dart';
@@ -190,7 +191,12 @@ class _Body extends ConsumerWidget {
                       ),
                       if (reservation != null) ...[
                         const SizedBox(height: AppSpacing.xxxl),
-                        _TicketPreview(reservation: reservation),
+                        GestureDetector(
+                          onTap: () => context.push(
+                            AppRoutes.ticketPath(reservation.id),
+                          ),
+                          child: _TicketPreview(reservation: reservation),
+                        ),
                       ],
                     ],
                   ),
@@ -216,7 +222,7 @@ class _Body extends ConsumerWidget {
               OverlayIconButton(
                 icon: Icons.ios_share_rounded,
                 tooltip: AppStrings.share,
-                onPressed: () => context.showToast(AppStrings.comingSoon),
+                onPressed: () => showShareEventSheet(context, event),
               ),
             ],
           ),
@@ -618,7 +624,8 @@ class _ActionBar extends ConsumerWidget {
             child: AppButton.primary(
               label: AppStrings.viewTicket,
               icon: Icons.confirmation_number_rounded,
-              onPressed: () => context.go(AppRoutes.reservations),
+              onPressed: () =>
+                  context.push(AppRoutes.ticketPath(reservation!.id)),
             ),
           ),
         ],

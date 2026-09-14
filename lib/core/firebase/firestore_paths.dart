@@ -35,4 +35,5 @@ abstract final class UserFields {
   static const email = 'email';
   static const role = 'role';
   static const createdAt = 'createdAt';
+  static const updatedAt = 'updatedAt';
 }

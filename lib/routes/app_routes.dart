@@ -26,6 +26,8 @@ abstract final class AppRoutes {
   static const help = '/help';
   static const privacyPolicy = '/privacy';
   static const about = '/about';
+  static const notificationsCenter = '/notifications';
+  static const notificationsCenterName = 'notifications';
 
   static const editProfileName = 'edit-profile';
   static const helpName = 'help';
@@ -51,6 +53,8 @@ abstract final class AppRoutes {
   static const reservationConfirmation =
       '/reservations/:reservationId/confirmation';
   static const ticket = '/reservations/:reservationId/ticket';
+  static const favorites = '/favorites';
+  static const favoritesName = 'favorites';
 
   static const eventsName = 'events';
   static const searchName = 'search';
@@ -72,6 +76,8 @@ abstract final class AppRoutes {
   static const organizerEventParticipants =
       '/organizer/events/:eventId/participants';
   static const organizerEventPublished = '/organizer/events/:eventId/published';
+  static const organizerEventCheckIn = '/organizer/events/:eventId/checkin';
+  static const organizerEventCheckInName = 'organizer-event-checkin';
   static const organizerStats = '/organizer/stats';
   static const organizerAlerts = '/organizer/alerts';
   static const organizerStatsName = 'organizer-stats';
@@ -95,6 +101,9 @@ abstract final class AppRoutes {
 
   static String reservationConfirmationPath(String reservationId) =>
       '/reservations/${Uri.encodeComponent(reservationId)}/confirmation';
+
+  static String organizerEventCheckInPath(String eventId) =>
+      '/organizer/events/${Uri.encodeComponent(eventId)}/checkin';
 
   static String ticketPath(String reservationId) =>
       '/reservations/${Uri.encodeComponent(reservationId)}/ticket';
@@ -130,6 +139,7 @@ abstract final class AppRoutes {
     help,
     privacyPolicy,
     about,
+    notificationsCenter,
   };
 
   static bool isRoleAgnostic(String location) =>

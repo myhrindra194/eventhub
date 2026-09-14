@@ -1,6 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:eventhub/core/config/app_config.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
@@ -20,12 +22,34 @@ FirebaseAuth firebaseAuth(Ref ref) {
 
 @Riverpod(keepAlive: true)
 FirebaseFirestore firestore(Ref ref) {
-  final db = FirebaseFirestore.instance;
+  final db = FirebaseFirestore.instance
+    // Offline first: reads are served from the local cache when the network
+    // drops, writes are queued and replayed. Bounded so a long-lived install
+    // does not grow without limit.
+    ..settings = const Settings(
+      persistenceEnabled: true,
+      cacheSizeBytes: 100 * 1024 * 1024,
+    );
   final config = ref.watch(appConfigProvider);
   if (config.useFirebaseEmulators) {
     db.useFirestoreEmulator(config.emulatorHost, 8080);
   }
   return db;
+}
+
+@Riverpod(keepAlive: true)
+FirebaseMessaging firebaseMessaging(Ref ref) => FirebaseMessaging.instance;
+
+@Riverpod(keepAlive: true)
+FirebaseFunctions firebaseFunctions(Ref ref) {
+  final functions = FirebaseFunctions.instanceFor(
+    region: AppConfig.functionsRegion,
+  );
+  final config = ref.watch(appConfigProvider);
+  if (config.useFirebaseEmulators) {
+    functions.useFunctionsEmulator(config.emulatorHost, 5001);
+  }
+  return functions;
 }
 
 @Riverpod(keepAlive: true)

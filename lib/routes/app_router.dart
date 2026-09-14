@@ -1,3 +1,4 @@
+import 'package:eventhub/core/analytics/app_analytics.dart';
 import 'package:eventhub/features/auth/application/auth_providers.dart';
 import 'package:eventhub/features/auth/presentation/screens/change_password_screen.dart';
 import 'package:eventhub/features/auth/presentation/screens/complete_profile_screen.dart';
@@ -9,10 +10,13 @@ import 'package:eventhub/features/auth/presentation/screens/register_screen.dart
 import 'package:eventhub/features/auth/presentation/screens/settings_screen.dart';
 import 'package:eventhub/features/auth/presentation/screens/splash_screen.dart';
 import 'package:eventhub/features/auth/presentation/screens/welcome_screen.dart';
+import 'package:eventhub/features/checkin/presentation/screens/check_in_screen.dart';
 import 'package:eventhub/features/events/presentation/screens/event_detail_screen.dart';
 import 'package:eventhub/features/events/presentation/screens/event_form_screen.dart';
 import 'package:eventhub/features/events/presentation/screens/event_list_screen.dart';
 import 'package:eventhub/features/events/presentation/screens/event_search_screen.dart';
+import 'package:eventhub/features/favorites/presentation/screens/favorites_screen.dart';
+import 'package:eventhub/features/notifications/presentation/screens/notifications_screen.dart';
 import 'package:eventhub/features/onboarding/application/onboarding_providers.dart';
 import 'package:eventhub/features/onboarding/presentation/onboarding_screen.dart';
 import 'package:eventhub/features/organizer/presentation/organizer_shell.dart';
@@ -70,7 +74,11 @@ GoRouter appRouter(Ref ref) {
     navigatorKey: rootNavigatorKey,
     initialLocation: AppRoutes.splash,
     refreshListenable: refresh,
-    observers: [AppRouteObserver()],
+    observers: [
+      AppRouteObserver(
+        onScreen: (name) => ref.read(appAnalyticsProvider).screen(name),
+      ),
+    ],
     redirect: (context, state) => RouteGuard.redirect(
       state: _guardState(ref),
       location: state.matchedLocation,
@@ -156,6 +164,13 @@ final _commonRoutes = <RouteBase>[
     name: AppRoutes.privacyPolicyName,
     parentNavigatorKey: rootNavigatorKey,
     pageBuilder: (_, state) => AppPage.screen(state, const PrivacyScreen()),
+  ),
+  GoRoute(
+    path: AppRoutes.notificationsCenter,
+    name: AppRoutes.notificationsCenterName,
+    parentNavigatorKey: rootNavigatorKey,
+    pageBuilder: (_, state) =>
+        AppPage.screen(state, const NotificationsScreen()),
   ),
   GoRoute(
     path: AppRoutes.about,
@@ -283,6 +298,12 @@ final _participantLeafRoutes = <RouteBase>[
     ),
   ),
   GoRoute(
+    path: AppRoutes.favorites,
+    name: AppRoutes.favoritesName,
+    parentNavigatorKey: rootNavigatorKey,
+    pageBuilder: (_, state) => AppPage.screen(state, const FavoritesScreen()),
+  ),
+  GoRoute(
     path: AppRoutes.ticket,
     name: AppRoutes.ticketName,
     parentNavigatorKey: rootNavigatorKey,
@@ -391,6 +412,15 @@ final _organizerLeafRoutes = <RouteBase>[
       EventParticipantsScreen(
         eventId: state.pathParameters[AppRoutes.eventIdParam]!,
       ),
+    ),
+  ),
+  GoRoute(
+    path: AppRoutes.organizerEventCheckIn,
+    name: AppRoutes.organizerEventCheckInName,
+    parentNavigatorKey: rootNavigatorKey,
+    pageBuilder: (_, state) => AppPage.screen(
+      state,
+      CheckInScreen(eventId: state.pathParameters[AppRoutes.eventIdParam]!),
     ),
   ),
   GoRoute(

@@ -1,5 +1,14 @@
+import 'dart:async';
+
 import 'package:eventhub/app/theme/theme.dart';
+import 'package:eventhub/core/analytics/analytics_consent.dart';
+import 'package:eventhub/core/analytics/app_analytics.dart';
 import 'package:eventhub/core/config/app_config.dart';
+import 'package:eventhub/core/widgets/analytics_consent_sheet.dart';
+import 'package:eventhub/core/widgets/offline_aware.dart';
+import 'package:eventhub/features/auth/application/auth_providers.dart';
+import 'package:eventhub/features/auth/domain/entities/app_user.dart';
+import 'package:eventhub/features/notifications/application/notification_providers.dart';
 import 'package:eventhub/routes/routes.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -10,7 +19,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 ///
 /// Responsibilities, and nothing else: wire the router, hand both themes to
 /// Material and let the user's preference (or the OS) pick between them,
-/// declare the supported locales, and clamp text scaling.
+/// declare the supported locales, clamp text scaling — and start the
+/// app-wide services that follow the session (push notifications, analytics
+/// identity and consent, the offline band).
 class EventHubApp extends ConsumerWidget {
   const EventHubApp({super.key});
 
@@ -25,6 +36,19 @@ class EventHubApp extends ConsumerWidget {
     final config = ref.watch(appConfigProvider);
     final router = ref.watch(appRouterProvider);
     final themeMode = ref.watch(themeModeControllerProvider);
+    // Starts the push pipeline (token registration follows the session).
+    ref.watch(pushNotificationsProvider);
+
+    ref
+      // Subscribing instantiates the consent provider at startup; its build
+      // applies the stored decision to Firebase Analytics.
+      ..listen<AsyncValue<bool?>>(analyticsConsentProvider, (_, __) {})
+      ..listen<AppUser?>(currentUserProvider, (previous, user) {
+        ref
+            .read(appAnalyticsProvider)
+            .identify(userId: user?.id, role: user?.role.name);
+        if (user != null && previous == null) unawaited(_askConsentOnce(ref));
+      });
 
     return MaterialApp.router(
       title: config.appName,
@@ -61,10 +85,22 @@ class EventHubApp extends ConsumerWidget {
               maxScaleFactor: _maxTextScale,
             ),
           ),
-          child: child ?? const SizedBox.shrink(),
+          child: OfflineAware(child: child ?? const SizedBox.shrink()),
         );
       },
     );
+  }
+
+  /// Offers the consent sheet after the first sign-in of the session, once
+  /// the home screen is on screen, and only if the question was never
+  /// answered on this install.
+  static Future<void> _askConsentOnce(WidgetRef ref) async {
+    final consent = await ref.read(analyticsConsentProvider.future);
+    if (consent != null) return;
+    await Future<void>.delayed(const Duration(milliseconds: 900));
+    final context = rootNavigatorKey.currentContext;
+    if (context == null || !context.mounted) return;
+    await showAnalyticsConsentSheet(context);
   }
 }
 

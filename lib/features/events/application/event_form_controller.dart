@@ -1,6 +1,8 @@
 import 'dart:typed_data';
 
+import 'package:eventhub/core/analytics/app_analytics.dart';
 import 'package:eventhub/core/errors/failure.dart';
+import 'package:eventhub/core/l10n/app_strings.dart';
 import 'package:eventhub/core/result/result.dart';
 import 'package:eventhub/features/auth/application/auth_providers.dart';
 import 'package:eventhub/features/events/application/event_providers.dart';
@@ -39,6 +41,9 @@ class EventFormController extends _$EventFormController {
         failure.stackTrace ?? StackTrace.current,
       ),
     };
+    if (result case Ok(:final value) when existingEventId == null) {
+      ref.read(appAnalyticsProvider).eventPublished(value);
+    }
     return result;
   }
 
@@ -49,6 +54,16 @@ class EventFormController extends _$EventFormController {
   ) async {
     final user = ref.read(currentUserProvider);
     if (user == null) return const Err(AuthFailure.notSignedIn());
+    // Same rule as `allow create` on events: checked before the image upload
+    // so an unverified organizer does not wait for a doomed write.
+    if (existingEventId == null && !user.emailVerified) {
+      return const Err(
+        BusinessRuleFailure(
+          rule: BusinessRule.emailNotVerified,
+          message: AppStrings.emailNotVerifiedForEvent,
+        ),
+      );
+    }
 
     var imageUrl = draft.imageUrl;
     if (image != null) {

@@ -50,6 +50,10 @@ coverage/
 *.jpg
 !assets/**
 
+# Cloud Functions build output and dependencies
+functions/node_modules/
+functions/lib/
+
 # Security-rules test suite (Node)
 firebase/tests/node_modules/
 firebase-debug.log

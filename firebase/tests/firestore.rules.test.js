@@ -248,6 +248,16 @@ describe('events', () => {
     );
   });
 
+  it('refuses publishing from an organizer whose email is not verified', async () => {
+    const db = asOrganizer(env, 'o1', { email_verified: false }).firestore();
+    await assertFails(
+      setDoc(doc(db, 'events', 'e1'), {
+        ...eventData(),
+        createdAt: serverTimestamp(),
+      }),
+    );
+  });
+
   it('refuses an event that starts with seats already taken', async () => {
     const db = asOrganizer(env, 'o1').firestore();
     await assertFails(
@@ -621,6 +631,53 @@ describe('reservations', () => {
     );
   });
 
+  it('lets a user read their own reservation id before it exists, and only theirs', async () => {
+    // The booking transaction and the event detail both read the
+    // deterministic id first; a missing document has no `resource`.
+    const p1 = asParticipant(env, 'p1').firestore();
+    await assertSucceeds(getDoc(doc(p1, 'reservations', reservationId('e1', 'p1'))));
+    await assertFails(getDoc(doc(p1, 'reservations', reservationId('e1', 'p2'))));
+  });
+
+  it('accepts a new reservation serialised with cancelledAt: null', async () => {
+    await seedEvent('e1', { capacity: 10, availablePlaces: 10 });
+    const db = asParticipant(env, 'p1').firestore();
+    await assertSucceeds(
+      setDoc(
+        doc(db, 'reservations', reservationId('e1', 'p1')),
+        reservationData({ cancelledAt: null }),
+      ),
+    );
+  });
+
+  it('lets a participant re-book a cancelled seat, stamped now', async () => {
+    await seedEvent('e1', { capacity: 10, availablePlaces: 10 });
+    await seedReservation(reservationId('e1', 'p1'), {
+      status: 'cancelled',
+      reservedAt: daysAgo(3),
+      cancelledAt: daysAgo(2),
+    });
+    const db = asParticipant(env, 'p1').firestore();
+    await assertSucceeds(
+      setDoc(
+        doc(db, 'reservations', reservationId('e1', 'p1')),
+        reservationData({ cancelledAt: null }),
+      ),
+    );
+  });
+
+  it('refuses a cancellation that rewrites the booking time', async () => {
+    await seedReservation(reservationId('e1', 'p1'), { reservedAt: daysAgo(1) });
+    const db = asParticipant(env, 'p1').firestore();
+    await assertFails(
+      updateDoc(doc(db, 'reservations', reservationId('e1', 'p1')), {
+        status: 'cancelled',
+        cancelledAt: new Date(),
+        reservedAt: new Date(),
+      }),
+    );
+  });
+
   it('lets an organizer list the reservations of their own events only', async () => {
     await seedReservation(reservationId('e1', 'p1'));
     const byOrganizer = (ctx, organizerId) =>
@@ -654,8 +711,36 @@ describe('reviews', () => {
   });
 
   beforeEach(async () => {
-    await seedEvent('e1');
-    await seedReservation(reservationId('e1', 'p1'));
+    await seedEvent('e1', { startsAt: daysAgo(1) });
+    await seedReservation(reservationId('e1', 'p1'), {
+      eventStartsAt: daysAgo(1),
+    });
+  });
+
+  it('refuses a review before the event has started', async () => {
+    await seedReservation(reservationId('e1', 'p1'), {
+      eventStartsAt: inDays(2),
+    });
+    const db = asParticipant(env, 'p1').firestore();
+    await assertFails(
+      setDoc(doc(db, 'reviews', reservationId('e1', 'p1')), review()),
+    );
+  });
+
+  it('refuses an oversized comment on edit', async () => {
+    await seed((db) =>
+      setDoc(doc(db, 'reviews', reservationId('e1', 'p1')), {
+        ...review(),
+        createdAt: daysAgo(1),
+      }),
+    );
+    const db = asParticipant(env, 'p1').firestore();
+    await assertFails(
+      updateDoc(doc(db, 'reviews', reservationId('e1', 'p1')), {
+        comment: 'x'.repeat(2001),
+        updatedAt: serverTimestamp(),
+      }),
+    );
   });
 
   it('accepts a review from a confirmed attendee with a verified email', async () => {

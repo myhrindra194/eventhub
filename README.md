@@ -1,18 +1,21 @@
 # EventHub
 
-> Application mobile Flutter de découverte et de réservation d'événements.
-> Deux rôles, un parcours de bout en bout : un **organisateur** publie un
-> événement, un **participant** le découvre, réserve une place et présente son
-> billet ; l'organisateur suit ses réservations en direct. Cahier des charges :
-> `EVENTHUB — Cahier des charges MVP.pdf`. Maquettes Figma : `im/`.
+> Application mobile Flutter de découverte, de réservation et d'organisation
+> d'événements, entièrement adossée à **Firebase** : Authentication (email et
+> Google), Cloud Firestore, Cloud Storage, Cloud Messaging, Cloud Functions,
+> App Check, Crashlytics et Analytics. Deux rôles, un parcours de bout en
+> bout : un **organisateur** publie un événement et contrôle les billets à
+> l'entrée ; un **participant** découvre, réserve, garde son billet et reçoit
+> ses rappels. Cahier des charges : `EVENTHUB — Cahier des charges MVP.pdf`.
 
 [![CI](https://img.shields.io/badge/CI-GitHub_Actions-2088FF?logo=githubactions&logoColor=white)](.github/workflows/ci.yml)
 ![Flutter](https://img.shields.io/badge/Flutter-3.47-02569B?logo=flutter&logoColor=white)
 ![Dart](https://img.shields.io/badge/Dart-3.13-0175C2?logo=dart&logoColor=white)
 ![Riverpod](https://img.shields.io/badge/Riverpod-3-6366F1)
-![Firebase](https://img.shields.io/badge/Firebase-Auth_·_Firestore_·_Storage-FFCA28?logo=firebase&logoColor=black)
-![Tests](https://img.shields.io/badge/tests_Dart-68_passing-10B981)
-![Rules](https://img.shields.io/badge/tests_règles-110_passing-10B981)
+![Firebase](https://img.shields.io/badge/Firebase-Auth_·_Firestore_·_Storage_·_FCM_·_Functions_·_App_Check-FFCA28?logo=firebase&logoColor=black)
+![Tests Dart](https://img.shields.io/badge/tests_Dart-113_passing-10B981)
+![Tests règles](https://img.shields.io/badge/tests_règles-118_passing-10B981)
+![Tests fonctions](https://img.shields.io/badge/tests_fonctions-10_passing-10B981)
 
 ---
 
@@ -20,28 +23,30 @@
 
 1. [Vue d'ensemble](#1-vue-densemble)
 2. [Fonctionnalités](#2-fonctionnalités)
-3. [Démarrage rapide](#3-démarrage-rapide)
+3. [Mise en route](#3-mise-en-route)
 4. [Stack technique](#4-stack-technique)
 5. [Architecture](#5-architecture)
 6. [Modèle de données](#6-modèle-de-données)
 7. [Règles métier](#7-règles-métier)
-8. [Sécurité Firestore et Storage](#8-sécurité-firestore-et-storage)
-9. [Design system](#9-design-system)
-10. [Écrans, routes et correspondance maquette](#10-écrans-routes-et-correspondance-maquette)
-11. [Configuration, flavors et variables](#11-configuration-flavors-et-variables)
-12. [Qualité : lint, tests, CI](#12-qualité--lint-tests-ci)
-13. [Commandes](#13-commandes)
-14. [Scénario de démonstration](#14-scénario-de-démonstration)
-15. [Décisions d'architecture (ADR)](#15-décisions-darchitecture-adr)
-16. [Périmètre : ce qui est fait, ce qui ne l'est pas](#16-périmètre--ce-qui-est-fait-ce-qui-ne-lest-pas)
-17. [Dépannage](#17-dépannage)
-18. [Contribuer](#18-contribuer)
+8. [Sécurité](#8-sécurité)
+9. [Notifications push](#9-notifications-push)
+10. [Production : App Check, Crashlytics, Analytics, hors ligne](#10-production--app-check-crashlytics-analytics-hors-ligne)
+11. [Design system](#11-design-system)
+12. [Écrans, routes et correspondance maquette](#12-écrans-routes-et-correspondance-maquette)
+13. [Configuration](#13-configuration)
+14. [Qualité : lint, tests, CI](#14-qualité--lint-tests-ci)
+15. [Commandes](#15-commandes)
+16. [Scénario de démonstration](#16-scénario-de-démonstration)
+17. [Décisions d'architecture (ADR)](#17-décisions-darchitecture-adr)
+18. [Périmètre : ce qui est fait, ce qui reste](#18-périmètre--ce-qui-est-fait-ce-qui-reste)
+19. [Dépannage](#19-dépannage)
+20. [Contribuer](#20-contribuer)
 
 Documentation détaillée : [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
-(référence technique), [`docs/DESIGN_SYSTEM.md`](docs/DESIGN_SYSTEM.md)
-(langage visuel et décisions), [`docs/SECURITY.md`](docs/SECURITY.md) (modèle
-de menace et règles serveur), [`docs/ROADMAP.md`](docs/ROADMAP.md) (feuille de
-route), [`docs/CONVENTIONS.md`](docs/CONVENTIONS.md) (conventions d'équipe).
+(référence technique), [`docs/SECURITY.md`](docs/SECURITY.md) (modèle de
+menace, règles, fonctions), [`docs/DESIGN_SYSTEM.md`](docs/DESIGN_SYSTEM.md)
+(langage visuel), [`docs/ROADMAP.md`](docs/ROADMAP.md) (feuille de route),
+[`docs/CONVENTIONS.md`](docs/CONVENTIONS.md) (conventions d'équipe).
 
 ---
 
@@ -49,681 +54,450 @@ route), [`docs/CONVENTIONS.md`](docs/CONVENTIONS.md) (conventions d'équipe).
 
 | Rôle             | En une phrase |
 |------------------|---------------|
-| **Participant**  | découvre les événements, réserve une place en un geste, garde son billet (QR code) dans l'application |
-| **Organisateur** | publie ses événements, suit leur remplissage et leurs réservations en direct, exporte sa liste d'invités |
+| **Participant**  | découvre les événements, en garde en favoris, réserve une place ou rejoint la liste d'attente, présente son billet QR, laisse un avis après l'événement |
+| **Organisateur** | publie ses événements, reçoit une notification à chaque réservation, suit stats et alertes, exporte sa liste d'invités et scanne les billets à l'entrée |
 
-Le MVP est réputé fonctionnel lorsque le scénario suivant se déroule sans
-intervention manuelle dans les données (cahier des charges §12) :
+**Il n'y a pas de backend simulé.** Toutes les données viennent du projet
+Firebase `eventhub-d411f` ; le développement local passe par la suite
+d'émulateurs, qui exécute les vraies règles.
 
-```
-Organisateur crée un événement
-  → l'événement apparaît dans le catalogue
-  → un participant le consulte
-  → le participant réserve une place
-  → la réservation est enregistrée et les places disponibles décrémentées
-  → l'organisateur voit le participant dans la liste des réservations
-```
-
-Le projet est livré avec **deux backends interchangeables** derrière les mêmes
-interfaces de repository :
-
-- **Firebase** (Auth, Cloud Firestore, Storage) pour la production ;
-- **Mock en mémoire** pour développer, démontrer et tester l'UI sans projet
-  Firebase, activé par `--dart-define=MOCK=true` (ou automatiquement en dev si
-  Firebase n'est pas configuré).
+| Service Firebase | Rôle dans EventHub |
+|---|---|
+| Authentication | email / mot de passe, **Google**, vérification d'email, réinitialisation, changement de mot de passe |
+| Cloud Firestore | profils, événements, réservations, favoris, liste d'attente, avis, entrées scannées, appareils, préférences, historique de notifications ; cache hors ligne |
+| Cloud Storage | bannières d'événements |
+| Cloud Messaging | notifications push Android, web (et iOS une fois la clé APNs fournie) |
+| Cloud Functions | rôle en custom claim, push organisateur, rappels J-1, liste d'attente, **suppression de compte en cascade** |
+| App Check | n'accepte que les requêtes de l'application authentique (Play Integrity, App Attest, reCAPTCHA v3) |
+| Crashlytics · Analytics | rapports de plantage ; mesure d'audience **sur consentement** |
 
 ---
 
 ## 2. Fonctionnalités
 
-### 2.1 Communes aux deux rôles
-
-| Fonctionnalité | Détail | Où dans le code |
-|---|---|---|
-| Onboarding | 3 écrans au tout premier lancement, jamais revus ensuite | `features/onboarding/` |
-| Inscription | 2 étapes (identité → rôle), jauge de robustesse du mot de passe, rôle **définitif** | `auth/presentation/screens/register_screen.dart` |
-| Connexion | email + mot de passe ; comptes de démo pré-remplissables en mode simulation | `login_screen.dart` |
-| Mot de passe oublié | envoi du lien + écran de confirmation | `forgot_password_screen.dart` |
-| Changer le mot de passe | ré-authentification par le mot de passe actuel | `change_password_screen.dart` |
-| Profil récupérable | un compte sans document profil est guidé vers `/complete-profile` | `complete_profile_screen.dart` |
-| Profil | identité, statistiques du rôle, menu compte et aide | `profile_screen.dart` |
-| **Modifier mon profil** | seul le **nom** est modifiable ; email et rôle affichés verrouillés, avec la raison | `edit_profile_screen.dart` |
-| Paramètres | thème clair / sombre / automatique (persisté), préférences de notification (UI) | `settings_screen.dart` |
-| **Centre d'aide** | FAQ par moment d'usage (réserver, organiser, compte) + contact support | `features/support/` |
-| **Confidentialité** | notice écrite d'après le vrai modèle de données et les vraies règles | `features/support/` |
-| **À propos** | principes du produit, version, environnement, backend actif | `features/support/` |
-
-### 2.2 Participant — onglets Explorer · Recherche · Billets · Profil
+### 2.1 Compte (les deux rôles)
 
 | Fonctionnalité | Détail |
 |---|---|
-| Fil éditorialisé | « À la une », « Ça se remplit vite », « Cette semaine », catalogue complet, rail de catégories |
-| Recherche | titre, lieu, organisateur, catégorie |
-| Filtres avancés | période, tri, masquer les complets, compteur de filtres actifs (feuille modale) |
-| Fiche événement | 4 états : disponible, dernières places (≤ 3), complet, déjà réservé ; jauge de capacité en direct |
-| **Partager** | feuille de partage : copier le lien public `eventhub.app/e/<id>` ou une invitation texte prête à coller |
-| Réserver / annuler | transaction atomique ; ré-réservation possible après annulation |
-| Confirmation | écran « Réservation confirmée ! » |
-| Mes billets | portefeuille segmenté À venir / Passés / Annulés, pastille sur l'onglet quand un billet est à venir |
-| **Billet** | QR code noir sur blanc, code court `EH-XXXX-XXXX` à lire à voix haute, champs date / heure / lieu / titulaire, états annulé et passé, copier le code |
+| Inscription | 2 étapes (identité → rôle définitif), jauge de robustesse, **email de vérification envoyé** |
+| Connexion | email + mot de passe, ou **« Continuer avec Google »** (un premier compte Google choisit son rôle sur l'écran de complétion, nom pré-rempli) |
+| Vérification d'email | bandeau « Confirmez votre adresse » (profil, tableau de bord organisateur) : renvoi limité à 1/min, « C'est fait » recharge le compte et le jeton. **Obligatoire pour publier un événement et laisser un avis** |
+| Mots de passe | oubli (lien Firebase), changement avec ré-authentification |
+| Profil | identité, statistiques du rôle, modification du nom |
+| Paramètres | thème ; notifications (préférence réelle lue par le serveur) ; **mesure d'audience** ; **suppression du compte** (ré-authentification par mot de passe ou Google, cascade côté serveur) |
+| Centre de notifications | historique 30 jours des push, groupé par jour, « tout lire », balayage pour supprimer, tap vers l'écran concerné ; cloche à pastille sur l'accueil et les alertes |
+| Aide · Confidentialité · À propos | FAQ, notice fondée sur les vraies règles, version |
 
-### 2.3 Organisateur — onglets Événements · Stats · Alertes · Profil
+### 2.2 Participant — Explorer · Recherche · Billets · Profil
 
 | Fonctionnalité | Détail |
 |---|---|
-| Mes événements | KPI (à venir, participants, remplissage), bascule à venir / passés, actions par carte |
-| Créer / modifier | formulaire avec bannière (image), validation par champ, capacité jamais sous les places vendues |
-| Événement publié | écran de succès avec **lien public copiable** et partage |
-| Supprimer | feuille de confirmation destructive |
-| Participants | recherche par nom ou email, compteurs, **export CSV** (séparateur `;`, copié dans le presse-papiers) |
-| **Stats** | remplissage global (chiffre-héros), réservations, 7 derniers jours, annulations, complets ; histogramme des réservations sur 14 jours avec **vue tableau** ; classement des événements à venir par remplissage |
-| **Alertes** | « À surveiller » (commence dans moins de 24 h, dernières places, complet) + journal des réservations et annulations groupé par jour ; pastille sur l'onglet tant qu'une alerte est ouverte |
+| Fil éditorialisé | à la une, ça se remplit vite, cette semaine, catalogue **paginé** (100 en temps réel, puis « Charger plus ») |
+| Recherche et filtres | titre, lieu, organisateur, catégorie ; période, tri, masquer les complets |
+| **Favoris** | cœur sur les cartes et la fiche ; écran « Mes favoris » (y compris événements complets, passés ou supprimés) |
+| Fiche événement | 4 états, jauge temps réel, partage (lien, invitation) |
+| Réserver / annuler | transaction atomique ; re-réservation possible |
+| **Liste d'attente** | sur un événement complet : rejoindre / quitter ; push dès qu'une place se libère |
+| Billet | QR code + code `EH-XXXX-XXXX`, états annulé / passé |
+| Rappel J-1 | push la veille, ouvre le billet |
+| **Avis** | après le début de l'événement, pour les inscrits vérifiés : note 1–5 et commentaire, modifiable ; moyenne et répartition sur la fiche |
+
+### 2.3 Organisateur — Événements · Stats · Alertes · Profil
+
+| Fonctionnalité | Détail |
+|---|---|
+| Mes événements | KPI, à venir / passés ; suppression bloquée (avec explication) s'il y a des réservations |
+| Créer / modifier | bannière Storage, validation, email vérifié requis pour publier |
+| Participants | recherche, export CSV, **compteur d'entrées**, **personnes en liste d'attente**, marqueur « Entré · HH:mm » |
+| **Contrôle à l'entrée** | scanner caméra (lampe), verdict plein écran en couleur : entrée validée, déjà scanné (heure), billet annulé, autre événement, code invalide, introuvable ; saisie manuelle du code ; retour haptique distinct ; enregistrement anti-doublon même à plusieurs portes |
+| Stats · Alertes | remplissage, 14 jours de réservations (graphique + tableau), classement ; à surveiller + journal |
+| Push | réservation et annulation en temps réel |
+
+### 2.4 Transverse
+
+Bandeau **hors ligne** (les données en cache restent consultables, les
+écritures sont envoyées au retour du réseau), rapport de plantage, consentement
+à la mesure d'audience demandé une fois.
 
 ---
 
-## 3. Démarrage rapide
+## 3. Mise en route
 
-Prérequis : Flutter 3.47+ (Dart 3.13), un appareil ou émulateur Android,
-`make` (Git Bash / WSL sous Windows) ou les commandes `flutter` équivalentes.
+Prérequis : Flutter 3.47+, Node 22+, Java 17+ (émulateurs), un appareil
+Android **avec Google Play**, `make` (Git Bash / WSL sous Windows).
 
 ```sh
 git clone <repo> eventhub && cd eventhub
-make setup          # flutter pub get + génération de code (freezed, riverpod, json)
-flutter devices     # récupérer l'id de l'appareil
+make setup              # pub get + génération de code
+make functions-setup    # npm install dans functions/
 ```
 
-### 3.1 Mode simulation (sans Firebase)
+### 3.1 Console Firebase (une seule fois)
 
-C'est le mode à utiliser tant que le projet Firebase n'est pas créé. Aucune
-configuration n'est nécessaire : tous les repositories sont servis par
-`MockStore` (voir `lib/core/mock/`).
+Projet `eventhub-d411f` (`.firebaserc`). `lib/firebase_options.dart` est
+généré par FlutterFire et ignoré par Git (`flutterfire configure --project=eventhub-d411f`).
 
-**Bascule automatique** : en flavor `dev` ou `staging`, si
-`lib/firebase_options.dart` n'a pas été généré, `bootstrap()` détecte l'échec
-d'initialisation de Firebase et bascule seul sur le backend simulé (un
-avertissement est journalisé). Un simple `flutter run` suffit donc :
+1. **Authentication → Sign-in method** : activer *Email/Password* **et**
+   *Google*. Pour Google sur Android, ajouter l'empreinte **SHA-1** (et
+   SHA-256) de la clé de signature dans *Paramètres du projet → application
+   Android* (`keytool -list -v -keystore …`, voir `android/key.properties.example`),
+   puis récupérer l'**ID client OAuth Web** (type 3 dans `google-services.json`)
+   → `GOOGLE_SERVER_CLIENT_ID`.
+2. **Firestore Database** : base `(default)`, mode production ; noter
+   l'emplacement et reporter la région dans `REGION` (`functions/src/index.ts`)
+   et `AppConfig.functionsRegion`.
+3. **Storage** : activer.
+4. **Plan Blaze** : requis pour les Cloud Functions et Cloud Scheduler.
+5. **Cloud Messaging** : *Web Push certificates* → générer la clé
+   (`FIREBASE_WEB_VAPID_KEY`) ; iOS : téléverser la clé APNs.
+6. **App Check** : enregistrer l'app Android (Play Integrity), iOS (App
+   Attest), web (reCAPTCHA v3 → `APP_CHECK_RECAPTCHA_SITE_KEY`) ; déclarer
+   les **jetons de debug** affichés dans les logs des appareils de dev.
+   N'activer l'**application** d'App Check (Firestore, Storage, Functions via
+   `ENFORCE_APP_CHECK=true`) qu'une fois ces enregistrements faits.
+7. **Crashlytics** et **Analytics** : activer dans la console.
+8. **Firestore → TTL** : politique sur `notifications.expiresAt` (déclarée
+   dans `firestore.indexes.json`, déployée avec les index).
 
 ```sh
-flutter run -d <id>                     # dev → simulation automatique sans Firebase
-make run-mock DEVICE=<id>               # simulation forcée (même avec Firebase configuré)
-# équivalent : flutter run -d <id> --dart-define=FLAVOR=dev --dart-define=MOCK=true
+firebase login
+firebase firestore:databases:get "(default)"    # région → REGION
+make deploy                                     # règles, index, Storage, fonctions
 ```
 
-En flavor `prod`, aucune bascule : l'écran « Firebase non configuré » s'affiche
-pour ne jamais livrer une production sur des données factices.
-
-Comptes de démonstration (mot de passe commun : `demo123`) :
-
-| Rôle          | Email                | Contenu pré-chargé |
-|---------------|----------------------|--------------------|
-| Participant   | `jean@demo.com`      | aucune réservation, catalogue de 10 événements |
-| Organisateur  | `mirindra@demo.com`  | 6 événements dont *Flutter Meetup Madagascar* (100 places) et *Design Sprint Express* (commence dans 20 h, 2 places), **13 réservations** d'invités fictifs dont une annulation — les onglets Stats et Alertes ont du contenu dès le premier lancement |
-| Organisateur  | `elie@demo.com`      | 4 événements dont un complet et un « dernières places » |
-
-Les données vivent en mémoire et sont réinitialisées à chaque lancement. Le jeu
-de données couvre tous les états des maquettes : disponible, dernières places,
-complet, passé, formulaire vide, liste vide, billet annulé.
-
-Les images d'événements sont des photos **Unsplash** (réseau requis) ; sans
-réseau, `EventImage` affiche un dégradé déterministe dérivé de l'id. Une image
-choisie dans le formulaire est conservée en mémoire via une URL `memory://…`.
-
-### 3.2 Mode Firebase
-
-Une seule fois par projet Firebase :
+### 3.2 Lancer
 
 ```sh
-dart pub global activate flutterfire_cli
-flutterfire configure --project=<firebase-project-id>   # génère lib/firebase_options.dart
-firebase deploy --only firestore:rules,firestore:indexes,storage
+flutter run -d <id> --dart-define=FLAVOR=dev \
+  --dart-define=GOOGLE_SERVER_CLIENT_ID=930281380072-xxxx.apps.googleusercontent.com
 ```
 
-Dans la console Firebase, activer **Authentication → Email/Password**,
-**Cloud Firestore** (mode production, les règles du dépôt s'appliquent) et
-**Storage**. Déployer les index **avant** d'ouvrir les onglets Stats et
-Alertes : la requête `reservations(organizerId, reservedAt desc)` en dépend.
+Sans `GOOGLE_SERVER_CLIENT_ID`, le bouton Google est masqué sur Android. Au
+premier lancement il n'y a aucun compte : on s'inscrit depuis l'app. Si
+Firebase ne s'initialise pas, l'écran « Connexion à Firebase impossible »
+s'affiche.
 
-Puis :
+### 3.3 Émulateurs (développement)
 
 ```sh
-make run DEVICE=<id>                  # flavor dev
-make run FLAVOR=prod DEVICE=<id>
+make emulators              # Auth 9099, Firestore 8080, Storage 9199, Functions 5001, UI 4000
+make run-emu DEVICE=<id>    # --dart-define=USE_EMULATORS=true
 ```
 
-Les fichiers `lib/firebase_options.dart`, `android/app/google-services.json`
-et `ios/Runner/GoogleService-Info.plist` sont **ignorés par Git**.
+### 3.4 Release Android
 
-### 3.3 Émulateurs Firebase
-
-```sh
-make emulators                          # firebase emulators:start (Auth 9099, Firestore 8080, Storage 9199, UI 4000)
-make run-emu DEVICE=<id>                # --dart-define=USE_EMULATORS=true
-```
-
-Sur appareil physique, remplacer `AppConfig.emulatorHost` (`10.0.2.2`, loopback
-de l'émulateur Android) par l'IP LAN de la machine.
+Copier `android/key.properties.example` en `android/key.properties`, créer la
+keystore, enregistrer ses empreintes dans Firebase, puis `make build-apk FLAVOR=prod`.
+Sans ce fichier, un build release est signé avec la clé de debug et **ne doit
+pas être publié**.
 
 ---
 
 ## 4. Stack technique
 
-| Domaine            | Choix                                              | Pourquoi |
-|--------------------|----------------------------------------------------|----------|
-| Framework          | Flutter 3.47 / Dart 3.13                           | patterns, records, sealed classes |
-| État               | Riverpod 3 + `riverpod_generator`                  | providers typés, `keepAlive` explicite, overrides pour les tests |
-| Navigation         | go_router 18                                       | `StatefulShellRoute` par rôle, `redirect` central piloté par la session |
-| Modèles            | freezed 4 + json_serializable                      | immutabilité, `copyWith`, égalité structurelle, DTO ↔ entité |
-| Backend            | firebase_auth, cloud_firestore, firebase_storage   | transactions Firestore pour l'atomicité des réservations |
-| Flux               | rxdart (`switchMap`, `BehaviorSubject`, `TimerStream`) | composition session auth + profil, store mock réactif |
-| Persistance locale | shared_preferences                                 | onboarding vu, thème choisi |
-| UI                 | Material 3 clair + sombre, `google_fonts` (Plus Jakarta Sans + Inter), `cached_network_image`, `image_picker` | tokens, cache d'images, upload de bannière |
-| Billet             | `qr_flutter`                                       | QR code scannable généré localement, sans service externe |
-| Qualité            | `flutter_lints` + règles strictes, `riverpod_lint`, `mocktail`, `@firebase/rules-unit-testing`, GitHub Actions | analyse sans warning, tests unitaires, widget, golden et règles |
+| Domaine | Choix |
+|---|---|
+| Framework | Flutter 3.47 / Dart 3.13 |
+| État | Riverpod 3 + `riverpod_generator` |
+| Navigation | go_router 18 (`StatefulShellRoute` par rôle, guard pur) |
+| Modèles | freezed 4 + json_serializable |
+| Firebase | `firebase_auth`, `cloud_firestore`, `firebase_storage`, `firebase_messaging`, `cloud_functions`, `firebase_app_check`, `firebase_crashlytics`, `firebase_analytics` |
+| Auth tierce | `google_sign_in` 7 (natif) / popup Firebase (web) |
+| Appareil | `flutter_local_notifications`, `mobile_scanner`, `connectivity_plus`, `image_picker`, `qr_flutter` |
+| Serveur | Cloud Functions 2ᵉ génération, TypeScript, Node 22, `firebase-admin` |
+| UI | Material 3 clair/sombre, `google_fonts`, `cached_network_image` |
+| Qualité | `flutter_lints` strict, `riverpod_lint`, `mocktail`, `@firebase/rules-unit-testing`, `node:test`, GitHub Actions |
 
 ---
 
 ## 5. Architecture
 
-Architecture **feature-first**, en couches par feature. Référence technique
-complète : [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
-
-### 5.1 Arborescence
+Feature-first, en couches (`domain` · `data` · `application` · `presentation`).
+Référence : [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
 ```
 lib/
-├── main.dart · main_dev.dart · main_staging.dart · main_prod.dart
-├── bootstrap.dart                 séquence de démarrage (Firebase ou mock, handlers d'erreurs, ProviderScope)
-├── firebase_options.dart          généré par flutterfire (ignoré par Git ; stub par défaut)
-├── app/
-│   ├── app.dart                   MaterialApp.router, locale fr_FR, thème clair/sombre
-│   └── theme/                     design system « Aurora » : palette, tokens, espacements et rayons,
-│                                  typographie, mouvement, ThemeData, ThemeModeController
-├── routes/                        AppRoutes (chemins + noms + builders), RouteGuard (politique pure, testée),
-│                                  AppPage/AppTransition, AppRouteObserver, appRouterProvider
+├── bootstrap.dart            Firebase, App Check, Crashlytics, handler FCM, ProviderScope
+├── app/                      MaterialApp, thèmes, bandeau hors ligne, consentement, identité analytics
+├── routes/                   AppRoutes, RouteGuard (pur, testé), routeur, observateur → Analytics
 ├── core/
-│   ├── config/                    Flavor, AppConfig (MOCK, USE_EMULATORS), Clock injectable, AppLinks (liens publics)
-│   ├── errors/                    Failure (sealed), ErrorMapper, FailureException
-│   ├── result/                    Result<T> = Ok | Err, guard()
-│   ├── firebase/                  providers SDK, noms de collections/champs, TimestampConverter
-│   ├── mock/                      MockStore (données de démo) + implémentations mock des repositories
-│   ├── l10n/                      AppStrings (FR)
-│   ├── utils/ · extensions/       logger, validators, formats de date, helpers de contexte
-│   └── widgets/                   bibliothèque de composants (barrel design_system.dart)
+│   ├── analytics/            AppAnalytics (jamais bloquant), AnalyticsConsent (opt-in)
+│   ├── connectivity/         isOnline
+│   ├── config/ · errors/ · result/ · firebase/ · l10n/ · utils/
+│   └── widgets/              design system, OfflineAware, feuille de consentement
 └── features/
-    ├── onboarding/                carrousel de premier lancement
-    ├── auth/                      inscription, connexion, session, profil, modification du profil,
-    │                              paramètres, mot de passe (oubli, changement)
-    ├── events/                    catalogue, recherche, filtres, fiche, formulaire, feuille de partage
-    ├── reservations/              réservation transactionnelle, confirmation, portefeuille, billet QR
-    ├── organizer/                 shell 4 onglets, dashboard, stats, alertes, participants + export,
-    │   ├── domain/                  événement publié ; calculs purs : OrganizerStats, OrganizerAlerts,
-    │   └── application/             GuestListCsv ; providers dérivés (organizer_providers.dart)
-    ├── participant/               shell participant (Explorer · Recherche · Billets · Profil)
-    └── support/                   centre d'aide, confidentialité, à propos (présentation seule)
-        └── <feature>/
-            ├── domain/            entités freezed, policies, calculs purs, interfaces de repositories
-            ├── data/              DTOs, data sources Firestore/Storage, implémentations
-            ├── application/       providers et contrôleurs Riverpod (cas d'usage)
-            └── presentation/      écrans et widgets
+    ├── auth/                 email, Google, vérification, profil, paramètres, suppression de compte
+    ├── events/               catalogue paginé, recherche, fiche, formulaire, partage
+    ├── reservations/         réservation, portefeuille, billet
+    ├── favorites/            favoris
+    ├── waitlist/             liste d'attente
+    ├── reviews/              avis
+    ├── checkin/              contrôle à l'entrée (policy pure, scanner)
+    ├── organizer/            dashboard, stats, alertes, participants
+    ├── notifications/        préférences, appareils, FCM, centre de notifications
+    ├── participant/ · onboarding/ · support/
+
+functions/src/index.ts        setRoleClaim · notifyOrganizerOnReservation · notifyWaitlistOnSeatRelease
+                              · sendEventReminders (runEventReminders) · deleteAccount
+functions/test/               tests d'intégration sur émulateurs
+firebase/                     firestore.rules · storage.rules · firestore.indexes.json · tests/ (règles)
 ```
 
-Une feature n'a que les couches dont elle a besoin : `support/` n'est que de
-la présentation, `organizer/` n'a pas de `data/` car il compose les
-repositories d'`events` et de `reservations`.
-
-### 5.2 Règle de dépendance
-
-```
-presentation ──▶ application ──▶ domain ◀── data
-                                    ▲
-                                    └── core/mock (implémentations de démo)
-```
-
-- `domain` ne dépend que de `core/result` et `core/errors`. Ni Flutter, ni
-  Firebase : `TimeOfDayValue` existe pour ne pas importer `material.dart`.
-- `data` et `core/mock` implémentent les interfaces du domaine. Seule `data`
-  importe les SDK Firebase.
-- `application` compose les repositories en providers. Les contrôleurs
-  exposent `Future<Result<T>>` **et** reflètent l'état en cours dans un
-  `AsyncValue`.
-- `presentation` consomme des providers, jamais un repository.
-- Une feature n'importe jamais la couche `data` d'une autre feature.
-
-### 5.3 Flux d'une action
-
-Exemple : le participant appuie sur « Réserver ma place ».
-
-```
-EventDetailScreen
-  └─ ref.read(reservationControllerProvider.notifier).reserve(eventId)
-       └─ ReservationController._run()          state = AsyncLoading
-            └─ ReservationRepository.reserve()  (impl Firebase ou mock)
-                 └─ guard(() => dataSource.reserve())
-                      └─ Firestore.runTransaction
-                           ├─ lit events/{id} et reservations/{id}_{uid}
-                           ├─ ReservationPolicy.canReserve(...)   → FailureException si refus
-                           ├─ set reservation (status: confirmed)
-                           └─ update event.availablePlaces -1
-                 ◀─ Result<Reservation>
-       ◀─ state = AsyncData | AsyncError(failure)
-  └─ switch (result) { Ok → push(confirmation) ; Err → toast(failure.message) }
-```
-
-Les streams Firestore mettent à jour sans rechargement la fiche, le
-portefeuille, et côté organisateur les onglets Stats et Alertes : une
-réservation apparaît dans le journal de l'organisateur au moment où le
-participant la confirme.
-
-### 5.4 Gestion des erreurs
-
-Les repositories **ne lèvent jamais**. Chaque méthode retourne `Result<T>` :
-
-```dart
-switch (await repo.reserve(eventId: id, participant: user)) {
-  case Ok(:final value):    context.push(confirmationPath(value.id));
-  case Err(:final failure): context.showFailure(failure);
-}
-```
-
-`guard()` est l'unique `try/catch` : il passe toute exception par
-`ErrorMapper` qui la convertit en `Failure` scellée :
-
-| Failure               | Origine typique |
-|-----------------------|-----------------|
-| `AuthFailure(code)`   | `FirebaseAuthException` (identifiants, email déjà utilisé…) |
-| `NetworkFailure`      | `unavailable`, `deadline-exceeded`, `SocketException` |
-| `PermissionFailure`   | `permission-denied` (règles Firestore) |
-| `NotFoundFailure`     | document absent |
-| `ValidationFailure`   | `EventDraft.validate()` — erreurs par champ |
-| `BusinessRuleFailure` | `ReservationPolicy` / `EventPolicy` (complet, déjà réservé…) |
-| `StorageFailure`      | upload d'image |
-| `UnexpectedFailure`   | tout le reste |
-
-### 5.5 Session d'authentification
-
-`authSessionProvider` (kept alive) expose un type scellé :
-
-| État                          | Signification | Redirection |
-|-------------------------------|---------------|-------------|
-| `SignedOut`                   | pas d'utilisateur Firebase | `/login` |
-| `SignedIn(AppUser)`           | utilisateur Firebase **et** document `users/{uid}` présent | accueil du rôle |
-| `ProfileMissing(uid, email)`  | compte sans document profil (inscription interrompue) | `/complete-profile` |
-
-Le flux est composé avec `switchMap` : un changement d'utilisateur Firebase
-annule l'abonnement au profil précédent. Un **délai de grâce**
-(`AppConfig.profileGracePeriod`, 3 s) absorbe la fenêtre entre la création du
-compte et l'écriture du profil. Une modification du nom repasse par ce même
-flux : aucun écran n'a à rafraîchir l'utilisateur.
-
-### 5.6 Navigation et guards
-
-Toute la navigation vit dans **`lib/routes/`** ; les écrans n'importent que
-`package:eventhub/routes/routes.dart`.
-
-| Fichier                 | Responsabilité |
-|-------------------------|----------------|
-| `app_routes.dart`       | Registre des chemins, des noms et des constructeurs `*Path()`. **Aucun chemin n'est interpolé à la main ailleurs** |
-| `route_guard.dart`      | « Qui a le droit de voir quoi », écrit comme une **fonction pure** → testable sans widget |
-| `route_transitions.dart`| `sharedAxisX`, `fadeThrough`, `modal`, `none` : une route déclare une intention, pas une animation |
-| `route_observer.dart`   | Télémétrie de navigation (point de branchement Analytics / Crashlytics) |
-| `router_refresh.dart`   | `Listenable` minimal passé à `refreshListenable` |
-| `app_router.dart`       | Assemblage : deux `StatefulShellRoute`, routes feuilles, observateur |
-
-| Situation                                  | Redirection |
-|--------------------------------------------|-------------|
-| session ou préférences inconnues (démarrage à froid) | reste sur `/splash` |
-| premier lancement de l'installation        | `/onboarding` puis `/login` |
-| déconnecté sur une route privée            | `/login` |
-| connecté sur `/login`                      | accueil du rôle |
-| connecté juste après `/register`           | `/welcome` |
-| participant sur `/organizer/*`             | `/events` |
-| organisateur hors `/organizer/*`           | `/organizer/events` |
-| pages communes (`/welcome`, `/change-password`, `/account/edit`, `/help`, `/privacy`, `/about`) | accessibles aux deux rôles |
-
-Deux `StatefulShellRoute` à 4 onglets conservent une pile par onglet. Les
-écrans plein écran (fiche, billet, formulaire, participants, pages d'aide)
-sont poussés sur le navigateur racine, au-dessus de la barre.
+Règle de dépendance : `presentation → application → domain ← data`. Seule
+`data` importe les SDK Firebase (et `core/analytics`, qui est de
+l'infrastructure). Une feature n'importe jamais la couche `data` d'une autre ;
+elle compose ses providers (ex. le contrôle d'entrée lit les réservations via
+`reservationRepositoryProvider`).
 
 ---
 
 ## 6. Modèle de données
 
 ```
-users/{uid}
-  name, email, role ∈ {participant, organizer}, createdAt, updatedAt?
+users/{uid}                       name, email, role, createdAt, updatedAt?
+  ├── devices/{deviceId}          token, platform, locale, updatedAt
+  ├── private/notifications       eventReminders, bookingAlerts
+  ├── notifications/{id}          type, title, body, eventId, reservationId, createdAt, readAt, expiresAt (TTL)
+  └── favorites/{eventId}         eventId, createdAt
 
-events/{id}
-  title, description, imageUrl?, category, startsAt (Timestamp),
-  location, capacity, availablePlaces, organizerId, organizerName,
-  createdAt, updatedAt
+events/{id}                       title, description, imageUrl?, category, startsAt, location,
+                                  capacity, availablePlaces, organizerId, organizerName, createdAt, updatedAt
+  ├── waitlist/{userId}           userId, userName, createdAt, notifiedAt? (serveur)
+  └── checkins/{reservationId}    reservationId, scannedBy, scannedAt
 
-reservations/{eventId}_{userId}
-  eventId, userId, organizerId, userName, userEmail,
-  eventTitle, eventStartsAt, eventLocation,
-  status ∈ {confirmed, cancelled}, reservedAt, cancelledAt?
+reservations/{eventId}_{userId}   eventId, userId, organizerId, userName, userEmail,
+                                  eventTitle, eventStartsAt, eventLocation, status, reservedAt, cancelledAt?
+
+reviews/{eventId}_{userId}        eventId, authorId, authorName, rating (1–5), comment, createdAt, updatedAt?
 ```
 
-Décisions :
-
-- **`startsAt` unique** au lieu de `date` + `time` séparés : tri exact, requête
-  « à venir », règle « déjà commencé ».
-- **Id de réservation déterministe** `eventId_userId` : l'unicité « une
-  réservation par participant et par événement » devient une propriété du
-  stockage.
-- **Dénormalisation** des champs utilisateur et événement sur la réservation :
-  portefeuille et liste des participants en une requête, qui survivent à la
-  suppression d'un événement. Un changement de nom ne réécrit pas les billets
-  passés.
-- **`organizerId` copié sur la réservation** : les requêtes de l'organisateur
-  (par événement, et toutes ses réservations pour les stats) sont prouvables
-  par les règles.
-- **Code billet dérivé, pas stocké** : `Reservation.ticketCode` est un hachage
-  FNV-1a de l'id, stable sur toutes les plateformes.
-- **Statistiques dérivées côté client** : aucun document agrégé ; tout est
-  calculé depuis les flux d'événements et de réservations déjà ouverts.
-
-Index composites utilisés par l'application (`firebase/firestore.indexes.json`) :
-`events(organizerId, startsAt desc)`, `reservations(userId, reservedAt desc)`,
-`reservations(eventId, organizerId, status, reservedAt desc)`,
-`reservations(organizerId, reservedAt desc)`. Le fichier en déclare d'autres,
-anticipés pour la feuille de route.
+Identifiants déterministes (réservation, avis, favori, entrée, liste
+d'attente) : l'unicité est une propriété du stockage. Dénormalisation sur la
+réservation : portefeuille, invités, notifications et contrôle d'entrée sans
+lecture supplémentaire. Code billet dérivé de l'id, jamais stocké.
 
 ---
 
 ## 7. Règles métier
 
-Les règles du cahier des charges sont des **policies pures** du domaine,
-testées unitairement, évaluées **dans la transaction Firestore** et
-**rejouées côté serveur** par `firestore.rules`.
-
-| Règle | Client (domaine) | Serveur (règles) |
+| Règle | Client | Serveur |
 |---|---|---|
-| Une réservation par participant et par événement | `ReservationPolicy.canReserve` + id déterministe | `reservationId == eventId + '_' + uid` |
-| Pas de réservation sur un événement complet | `ReservationPolicy.canReserve` (`event.isFull`) | `availablePlaces >= 0` après décrément |
-| Pas de réservation après le début | `ReservationPolicy.canReserve` (`hasStarted(now)`) | réservation refusée après `startsAt` |
-| Places mises à jour à chaque réservation | `FieldValue.increment(±1)` dans la transaction | participant : `availablePlaces` et `updatedAt` seulement, ±1 |
-| Ré-réservation possible après annulation | réservation `cancelled` → autorisée | `status ∈ {confirmed, cancelled}` |
-| Organisateur : ses seuls événements | `EventPolicy.canManage` | `existing().organizerId == uid` |
-| Capacité jamais sous les réservations | `EventPolicy.availablePlacesAfterCapacityChange` | bornes `0 ≤ availablePlaces ≤ capacity` |
-| Rôle et email immuables, nom modifiable | `AuthRepository.updateProfile(name)` | `onlyChanged(['name', 'photoUrl', 'bio', 'updatedAt'])` |
-| On ne liste que ses propres réservations | requêtes filtrées sur `userId` ou `organizerId` | la règle `list` exige que la requête le prouve |
-| Dernières places / commence bientôt (alertes) | `OrganizerAlerts` : ≤ 3 places, < 24 h | — (affichage seul) |
+| Une réservation par participant et par événement | `ReservationPolicy` + id déterministe | règles |
+| Pas de réservation sur un événement complet / commencé | `ReservationPolicy` | règles + transaction |
+| Re-réservation après annulation | nouvelle date de réservation | règles : heure récente, `cancelledAt` vidé |
+| Publier un événement | email vérifié (`EventFormController`) | règles : `isVerified()` |
+| Supprimer un événement | `EventPolicy.canDelete` : aucune réservation | règles : `takenSeats() == 0` |
+| Liste d'attente | `WaitlistPolicy` : participant, complet, à venir, sans place | règles + fonction (FIFO, une notification par place libérée) |
+| Avis | `ReviewPolicy` : inscrit confirmé, événement commencé, email vérifié, note 1–5, ≤ 2 000 caractères | règles (création et modification) |
+| Entrée | `CheckInPolicy` : existe, bon événement, code conforme, non annulé, non déjà scanné | règles : organisateur seul, append-only |
+| Suppression de compte | ré-authentification | fonction : refus si événement à venir avec participants ; places libérées ; anonymisation |
+| Rôle | inchangeable | règles + custom claim |
 
 ---
 
-## 8. Sécurité Firestore et Storage
+## 8. Sécurité
 
-Les règles sont **le seul contrôle qui s'exécute réellement** : n'importe qui
-peut appeler l'API avec une charge utile fabriquée. Chaque invariant du
-domaine est donc répliqué côté serveur.
+Les règles sont le seul contrôle qui s'exécute côté client ; les opérations
+qui touchent les données d'autrui (suppression de compte, notifications,
+liste d'attente) sont réservées aux Cloud Functions. App Check limite l'accès
+aux applications authentiques. Correctifs importants : lecture d'une
+réservation pas encore créée, re-réservation, listes de réservations
+restreintes à l'appelant. Tout est détaillé et testé : [`docs/SECURITY.md`](docs/SECURITY.md).
 
-Les garanties, en résumé :
-
-1. `role` et `email` d'un profil sont **immuables** ;
-2. seul un organisateur crée un événement, seul son propriétaire le modifie ;
-3. `availablePlaces` reste dans `[0, capacity]`, un participant ne le déplace
-   que d'**une** place ;
-4. la capacité ne descend jamais sous les places déjà vendues ;
-5. une réservation par (événement, participant), **structurellement** ;
-6. les champs dénormalisés d'une réservation correspondent à l'événement ;
-7. les horodatages sont contrôlés côté serveur ;
-8. une **liste** de réservations n'est servie que si la requête prouve que
-   chaque document appartient à l'appelant (participant ou organisateur) ;
-9. tout ce qui n'est pas explicitement autorisé est **refusé**.
-
-> ⚠️ **Correctif récent (garantie 8).** La règle `list` des réservations ne
-> vérifiait que la borne `limit <= 200` : une requête bornée sans filtre
-> renvoyait les listes d'invités de tout le monde, noms et emails compris.
-> Elle exige maintenant `userId == uid()` ou `organizerId == uid()`, et deux
-> tests de règles le vérifient. **À redéployer** (`make firebase-deploy`) sur
-> tout projet existant.
-
-Les requêtes `list` doivent porter un `.limit()` (100 événements, 200
-réservations), sans quoi les règles les refusent — d'où la pagination prévue
-en feuille de route. Côté Storage : propriété par le chemin, images matricielles
-uniquement (SVG exclu), plafonds de taille, préfixe `private/` fermé.
-
-Détails : [`docs/SECURITY.md`](docs/SECURITY.md).
+> ⚠️ Toute modification de règles, d'index ou de fonctions doit être
+> **redéployée** (`make deploy`).
 
 ---
 
-## 9. Design system
+## 9. Notifications push
 
-Le design system **« Aurora »** part des maquettes Figma (`im/`) mais ne les
-copie pas au pixel : les tokens et la structure viennent de Figma, le rendu a
-été retravaillé pour paraître dessiné à la main plutôt que sorti d'un gabarit.
+| Notification | Destinataire | Déclencheur | Tap ouvre | Préférence |
+|---|---|---|---|---|
+| Nouvelle réservation / annulation | organisateur | `notifyOrganizerOnReservation` | liste des participants | `bookingAlerts` |
+| Demain : … | participant | `sendEventReminders` (horaire) | billet | `eventReminders` |
+| Une place s'est libérée | participant en attente | `notifyWaitlistOnSeatRelease` | fiche de l'événement | `eventReminders` |
 
-- **Thème clair et sombre** (automatique par défaut, choix persisté). Les deux
-  sont le même code exécuté sur deux jeux de tokens (`AppTokens`,
-  `ThemeExtension`), et la bascule est animée.
-- **Aucune valeur hexadécimale** hors de `app/theme/app_palette.dart` : les
-  widgets lisent `context.tokens`.
-- **Rayons : 6 px** pour tout ce qu'on touche ou remplit (boutons, champs,
-  puces, bouton ✕) et pour les **feuilles modales**, qui n'ont **pas de
-  poignée** mais un bouton de fermeture explicite.
-- **Typographie** : Plus Jakarta Sans (titres) + Inter (interface) ; chiffres
-  tabulaires pour les colonnes de nombres.
-- **Graphiques** : une série = une teinte, marques fines, étiquettes sélectives,
-  vue tableau équivalente.
-
-Composants partagés via `lib/core/widgets/design_system.dart` : `AppScaffold`,
-`AppSurface`, `AppButton`, `AppBadge`, `AppAvatar`, `CapacityMeter`,
-`StatTile`, `AppNavBar`, `FieldGroup`, `Skeleton`, `showAppSheet` /
-`AppSheet` / `showConfirmSheet` / `SheetCloseButton`, `EmptyStateView`…
-
-Tout le détail — tokens, composants et **les décisions derrière eux** — est
-dans [`docs/DESIGN_SYSTEM.md`](docs/DESIGN_SYSTEM.md).
+Chaque envoi est aussi écrit dans `users/{uid}/notifications` (centre de
+notifications, TTL 30 jours). Côté app, `PushNotifications` suit la session :
+permission, jeton, affichage au premier plan, tap, invalidation du jeton à la
+déconnexion. Web : `web/firebase-messaging-sw.js` + clé VAPID.
 
 ---
 
-## 10. Écrans, routes et correspondance maquette
+## 10. Production : App Check, Crashlytics, Analytics, hors ligne
 
-| Planche Figma / besoin                 | Écran | Route |
-|----------------------------------------|-------|-------|
-| P00 Splash                             | `SplashScreen` | `/splash` |
-| Onboarding (une seule fois)            | `OnboardingScreen` | `/onboarding` |
-| A01 Login                              | `LoginScreen` | `/login` |
-| A02 Register (compte → rôle)           | `RegisterScreen` | `/register` |
-| A02 Success « You're all set »         | `WelcomeScreen` | `/welcome` |
-| Mot de passe oublié                    | `ForgotPasswordScreen` | `/forgot-password` |
-| Changer le mot de passe                | `ChangePasswordScreen` | `/change-password` |
-| Profil incomplet (récupération)        | `CompleteProfileScreen` | `/complete-profile` |
-| P01 Explore (+ loading, + empty)       | `EventListScreen` | `/events` |
-| P02 Search                             | `EventSearchScreen` | `/search` |
-| P04 Event details (4 états)            | `EventDetailScreen` + feuille de partage | `/events/:eventId` |
-| P05 Booking confirmed                  | `ReservationConfirmationScreen` | `/reservations/:reservationId/confirmation` |
-| P06 My tickets (+ empty)               | `MyReservationsScreen` | `/reservations` |
-| P04 Reserved — « View Ticket »         | `TicketScreen` | `/reservations/:reservationId/ticket` |
-| Profile                                | `ProfileScreen` | `/profile`, `/organizer/profile` |
-| Paramètres                             | `SettingsScreen` | `/profile/settings`, `/organizer/profile/settings` |
-| Modifier mon profil                    | `EditProfileScreen` | `/account/edit` |
-| Centre d'aide · Confidentialité · À propos | `HelpCenterScreen` · `PrivacyScreen` · `AboutScreen` | `/help` · `/privacy` · `/about` |
-| O01 My events (+ empty)                | `OrganizerDashboardScreen` | `/organizer/events` |
-| Barre organisateur — Stats             | `OrganizerStatsScreen` | `/organizer/stats` |
-| Barre organisateur — Alerts            | `OrganizerAlertsScreen` | `/organizer/alerts` |
-| O02 Create event                       | `EventFormScreen` | `/organizer/events/new` |
-| O03 Edit event                         | `EventFormScreen(eventId)` | `/organizer/events/:eventId/edit` |
-| O02 Success « Event is live »          | `EventPublishedScreen` (+ lien public) | `/organizer/events/:eventId/published` |
-| O04 Delete                             | `showConfirmSheet` | feuille modale |
-| O05 Participants (+ export)            | `EventParticipantsScreen` | `/organizer/events/:eventId/participants` |
+| Sujet | Mise en œuvre |
+|---|---|
+| App Check | `bootstrap.dart` : Play Integrity / App Attest en release, fournisseurs debug sinon, reCAPTCHA v3 sur le web ; fonctions : `ENFORCE_APP_CHECK` |
+| Crashlytics | erreurs Flutter et plateforme (fatales) + `AppLogger.error` (non fatales), désactivé en debug, identifiant technique du compte |
+| Analytics | **opt-in** (collecte coupée par défaut dans le manifeste et l'`Info.plist`), feuille de consentement unique, interrupteur dans les Paramètres ; vues d'écran via l'observateur de routes ; événements : `login`, `sign_up`, `event_published`, `reservation_confirmed/cancelled`, `share`, `add_to_wishlist`, `waitlist_joined`, `review_published`, `ticket_scanned` |
+| Hors ligne | cache Firestore persistant (100 Mo), bandeau global via `connectivity_plus` |
+| Pagination | première page temps réel, pages suivantes par curseur `startsAt` + id |
+| Signature | `android/key.properties` |
 
 ---
 
-## 11. Configuration, flavors et variables
+## 11. Design system
 
-| `--dart-define` | Valeurs | Effet |
-|-----------------|---------|-------|
-| `FLAVOR`        | `dev` (défaut), `staging`, `prod` | nom d'app, valeurs par défaut |
-| `MOCK`          | `true` | backend mémoire forcé (dev et staging) ; automatique si Firebase absent |
-| `USE_EMULATORS` | `true` | Auth/Firestore/Storage vers la suite d'émulateurs (dev) |
-
-Points d'entrée : `main.dart` (lit `FLAVOR`), `main_dev.dart`,
-`main_staging.dart`, `main_prod.dart`. Configurations VS Code dans
-`.vscode/launch.json`.
-
-`AppConfig` est injecté dans `ProviderScope` par `bootstrap()` ; le provider
-par défaut lève volontairement une erreur pour qu'un oubli soit visible
-immédiatement. Les adresses publiques (lien d'événement, email support) sont
-centralisées dans `core/config/app_links.dart`.
+« Aurora » : clair/sombre par tokens, rayons de 6 px pour tout ce qu'on touche
+et pour les feuilles (sans poignée), bandes et filets plutôt que cartes
+arrondies, graphiques à une teinte avec vue tableau, verdicts d'entrée en
+aplat plein écran. Détails : [`docs/DESIGN_SYSTEM.md`](docs/DESIGN_SYSTEM.md).
 
 ---
 
-## 12. Qualité : lint, tests, CI
+## 12. Écrans, routes et correspondance maquette
 
-- **Analyse** : `flutter_lints` + `strict-casts`, `strict-inference`,
-  `strict-raw-types` et règles supplémentaires. Objectif : zéro issue.
-- **Tests Dart** (`make test`, **68 tests**) :
-  - domaine : `ReservationPolicy`, `EventPolicy`, `EventDraft.validate`,
-    getters d'`Event`, **code billet** (format, stabilité, unicité),
-    **export CSV** (en-tête, échappement, CRLF), **statistiques et alertes
-    organisateur** (remplissage, fenêtre de 14 jours, annulations, classement,
-    watchlist, journal) ;
-  - core : `Result`, `guard`, dépliage de `FailureException` ;
-  - **routage** : `RouteGuard` — démarrage à froid, premier lancement, profil
-    incomplet, confinement des rôles, pages communes, billet réservé aux
-    participants, stats/alertes réservées aux organisateurs ;
-  - widget et golden : `LoginScreen`, écrans d'authentification, démarrage.
-- **Tests de règles** (`make test-rules`, **110 tests**) : suite Node
-  dans `firebase/tests/`, exécutée contre les émulateurs Firestore et Storage
-  avec `@firebase/rules-unit-testing`, charges utiles fabriquées à la main
-  comme le ferait un attaquant. Nécessite Java.
-
-  ```bash
-  make rules-setup   # une seule fois (npm install)
-  make test-rules    # démarre les émulateurs, exécute, les arrête
-  ```
-
-- **CI** (`.github/workflows/ci.yml`) : `quality` (format, analyse, tests,
-  couverture), `rules` (émulateurs + suite de règles, sans secret), `android`
-  (APK debug).
-
-À ajouter : tests d'intégration des data sources contre l'émulateur, tests
-widget des nouveaux écrans (billet, stats, alertes).
+| Écran | Route |
+|---|---|
+| Splash · Onboarding · Connexion · Inscription · Bienvenue | `/splash` · `/onboarding` · `/login` · `/register` · `/welcome` |
+| Mot de passe oublié / changement · Profil incomplet | `/forgot-password` · `/change-password` · `/complete-profile` |
+| Explorer · Recherche · Billets · Profil | `/events` · `/search` · `/reservations` · `/profile` |
+| Fiche événement (favori, partage, liste d'attente, avis) | `/events/:eventId` |
+| Confirmation · Billet | `/reservations/:reservationId/confirmation` · `/reservations/:reservationId/ticket` |
+| Mes favoris | `/favorites` |
+| Paramètres · Modifier le profil | `/profile/settings`, `/organizer/profile/settings` · `/account/edit` |
+| Centre de notifications | `/notifications` |
+| Aide · Confidentialité · À propos | `/help` · `/privacy` · `/about` |
+| Mes événements · Stats · Alertes | `/organizer/events` · `/organizer/stats` · `/organizer/alerts` |
+| Créer · Modifier · Publié | `/organizer/events/new` · `/organizer/events/:eventId/edit` · `/organizer/events/:eventId/published` |
+| Participants · Contrôle à l'entrée | `/organizer/events/:eventId/participants` · `/organizer/events/:eventId/checkin` |
 
 ---
 
-## 13. Commandes
+## 13. Configuration
 
-| Commande               | Rôle |
-|------------------------|------|
-| `make setup`           | `flutter pub get` + génération de code |
-| `make gen` / `make watch` | `build_runner` une fois / en continu |
-| `make analyze`         | `flutter analyze --no-pub` |
-| `make format`          | `dart format lib test` |
-| `make test` / `make test-cov` | tests, avec couverture |
-| `make rules-setup` / `make test-rules` | dépendances puis tests des règles de sécurité |
-| `make run DEVICE=<id> [FLAVOR=prod]` | lancer avec Firebase |
-| `make run-mock DEVICE=<id>` | lancer en simulation |
-| `make run-emu DEVICE=<id>`  | lancer contre les émulateurs |
-| `make build-apk [FLAVOR=prod]` | APK release |
-| `make emulators`       | `firebase emulators:start` |
-| `make firebase-deploy` | déployer règles et index Firestore + règles Storage |
-| `make clean`           | `flutter clean` |
+| `--dart-define` | Effet |
+|---|---|
+| `FLAVOR` | `dev` (défaut), `staging`, `prod` |
+| `USE_EMULATORS` | `true` → Auth, Firestore, Storage et Functions sur les émulateurs |
+| `GOOGLE_SERVER_CLIENT_ID` | ID client OAuth web ; requis pour Google Sign-In sur Android |
+| `FIREBASE_WEB_VAPID_KEY` | clé Web Push ; sans elle, pas de push sur le web |
+| `APP_CHECK_RECAPTCHA_SITE_KEY` | clé reCAPTCHA v3 ; sans elle, App Check inactif sur le web |
 
-Après toute modification d'un fichier annoté `@freezed`, `@riverpod` ou
-`@JsonSerializable`, relancer `make gen`. Les fichiers générés sont commités.
-
----
-
-## 14. Scénario de démonstration
-
-En mode simulation, l'organisateur est `mirindra@demo.com`, le participant
-`jean@demo.com` (mot de passe `demo123`).
-
-1. **Organisateur** : connexion → onglet **Alertes** : *Design Sprint Express*
-   commence dans 20 h et n'a plus que 2 places ; le journal liste les
-   réservations des derniers jours et une annulation. Onglet **Stats** :
-   remplissage global, histogramme sur 14 jours (touchez une colonne, ou
-   passez en vue « Tableau »), classement des événements.
-2. **Organisateur** : « Mes événements » → « + » → *Flutter Meetup Madagascar
-   2*, capacité 100, date et lieu → **Publier** → écran « Événement publié ! »
-   → **Copier** le lien public.
-3. **Participant** : déconnexion, connexion → l'événement apparaît dans
-   « Explorer » → recherche « Flutter » → fiche (100 / 100 places) →
-   **Partager** (copier une invitation) → **Réserver ma place** →
-   « Réservation confirmée ! ».
-4. Le compteur passe de **100 → 99** en direct. « Billets » → touchez le
-   billet : **QR code** et code `EH-XXXX-XXXX`.
-5. **Organisateur** : l'onglet **Alertes** affiche « Jean Rakoto a réservé » ;
-   « Mes événements » → « Participants » → **Exporter la liste** (CSV copié).
-
-Variantes visibles : *Late Night Jazz Session* (3 places, bouton ambre),
-*Pulse Festival* (complet), *Atelier UX Mobile* (passé), annulation depuis la
-fiche puis billet affiché « annulé ». Côté compte : Profil → « Modifier mon
-profil », « Centre d'aide », « Confidentialité », « À propos ».
-
----
-
-## 15. Décisions d'architecture (ADR)
-
-| # | Décision | Alternatives | Motivation |
-|---|----------|--------------|------------|
-| 1 | Firebase Storage pour les images, derrière `ImageStorageRepository` | Supabase Storage | une seule console, une seule auth, un seul jeu de règles |
-| 2 | Transaction Firestore côté client + règles serveur | Cloud Function `reserve` | pas de backend à déployer pour le MVP ; atomicité par la transaction, intégrité par les règles |
-| 3 | Id de réservation déterministe | id auto + requête d'unicité | unicité structurelle, vérifiable par les règles |
-| 4 | `Result<T>` + `Failure` scellée | exceptions | erreurs exhaustives au `switch`, pas de `try/catch` dans l'UI |
-| 5 | Session scellée avec `ProfileMissing` + délai de grâce | booléen connecté | gère l'inscription interrompue sans clignotement |
-| 6 | Recherche et filtre côté client | index full-text (Algolia) | catalogue petit ; remplaçable dans `filteredEventsProvider` |
-| 7 | Backend mock activable par `dart-define` | fixtures Firestore | démos et tests d'UI sans projet Firebase, même code d'écran |
-| 8 | Thème clair + sombre par tokens | dark-only | même code sur deux jeux de tokens, aucun widget touché, bascule animée |
-| 9 | Textes en français dans `AppStrings` | ARB / `flutter_localizations` | cahier des charges en français ; migration mécanique vers ARB |
-| 10 | QR généré localement (`qr_flutter`), code dérivé de l'id | QR signé par Cloud Function | affichage livrable sans backend ; la signature et le scan sont la suite (F-01) |
-| 11 | Partage et export par presse-papiers | `share_plus`, fichier via Storage | identique sur Android, iOS, web et desktop, sans configuration native |
-| 12 | Statistiques et alertes calculées côté client | agrégats Firestore / Cloud Function | aucune lecture en plus, temps réel gratuit ; limite assumée de 200 réservations |
-
----
-
-## 16. Périmètre : ce qui est fait, ce qui ne l'est pas
-
-**Fait** : tout le cahier des charges MVP, les écrans des maquettes (y compris
-billet, partage, export et les onglets Stats / Alertes de la barre
-organisateur), les états vides / chargement / erreur, la gestion du compte,
-les pages d'aide, les règles et index Firestore, le mode simulation, les tests
-et la CI.
-
-**Écarts assumés avec la maquette Figma** :
-
-| Élément de la maquette | État | Pourquoi |
+| Constante / paramètre | Où | À aligner avec |
 |---|---|---|
-| « Continue with Google » | non implémenté | nécessite empreinte SHA-1, client OAuth et configuration par plateforme |
-| « Add to Cal » | non implémenté | nécessite un plugin natif de calendrier ou `url_launcher` + fichier `.ics` |
-| « Join Waitlist » (événement complet) | non implémenté | demande un backend (Cloud Function de promotion) ; règles et index déjà prêts (F-06) |
-| Cœur / favoris | non implémenté | hors MVP ; règles prêtes (F-05) |
-| Billet **vérifiable** | partiel | le QR identifie mais n'est pas signé ; pas encore de scanner organisateur (F-01) |
-| Partage natif | partiel | lien et invitation copiés ; pas de feuille système ni de page web publique (F-08) |
-| Prix, « Revenue », types de billets | remplacés | pas de paiement dans le MVP (« Gratuit », « Restantes ») |
-| Notifications push | UI seulement | les interrupteurs attendent FCM (F-02) |
-| Textes anglais | traduits | produit en français |
+| `REGION` / `AppConfig.functionsRegion` | `functions/src/index.ts` / `app_config.dart` | emplacement Firestore |
+| `ENFORCE_APP_CHECK` | paramètre des fonctions | enregistrement App Check fait |
+| `eventhub_default` | canal Android | manifeste, fonctions, app |
+| `applicationId` | `build.gradle.kts` | app Android Firebase |
 
 ---
 
-## 17. Dépannage
+## 14. Qualité : lint, tests, CI
+
+- **Analyse** : zéro issue (`flutter_lints` strict, `riverpod_lint`).
+- **Tests Dart** (`make test`, **113**) : policies (réservation,
+  événement dont suppression, liste d'attente, avis, entrée), code billet, CSV,
+  stats et alertes, catalogue paginé, préférences et routage des
+  notifications, mapping d'erreurs, logger, `RouteGuard` ; widgets et goldens
+  (connexion, écrans d'auth, démarrage, billet, stats, centre de notifications).
+- **Tests de règles** (`make test-rules`, **118**) contre les émulateurs.
+- **Tests des fonctions** (`make test-functions`, **10**) :
+  claim de rôle, notifications organisateur et préférences, liste d'attente,
+  rappels J-1, suppression de compte (cascade, refus, appel anonyme) — contre
+  les émulateurs Auth, Firestore, Functions et Storage.
+- **CI** : `quality`, `rules`, `functions` (compilation + intégration), `android`.
+
+---
+
+## 15. Commandes
+
+| Commande | Rôle |
+|---|---|
+| `make setup` · `make gen` | dépendances, génération de code |
+| `make analyze` · `make format` · `make test` | qualité Dart |
+| `make rules-setup` · `make test-rules` | tests des règles |
+| `make functions-setup` · `make functions-build` · `make test-functions` | fonctions |
+| `make run DEVICE=<id>` · `make run-emu DEVICE=<id>` | lancer |
+| `make emulators` | suite d'émulateurs |
+| `make firebase-deploy` · `make deploy` | règles + index + Storage · tout, fonctions comprises |
+| `make build-apk FLAVOR=prod` | APK release |
+
+---
+
+## 16. Scénario de démonstration
+
+Deux appareils Android, projet déployé.
+
+1. **Organisateur** : inscription (email) → lien de vérification → « C'est
+   fait » → notifications acceptées → publier *Flutter Meetup*, capacité 1.
+2. **Participant A** : « Continuer avec Google » → rôle participant → cœur sur
+   l'événement → **Réserver**. L'organisateur reçoit « Nouvelle réservation ».
+3. **Participant B** : l'événement est complet → **Rejoindre la liste d'attente**.
+4. **Participant A** annule → B reçoit « Une place s'est libérée » → réserve.
+5. **Organisateur** : Participants → scanner le billet de B → **Entrée validée** ;
+   rescanner → **Déjà scanné à HH:mm**.
+6. Après le début : B laisse un avis 5 ★ ; la fiche affiche la moyenne.
+7. Paramètres de A → **Supprimer mon compte** → mot de passe / Google → compte
+   effacé, avis et historique anonymisés.
+8. Couper le réseau : le bandeau « Hors ligne » apparaît, les billets restent
+   consultables.
+
+---
+
+## 17. Décisions d'architecture (ADR)
+
+| # | Décision | Motivation |
+|---|---|---|
+| 1 | Transaction Firestore client + règles serveur pour réserver | atomicité sans latence de fonction ; intégrité par les règles |
+| 2 | Ids déterministes (réservation, avis, favori, entrée, attente) | unicité structurelle, vérifiable par les règles |
+| 3 | `Result<T>` + `Failure` scellée | erreurs exhaustives, pas de `try/catch` dans l'UI |
+| 4 | Aucun backend simulé ; émulateurs pour le développement | un seul chemin de code, vraies règles en local |
+| 5 | Push envoyés par Cloud Functions, préférences lues à l'envoi | le client ne cible jamais l'appareil d'autrui ; coupure immédiate |
+| 6 | Rôle en custom claim | règles sans lecture de document |
+| 7 | Google : même parcours de complétion que le profil manquant | un seul écran de choix du rôle, déjà protégé par le guard |
+| 8 | Email vérifié pour publier et pour les avis | contenu visible par d'autres, barrière anti-spam minimale |
+| 9 | Suppression de compte côté serveur | les règles interdisent de supprimer un profil ; cascade sur les données d'autrui |
+| 10 | QR non signé, verdict par lecture serveur + code dérivé | rien à falsifier utilement ; un billet ne sert qu'une fois (entrée append-only) |
+| 11 | Liste d'attente sans réservation de place | premier arrivé, premier servi, annoncé comme tel ; pas d'expiration à gérer |
+| 12 | Catalogue : page live + pages par curseur | les règles plafonnent un `list` à 100 ; filtres côté client sur ce qui est chargé |
+| 13 | Analytics opt-in, jamais bloquant | CNIL ; une mesure ne doit pas casser une réservation ni les tests |
+| 14 | App Check activé tôt, appliqué plus tard (`ENFORCE_APP_CHECK`) | ne pas verrouiller les builds de dev avant l'enregistrement des jetons |
+| 15 | Stats et alertes calculées côté client | aucune lecture en plus ; limite de 200 réservations assumée |
+
+---
+
+## 18. Périmètre : ce qui est fait, ce qui reste
+
+**Fait** : tout le cahier des charges et les maquettes, branchés sur Firebase ;
+email + Google ; vérification d'email ; suppression de compte ; push (Android,
+web) et centre de notifications ; favoris, liste d'attente, avis, contrôle à
+l'entrée ; stats et alertes ; pagination ; App Check, Crashlytics, Analytics
+sur consentement ; hors ligne ; signature release ; tests Dart, règles et
+fonctions ; CI.
+
+| Reste | Pourquoi / action |
+|---|---|
+| **Déploiement** | nécessite `firebase login`, le plan Blaze et la configuration de la console (§3.1) |
+| iOS | build sur Mac, clé APNs, capacités *Push* et *Background modes* dans Xcode, App Attest |
+| Clés à fournir | `GOOGLE_SERVER_CLIENT_ID`, `FIREBASE_WEB_VAPID_KEY`, `APP_CHECK_RECAPTCHA_SITE_KEY`, keystore release |
+| « Add to Cal » | plugin natif de calendrier |
+| Paiement, types de billets | hors MVP |
+| Revue juridique | notice de confidentialité et consentement à valider (DPO) |
+
+---
+
+## 19. Dépannage
 
 | Symptôme | Cause / correctif |
-|----------|-------------------|
-| Écran « Firebase non configuré » | n'apparaît qu'en flavor `prod` ; en dev la simulation prend le relais. Sinon `flutterfire configure` |
-| Onglets Stats / Alertes : « requires an index » | déployer `firestore.indexes.json` (index `reservations(organizerId, reservedAt desc)`) |
-| `permission-denied` sur une liste de réservations | la requête doit filtrer sur `userId` ou `organizerId` ; redéployer les règles |
-| Revoir l'onboarding | désinstaller puis réinstaller (`adb uninstall com.example.eventhub`) |
-| `Gradle version … lower than minimum` / `AGP` / `Kotlin` | Gradle 8.14, AGP 8.11.1, Kotlin 2.2.20 (déjà configurés) |
-| `INSTALL_FAILED_USER_RESTRICTED` sur Xiaomi/Redmi | activer « Installation via USB » dans les options développeur |
-| `part 'xxx.g.dart' not found` | `make gen` |
-| `appConfigProvider must be overridden` dans un test | ajouter `appConfigProvider.overrideWithValue(AppConfig.fromFlavor(Flavor.dev))` |
-| Images de démo absentes | Unsplash nécessite le réseau ; le dégradé de repli s'affiche sinon |
-| `make test-rules` échoue au démarrage | Java requis par les émulateurs ; lancer `make rules-setup` une fois |
+|---|---|
+| « Connexion à Firebase impossible » | `flutterfire configure --project=eventhub-d411f` |
+| `operation-not-allowed` | fournisseur non activé dans Authentication |
+| Bouton Google absent (Android) | `--dart-define=GOOGLE_SERVER_CLIENT_ID=…` |
+| Google : `DEVELOPER_ERROR` / échec | SHA-1 de la clé de signature absent de la console |
+| « Confirmez votre adresse email avant de publier » | ouvrir le lien reçu puis « C'est fait » |
+| `permission-denied` | règles non déployées, ou App Check appliqué sans jeton de debug déclaré |
+| « requires an index » | `make firebase-deploy`, attendre la construction |
+| Aucune notification | permission refusée, appareil sans Google Play, fonctions non déployées, préférence coupée ; `firebase functions:log` |
+| Suppression de compte refusée | événement à venir avec participants (message explicite) |
+| Scanner : caméra indisponible | autoriser la caméra ; ou saisir le code du billet |
+| `make test-functions` échoue | Java requis ; `make functions-setup` et `make rules-setup` une fois |
 
 ---
 
-## 18. Contribuer
+## 20. Contribuer
 
-Branches par tâche (`feat/T-31-recherche-evenements`), commits **Conventional
-Commits** en anglais, PR avec CI verte et une review. Definition of Done dans
-[`docs/CONVENTIONS.md`](docs/CONVENTIONS.md). Toute évolution qui ajoute un
-écran, une route, une dépendance ou une règle met à jour **ce README et le
-document `docs/` concerné dans la même PR**.
-
-```sh
-git checkout -b feat/T-xx-sujet
-make gen && make analyze && make test
-git commit -m "feat(events): …"
-```
+Branches par tâche, Conventional Commits, CI verte. Toute évolution (écran,
+route, dépendance, règle, fonction) met à jour **ce README et le document
+`docs/` concerné dans la même PR** ([`docs/CONVENTIONS.md`](docs/CONVENTIONS.md)).

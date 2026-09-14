@@ -2,9 +2,12 @@ import 'package:eventhub/app/theme/theme.dart';
 import 'package:eventhub/core/l10n/app_strings.dart';
 import 'package:eventhub/core/utils/date_formats.dart';
 import 'package:eventhub/core/widgets/design_system.dart';
+import 'package:eventhub/features/auth/application/auth_providers.dart';
 import 'package:eventhub/features/events/domain/entities/event.dart';
 import 'package:eventhub/features/events/domain/entities/event_category.dart';
+import 'package:eventhub/features/favorites/presentation/widgets/favorite_button.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 /// Visual identity of a category.
 ///
@@ -140,13 +143,19 @@ class EventCard extends StatelessWidget {
             Positioned(
               top: AppSpacing.md,
               right: AppSpacing.md,
-              child: event.isFull
-                  ? const AppBadge(
+              child: Row(
+                children: [
+                  if (event.isFull)
+                    const AppBadge(
                       label: AppStrings.soldOut,
                       tone: AppTone.danger,
                       style: BadgeStyle.solid,
                     )
-                  : CategoryChip(category: event.category),
+                  else
+                    CategoryChip(category: event.category),
+                  _FavoriteSlot(eventId: event.id),
+                ],
+              ),
             ),
             Positioned(
               left: AppSpacing.lg,
@@ -181,6 +190,24 @@ class EventCard extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Gap + heart, collapsing entirely when the button renders nothing (not a
+/// participant) so the chip stays flush with the edge.
+class _FavoriteSlot extends ConsumerWidget {
+  const _FavoriteSlot({required this.eventId});
+
+  final String eventId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final user = ref.watch(currentUserProvider);
+    if (user == null || !user.isParticipant) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(left: AppSpacing.sm),
+      child: FavoriteButton(eventId: eventId, size: 34),
     );
   }
 }

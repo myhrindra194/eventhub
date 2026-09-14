@@ -6,6 +6,7 @@ import 'package:eventhub/core/utils/validators.dart';
 import 'package:eventhub/core/widgets/design_system.dart';
 import 'package:eventhub/features/auth/application/auth_controller.dart';
 import 'package:eventhub/features/auth/presentation/widgets/auth_scaffold.dart';
+import 'package:eventhub/features/auth/presentation/widgets/google_sign_in_button.dart';
 import 'package:eventhub/routes/routes.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -118,6 +119,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 elevated: false,
                 onPressed: _submit,
               ),
+              const GoogleSignInButton(),
             ],
           ),
         ),

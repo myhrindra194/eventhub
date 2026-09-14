@@ -308,6 +308,14 @@ describe('waitlist (F-06)', () => {
     );
   });
 
+  it('refuses joining the queue of an event that still has seats', async () => {
+    await seedEvent('e2', { capacity: 10, availablePlaces: 3 });
+    const db = asParticipant(env, 'p1').firestore();
+    await assertFails(
+      setDoc(doc(db, 'events', 'e2', 'waitlist', 'p1'), entry('p1')),
+    );
+  });
+
   it('refuses queueing somebody else', async () => {
     const db = asParticipant(env, 'p1').firestore();
     await assertFails(

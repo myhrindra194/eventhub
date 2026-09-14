@@ -4,6 +4,7 @@ import 'package:eventhub/core/extensions/context_x.dart';
 import 'package:eventhub/core/l10n/app_strings.dart';
 import 'package:eventhub/core/utils/date_formats.dart';
 import 'package:eventhub/core/widgets/design_system.dart';
+import 'package:eventhub/features/notifications/presentation/widgets/notification_bell_button.dart';
 import 'package:eventhub/features/organizer/application/organizer_providers.dart';
 import 'package:eventhub/features/organizer/domain/organizer_insights.dart';
 import 'package:eventhub/routes/routes.dart';
@@ -42,6 +43,7 @@ class OrganizerAlertsScreen extends ConsumerWidget {
                 eyebrow: AppStrings.organizer,
                 title: AppStrings.alertsTitle,
                 subtitle: AppStrings.alertsSubtitle,
+                trailing: NotificationBellButton(),
               ),
             ),
             AsyncValueWidget(

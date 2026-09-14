@@ -5,6 +5,7 @@ import 'package:eventhub/core/l10n/app_strings.dart';
 import 'package:eventhub/core/result/result.dart';
 import 'package:eventhub/core/widgets/design_system.dart';
 import 'package:eventhub/features/auth/application/auth_providers.dart';
+import 'package:eventhub/features/auth/presentation/widgets/email_verification_banner.dart';
 import 'package:eventhub/features/events/application/event_form_controller.dart';
 import 'package:eventhub/features/events/application/event_providers.dart';
 import 'package:eventhub/features/events/domain/entities/event.dart';
@@ -33,6 +34,15 @@ class _OrganizerDashboardScreenState
   bool _showPast = false;
 
   Future<void> _delete(Event event) async {
+    // Checked before asking for confirmation: confirming an action that the
+    // server will refuse is worse than not offering it.
+    if (event.reservedCount > 0) {
+      context.showToast(
+        AppStrings.cannotDeleteWithReservations(event.reservedCount),
+        icon: Icons.info_outline_rounded,
+      );
+      return;
+    }
     final confirmed = await showConfirmSheet(
       context,
       title: AppStrings.deleteEvent,
@@ -79,6 +89,18 @@ class _OrganizerDashboardScreenState
                     icon: Icons.add_rounded,
                     tooltip: AppStrings.createEvent,
                     onPressed: () => context.push(AppRoutes.organizerEventNew),
+                  ),
+                ),
+              ),
+              // Publishing requires a verified email (rules): the reminder
+              // belongs where the organizer is about to publish.
+              const SliverToBoxAdapter(
+                child: EmailVerificationBanner(
+                  padding: EdgeInsets.fromLTRB(
+                    AppSpacing.gutter,
+                    0,
+                    AppSpacing.gutter,
+                    AppSpacing.lg,
                   ),
                 ),
               ),

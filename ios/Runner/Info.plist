@@ -41,6 +41,32 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<!-- Google Sign-In: iOS client id of the Firebase project and its
+	     reversed form as URL scheme (the OAuth redirect comes back here). -->
+	<key>GIDClientID</key>
+	<string>930281380072-i20pglc1crsues71usoe3gs14a4fvvic.apps.googleusercontent.com</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.googleusercontent.apps.930281380072-i20pglc1crsues71usoe3gs14a4fvvic</string>
+			</array>
+		</dict>
+	</array>
+	<!-- Push notifications (FCM through APNs) delivered in background. -->
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>remote-notification</string>
+	</array>
+	<!-- Analytics collects nothing until the user consents. -->
+	<key>FIREBASE_ANALYTICS_COLLECTION_ENABLED</key>
+	<false/>
+	<!-- Door check-in: the organizer scans tickets with the camera. -->
+	<key>NSCameraUsageDescription</key>
+	<string>La caméra sert à scanner les billets à l'entrée de vos événements.</string>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>

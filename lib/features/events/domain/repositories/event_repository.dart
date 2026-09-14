@@ -29,6 +29,15 @@ abstract interface class EventRepository {
     required AppUser organizer,
   });
 
+  /// The [limit] upcoming events that follow [after], in the same order as
+  /// [watchUpcoming] (`startsAt`, then id). One-shot: older pages of the
+  /// catalogue are loaded on demand and refreshed by pulling to refresh.
+  AsyncResult<List<Event>> fetchUpcomingAfter({
+    required DateTime from,
+    required Event after,
+    required int limit,
+  });
+
   AsyncResult<void> delete({
     required String eventId,
     required AppUser organizer,

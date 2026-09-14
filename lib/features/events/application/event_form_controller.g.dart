@@ -40,7 +40,7 @@ final class EventFormControllerProvider
 }
 
 String _$eventFormControllerHash() =>
-    r'5fffbde6034555a590db331ddfb4e64c0df1aad3';
+    r'1d983657e9980231bc80bad35af22146c2cf734c';
 
 /// Create / update flow: optional image upload then Firestore write.
 /// [existingEventId] == null means "create".

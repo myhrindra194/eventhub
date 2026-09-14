@@ -151,6 +151,59 @@ existent.
 > fixe pas l'une de ces égalités est refusée d'office. Deux tests de règles
 > couvrent le cas (participant et organisateur).
 
+### Correctifs v1.2 : ce que le backend simulé masquait
+
+Le mode simulation n'appliquait pas les règles. Au branchement réel sur
+Firebase, trois règles de `reservations` auraient bloqué le cœur du produit :
+
+| Symptôme en production | Cause | Correctif |
+|---|---|---|
+| **Aucune réservation possible** ; erreur de permission sur toute fiche d'événement non réservé | la transaction lit `reservations/{eventId}_{uid}` avant qu'il existe ; `existing().userId` sur un document absent fait échouer la règle `get` | `resource == null` → autorisé seulement si l'id se termine par `_<uid>` : on ne peut sonder que ses propres réservations |
+| Création refusée | le DTO sérialise `cancelledAt: null`, la règle interdisait la clé | la clé est acceptée si sa valeur est `null` |
+| Re-réservation après annulation refusée | la règle figeait `reservedAt`, le client l'horodate au moment de la nouvelle réservation | `reservedAt` figé pour une annulation ; pour une re-réservation, heure récente, `cancelledAt` vidé, copie de l'événement revérifiée |
+
+Quatre tests de règles couvrent ces cas. Côté application, la suppression d'un
+événement qui a des réservations (refusée par `allow delete`) est désormais
+anticipée par `EventPolicy.canDelete`, avec un message au lieu d'une erreur de
+permission.
+
+### v1.3 : fonctionnalités ajoutées et leurs garanties
+
+| Surface | Garantie | Où |
+|---|---|---|
+| Publication d'un événement | email vérifié (`isVerified()`), en plus du rôle | règle `events` create + `EventFormController` |
+| `users/{uid}/favorites/{eventId}` | privé ; id = eventId ; immuable | règles (tests F-05) |
+| `events/{id}/waitlist/{uid}` | création par le participant lui-même, **seulement si l'événement est complet et à venir** ; lecture par lui ou l'organisateur ; position non modifiable | règles + `WaitlistPolicy` |
+| `notifiedAt` sur la liste d'attente | écrit uniquement par la fonction (SDK Admin) | `notifyWaitlistOnSeatRelease` |
+| `reviews/{eventId}_{uid}` | réservation confirmée, **événement commencé**, email vérifié, note 1–5, commentaire ≤ 2 000 (création **et** modification) | règles + `ReviewPolicy` |
+| `events/{id}/checkins/{reservationId}` | organisateur de l'événement seul, append-only ; deux portes qui scannent le même billet : la seconde écriture est refusée | règles + `CheckInRepositoryImpl.record` |
+| QR du billet | non signé : il désigne une réservation, le verdict vient de la lecture serveur et du code dérivé de l'id ; une réservation d'un autre organisateur est illisible → « introuvable » | `CheckInPolicy` |
+| Suppression de compte | impossible depuis le client (règles) ; fonction callable authentifiée : refus si l'organisateur a un événement à venir avec participants, places libérées, réservations et avis anonymisés, sous-collections, fichiers et utilisateur Auth supprimés | `deleteAccount` |
+| App Check | activé dans l'app ; appliqué aux fonctions callable quand `ENFORCE_APP_CHECK=true` ; à activer côté console pour Firestore et Storage après enregistrement des jetons de debug | `bootstrap.dart`, `functions/src/index.ts` |
+| Google Sign-In | un compte Google sans profil passe par `ProfileMissing` : pas de rôle par défaut, le choix reste explicite | `AuthRepositoryImpl`, `RouteGuard` |
+| Données personnelles dans les outils | Analytics et Crashlytics ne reçoivent que l'uid et le rôle ; Analytics seulement après consentement | `AppAnalytics`, `AnalyticsConsent` |
+
+Tests : règles `make test-rules` (118), fonctions `make test-functions`.
+
+### Notifications push : ce qui est privé, ce qui est serveur
+
+| Chemin | Client | Cloud Functions (SDK Admin, règles contournées) |
+|---|---|---|
+| `users/{uid}/devices/{deviceId}` | propriétaire seulement ; champs `token`, `platform`, `locale`, `updatedAt` (heure serveur) | lit les jetons, supprime ceux que FCM rejette |
+| `users/{uid}/private/notifications` | propriétaire seulement | lit la préférence **avant chaque envoi** |
+| `users/{uid}/notifications/{id}` | lecture et `readAt` par le propriétaire, **création interdite** | seule source d'écriture |
+
+Deux conséquences voulues. Un client ne peut ni lire les jetons d'un autre
+utilisateur, ni lui envoyer de notification : l'envoi n'existe que côté
+serveur. Et à la déconnexion, l'app **invalide son jeton** (`deleteToken`)
+plutôt que de supprimer le document appareil, ce que les règles refuseraient
+une fois la session fermée ; le document orphelin est supprimé par la fonction
+au premier envoi qui échoue.
+
+`setRoleClaim` recopie le rôle du profil dans un custom claim à la création
+du document `users/{uid}`. Le profil ne pouvant être ni supprimé ni changer
+de rôle (règles), le claim ne peut pas diverger du document.
+
 ---
 
 ## 7. Transitions d'état autorisées
@@ -239,7 +292,7 @@ make rules-setup   # une seule fois : npm install
 make test-rules    # démarre les émulateurs, exécute la suite, les arrête
 ```
 
-**110 tests, 0 échec.** Elle tourne aussi en CI (job `Security rules`), sans
+**114 tests, 0 échec.** Elle tourne aussi en CI (job `Security rules`), sans
 aucun secret : l'identifiant de projet `demo-eventhub` indique au SDK qu'aucun
 projet réel n'existe derrière, donc les émulateurs ne demandent pas
 d'identifiants — la suite passe même sur un fork.

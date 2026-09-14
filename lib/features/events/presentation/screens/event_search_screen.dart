@@ -5,6 +5,7 @@ import 'package:eventhub/features/events/application/event_providers.dart';
 import 'package:eventhub/features/events/domain/entities/event_category.dart';
 import 'package:eventhub/features/events/presentation/widgets/event_card.dart';
 import 'package:eventhub/features/events/presentation/widgets/event_filters.dart';
+import 'package:eventhub/features/events/presentation/widgets/load_more_events_button.dart';
 import 'package:eventhub/routes/routes.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -120,9 +121,10 @@ class _Results extends ConsumerWidget {
       data: (list) => SliverPadding(
         padding: const EdgeInsets.symmetric(horizontal: AppSpacing.gutter),
         sliver: SliverList.separated(
-          itemCount: list.length,
+          itemCount: list.length + 1,
           separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.md),
           itemBuilder: (context, index) {
+            if (index == list.length) return const LoadMoreEventsButton();
             final event = list[index];
             return EventResultTile(
               event: event,
@@ -143,7 +145,7 @@ class _CategoryBrowser extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final all = ref.watch(upcomingEventsProvider).value ?? const [];
+    final all = ref.watch(catalogueProvider).value ?? const [];
 
     return SliverPadding(
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.gutter),

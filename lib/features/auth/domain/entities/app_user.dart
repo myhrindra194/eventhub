@@ -15,6 +15,10 @@ abstract class AppUser with _$AppUser {
     required String email,
     required UserRole role,
     DateTime? createdAt,
+
+    /// Read from Firebase Auth, never stored in Firestore: the token claim
+    /// `email_verified` is what the security rules trust.
+    @Default(false) bool emailVerified,
   }) = _AppUser;
 
   bool get isOrganizer => role == UserRole.organizer;

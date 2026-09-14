@@ -45,9 +45,11 @@ class HelpCenterScreen extends StatelessWidget {
           "réservées : on ne retire pas une place à quelqu'un qui l'a obtenue.",
     ),
     FaqEntry(
-      "Que deviennent les réservations si je supprime l'événement ?",
-      'Elles sont perdues et l’événement disparaît des billets des '
-          'participants. Si seule la date change, modifiez l’événement.',
+      'Pourquoi ne puis-je pas supprimer mon événement ?',
+      'Un événement qui a au moins une réservation ne peut pas être '
+          'supprimé : des personnes comptent sur leur billet. Modifiez-le '
+          '(date, lieu, description) ; la suppression redevient possible '
+          'quand plus aucune place n’est réservée.',
     ),
     FaqEntry(
       'Comment récupérer la liste des participants ?',

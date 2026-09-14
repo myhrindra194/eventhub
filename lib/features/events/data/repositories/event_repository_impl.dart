@@ -72,13 +72,22 @@ class EventRepositoryImpl implements EventRepository {
   }
 
   @override
+  AsyncResult<List<Event>> fetchUpcomingAfter({
+    required DateTime from,
+    required Event after,
+    required int limit,
+  }) => guard(
+    () => _remote.fetchUpcomingAfter(from: from, after: after, limit: limit),
+  );
+
+  @override
   AsyncResult<void> delete({
     required String eventId,
     required AppUser organizer,
   }) {
     return guard(() async {
       final event = await _remote.getById(eventId);
-      if (EventPolicy.canManage(event: event, user: organizer) case Err(
+      if (EventPolicy.canDelete(event: event, user: organizer) case Err(
         :final failure,
       )) {
         throw FailureException(failure);

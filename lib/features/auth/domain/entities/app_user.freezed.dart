@@ -15,7 +15,9 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$AppUser {
 
- String get id; String get name; String get email; UserRole get role; DateTime? get createdAt;
+ String get id; String get name; String get email; UserRole get role; DateTime? get createdAt;/// Read from Firebase Auth, never stored in Firestore: the token claim
+/// `email_verified` is what the security rules trust.
+ bool get emailVerified;
 /// Create a copy of AppUser
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -27,20 +29,20 @@ $AppUserCopyWith<AppUser> get copyWith => _$AppUserCopyWithImpl<AppUser>(this as
 @override
 bool operator ==(Object other) {
   final _this = this as AppUser;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is AppUser&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.name, _this.name) || other.name == _this.name)&&(identical(other.email, _this.email) || other.email == _this.email)&&(identical(other.role, _this.role) || other.role == _this.role)&&(identical(other.createdAt, _this.createdAt) || other.createdAt == _this.createdAt));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is AppUser&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.name, _this.name) || other.name == _this.name)&&(identical(other.email, _this.email) || other.email == _this.email)&&(identical(other.role, _this.role) || other.role == _this.role)&&(identical(other.createdAt, _this.createdAt) || other.createdAt == _this.createdAt)&&(identical(other.emailVerified, _this.emailVerified) || other.emailVerified == _this.emailVerified));
 }
 
 
 @override
 int get hashCode {
   final _this = this as AppUser;
-  return Object.hash(runtimeType,_this.id,_this.name,_this.email,_this.role,_this.createdAt);
+  return Object.hash(runtimeType,_this.id,_this.name,_this.email,_this.role,_this.createdAt,_this.emailVerified);
 }
 
 @override
 String toString() {
   final _this = this as AppUser;
-  return 'AppUser(id: ${_this.id}, name: ${_this.name}, email: ${_this.email}, role: ${_this.role}, createdAt: ${_this.createdAt})';
+  return 'AppUser(id: ${_this.id}, name: ${_this.name}, email: ${_this.email}, role: ${_this.role}, createdAt: ${_this.createdAt}, emailVerified: ${_this.emailVerified})';
 }
 
 
@@ -51,7 +53,7 @@ abstract mixin class $AppUserCopyWith<$Res>  {
   factory $AppUserCopyWith(AppUser value, $Res Function(AppUser) _then) = _$AppUserCopyWithImpl;
 @useResult
 $Res call({
- String id, String name, String email, UserRole role, DateTime? createdAt
+ String id, String name, String email, UserRole role, DateTime? createdAt, bool emailVerified
 });
 
 
@@ -68,14 +70,15 @@ class _$AppUserCopyWithImpl<$Res>
 
 /// Create a copy of AppUser
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? name = null,Object? email = null,Object? role = null,Object? createdAt = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? name = null,Object? email = null,Object? role = null,Object? createdAt = freezed,Object? emailVerified = null,}) {
   return _then(AppUser(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String,email: null == email ? _self.email : email // ignore: cast_nullable_to_non_nullable
 as String,role: null == role ? _self.role : role // ignore: cast_nullable_to_non_nullable
 as UserRole,createdAt: freezed == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
-as DateTime?,
+as DateTime?,emailVerified: null == emailVerified ? _self.emailVerified : emailVerified // ignore: cast_nullable_to_non_nullable
+as bool,
   ));
 }
 
@@ -160,10 +163,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String name,  String email,  UserRole role,  DateTime? createdAt)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String name,  String email,  UserRole role,  DateTime? createdAt,  bool emailVerified)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _AppUser() when $default != null:
-return $default(_that.id,_that.name,_that.email,_that.role,_that.createdAt);case _:
+return $default(_that.id,_that.name,_that.email,_that.role,_that.createdAt,_that.emailVerified);case _:
   return orElse();
 
 }
@@ -181,10 +184,10 @@ return $default(_that.id,_that.name,_that.email,_that.role,_that.createdAt);case
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String name,  String email,  UserRole role,  DateTime? createdAt)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String name,  String email,  UserRole role,  DateTime? createdAt,  bool emailVerified)  $default,) {final _that = this;
 switch (_that) {
 case _AppUser():
-return $default(_that.id,_that.name,_that.email,_that.role,_that.createdAt);case _:
+return $default(_that.id,_that.name,_that.email,_that.role,_that.createdAt,_that.emailVerified);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -201,10 +204,10 @@ return $default(_that.id,_that.name,_that.email,_that.role,_that.createdAt);case
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String name,  String email,  UserRole role,  DateTime? createdAt)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String name,  String email,  UserRole role,  DateTime? createdAt,  bool emailVerified)?  $default,) {final _that = this;
 switch (_that) {
 case _AppUser() when $default != null:
-return $default(_that.id,_that.name,_that.email,_that.role,_that.createdAt);case _:
+return $default(_that.id,_that.name,_that.email,_that.role,_that.createdAt,_that.emailVerified);case _:
   return null;
 
 }
@@ -216,7 +219,7 @@ return $default(_that.id,_that.name,_that.email,_that.role,_that.createdAt);case
 
 
 class _AppUser extends AppUser {
-  const _AppUser({required this.id, required this.name, required this.email, required this.role, this.createdAt}): super._();
+  const _AppUser({required this.id, required this.name, required this.email, required this.role, this.createdAt, this.emailVerified = false}): super._();
   
 
 @override final  String id;
@@ -224,6 +227,9 @@ class _AppUser extends AppUser {
 @override final  String email;
 @override final  UserRole role;
 @override final  DateTime? createdAt;
+/// Read from Firebase Auth, never stored in Firestore: the token claim
+/// `email_verified` is what the security rules trust.
+@override@JsonKey() final  bool emailVerified;
 
 /// Create a copy of AppUser
 /// with the given fields replaced by the non-null parameter values.
@@ -235,18 +241,18 @@ _$AppUserCopyWith<_AppUser> get copyWith => __$AppUserCopyWithImpl<_AppUser>(thi
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is _AppUser&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.email, email) || other.email == email)&&(identical(other.role, role) || other.role == role)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _AppUser&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.email, email) || other.email == email)&&(identical(other.role, role) || other.role == role)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.emailVerified, emailVerified) || other.emailVerified == emailVerified));
 }
 
 
 @override
 int get hashCode {
-    return Object.hash(runtimeType,id,name,email,role,createdAt);
+    return Object.hash(runtimeType,id,name,email,role,createdAt,emailVerified);
 }
 
 @override
 String toString() {
-    return 'AppUser(id: $id, name: $name, email: $email, role: $role, createdAt: $createdAt)';
+    return 'AppUser(id: $id, name: $name, email: $email, role: $role, createdAt: $createdAt, emailVerified: $emailVerified)';
 }
 
 
@@ -257,7 +263,7 @@ abstract mixin class _$AppUserCopyWith<$Res> implements $AppUserCopyWith<$Res> {
   factory _$AppUserCopyWith(_AppUser value, $Res Function(_AppUser) _then) = __$AppUserCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String name, String email, UserRole role, DateTime? createdAt
+ String id, String name, String email, UserRole role, DateTime? createdAt, bool emailVerified
 });
 
 
@@ -274,14 +280,15 @@ class __$AppUserCopyWithImpl<$Res>
 
 /// Create a copy of AppUser
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? name = null,Object? email = null,Object? role = null,Object? createdAt = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? name = null,Object? email = null,Object? role = null,Object? createdAt = freezed,Object? emailVerified = null,}) {
   return _then(_AppUser(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String,email: null == email ? _self.email : email // ignore: cast_nullable_to_non_nullable
 as String,role: null == role ? _self.role : role // ignore: cast_nullable_to_non_nullable
 as UserRole,createdAt: freezed == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
-as DateTime?,
+as DateTime?,emailVerified: null == emailVerified ? _self.emailVerified : emailVerified // ignore: cast_nullable_to_non_nullable
+as bool,
   ));
 }
 

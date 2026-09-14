@@ -227,6 +227,30 @@ valeurs affichées seulement sur le pic et sur le jour sélectionné, et une vue
 écran, en chiffres proportionnels ; les chiffres tabulaires sont réservés aux
 colonnes qui doivent s'aligner.
 
+**Le verdict d'entrée est une bande pleine, pas une carte.**
+Au contrôle, le regard du bénévole passe de la file à l'écran une demi-seconde :
+un aplat vert, ambre ou rouge sur toute la largeur, un mot, le nom du titulaire.
+Le retour haptique diffère (léger pour « entrez », fort pour un refus), ce qui
+permet de scanner sans regarder.
+
+**Refuser est aussi simple qu'accepter.**
+La feuille de consentement présente « Accepter » et « Refuser » avec la même
+largeur et la même hiérarchie de ligne ; un consentement plus facile à donner
+qu'à refuser n'en est pas un.
+
+**Un favori ne se confirme pas par un toast.**
+Le cœur qui se remplit est la confirmation ; un message en plus répéterait
+l'information à chaque geste.
+
+**Les avis se lisent par la forme, puis par le nombre.**
+Moyenne en grand, barres de répartition d'une seule teinte, compte imprimé à
+côté de chaque barre : les barres donnent l'allure, les chiffres portent la
+valeur.
+
+**Le bandeau hors ligne n'empêche rien.**
+Il explique pourquoi les données ne se rafraîchissent pas ; le cache permet de
+continuer à consulter ses billets.
+
 **Les états vides ont une action.**
 Un état vide sans issue est un cul-de-sac. Chacun propose un bouton qui en
 sort (« Effacer les filtres », « Explorer les événements »).

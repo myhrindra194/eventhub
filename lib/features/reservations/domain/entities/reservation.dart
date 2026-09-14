@@ -4,10 +4,15 @@ part 'reservation.freezed.dart';
 
 enum ReservationStatus {
   confirmed,
+
+  /// A paid seat held while the buyer is on the Stripe page (F-11). Set and
+  /// cleared by the payment functions only.
+  pending,
   cancelled;
 
   String get label => switch (this) {
     ReservationStatus.confirmed => 'Confirmée',
+    ReservationStatus.pending => 'Paiement en cours',
     ReservationStatus.cancelled => 'Annulée',
   };
 }
@@ -38,6 +43,24 @@ abstract class Reservation with _$Reservation {
     required ReservationStatus status,
     required DateTime reservedAt,
     DateTime? cancelledAt,
+
+    /// Ticket type (F-12), copied at booking time.
+    String? tierId,
+    String? tierName,
+
+    /// Amount actually paid, minor units; 0 for a free seat.
+    @Default(0) int pricePaid,
+
+    /// Price of a held seat, before payment.
+    int? amountDue,
+    String? currency,
+
+    /// `pending`, `paid`, `refunded`, `expired`, `cancelled`, `refund_failed`.
+    String? paymentStatus,
+
+    /// Stripe Checkout page to resume a held purchase.
+    String? checkoutUrl,
+    DateTime? holdExpiresAt,
   }) = _Reservation;
 
   static String composeId({required String eventId, required String userId}) =>
@@ -79,5 +102,14 @@ abstract class Reservation with _$Reservation {
   String get ticketPayload => 'eventhub://ticket/$id?code=$ticketCode';
 
   bool get isActive => status == ReservationStatus.confirmed;
+  bool get isPending => status == ReservationStatus.pending;
   bool get isCancelled => status == ReservationStatus.cancelled;
+
+  /// Paid ticket: cancelling it means a refund.
+  bool get isPaid => pricePaid > 0;
+  bool get isRefunded => paymentStatus == 'refunded';
+
+  /// What the ticket gives access to, as printed on it.
+  String get accessLabel =>
+      (tierName?.isNotEmpty ?? false) ? tierName! : 'Accès général';
 }

@@ -90,6 +90,7 @@ class ReservationRemoteDataSource {
   Future<Reservation> reserve({
     required String eventId,
     required AppUser participant,
+    String? tierId,
   }) {
     final eventRef = _events.doc(eventId);
     final reservationId = Reservation.composeId(
@@ -117,10 +118,12 @@ class ReservationRemoteDataSource {
             event: event,
             existing: existing,
             now: now,
+            tierId: tierId,
           )
           case Err(:final failure)) {
         throw FailureException(failure);
       }
+      final tier = event.hasTiers ? event.tier(tierId!) : null;
 
       final reservation = Reservation(
         id: reservationId,
@@ -134,12 +137,19 @@ class ReservationRemoteDataSource {
         eventLocation: event.location,
         status: ReservationStatus.confirmed,
         reservedAt: now,
+        tierId: tier?.id,
+        tierName: tier?.name,
       );
 
+      // The seat leaves the event and its ticket type in the same write:
+      // the rules compare the two (`seatTierConsistent`).
       tx
         ..set(reservationRef, ReservationDto.fromDomain(reservation).toJson())
         ..update(eventRef, {
           EventFields.availablePlaces: FieldValue.increment(-1),
+          if (tier != null)
+            FieldPath([EventFields.tiers, tier.id, 'available']):
+                FieldValue.increment(-1),
           EventFields.updatedAt: FieldValue.serverTimestamp(),
         });
       return reservation;
@@ -180,8 +190,15 @@ class ReservationRemoteDataSource {
       // The event may have been deleted meanwhile: releasing a seat on a
       // missing document must not fail the cancellation.
       if (eventSnap.exists) {
+        final tiers = eventSnap.data()?[EventFields.tiers];
+        final tierId = reservation.tierId;
+        final inTier =
+            tierId != null && tiers is Map && tiers.containsKey(tierId);
         tx.update(eventRef, {
           EventFields.availablePlaces: FieldValue.increment(1),
+          if (inTier)
+            FieldPath([EventFields.tiers, tierId, 'available']):
+                FieldValue.increment(1),
           EventFields.updatedAt: FieldValue.serverTimestamp(),
         });
       }

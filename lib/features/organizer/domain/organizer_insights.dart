@@ -133,6 +133,7 @@ class OrganizerStats {
     required this.cancellations,
     required this.dailyBookings,
     required this.ranking,
+    this.revenue = const {},
   });
 
   /// Computes the statistics at [now].
@@ -159,6 +160,17 @@ class OrganizerStats {
       if (offset >= 0 && offset < window) daily[window - 1 - offset]++;
     }
 
+    // Money actually collected, per currency: active paid tickets only — a
+    // refunded ticket is cancelled and does not count.
+    final revenue = <String, int>{};
+    for (final r in reservations.where((r) => r.isActive && r.isPaid)) {
+      revenue.update(
+        r.currency ?? 'EUR',
+        (v) => v + r.pricePaid,
+        ifAbsent: () => r.pricePaid,
+      );
+    }
+
     final upcoming = events.where((e) => !e.hasStarted(now)).toList();
     final ranking = [
       for (final e in upcoming)
@@ -174,6 +186,7 @@ class OrganizerStats {
       cancellations: cancellations,
       dailyBookings: List.unmodifiable(daily),
       ranking: List.unmodifiable(ranking),
+      revenue: Map.unmodifiable(revenue),
     );
   }
 
@@ -194,6 +207,9 @@ class OrganizerStats {
 
   /// Upcoming events, fullest first.
   final List<EventPerformance> ranking;
+
+  /// Amount collected per currency code, minor units (F-11).
+  final Map<String, int> revenue;
 
   double get fillRate => capacity == 0 ? 0 : booked / capacity;
 

@@ -682,6 +682,72 @@ abstract final class AppStrings {
   static String pendingInvitationsBanner(int n) =>
       n > 1 ? '$n invitations à co-organiser' : '1 invitation à co-organiser';
 
+  // Types de billets et paiement (F-12, F-11)
+  static const ticketTypes = 'Billets';
+  static const ticketTypesToggle = 'Plusieurs types de billets';
+  static const ticketTypesToggleHint =
+      'Standard, étudiant, VIP… gratuits ou payants, chacun avec ses places.';
+  static const addTicketType = 'Ajouter un type de billet';
+  static const ticketTypeNameHint = 'Nom, ex. Standard';
+  static const ticketTypeDescriptionHint = 'Ce que ce billet comprend';
+  static const ticketTypePrice = 'Prix (0 = gratuit)';
+  static const ticketTypeCapacity = 'Places';
+  static const removeTicketType = 'Retirer ce type de billet';
+  static const currencyLabel = 'Devise des billets payants';
+  static const ticketTypesRequired = 'Ajoutez au moins un type de billet.';
+  static const ticketTypesEditHint =
+      'Un type déjà vendu ne peut ni être supprimé, ni descendre sous le '
+      'nombre de billets vendus.';
+  static const invalidPrice = 'Prix invalide.';
+  static const freeOrPaid = 'Gratuit ou payant';
+  static String fromPrice(String price) => 'Dès $price';
+  static const chooseTicket = 'Choisir un billet';
+  static const chooseTicketLead =
+      'Un billet par personne. Les billets payants se règlent par carte, sur '
+      'la page sécurisée de Stripe.';
+  static String seatsLeftShort(int n) => n > 1 ? '$n restantes' : '1 restante';
+  static const tierSoldOut = 'Complet';
+  static String payAmount(String price) => 'Payer $price';
+  static const bookFree = 'Réserver gratuitement';
+  static const paymentTitle = 'Paiement';
+  static const paymentPendingTitle = 'Paiement en cours';
+  static String paymentPendingLead(String time) =>
+      'Votre place est retenue jusqu’à $time. Terminez le paiement sur la '
+      'page Stripe : le billet apparaît ici dès la confirmation.';
+  static const resumePayment = 'Reprendre le paiement';
+  static const cancelPurchase = 'Annuler l’achat';
+  static const cancelPurchaseTitle = 'Annuler l’achat ?';
+  static const cancelPurchaseMessage =
+      'La place retenue est remise en vente. Rien n’est débité si le paiement '
+      'n’était pas terminé.';
+  static const purchaseCancelled = 'Achat annulé, place libérée.';
+  static const paymentConfirmedTitle = 'Paiement confirmé';
+  static const paymentConfirmedLead =
+      'Votre billet est prêt, avec son QR code.';
+  static const paymentExpiredTitle = 'Place libérée';
+  static const paymentExpiredLead =
+      'Le paiement n’a pas été finalisé à temps : la place a été remise en '
+      'vente. Aucun montant n’a été débité.';
+  static const paymentRefundedTitle = 'Billet remboursé';
+  static const paymentRefundedLead =
+      'Le remboursement apparaît sous 5 à 10 jours ouvrés sur votre relevé.';
+  static const openPaymentFailed =
+      'Impossible d’ouvrir la page de paiement. Réessayez depuis cet écran.';
+  static const refundTicket = 'Annuler et être remboursé';
+  static const refundTitle = 'Annuler et être remboursé ?';
+  static String refundMessage(String price) =>
+      'Votre billet sera annulé et $price vous seront remboursés sur la carte '
+      'utilisée. La place sera remise en vente.';
+  static const refunded = 'Billet annulé, remboursement en cours.';
+  static const ticketPendingNotice =
+      'Paiement non finalisé : ce billet n’est pas encore valable.';
+  static const ticketUnpaidAtDoor = 'Paiement non finalisé';
+  static const amountPaid = 'Montant payé';
+  static const revenueLabel = 'Recettes';
+  static const revenueNote = 'billets payés en cours, remboursements déduits';
+  static const paymentInProgress = 'Paiement en cours';
+  static const backToEvent = 'Retour à l’événement';
+
   // Recommandations (F-18)
   static const forYou = 'Pour vous';
   static const forYouSubtitle =

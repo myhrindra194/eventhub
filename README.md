@@ -13,8 +13,8 @@
 ![Dart](https://img.shields.io/badge/Dart-3.13-0175C2?logo=dart&logoColor=white)
 ![Riverpod](https://img.shields.io/badge/Riverpod-3-6366F1)
 ![Firebase](https://img.shields.io/badge/Firebase-Auth_·_Firestore_·_Storage_·_FCM_·_Functions_·_App_Check-FFCA28?logo=firebase&logoColor=black)
-![Tests Dart](https://img.shields.io/badge/tests_Dart-172_passing-10B981)
-![Tests règles](https://img.shields.io/badge/tests_règles-138_passing-10B981)
+![Tests Dart](https://img.shields.io/badge/tests_Dart-197_passing-10B981)
+![Tests règles](https://img.shields.io/badge/tests_règles-145_passing-10B981)
 ![Tests fonctions](https://img.shields.io/badge/tests_fonctions-29_passing-10B981)
 
 ---
@@ -100,7 +100,10 @@ d'émulateurs, qui exécute les vraies règles.
 | **Pour vous** | recommandations calculées sur l'appareil : organisateurs suivis (+4), catégories des billets (+3) et des favoris (+2), remplissage pour départager ; jamais un événement complet, commencé, déjà réservé ou déjà en favori |
 | Recherche et filtres | titre, lieu, organisateur, catégorie ; période, tri, masquer les complets |
 | **Favoris** | cœur sur les cartes et la fiche ; écran « Mes favoris » (y compris événements complets, passés ou supprimés) |
-| Fiche événement | 4 états, jauge temps réel, **« Soa, Hery R. et 40 autres y vont »** avec les visages des derniers inscrits, organisateur cliquable, signalement |
+| Fiche événement | 4 états, **prix** (« Gratuit », « 25,00 € », « Dès 15,00 € »), jauge temps réel, **« Soa, Hery R. et 40 autres y vont »** avec les visages des derniers inscrits, organisateur cliquable, signalement |
+| **Types de billets** | section « Billets » de la fiche : chaque type (Standard, VIP, Étudiant…) avec son prix et ses places restantes, « Complet » par type ; au moment de réserver, choix du type dans une feuille |
+| **Paiement** | un billet payant ouvre la page de paiement **Stripe Checkout** (carte, Apple/Google Pay selon l'appareil) ; la place est **tenue 30 minutes** ; retour automatique dans l'app, écran « Paiement en cours » qui bascule sur le billet dès que Stripe confirme ; « Reprendre le paiement » ou « Abandonner » tant que la place est tenue ; montant payé sur le billet |
+| **Remboursement** | « Annuler et être remboursé » sur un billet payé, jusqu'au début de l'événement : remboursement Stripe intégral, place remise en vente |
 | **Partage** | feuille de partage native, lien public `https://eventhub-d411f.web.app/e/{id}` (aperçu Open Graph pour qui n'a pas l'app, ouverture directe dans l'app sur Android), invitation prête à coller |
 | Réserver / annuler | transaction atomique ; re-réservation possible |
 | **Liste d'attente** | sur un événement complet : rejoindre / quitter ; push dès qu'une place se libère |
@@ -114,11 +117,12 @@ d'émulateurs, qui exécute les vraies règles.
 |---|---|
 | Mes événements | KPI, à venir / passés ; suppression bloquée (avec explication) s'il y a des réservations |
 | Créer / modifier | bannière Storage, validation, email vérifié requis pour publier |
-| Participants | recherche, **export CSV en fichier** (feuille de partage : Drive, email, tableur ; UTF-8 avec BOM pour Excel, séparateur `;`) ou copie, **compteur d'entrées**, **personnes en liste d'attente**, marqueur « Entré · HH:mm » |
+| **Types de billets et prix** | interrupteur « Plusieurs types de billets » : jusqu'à 6 types (nom, places, prix), devise EUR, USD ou MGA ; la capacité est la somme des types. Un type qui a vendu ne peut pas être supprimé ni descendre sous ses ventes ; on ne bascule pas entre « capacité unique » et « types » une fois des places vendues |
+| Participants | type de billet sur chaque ligne, recherche, **export CSV en fichier** (colonnes Billet et Montant payé) (feuille de partage : Drive, email, tableur ; UTF-8 avec BOM pour Excel, séparateur `;`) ou copie, **compteur d'entrées**, **personnes en liste d'attente**, marqueur « Entré · HH:mm » |
 | Profil public | présentation modifiable, abonnés, note moyenne sur les avis visibles ; chaque publication prévient les abonnés |
 | **Équipe (co-organisateurs)** | l'organisateur principal invite jusqu'à 10 organisateurs par email ; l'invité accepte ou refuse depuis « Invitations » ; un co-organisateur modifie l'événement, voit les participants, scanne les billets et reçoit les alertes de réservation, mais ne supprime pas l'événement et ne compose pas l'équipe ; il peut la quitter. Les événements co-organisés apparaissent dans le tableau de bord, marqués « Co-organisé » |
 | **Contrôle à l'entrée** | scanner caméra (lampe), verdict plein écran en couleur : entrée validée, déjà scanné (heure), billet annulé, autre événement, code invalide, introuvable ; saisie manuelle du code ; retour haptique distinct ; enregistrement anti-doublon même à plusieurs portes |
-| Stats · Alertes | remplissage, 14 jours de réservations (graphique + tableau), classement ; à surveiller + journal |
+| Stats · Alertes | remplissage, **recettes encaissées** par devise, 14 jours de réservations (graphique + tableau), classement ; à surveiller + journal |
 | Push | réservation et annulation en temps réel |
 
 ### 2.4 Administration (compte avec le rôle `admin`, quel que soit son rôle métier)
@@ -195,6 +199,23 @@ généré par FlutterFire et ignoré par Git (`flutterfire configure --project=e
     La personne se déconnecte puis se reconnecte : l'entrée **Modération**
     apparaît dans son profil. Les administrateurs suivants s'ajoutent depuis
     l'app (Modération → Administrateurs).
+11. **Stripe (billets payants)** : créer un compte Stripe (mode test pour
+    commencer), puis :
+    ```sh
+    firebase functions:secrets:set STRIPE_SECRET_KEY       # sk_test_… puis sk_live_…
+    firebase functions:secrets:set STRIPE_WEBHOOK_SECRET   # whsec_… (étape suivante)
+    ```
+    Dans *Stripe → Développeurs → Webhooks*, ajouter le point de terminaison
+    `https://us-central1-eventhub-d411f.cloudfunctions.net/stripeWebhook`
+    avec les événements `checkout.session.completed`,
+    `checkout.session.async_payment_succeeded`, `checkout.session.expired`,
+    `checkout.session.async_payment_failed` ; copier son secret de signature
+    dans `STRIPE_WEBHOOK_SECRET` puis redéployer les fonctions. Les pages de
+    retour `/pay/success` et `/pay/cancel` sont servies par Hosting et
+    s'ouvrent dans l'app via les App Links. Pour tester en local :
+    `stripe listen --forward-to localhost:5001/eventhub-d411f/us-central1/stripeWebhook`.
+    Sans ces secrets, tout fonctionne sauf l'achat d'un billet payant
+    (« Le paiement est indisponible pour le moment »).
 
 ```sh
 firebase login
@@ -240,8 +261,8 @@ pas être publié**.
 | Modèles | freezed 4 + json_serializable |
 | Firebase | `firebase_auth`, `cloud_firestore`, `firebase_storage`, `firebase_messaging`, `cloud_functions`, `firebase_app_check`, `firebase_crashlytics`, `firebase_analytics` |
 | Auth tierce | `google_sign_in` 7 (natif) / popup Firebase (web) |
-| Appareil | `flutter_local_notifications`, `mobile_scanner`, `connectivity_plus`, `image_picker`, `qr_flutter`, `share_plus` |
-| Serveur | Cloud Functions 2ᵉ génération, TypeScript, Node 22, `firebase-admin` |
+| Appareil | `flutter_local_notifications`, `mobile_scanner`, `connectivity_plus`, `image_picker`, `qr_flutter`, `share_plus`, `url_launcher` |
+| Serveur | Cloud Functions 2ᵉ génération, TypeScript, Node 22, `firebase-admin`, `stripe` (Checkout, webhooks signés, remboursements), Secret Manager |
 | UI | Material 3 clair/sombre, `google_fonts`, `cached_network_image` |
 | Qualité | `flutter_lints` strict, `riverpod_lint`, `mocktail`, `@firebase/rules-unit-testing`, `node:test`, GitHub Actions |
 
@@ -265,7 +286,9 @@ lib/
 └── features/
     ├── auth/                 email, Google, vérification, profil, paramètres, suppression de compte
     ├── events/               catalogue paginé, recherche, fiche, formulaire, partage
-    ├── reservations/         réservation, portefeuille, billet
+    ├── reservations/         réservation, paiement Stripe, remboursement, portefeuille, billet
+    ├── team/                 co-organisateurs, invitations
+    ├── admin/                file de modération, dossiers, administrateurs
     ├── favorites/            favoris
     ├── waitlist/             liste d'attente
     ├── reviews/              avis
@@ -280,10 +303,14 @@ lib/
 functions/src/index.ts        setRoleClaim · notifyOrganizerOnReservation · notifyWaitlistOnSeatRelease
                               · sendEventReminders (runEventReminders) · deleteAccount
                               · syncOrganizerProfile · onFollowWritten · onEventWritten · aggregateOrganizerRating
-                              · aggregateAttendance · onReportCreated · moderateContent · publicEventPage
+                              · aggregateAttendance · onReportCreated · moderateContent · setAdminRole · publicEventPage
+                              · inviteCoOrganizer · respondToStaffInvite · removeCoOrganizer
+                              · normalizeEventTiers · createCheckoutSession · cancelPendingCheckout
+                              · cancelPaidReservation · stripeWebhook · releaseExpiredHolds
 functions/test/               tests d'intégration sur émulateurs
+functions/scripts/            grant-admin.mjs (premier administrateur)
 firebase/                     firestore.rules · storage.rules · firestore.indexes.json · tests/ (règles)
-hosting/public/               accueil web, 404, .well-known/assetlinks.json (App Links)
+hosting/public/               accueil web, 404, pay/success · pay/cancel, .well-known/assetlinks.json (App Links)
 ```
 
 Règle de dépendance : `presentation → application → domain ← data`. Seule
@@ -317,13 +344,20 @@ audit/{id}                        action, détails, at, expiresAt (TTL) — et f
 events/{id}                       title, description, imageUrl?, category, startsAt, location,
                                   capacity, availablePlaces, organizerId, organizerName, createdAt, updatedAt,
                                   staffIds [≤ 10]                                          (équipe : serveur)
+                                  currency? (EUR · USD · MGA),
+                                  tiers? {tierId: {name, price, capacity, available, order}} [≤ 6]
+                                  — capacity / availablePlaces = sommes des types (normalizeEventTiers)
   ├── waitlist/{userId}           userId, userName, createdAt, notifiedAt? (serveur)
   ├── checkins/{reservationId}    reservationId, scannedBy, scannedAt
   └── invitations/{userId}        eventId, userId, email, name, invitedBy(Name), eventTitle, eventStartsAt,
                                   status (pending · accepted · declined), createdAt, respondedAt?  (serveur)
 
 reservations/{eventId}_{userId}   eventId, userId, organizerId, userName, userEmail,
-                                  eventTitle, eventStartsAt, eventLocation, status, reservedAt, cancelledAt?
+                                  eventTitle, eventStartsAt, eventLocation, status (pending · confirmed · cancelled),
+                                  reservedAt, cancelledAt?, cancelledBy?, tierId?, tierName?,
+                                  pricePaid, amountDue?, currency?, paymentStatus? (pending · paid · refunded ·
+                                  expired · cancelled · failed · refund_failed), paymentIntentId?,
+                                  checkoutSessionId?, checkoutUrl?, holdExpiresAt?, refundId?   (paiement : serveur)
 
 reviews/{eventId}_{userId}        eventId, authorId, authorName, rating (1–5), comment, createdAt, updatedAt?,
                                   hidden?, hiddenAt?, moderatedAt?, moderatedBy?           (modération : serveur)
@@ -337,6 +371,13 @@ transaction (`audit/fx_{id}`), car Firebase livre un trigger *au moins* une
 fois. Dénormalisation sur la
 réservation : portefeuille, invités, notifications et contrôle d'entrée sans
 lecture supplémentaire. Code billet dérivé de l'id, jamais stocké.
+
+Montants en **unités mineures entières** (centimes ; ariary pour MGA, devise
+sans décimale chez Stripe) : aucun flottant ne touche un prix. Les types de
+billets sont une **map sur l'événement** plutôt qu'une sous-collection : la
+transaction de réservation et les règles lisent le type et l'événement en un
+seul document, et `tiers.{id}.available` se décrémente dans la même écriture
+que `availablePlaces`.
 
 ---
 
@@ -359,6 +400,13 @@ lecture supplémentaire. Code billet dérivé de l'id, jamais stocké.
 | Masquer un avis | automatique à 3 signalements distincts, ou décision admin | fonctions `onReportCreated` / `moderateContent` ; l'auteur ne peut pas modifier `hidden` |
 | Profil public | le client ne l'écrit jamais | règles : écriture refusée ; `syncOrganizerProfile` copie nom et présentation |
 | Équipe d'un événement | `EventPolicy` (gérer : principal ou co-organisateur ; supprimer et composer l'équipe : principal), `TeamPolicy` (email, pas soi-même, événement à venir, ≤ 10 avec les invitations en attente) | règles : `staffIds` jamais écrit par un client, `isEventTeam()` pour participants, entrées, liste d'attente ; fonctions `inviteCoOrganizer` (compte organisateur existant), `respondToStaffInvite`, `removeCoOrganizer` |
+| Types de billets | `EventDraft.validate` (≤ 6, noms uniques, ≥ 1 place, devise dès qu'un type est payant), `TierPlanner.apply` (ventes conservées, type vendu non supprimable, mode verrouillé après vente) | règles : forme des types, somme = capacité, `tierMoved` ; `normalizeEventTiers` corrige toute dérive |
+| Réserver un type gratuit | `ReservationPolicy.canReserve(tierId)` | règles : le type existe, est gratuit, a une place ; `tiers.{id}.available` et `availablePlaces` bougent ensemble |
+| Acheter un type payant | `ReservationPolicy.canCheckout` | **jamais par le client** (règles : statut `pending`/champs de paiement interdits) ; `createCheckoutSession` tient la place 30 min en transaction, Stripe fixe le montant côté serveur |
+| Confirmer un paiement | écran « Paiement en cours » en lecture seule | `stripeWebhook` (signature vérifiée) : confirme ; si la place a été relâchée entre-temps, la reprend s'il en reste, **sinon rembourse** — jamais de débit sans billet |
+| Place tenue abandonnée | « Abandonner » | `cancelPendingCheckout`, webhook `expired`, balayage `releaseExpiredHolds` toutes les 10 min (marge de 5 min après l'expiration Stripe) |
+| Annuler un billet payé | `ReservationPolicy.canCancel` le refuse, `canRefund` : actif, payé, avant le début | règles : annulation client refusée si `pricePaid > 0` ; `cancelPaidReservation` rembourse puis libère la place |
+| Événement retiré, compte supprimé | — | billets payés à venir remboursés (`refund_failed` journalisé si Stripe échoue, sans bloquer) |
 
 ---
 
@@ -382,6 +430,7 @@ restreintes à l'appelant. Tout est détaillé et testé : [`docs/SECURITY.md`](
 |---|---|---|---|---|
 | Nouvelle réservation / annulation | organisateur **et co-organisateurs** | `notifyOrganizerOnReservation` | liste des participants | `bookingAlerts` (chacun la sienne) |
 | Invitation à co-organiser · Nouveau co-organisateur · Retiré de l'équipe | invité · principal · membre retiré | `inviteCoOrganizer` · `respondToStaffInvite` · `removeCoOrganizer` | invitations · équipe · tableau de bord | — (transactionnel) |
+| Paiement confirmé · Paiement remboursé | acheteur | `stripeWebhook` (`fulfillCheckout`) · remboursement automatique d'un paiement arrivé sans place | billet · fiche | — (transactionnel) |
 | Événement annulé · Avis masqué | détenteurs et organisateur · auteur | `moderateContent`, `onReportCreated` | billets · fiche | — (transactionnel) |
 | Demain : … | participant | `sendEventReminders` (horaire) | billet | `eventReminders` |
 | Une place s'est libérée | participant en attente | `notifyWaitlistOnSeatRelease` | fiche de l'événement | `eventReminders` |
@@ -428,6 +477,7 @@ aplat plein écran. Détails : [`docs/DESIGN_SYSTEM.md`](docs/DESIGN_SYSTEM.md).
 | Profil organisateur public · Organisateurs suivis | `/organizers/:organizerId` · `/following` |
 | Modération · Dossier · Administrateurs (claim `admin`) | `/admin/moderation` · `/admin/moderation/:entryId` · `/admin/roles` |
 | Confirmation · Billet | `/reservations/:reservationId/confirmation` · `/reservations/:reservationId/ticket` |
+| Paiement en cours · retours Stripe (App Links → écran de paiement) | `/reservations/:reservationId/payment` · `/pay/success` · `/pay/cancel` |
 | Mes favoris | `/favorites` |
 | Paramètres · Modifier le profil | `/profile/settings`, `/organizer/profile/settings` · `/account/edit` |
 | Centre de notifications | `/notifications` |
@@ -454,6 +504,8 @@ aplat plein écran. Détails : [`docs/DESIGN_SYSTEM.md`](docs/DESIGN_SYSTEM.md).
 | `REGION` / `AppConfig.functionsRegion` = `us-central1` | `functions/src/index.ts` / `app_config.dart` | emplacement Firestore `nam5` |
 | bloc `flutter` de `firebase.json` | écrit par `flutterfire configure` | apps Android, iOS, macOS, web, Windows du projet `eventhub-d411f` ; régénère `lib/firebase_options.dart` et `android/app/google-services.json` (ignorés par Git) |
 | `ENFORCE_APP_CHECK` | paramètre des fonctions | enregistrement App Check fait |
+| `STRIPE_SECRET_KEY` · `STRIPE_WEBHOOK_SECRET` | Secret Manager (`firebase functions:secrets:set`) ; émulateurs : `functions/.secret.local` (valeurs factices, ignoré par Git, créé par `make functions-secrets`) | compte Stripe, point de terminaison du webhook |
+| `PUBLIC_ORIGIN` · `HOLD_MINUTES` (30) | `functions/src/index.ts` | domaine Hosting (pages `/pay/*`) · durée affichée sur l'écran de paiement |
 | `eventhub_default` | canal Android | manifeste, fonctions, app |
 | `applicationId` | `build.gradle.kts` | app Android Firebase |
 
@@ -462,16 +514,22 @@ aplat plein écran. Détails : [`docs/DESIGN_SYSTEM.md`](docs/DESIGN_SYSTEM.md).
 ## 14. Qualité : lint, tests, CI
 
 - **Analyse** : zéro issue (`flutter_lints` strict, `riverpod_lint`).
-- **Tests Dart** (`make test`, **172**) : policies (réservation,
-  événement dont suppression, liste d'attente, avis, entrée, abonnement,
-  signalement), code billet, CSV (fichier, BOM, nom), stats et alertes,
+- **Tests Dart** (`make test`, **197**) : policies (réservation gratuite,
+  achat, annulation et remboursement par type, événement dont suppression,
+  équipe, modération, liste d'attente, avis, entrée dont billet non payé,
+  abonnement, signalement), montants (`Money`), types de billets
+  (`TierPlanner`, DTO, validation, libellés de prix), code billet, CSV
+  (fichier, BOM, nom, colonnes billet et montant), stats (recettes) et alertes,
   catalogue paginé, recommandations, phrase de preuve sociale, profil public,
   préférences et routage des notifications, mapping d'erreurs, logger,
   `RouteGuard` (dont liens profonds conservés à travers le splash et la
   connexion) ; widgets et goldens (connexion, écrans d'auth, démarrage, billet,
   stats, centre de notifications).
-- **Tests de règles** (`make test-rules`, **138**) contre les émulateurs.
-- **Tests des fonctions** (`make test-functions`, **29**) :
+- **Tests de règles** (`make test-rules`, **145**) contre les émulateurs.
+- **Tests des fonctions** (`make test-functions`, **36**) : types de billets
+  (normalisation), place tenue et libérée, webhook signé (confirmation,
+  expiration, signature refusée), paiement tardif re-placé, balayage des
+  places expirées, équipe, administration,
   claim de rôle, notifications organisateur et préférences, liste d'attente,
   rappels J-1, suppression de compte, profil public (publication, compteur
   d'abonnés, annonce aux abonnés, note moyenne hors avis masqués), preuve
@@ -490,6 +548,7 @@ aplat plein écran. Détails : [`docs/DESIGN_SYSTEM.md`](docs/DESIGN_SYSTEM.md).
 | `make analyze` · `make format` · `make test` | qualité Dart |
 | `make rules-setup` · `make test-rules` | tests des règles |
 | `make functions-setup` · `make functions-build` · `make test-functions` | fonctions |
+| `make functions-secrets` | secrets Stripe factices pour les émulateurs (`functions/.secret.local`) |
 | `make run DEVICE=<id>` · `make run-emu DEVICE=<id>` | lancer |
 | `make emulators` | suite d'émulateurs |
 | `make firebase-deploy` · `make deploy` | règles + index + Storage · tout, fonctions et Hosting compris |
@@ -524,6 +583,13 @@ Deux appareils Android, projet déployé.
     fiche ; son auteur voit « Votre avis est masqué… ».
 12. **Organisateur** : Participants → **Exporter le CSV** → Drive ; le fichier
     s'ouvre correctement dans Excel.
+13. **Billet payant** (Stripe en mode test) : l'organisateur active « Plusieurs
+    types de billets » → *Standard* gratuit (50) et *VIP* 25,00 € (10). A
+    choisit VIP → page Stripe → carte `4242 4242 4242 4242` → retour dans
+    l'app : « Paiement en cours » puis le billet, « VIP · 25,00 € ». La fiche
+    affiche « VIP · 9 places ».
+14. A : billet → **Annuler et être remboursé** → le paiement apparaît remboursé
+    dans le tableau de bord Stripe, la place VIP revient en vente.
 
 ---
 
@@ -556,6 +622,11 @@ Deux appareils Android, projet déployé.
 | 23 | Rôle admin en claim, décisions par fonctions journalisées, premier admin en ligne de commande | aucun document ne confère de pouvoir ; chaque décision est traçable ; pas de porte dérobée dans l'app |
 | 24 | Co-organisateurs dans `staffIds` sur l'événement, modifié par fonctions seulement ; invitation dupliquée (événement + invité) | une seule lecture pour que les règles prouvent l'appartenance ; chacun lit sa copie sans requête de groupe |
 | 25 | Liste des participants : requête différente pour le principal (`organizerId ==`) et l'équipe (`eventId ==`) | chaque requête est celle que les règles savent prouver ; le principal ne paie aucune lecture supplémentaire |
+| 26 | Types de billets en map sur l'événement, totaux recalculés par `normalizeEventTiers` | une réservation touche un seul document, vérifiable par les règles ; la fonction rattrape toute écriture incohérente |
+| 27 | Stripe Checkout hébergé plutôt qu'un formulaire de carte dans l'app | aucune donnée de carte chez nous (PCI SAQ A), 3-D Secure et portefeuilles gérés par Stripe, rien à publier sur les stores |
+| 28 | Place tenue 30 min à la création de la session, confirmée par webhook seulement | pas de survente pendant le paiement ; le retour navigateur n'est jamais une preuve de paiement |
+| 29 | Paiement arrivé sans place → remboursement automatique ; échec de remboursement journalisé sans bloquer | l'acheteur n'est jamais débité sans billet ; une annulation de masse ne s'arrête pas sur une erreur Stripe |
+| 30 | Montants en unités mineures entières, devises fermées (EUR, USD, MGA) | pas d'arrondi flottant ; MGA sans décimale traité comme Stripe l'attend |
 
 ---
 
@@ -568,8 +639,9 @@ l'entrée ; stats et alertes ; pagination ; App Check, Crashlytics, Analytics
 sur consentement ; hors ligne ; signature release ; profils organisateurs
 publics et abonnements (F-10) ; preuve sociale (F-07) ; partage natif, page
 publique et App Links (F-08) ; export CSV en fichier (F-15) ; recommandations
-(F-18) ; signalement et modération (F-19) ; tests Dart, règles et fonctions ;
-CI.
+(F-18) ; signalement et modération (F-19) avec écran d'administration ;
+co-organisateurs (F-16) ; types de billets (F-12) ; billetterie payante
+Stripe avec remboursements (F-11) ; tests Dart, règles et fonctions ; CI.
 
 | Reste | Pourquoi / action |
 |---|---|
@@ -578,7 +650,8 @@ CI.
 | Clés à fournir | `GOOGLE_SERVER_CLIENT_ID`, `FIREBASE_WEB_VAPID_KEY`, `APP_CHECK_RECAPTCHA_SITE_KEY`, keystore release |
 | « Add to Cal » | plugin natif de calendrier |
 | Empreinte release dans `assetlinks.json` | à ajouter avec la keystore release, sinon les liens s'ouvrent dans le navigateur |
-| Types de billets (F-12), paiement Stripe (F-11), séries (F-13), carte (F-14), discussion (F-17), multilingue (F-20) | en cours, lot par lot (voir `docs/ROADMAP.md`) |
+| Clés Stripe | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` et le webhook (§3.1, étape 11) ; reversement aux organisateurs (Stripe Connect) non inclus : les fonds arrivent sur le compte de la plateforme |
+| Séries (F-13), carte (F-14), discussion (F-17), multilingue (F-20) | en cours, lot par lot (voir `docs/ROADMAP.md`) |
 | Revue juridique | notice de confidentialité et consentement à valider (DPO) |
 
 ---
@@ -603,6 +676,10 @@ CI.
 | Profil organisateur « indisponible » | fonctions non déployées (profil public jamais créé) ou compte supprimé |
 | Pas d'entrée « Modération » après `make grant-admin` | se déconnecter puis se reconnecter (le rôle est dans le jeton) |
 | `make grant-admin` : « Could not load the default credentials » | `gcloud auth application-default login`, ou `GOOGLE_APPLICATION_CREDENTIALS=<clé>` |
+| « Le paiement est indisponible pour le moment » | secret `STRIPE_SECRET_KEY` absent ou invalide ; `firebase functions:log --only createCheckoutSession` |
+| Paiement effectué mais billet resté « en cours » | webhook non déclaré, mauvais `STRIPE_WEBHOOK_SECRET` (réponses 400 dans Stripe) ou événements manquants ; Stripe relivre automatiquement une fois corrigé |
+| « Paiement remboursé » juste après avoir payé | le paiement a abouti après la libération de la place et l'événement était complet : remboursement automatique voulu |
+| Types de billets : « Des places ont été vendues… » | un type vendu ne se supprime pas et le mode ne change plus après la première vente |
 
 ---
 

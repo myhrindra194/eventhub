@@ -55,7 +55,7 @@ final class ReservationRepositoryProvider
 }
 
 String _$reservationRepositoryHash() =>
-    r'cfe358bba55e4971374b80ccdfc9c2a43ceaa741';
+    r'67354a1bd07afa8c36cd3a3fbd1a25d82586fa0c';
 
 /// Reservations of the signed-in participant.
 
@@ -384,7 +384,7 @@ final class ReservationControllerProvider
 }
 
 String _$reservationControllerHash() =>
-    r'e6c81ecfab6345a4b48307b7cca243f2c5ebaa83';
+    r'40af5cc339552d288821015ca3d6b2392304ccf3';
 
 abstract class _$ReservationController extends $AsyncNotifier<void> {
   FutureOr<void> build();

@@ -43,7 +43,8 @@ import {getMessaging} from "firebase-admin/messaging";
 import {getStorage} from "firebase-admin/storage";
 import {logger, setGlobalOptions} from "firebase-functions/v2";
 import {HttpsError, onCall, onRequest} from "firebase-functions/v2/https";
-import {defineBoolean} from "firebase-functions/params";
+import {defineBoolean, defineSecret} from "firebase-functions/params";
+import Stripe from "stripe";
 import {
   onDocumentCreated,
   onDocumentUpdated,
@@ -82,6 +83,23 @@ const ENFORCE_APP_CHECK = defineBoolean("ENFORCE_APP_CHECK", {
   description: "Refuse callable requests without an App Check token",
 });
 
+/**
+ * Stripe (F-11). Set once per project:
+ *   firebase functions:secrets:set STRIPE_SECRET_KEY
+ *   firebase functions:secrets:set STRIPE_WEBHOOK_SECRET
+ * The emulators read them from functions/.secret.local (git-ignored).
+ */
+const STRIPE_SECRET_KEY = defineSecret("STRIPE_SECRET_KEY");
+const STRIPE_WEBHOOK_SECRET = defineSecret("STRIPE_WEBHOOK_SECRET");
+/** A paid seat is held this long while the buyer is on the Stripe page. */
+export const HOLD_MINUTES = 30;
+/** Released a little after Stripe expires the session, never before. */
+const HOLD_GRACE_MS = 5 * 60 * 1000;
+
+function stripeClient(): Stripe {
+  return new Stripe(STRIPE_SECRET_KEY.value());
+}
+
 /** Public origin of the Hosting site: shared links and Open Graph URLs. */
 const PUBLIC_ORIGIN = "https://eventhub-d411f.web.app";
 /** Android package, for the "open in the app" intent on the public page. */
@@ -97,7 +115,9 @@ type NotificationType =
   | "reviewHidden"
   | "staffInvite"
   | "staffJoined"
-  | "staffRemoved";
+  | "staffRemoved"
+  | "paymentConfirmed"
+  | "paymentRefunded";
 
 interface Reservation {
   eventId: string;
@@ -346,7 +366,7 @@ const DELETED_EMAIL = "supprime@eventhub.invalid";
  *  - `users/{uid}` and its subcollections (devices, preferences,
  *    notifications, favourites), avatar files, then the Auth user.
  */
-export const deleteAccount = onCall(async (request) => {
+export const deleteAccount = onCall({secrets: [STRIPE_SECRET_KEY]}, async (request) => {
   if (ENFORCE_APP_CHECK.value() && !request.app) {
     throw new HttpsError(
       "permission-denied",
@@ -392,9 +412,27 @@ export const deleteAccount = onCall(async (request) => {
     .where("userId", "==", uid)
     .get();
   for (const doc of reservations.docs) {
+    // A seat held during checkout goes back first.
+    if (doc.get("status") === "pending") await releaseHold(doc.id, "cancelled");
+
+    // Upcoming paid tickets are refunded before the seat is released.
+    let refund: Record<string, unknown> = {};
+    if (
+      doc.get("status") === "confirmed" &&
+      Number(doc.get("pricePaid") ?? 0) > 0 &&
+      typeof doc.get("paymentIntentId") === "string" &&
+      (doc.get("eventStartsAt") as Timestamp).toMillis() > Date.now()
+    ) {
+      refund = await refundOrFlag(
+        doc.get("paymentIntentId") as string,
+        doc.id,
+        "account_deleted",
+      );
+    }
+
     await db.runTransaction(async (tx) => {
       const snap = await tx.get(doc.ref);
-      const r = snap.data() as Reservation | undefined;
+      const r = snap.data() as (Reservation & {tierId?: string}) | undefined;
       if (!r) return;
       const releases =
         r.status === "confirmed" && r.eventStartsAt.toMillis() > Date.now();
@@ -402,15 +440,14 @@ export const deleteAccount = onCall(async (request) => {
       const event = releases ? await tx.get(eventRef) : undefined;
 
       if (event?.exists) {
-        tx.update(eventRef, {
-          availablePlaces: FieldValue.increment(1),
-          updatedAt: FieldValue.serverTimestamp(),
-        });
+        tx.update(eventRef, seatRelease(event, r.tierId, 1));
       }
       tx.update(doc.ref, {
         userName: DELETED_NAME,
         userEmail: DELETED_EMAIL,
-        ...(releases ? {status: "cancelled", cancelledAt: Timestamp.now()} : {}),
+        ...(releases ?
+          {status: "cancelled", cancelledAt: Timestamp.now(), ...refund} :
+          {}),
       });
     });
   }
@@ -1075,7 +1112,7 @@ const NOTE_REQUIRED: ModerationAction[] = ["removeEvent", "suspend"];
  * Every decision is appended to `moderationQueue/{id}/decisions` and to the
  * audit trail. Callable only with the `admin` custom claim.
  */
-export const moderateContent = onCall(async (request) => {
+export const moderateContent = onCall({secrets: [STRIPE_SECRET_KEY]}, async (request) => {
   const adminUid = requireAdmin(request);
   const {targetType, targetId, action, note} = (request.data ?? {}) as {
     targetType?: string;
@@ -1202,13 +1239,30 @@ async function removeEventByModeration(
     .where("status", "==", "confirmed")
     .get();
 
+  // Seats held on the Stripe page are simply released.
+  const holds = await db
+    .collection("reservations")
+    .where("eventId", "==", eventId)
+    .where("status", "==", "pending")
+    .get();
+  for (const hold of holds.docs) await releaseHold(hold.id, "cancelled");
+
   for (const doc of seats.docs) {
+    // Paid tickets are refunded; a failed refund is flagged for follow-up
+    // rather than blocking the removal.
+    const paid =
+      Number(doc.get("pricePaid") ?? 0) > 0 &&
+      typeof doc.get("paymentIntentId") === "string";
+    const refund = paid ?
+      await refundOrFlag(doc.get("paymentIntentId") as string, doc.id, "moderation") :
+      {};
     // `cancelledBy` tells notifyOrganizerOnReservation to stay silent: the
     // organizer gets one message below, not one per guest.
     await doc.ref.update({
       status: "cancelled",
       cancelledAt: Timestamp.now(),
       cancelledBy: "moderation",
+      ...refund,
     });
     await notify(doc.get("userId") as string, {
       type: "eventRemoved",
@@ -1471,12 +1525,13 @@ export function renderEventPage(
     available === 0 ?
       "Complet — liste d'attente dans l'application" :
       `${available} place${available > 1 ? "s" : ""} sur ${capacity} encore libre${available > 1 ? "s" : ""}`;
+  const price = priceSummary(data);
 
   const url = `${PUBLIC_ORIGIN}/e/${encodeURIComponent(eventId)}`;
   const description = String(data.description ?? "");
   const excerpt =
     description.length > 600 ? `${description.slice(0, 597)}…` : description;
-  const summary = `${day} à ${hour} · ${data.location} · ${status}`;
+  const summary = `${day} à ${hour} · ${data.location} · ${price} · ${status}`;
   const image =
     typeof data.imageUrl === "string" && data.imageUrl.startsWith("https://") ?
       data.imageUrl :
@@ -1521,10 +1576,39 @@ ${image ? `<meta property="og:image" content="${e(image)}">\n` : ""}<meta name="
   <p class="status${past || available === 0 ? " muted" : ""}">${e(status)}</p>
   <p class="description">${e(excerpt).replace(/\n/g, "<br>")}</p>
   ${past ? "" : `<a class="cta" href="${e(intent)}">Réserver dans l'application</a>`}
-  <p class="foot">Entrée gratuite. La réservation se fait dans l'application EventHub, avec un compte.</p>
+  <p class="foot">${e(price)}. La réservation se fait dans l'application EventHub, avec un compte.</p>
 </main>
 </body>
 </html>`;
+}
+
+/** `15,00 €`, `15 000 MGA`: the currency's own number of decimals. */
+export function formatMoney(amount: number, currency: string): string {
+  const zeroDecimal = currency.toUpperCase() === "MGA";
+  return new Intl.NumberFormat("fr-FR", {
+    style: "currency",
+    currency: currency.toUpperCase(),
+    minimumFractionDigits: zeroDecimal ? 0 : 2,
+    maximumFractionDigits: zeroDecimal ? 0 : 2,
+  }).format(zeroDecimal ? amount : amount / 100);
+}
+
+/** "Entrée gratuite", "15,00 €", or "Dès 15,00 €" for several paid types. */
+export function priceSummary(data: DocumentData): string {
+  const tiers = Object.values(
+    (data.tiers ?? {}) as Record<string, {price?: number}>,
+  );
+  const prices = tiers
+    .map((t) => Math.floor(Number(t.price) || 0))
+    .filter((p) => p > 0);
+  if (prices.length === 0) return "Entrée gratuite";
+  const currency = String(data.currency ?? "EUR");
+  const min = Math.min(...prices);
+  const hasFree = prices.length < tiers.length;
+  if (hasFree) return `Gratuit ou payant, dès ${formatMoney(min, currency)}`;
+  return prices.length === 1 || prices.every((p) => p === min) ?
+    formatMoney(min, currency) :
+    `Dès ${formatMoney(min, currency)}`;
 }
 
 function renderNotFoundPage(): string {
@@ -1571,6 +1655,605 @@ dd{margin:2px 0 0;font-weight:600}
 .cta{display:block;text-align:center;padding:14px 18px;border-radius:6px;background:var(--accent);color:#fff;font-weight:600;text-decoration:none}
 .foot{margin:16px 0 0;color:var(--muted);font-size:13px}
 `;
+
+// --------------------------------------------------------------------------
+// 9. Ticket types (F-12)
+// --------------------------------------------------------------------------
+
+type Tier = {
+  name?: string;
+  price?: number;
+  capacity?: number;
+  available?: number;
+};
+
+/**
+ * Keeps `capacity` and `availablePlaces` equal to the sums of the ticket
+ * types, and each type's `available` within [0, capacity]. The client
+ * transaction already maintains this; the trigger is the safety net for a
+ * hand-edited document. Reads the event again inside a transaction so a
+ * booking landing meanwhile is never overwritten with stale numbers.
+ */
+export const normalizeEventTiers = onDocumentWritten(
+  "events/{eventId}",
+  async (event) => {
+    if (!event.data?.after.exists) return;
+    const ref = event.data.after.ref;
+    await db.runTransaction(async (tx) => {
+      const snap = await tx.get(ref);
+      if (!snap.exists) return;
+      const fix = tierCorrections(snap.data()!);
+      if (fix) tx.update(ref, fix);
+    });
+  },
+);
+
+export function tierCorrections(
+  data: DocumentData,
+): Record<string, unknown> | null {
+  const tiers = data.tiers as Record<string, Tier> | undefined;
+  if (!tiers || Object.keys(tiers).length === 0) return null;
+  const update: Record<string, unknown> = {};
+  let capacity = 0;
+  let available = 0;
+  for (const [id, tier] of Object.entries(tiers)) {
+    const cap = Math.max(0, Math.floor(Number(tier.capacity) || 0));
+    const left = Math.min(cap, Math.max(0, Math.floor(Number(tier.available) || 0)));
+    if (left !== tier.available) update[`tiers.${id}.available`] = left;
+    capacity += cap;
+    available += left;
+  }
+  if (capacity !== data.capacity) update.capacity = capacity;
+  if (available !== data.availablePlaces) update.availablePlaces = available;
+  return Object.keys(update).length > 0 ? update : null;
+}
+
+/** Event update giving back (or taking) [delta] seats, in the type too. */
+function seatRelease(
+  event: FirebaseFirestore.DocumentSnapshot,
+  tierId: string | undefined,
+  delta: number,
+): Record<string, unknown> {
+  const update: Record<string, unknown> = {
+    availablePlaces: FieldValue.increment(delta),
+    updatedAt: FieldValue.serverTimestamp(),
+  };
+  if (tierId && event.get(`tiers.${tierId}`) !== undefined) {
+    update[`tiers.${tierId}.available`] = FieldValue.increment(delta);
+  }
+  return update;
+}
+
+// --------------------------------------------------------------------------
+// 10. Payments (F-11) — Stripe Checkout
+// --------------------------------------------------------------------------
+//
+//  1. createCheckoutSession — holds a seat (reservation `pending`, the type's
+//     counter decremented) and opens a Stripe Checkout session for it.
+//  2. stripeWebhook — `checkout.session.completed` confirms the reservation
+//     (`pricePaid`, `paymentIntentId`); `checkout.session.expired` releases
+//     the seat. Signature-checked, idempotent.
+//  3. releaseExpiredHolds — every 10 minutes, the safety net if a webhook
+//     never arrives.
+//  4. cancelPendingCheckout — the buyer gives up before paying.
+//  5. cancelPaidReservation — refund (full, until the event starts) and
+//     release.
+
+interface HoldResult {
+  reservationId: string;
+  reusedUrl: string | null;
+  price: number;
+  currency: string;
+  tierName: string;
+  eventTitle: string;
+  expiresAtMillis: number;
+}
+
+/** Takes one seat of a paid type for [uid], as a `pending` reservation. */
+export async function holdSeat(input: {
+  eventId: string;
+  tierId: string;
+  uid: string;
+  name: string;
+  email: string;
+  nowMillis: number;
+}): Promise<HoldResult> {
+  const eventRef = db.doc(`events/${input.eventId}`);
+  const reservationId = `${input.eventId}_${input.uid}`;
+  const resRef = db.doc(`reservations/${reservationId}`);
+
+  return db.runTransaction(async (tx) => {
+    const [eventSnap, resSnap] = await Promise.all([
+      tx.get(eventRef),
+      tx.get(resRef),
+    ]);
+    if (!eventSnap.exists) {
+      throw new HttpsError("not-found", "Cet événement n'existe plus.");
+    }
+    const ev = eventSnap.data()!;
+    if ((ev.startsAt as Timestamp).toMillis() <= input.nowMillis) {
+      throw new HttpsError("failed-precondition", "Cet événement a déjà commencé.");
+    }
+    const tiers = (ev.tiers ?? {}) as Record<string, Tier>;
+    const tier = tiers[input.tierId];
+    if (!tier) {
+      throw new HttpsError("not-found", "Ce type de billet n'existe plus.");
+    }
+    const price = Math.floor(Number(tier.price) || 0);
+    if (price <= 0) {
+      throw new HttpsError(
+        "failed-precondition",
+        "Ce billet est gratuit : réservez-le directement.",
+      );
+    }
+    const currency = String(ev.currency ?? "EUR").toUpperCase();
+    const expiresAtMillis = input.nowMillis + HOLD_MINUTES * 60 * 1000;
+
+    // A previous checkout still holding a seat: reuse it if it is the same
+    // type and still valid, otherwise give that seat back in this batch.
+    let previousTier: string | null = null;
+    if (resSnap.exists) {
+      const r = resSnap.data()!;
+      if (r.status === "confirmed") {
+        throw new HttpsError(
+          "failed-precondition",
+          "Vous avez déjà une place pour cet événement.",
+        );
+      }
+      if (r.status === "pending") {
+        const heldUntil = (r.holdExpiresAt as Timestamp | undefined)?.toMillis() ?? 0;
+        if (
+          r.tierId === input.tierId &&
+          heldUntil - HOLD_GRACE_MS > input.nowMillis + 60 * 1000 &&
+          typeof r.checkoutUrl === "string"
+        ) {
+          return {
+            reservationId,
+            reusedUrl: r.checkoutUrl,
+            price,
+            currency,
+            tierName: tier.name ?? "",
+            eventTitle: ev.title,
+            expiresAtMillis: heldUntil - HOLD_GRACE_MS,
+          };
+        }
+        previousTier = typeof r.tierId === "string" && tiers[r.tierId] ? r.tierId : "";
+      }
+    }
+
+    const sameTier = previousTier === input.tierId;
+    if ((Number(tier.available) || 0) + (sameTier ? 1 : 0) <= 0) {
+      throw new HttpsError("failed-precondition", "Ce type de billet est complet.");
+    }
+
+    const deltas: Record<string, number> = {[input.tierId]: -1};
+    let places = -1;
+    if (previousTier !== null) {
+      places += 1;
+      if (previousTier) deltas[previousTier] = (deltas[previousTier] ?? 0) + 1;
+    }
+    const update: Record<string, unknown> = {};
+    if (places !== 0) update.availablePlaces = FieldValue.increment(places);
+    for (const [id, delta] of Object.entries(deltas)) {
+      if (delta !== 0) update[`tiers.${id}.available`] = FieldValue.increment(delta);
+    }
+    if (Object.keys(update).length > 0) {
+      update.updatedAt = FieldValue.serverTimestamp();
+      tx.update(eventRef, update);
+    }
+
+    tx.set(resRef, {
+      eventId: input.eventId,
+      userId: input.uid,
+      organizerId: ev.organizerId,
+      userName: input.name,
+      userEmail: input.email,
+      eventTitle: ev.title,
+      eventStartsAt: ev.startsAt,
+      eventLocation: ev.location,
+      status: "pending",
+      reservedAt: Timestamp.fromMillis(input.nowMillis),
+      cancelledAt: null,
+      tierId: input.tierId,
+      tierName: tier.name ?? "",
+      pricePaid: 0,
+      amountDue: price,
+      currency,
+      paymentStatus: "pending",
+      holdExpiresAt: Timestamp.fromMillis(expiresAtMillis + HOLD_GRACE_MS),
+    });
+    return {
+      reservationId,
+      reusedUrl: null,
+      price,
+      currency,
+      tierName: tier.name ?? "",
+      eventTitle: ev.title,
+      expiresAtMillis,
+    };
+  });
+}
+
+/** `pending` → `cancelled`, seat given back. False if nothing was held. */
+export async function releaseHold(
+  reservationId: string,
+  outcome: "expired" | "cancelled" | "failed",
+): Promise<boolean> {
+  const resRef = db.doc(`reservations/${reservationId}`);
+  return db.runTransaction(async (tx) => {
+    const res = await tx.get(resRef);
+    if (!res.exists || res.get("status") !== "pending") return false;
+    const eventRef = db.doc(`events/${res.get("eventId")}`);
+    const event = await tx.get(eventRef);
+    tx.update(resRef, {
+      status: "cancelled",
+      cancelledAt: Timestamp.now(),
+      paymentStatus: outcome,
+      holdExpiresAt: FieldValue.delete(),
+      checkoutUrl: FieldValue.delete(),
+    });
+    if (event.exists) {
+      tx.update(eventRef, seatRelease(event, res.get("tierId") as string, 1));
+    }
+    return true;
+  });
+}
+
+type FulfillOutcome = "confirmed" | "already" | "missing" | "refunded";
+
+/**
+ * Confirms a paid reservation. If its hold was released before the payment
+ * landed (very late webhook), a seat is taken again when one is left;
+ * otherwise the payment is refunded at once — the buyer is never charged
+ * without a ticket.
+ */
+export async function fulfillCheckout(
+  reservationId: string,
+  payment: {
+    paymentIntentId: string | null;
+    amountTotal: number;
+    currency: string;
+    sessionId: string;
+  },
+): Promise<FulfillOutcome> {
+  const resRef = db.doc(`reservations/${reservationId}`);
+  const outcome = await db.runTransaction(async (tx): Promise<FulfillOutcome | "refund"> => {
+    const res = await tx.get(resRef);
+    if (!res.exists) return "missing";
+    const r = res.data()!;
+    if (r.status === "confirmed") return "already";
+    const eventRef = db.doc(`events/${r.eventId}`);
+    const event = await tx.get(eventRef);
+    const confirm = {
+      status: "confirmed",
+      cancelledAt: null,
+      pricePaid: payment.amountTotal,
+      currency: payment.currency.toUpperCase(),
+      paymentStatus: "paid",
+      paymentIntentId: payment.paymentIntentId,
+      checkoutSessionId: payment.sessionId,
+      reservedAt: Timestamp.now(),
+      holdExpiresAt: FieldValue.delete(),
+      checkoutUrl: FieldValue.delete(),
+    };
+    if (r.status === "pending") {
+      tx.update(resRef, confirm);
+      return "confirmed";
+    }
+    const tierId = r.tierId as string | undefined;
+    const left = tierId ?
+      Number(event.get(`tiers.${tierId}.available`) ?? 0) :
+      Number(event.get("availablePlaces") ?? 0);
+    const upcoming =
+      event.exists && (event.get("startsAt") as Timestamp).toMillis() > Date.now();
+    if (upcoming && left > 0) {
+      tx.update(eventRef, seatRelease(event, tierId, -1));
+      tx.update(resRef, confirm);
+      return "confirmed";
+    }
+    return "refund";
+  });
+
+  const r = (await resRef.get()).data();
+  if (outcome === "confirmed" && r) {
+    await notify(r.userId as string, {
+      type: "paymentConfirmed",
+      title: "Paiement confirmé",
+      body: `Votre billet ${r.tierName ?? ""} pour « ${r.eventTitle} » est prêt.`,
+      eventId: r.eventId as string,
+      reservationId,
+    });
+  }
+  if (outcome === "refund" && r && payment.paymentIntentId) {
+    const refundId = await refundPayment(payment.paymentIntentId, reservationId);
+    await resRef.update({
+      paymentStatus: "refunded",
+      paymentIntentId: payment.paymentIntentId,
+      refundId,
+    });
+    await notify(r.userId as string, {
+      type: "paymentRefunded",
+      title: "Paiement remboursé",
+      body:
+        `Plus de place disponible pour « ${r.eventTitle} » au moment du ` +
+        "paiement : vous êtes intégralement remboursé.",
+      eventId: r.eventId as string,
+      reservationId,
+    });
+    return "refunded";
+  }
+  return outcome === "refund" ? "refunded" : outcome;
+}
+
+async function refundPayment(
+  paymentIntentId: string,
+  reservationId: string,
+): Promise<string> {
+  try {
+    const refund = await stripeClient().refunds.create({
+      payment_intent: paymentIntentId,
+      metadata: {reservationId},
+    });
+    return refund.id;
+  } catch (error) {
+    if ((error as {code?: string}).code === "charge_already_refunded") {
+      return "already_refunded";
+    }
+    throw error;
+  }
+}
+
+/** Refund for a bulk cancellation: never blocks, flags failures. */
+async function refundOrFlag(
+  paymentIntentId: string,
+  reservationId: string,
+  context: string,
+): Promise<Record<string, unknown>> {
+  try {
+    return {
+      paymentStatus: "refunded",
+      refundId: await refundPayment(paymentIntentId, reservationId),
+    };
+  } catch (error) {
+    logger.error("Refund failed", {reservationId, context, error});
+    await audit("payment.refund_failed", {reservationId, context});
+    return {paymentStatus: "refund_failed"};
+  }
+}
+
+export const createCheckoutSession = onCall(
+  {secrets: [STRIPE_SECRET_KEY]},
+  async (request) => {
+    const uid = requireSignedIn(request);
+    const {eventId, tierId} = (request.data ?? {}) as {
+      eventId?: unknown;
+      tierId?: unknown;
+    };
+    if (
+      typeof eventId !== "string" || !eventId || eventId.includes("/") ||
+      typeof tierId !== "string" || !/^[a-z0-9]{1,20}$/.test(tierId)
+    ) {
+      throw new HttpsError("invalid-argument", "Billet invalide.");
+    }
+    const profile = await db.doc(`users/${uid}`).get();
+    if (profile.get("role") !== "participant") {
+      throw new HttpsError(
+        "permission-denied",
+        "Seul un participant peut acheter un billet.",
+      );
+    }
+    const user = await getAuth().getUser(uid);
+    const now = Date.now();
+    const hold = await holdSeat({
+      eventId,
+      tierId,
+      uid,
+      name: (profile.get("name") as string | undefined) ?? "",
+      email: user.email ?? (profile.get("email") as string),
+      nowMillis: now,
+    });
+    if (hold.reusedUrl) {
+      return {url: hold.reusedUrl, reservationId: hold.reservationId};
+    }
+
+    const reservation = encodeURIComponent(hold.reservationId);
+    try {
+      const session = await stripeClient().checkout.sessions.create({
+        mode: "payment",
+        client_reference_id: hold.reservationId,
+        customer_email: user.email,
+        line_items: [
+          {
+            quantity: 1,
+            price_data: {
+              currency: hold.currency.toLowerCase(),
+              unit_amount: hold.price,
+              product_data: {name: `${hold.eventTitle} — ${hold.tierName}`},
+            },
+          },
+        ],
+        metadata: {reservationId: hold.reservationId, eventId, tierId, userId: uid},
+        payment_intent_data: {
+          metadata: {reservationId: hold.reservationId, eventId, tierId, userId: uid},
+        },
+        expires_at: Math.floor(hold.expiresAtMillis / 1000),
+        success_url: `${PUBLIC_ORIGIN}/pay/success?reservation=${reservation}`,
+        cancel_url: `${PUBLIC_ORIGIN}/pay/cancel?reservation=${reservation}`,
+      });
+      await db.doc(`reservations/${hold.reservationId}`).update({
+        checkoutSessionId: session.id,
+        checkoutUrl: session.url,
+      });
+      return {url: session.url, reservationId: hold.reservationId};
+    } catch (error) {
+      logger.error("Checkout session failed", {eventId, tierId, uid, error});
+      await releaseHold(hold.reservationId, "failed");
+      throw new HttpsError(
+        "unavailable",
+        "Le paiement est indisponible pour le moment. Réessayez plus tard.",
+      );
+    }
+  },
+);
+
+export const cancelPendingCheckout = onCall(
+  {secrets: [STRIPE_SECRET_KEY]},
+  async (request) => {
+    const uid = requireSignedIn(request);
+    const {eventId} = (request.data ?? {}) as {eventId?: unknown};
+    if (typeof eventId !== "string" || !eventId || eventId.includes("/")) {
+      throw new HttpsError("invalid-argument", "Événement invalide.");
+    }
+    const reservationId = `${eventId}_${uid}`;
+    const sessionId = (await db.doc(`reservations/${reservationId}`).get()).get(
+      "checkoutSessionId",
+    );
+    const released = await releaseHold(reservationId, "cancelled");
+    if (released && typeof sessionId === "string") {
+      await stripeClient()
+        .checkout.sessions.expire(sessionId)
+        .catch((error) => logger.warn("Session expire failed", {sessionId, error}));
+    }
+    return {released};
+  },
+);
+
+export const cancelPaidReservation = onCall(
+  {secrets: [STRIPE_SECRET_KEY]},
+  async (request) => {
+    const uid = requireSignedIn(request);
+    const {eventId} = (request.data ?? {}) as {eventId?: unknown};
+    if (typeof eventId !== "string" || !eventId || eventId.includes("/")) {
+      throw new HttpsError("invalid-argument", "Événement invalide.");
+    }
+    const reservationId = `${eventId}_${uid}`;
+    const ref = db.doc(`reservations/${reservationId}`);
+    const snap = await ref.get();
+    if (!snap.exists || snap.get("userId") !== uid) {
+      throw new HttpsError("not-found", "Réservation introuvable.");
+    }
+    const r = snap.data()!;
+    if (r.status !== "confirmed" || !(Number(r.pricePaid) > 0)) {
+      throw new HttpsError(
+        "failed-precondition",
+        "Cette réservation n'est pas un billet payé en cours.",
+      );
+    }
+    if ((r.eventStartsAt as Timestamp).toMillis() <= Date.now()) {
+      throw new HttpsError(
+        "failed-precondition",
+        "L'événement a commencé : le billet n'est plus remboursable.",
+      );
+    }
+    if (typeof r.paymentIntentId !== "string") {
+      throw new HttpsError(
+        "failed-precondition",
+        "Paiement introuvable : contactez le support.",
+      );
+    }
+
+    const refundId = await refundPayment(r.paymentIntentId, reservationId);
+    await db.runTransaction(async (tx) => {
+      const current = await tx.get(ref);
+      if (current.get("status") !== "confirmed") return;
+      const eventRef = db.doc(`events/${eventId}`);
+      const event = await tx.get(eventRef);
+      tx.update(ref, {
+        status: "cancelled",
+        cancelledAt: Timestamp.now(),
+        paymentStatus: "refunded",
+        refundId,
+        cancelledBy: "participant",
+      });
+      if (event.exists) {
+        tx.update(eventRef, seatRelease(event, current.get("tierId") as string, 1));
+      }
+    });
+    await audit("payment.refunded", {reservationId, by: uid});
+    return {refunded: true};
+  },
+);
+
+/**
+ * Stripe → EventHub. Endpoint to declare in the Stripe dashboard:
+ * https://us-central1-eventhub-d411f.cloudfunctions.net/stripeWebhook
+ * events: checkout.session.completed, checkout.session.async_payment_succeeded,
+ * checkout.session.expired, checkout.session.async_payment_failed.
+ */
+export const stripeWebhook = onRequest(
+  {secrets: [STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET]},
+  async (req, res) => {
+    if (req.method !== "POST") {
+      res.set("Allow", "POST").status(405).send("");
+      return;
+    }
+    let event: Stripe.Event;
+    try {
+      event = stripeClient().webhooks.constructEvent(
+        req.rawBody,
+        req.get("stripe-signature") ?? "",
+        STRIPE_WEBHOOK_SECRET.value(),
+      );
+    } catch (error) {
+      logger.warn("Rejected webhook", {error: String(error)});
+      res.status(400).send("Invalid signature");
+      return;
+    }
+
+    const session = event.data.object as Stripe.Checkout.Session;
+    const reservationId = session.metadata?.reservationId;
+    if (!reservationId) {
+      res.json({received: true, ignored: true});
+      return;
+    }
+
+    switch (event.type) {
+      case "checkout.session.completed":
+      case "checkout.session.async_payment_succeeded": {
+        if (session.payment_status !== "paid") break;
+        const intent = session.payment_intent;
+        const outcome = await fulfillCheckout(reservationId, {
+          paymentIntentId: typeof intent === "string" ? intent : intent?.id ?? null,
+          amountTotal: session.amount_total ?? 0,
+          currency: session.currency ?? "eur",
+          sessionId: session.id,
+        });
+        await audit("payment.checkout_completed", {reservationId, outcome});
+        break;
+      }
+      case "checkout.session.expired":
+      case "checkout.session.async_payment_failed":
+        await releaseHold(reservationId, "expired");
+        break;
+      default:
+        break;
+    }
+    res.json({received: true});
+  },
+);
+
+export const releaseExpiredHolds = onSchedule(
+  {schedule: "every 10 minutes", timeZone: TIME_ZONE},
+  async () => {
+    logger.info("Expired holds", await runReleaseExpiredHolds(Date.now()));
+  },
+);
+
+export async function runReleaseExpiredHolds(
+  nowMillis: number,
+): Promise<{candidates: number; released: number}> {
+  const expired = await db
+    .collection("reservations")
+    .where("status", "==", "pending")
+    .where("holdExpiresAt", "<=", Timestamp.fromMillis(nowMillis))
+    .limit(200)
+    .get();
+  let released = 0;
+  for (const doc of expired.docs) {
+    if (await releaseHold(doc.id, "expired")) released++;
+  }
+  return {candidates: expired.size, released};
+}
 
 // --------------------------------------------------------------------------
 // Helpers

@@ -5,6 +5,7 @@ import 'package:eventhub/core/extensions/context_x.dart';
 import 'package:eventhub/core/l10n/app_strings.dart';
 import 'package:eventhub/core/result/result.dart';
 import 'package:eventhub/core/utils/date_formats.dart';
+import 'package:eventhub/core/utils/money.dart';
 import 'package:eventhub/core/utils/validators.dart';
 import 'package:eventhub/core/widgets/design_system.dart';
 import 'package:eventhub/features/events/application/event_form_controller.dart';
@@ -12,6 +13,7 @@ import 'package:eventhub/features/events/application/event_providers.dart';
 import 'package:eventhub/features/events/domain/entities/event.dart';
 import 'package:eventhub/features/events/domain/entities/event_category.dart';
 import 'package:eventhub/features/events/domain/entities/event_draft.dart';
+import 'package:eventhub/features/events/domain/entities/event_tier.dart';
 import 'package:eventhub/features/events/presentation/widgets/event_card.dart';
 import 'package:eventhub/features/events/presentation/widgets/event_image_picker.dart';
 import 'package:eventhub/routes/routes.dart';
@@ -72,6 +74,25 @@ class _EventFormState extends ConsumerState<_EventForm> {
     text: widget.initial?.capacity.toString() ?? '50',
   );
 
+  // Ticket types (F-12).
+  late bool _useTiers = widget.initial?.hasTiers ?? false;
+  late String _currency = widget.initial?.currency ?? 'EUR';
+  late final List<_TierFields> _tiers = [
+    for (final tier in widget.initial?.tiers ?? const <EventTier>[])
+      _TierFields.fromTier(tier, widget.initial!.currencyCode),
+  ];
+
+  /// Switching mode is refused once seats were sold in the current mode
+  /// (see `TierPlanner.apply`): the switch is disabled rather than failing
+  /// on save.
+  bool get _tierModeLocked => (widget.initial?.reservedCount ?? 0) > 0;
+
+  int _soldOf(String? tierId) =>
+      tierId == null ? 0 : widget.initial?.tier(tierId)?.sold ?? 0;
+
+  bool get _hasPaidTier =>
+      _tiers.any((f) => (Money.parse(f.price.text, _currency) ?? 0) > 0);
+
   late EventCategory _category =
       widget.initial?.category ?? EventCategory.meetup;
   late DateTime _startsAt =
@@ -89,6 +110,9 @@ class _EventFormState extends ConsumerState<_EventForm> {
     _description.dispose();
     _location.dispose();
     _capacity.dispose();
+    for (final tier in _tiers) {
+      tier.dispose();
+    }
     super.dispose();
   }
 
@@ -118,6 +142,11 @@ class _EventFormState extends ConsumerState<_EventForm> {
     if (!_formKey.currentState!.validate()) return;
     FocusScope.of(context).unfocus();
 
+    if (_useTiers && _tiers.isEmpty) {
+      context.showToast(AppStrings.ticketTypesRequired);
+      return;
+    }
+
     final draft = EventDraft(
       title: _title.text,
       description: _description.text,
@@ -126,6 +155,20 @@ class _EventFormState extends ConsumerState<_EventForm> {
       location: _location.text,
       capacity: int.tryParse(_capacity.text.trim()) ?? 0,
       imageUrl: widget.initial?.imageUrl,
+      currency: _useTiers ? _currency : null,
+      tiers: !_useTiers
+          ? const []
+          : [
+              for (final f in _tiers)
+                EventTierDraft(
+                  id: f.id,
+                  name: f.name.text,
+                  description: f.description.text,
+                  // Validators already refused unreadable prices.
+                  price: Money.parse(f.price.text, _currency) ?? -1,
+                  capacity: int.tryParse(f.capacity.text.trim()) ?? 0,
+                ),
+            ],
     );
 
     final result = await ref
@@ -319,24 +362,75 @@ class _EventFormState extends ConsumerState<_EventForm> {
               ),
             ),
             const SizedBox(height: AppSpacing.xl),
-            LabeledField(
-              label: AppStrings.capacity,
-              isRequired: true,
-              hint: 'Nombre total de places mises en vente',
-              child: TextFormField(
-                controller: _capacity,
-                keyboardType: TextInputType.number,
-                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                decoration: InputDecoration(
-                  hintText: '50',
-                  prefixIcon: const Icon(Icons.event_seat_outlined, size: 20),
-                  suffixText: 'places',
-                  errorText: _fieldError('capacity'),
+            AppSurface(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.lg,
+                vertical: AppSpacing.xs,
+              ),
+              elevation: SurfaceElevation.flat,
+              radius: AppRadius.button,
+              child: SwitchListTile.adaptive(
+                contentPadding: EdgeInsets.zero,
+                value: _useTiers,
+                onChanged: _tierModeLocked
+                    ? null
+                    : (v) => setState(() {
+                        _useTiers = v;
+                        if (v && _tiers.isEmpty) {
+                          _tiers.add(
+                            _TierFields(
+                              name: 'Standard',
+                              capacity: _capacity.text.trim().isEmpty
+                                  ? '50'
+                                  : _capacity.text.trim(),
+                            ),
+                          );
+                        }
+                      }),
+                title: Text(
+                  AppStrings.ticketTypesToggle,
+                  style: context.textTheme.titleMedium,
                 ),
-                validator: (v) =>
-                    Validators.positiveInt(v, label: 'La capacité'),
+                subtitle: Text(
+                  AppStrings.ticketTypesToggleHint,
+                  style: context.textTheme.bodySmall,
+                ),
               ),
             ),
+            const SizedBox(height: AppSpacing.xl),
+            if (!_useTiers)
+              LabeledField(
+                label: AppStrings.capacity,
+                isRequired: true,
+                hint: 'Nombre total de places mises en vente',
+                child: TextFormField(
+                  controller: _capacity,
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  decoration: InputDecoration(
+                    hintText: '50',
+                    prefixIcon: const Icon(Icons.event_seat_outlined, size: 20),
+                    suffixText: 'places',
+                    errorText: _fieldError('capacity'),
+                  ),
+                  validator: (v) =>
+                      Validators.positiveInt(v, label: 'La capacité'),
+                ),
+              )
+            else
+              _TiersEditor(
+                tiers: _tiers,
+                currency: _currency,
+                showCurrency: _hasPaidTier,
+                isEditing: _isEditing,
+                soldOf: _soldOf,
+                tiersError: _fieldError('tiers'),
+                currencyError: _fieldError('currency'),
+                onChanged: () => setState(() {}),
+                onCurrency: (c) => setState(() => _currency = c),
+                onAdd: () => setState(() => _tiers.add(_TierFields())),
+                onRemove: (i) => setState(() => _tiers.removeAt(i).dispose()),
+              ),
             if (_isEditing) ...[
               const SizedBox(height: AppSpacing.xl),
               AppSurface(
@@ -367,6 +461,266 @@ class _EventFormState extends ConsumerState<_EventForm> {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Text controllers of one ticket type row.
+class _TierFields {
+  _TierFields({
+    this.id,
+    String name = '',
+    String description = '',
+    String price = '0',
+    String capacity = '50',
+  }) : name = TextEditingController(text: name),
+       description = TextEditingController(text: description),
+       price = TextEditingController(text: price),
+       capacity = TextEditingController(text: capacity);
+
+  factory _TierFields.fromTier(EventTier tier, String currency) => _TierFields(
+    id: tier.id,
+    name: tier.name,
+    description: tier.description,
+    price: Money.inputValue(tier.price, currency),
+    capacity: '${tier.capacity}',
+  );
+
+  final String? id;
+  final TextEditingController name;
+  final TextEditingController description;
+  final TextEditingController price;
+  final TextEditingController capacity;
+
+  void dispose() {
+    name.dispose();
+    description.dispose();
+    price.dispose();
+    capacity.dispose();
+  }
+}
+
+/// One bordered block per ticket type: name, price and seats on one line
+/// (the two numbers people compare), then what it includes. A type that
+/// already sold says so and cannot be removed; its seats cannot go below
+/// what was sold.
+class _TiersEditor extends StatelessWidget {
+  const _TiersEditor({
+    required this.tiers,
+    required this.currency,
+    required this.showCurrency,
+    required this.isEditing,
+    required this.soldOf,
+    required this.onChanged,
+    required this.onCurrency,
+    required this.onAdd,
+    required this.onRemove,
+    this.tiersError,
+    this.currencyError,
+  });
+
+  final List<_TierFields> tiers;
+  final String currency;
+  final bool showCurrency;
+  final bool isEditing;
+  final int Function(String? id) soldOf;
+  final VoidCallback onChanged;
+  final ValueChanged<String> onCurrency;
+  final VoidCallback onAdd;
+  final ValueChanged<int> onRemove;
+  final String? tiersError;
+  final String? currencyError;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    final text = context.textTheme;
+    final total = tiers.fold<int>(
+      0,
+      (sum, f) => sum + (int.tryParse(f.capacity.text.trim()) ?? 0),
+    );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            const SectionLabel(AppStrings.ticketTypes),
+            const Spacer(),
+            Text(
+              '$total ${AppStrings.ticketTypeCapacity.toLowerCase()}',
+              style: text.labelMedium,
+            ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.md),
+        for (var i = 0; i < tiers.length; i++)
+          Container(
+            margin: const EdgeInsets.only(bottom: AppSpacing.md),
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.lg,
+              AppSpacing.sm,
+              AppSpacing.sm,
+              AppSpacing.lg,
+            ),
+            decoration: BoxDecoration(
+              color: t.surface,
+              borderRadius: AppRadius.brButton,
+              border: Border.all(color: t.border),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    Text(
+                      '${AppStrings.ticketTypes.substring(0, 6)} ${i + 1}',
+                      style: text.labelMedium,
+                    ),
+                    const Spacer(),
+                    if (soldOf(tiers[i].id) > 0)
+                      Text(
+                        '${soldOf(tiers[i].id)} vendu'
+                        '${soldOf(tiers[i].id) > 1 ? 's' : ''}',
+                        style: text.labelSmall?.copyWith(letterSpacing: 0),
+                      ),
+                    IconButton(
+                      tooltip: AppStrings.removeTicketType,
+                      icon: const Icon(Icons.close_rounded, size: 20),
+                      onPressed: soldOf(tiers[i].id) > 0 || tiers.length == 1
+                          ? null
+                          : () => onRemove(i),
+                    ),
+                  ],
+                ),
+                Padding(
+                  padding: const EdgeInsets.only(right: AppSpacing.sm),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      TextFormField(
+                        controller: tiers[i].name,
+                        textCapitalization: TextCapitalization.sentences,
+                        maxLength: EventTier.maxNameLength,
+                        buildCounter:
+                            (
+                              _, {
+                              required currentLength,
+                              required isFocused,
+                              maxLength,
+                            }) => null,
+                        decoration: const InputDecoration(
+                          hintText: AppStrings.ticketTypeNameHint,
+                        ),
+                        onChanged: (_) => onChanged(),
+                        validator: (v) =>
+                            Validators.required(v, label: 'Le nom du billet'),
+                      ),
+                      const SizedBox(height: AppSpacing.sm),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: TextFormField(
+                              controller: tiers[i].price,
+                              keyboardType:
+                                  const TextInputType.numberWithOptions(
+                                    decimal: true,
+                                  ),
+                              decoration: InputDecoration(
+                                labelText: AppStrings.ticketTypePrice,
+                                suffixText: Money.symbol(currency),
+                              ),
+                              onChanged: (_) => onChanged(),
+                              validator: (v) =>
+                                  Money.parse(v ?? '', currency) == null
+                                  ? AppStrings.invalidPrice
+                                  : null,
+                            ),
+                          ),
+                          const SizedBox(width: AppSpacing.md),
+                          Expanded(
+                            child: TextFormField(
+                              controller: tiers[i].capacity,
+                              keyboardType: TextInputType.number,
+                              inputFormatters: [
+                                FilteringTextInputFormatter.digitsOnly,
+                              ],
+                              decoration: const InputDecoration(
+                                labelText: AppStrings.ticketTypeCapacity,
+                              ),
+                              onChanged: (_) => onChanged(),
+                              validator: (v) {
+                                final base = Validators.positiveInt(
+                                  v,
+                                  label: 'Le nombre de places',
+                                );
+                                if (base != null) return base;
+                                final sold = soldOf(tiers[i].id);
+                                return int.parse(v!.trim()) < sold
+                                    ? 'Au moins $sold (déjà vendus)'
+                                    : null;
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: AppSpacing.sm),
+                      TextFormField(
+                        controller: tiers[i].description,
+                        maxLength: EventTier.maxDescriptionLength,
+                        textCapitalization: TextCapitalization.sentences,
+                        decoration: const InputDecoration(
+                          hintText: AppStrings.ticketTypeDescriptionHint,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        if (tiers.length < EventTier.maxTiers)
+          AppButton.secondary(
+            label: AppStrings.addTicketType,
+            icon: Icons.add_rounded,
+            size: AppButtonSize.medium,
+            elevated: false,
+            onPressed: onAdd,
+          ),
+        if (showCurrency) ...[
+          const SizedBox(height: AppSpacing.xl),
+          LabeledField(
+            label: AppStrings.currencyLabel,
+            child: Wrap(
+              spacing: AppSpacing.sm,
+              children: [
+                for (final code in Money.currencies)
+                  ChoiceChip(
+                    label: Text('$code · ${Money.symbol(code)}'),
+                    selected: code == currency,
+                    shape: const RoundedRectangleBorder(
+                      borderRadius: AppRadius.brButton,
+                    ),
+                    onSelected: (_) => onCurrency(code),
+                  ),
+              ],
+            ),
+          ),
+        ],
+        for (final error in [?tiersError, ?currencyError])
+          Padding(
+            padding: const EdgeInsets.only(top: AppSpacing.sm),
+            child: Text(
+              error,
+              style: text.bodySmall?.copyWith(color: t.danger.fg),
+            ),
+          ),
+        if (isEditing) ...[
+          const SizedBox(height: AppSpacing.sm),
+          Text(AppStrings.ticketTypesEditHint, style: text.bodySmall),
+        ],
+      ],
     );
   }
 }

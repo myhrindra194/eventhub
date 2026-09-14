@@ -15,7 +15,10 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$EventDraft {
 
- String get title; String get description; EventCategory get category; DateTime get startsAt; String get location; int get capacity; String? get imageUrl;
+ String get title; String get description; EventCategory get category; DateTime get startsAt; String get location;/// Ignored when [tiers] is not empty: the capacity is then their sum.
+ int get capacity; String? get imageUrl;/// Ticket types (F-12). Empty: one free pool of [capacity] seats.
+ List<EventTierDraft> get tiers;/// Required as soon as one type is paid.
+ String? get currency;
 /// Create a copy of EventDraft
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -27,20 +30,20 @@ $EventDraftCopyWith<EventDraft> get copyWith => _$EventDraftCopyWithImpl<EventDr
 @override
 bool operator ==(Object other) {
   final _this = this as EventDraft;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is EventDraft&&(identical(other.title, _this.title) || other.title == _this.title)&&(identical(other.description, _this.description) || other.description == _this.description)&&(identical(other.category, _this.category) || other.category == _this.category)&&(identical(other.startsAt, _this.startsAt) || other.startsAt == _this.startsAt)&&(identical(other.location, _this.location) || other.location == _this.location)&&(identical(other.capacity, _this.capacity) || other.capacity == _this.capacity)&&(identical(other.imageUrl, _this.imageUrl) || other.imageUrl == _this.imageUrl));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is EventDraft&&(identical(other.title, _this.title) || other.title == _this.title)&&(identical(other.description, _this.description) || other.description == _this.description)&&(identical(other.category, _this.category) || other.category == _this.category)&&(identical(other.startsAt, _this.startsAt) || other.startsAt == _this.startsAt)&&(identical(other.location, _this.location) || other.location == _this.location)&&(identical(other.capacity, _this.capacity) || other.capacity == _this.capacity)&&(identical(other.imageUrl, _this.imageUrl) || other.imageUrl == _this.imageUrl)&&const DeepCollectionEquality().equals(other.tiers, _this.tiers)&&(identical(other.currency, _this.currency) || other.currency == _this.currency));
 }
 
 
 @override
 int get hashCode {
   final _this = this as EventDraft;
-  return Object.hash(runtimeType,_this.title,_this.description,_this.category,_this.startsAt,_this.location,_this.capacity,_this.imageUrl);
+  return Object.hash(runtimeType,_this.title,_this.description,_this.category,_this.startsAt,_this.location,_this.capacity,_this.imageUrl,const DeepCollectionEquality().hash(_this.tiers),_this.currency);
 }
 
 @override
 String toString() {
   final _this = this as EventDraft;
-  return 'EventDraft(title: ${_this.title}, description: ${_this.description}, category: ${_this.category}, startsAt: ${_this.startsAt}, location: ${_this.location}, capacity: ${_this.capacity}, imageUrl: ${_this.imageUrl})';
+  return 'EventDraft(title: ${_this.title}, description: ${_this.description}, category: ${_this.category}, startsAt: ${_this.startsAt}, location: ${_this.location}, capacity: ${_this.capacity}, imageUrl: ${_this.imageUrl}, tiers: ${_this.tiers}, currency: ${_this.currency})';
 }
 
 
@@ -51,7 +54,7 @@ abstract mixin class $EventDraftCopyWith<$Res>  {
   factory $EventDraftCopyWith(EventDraft value, $Res Function(EventDraft) _then) = _$EventDraftCopyWithImpl;
 @useResult
 $Res call({
- String title, String description, EventCategory category, DateTime startsAt, String location, int capacity, String? imageUrl
+ String title, String description, EventCategory category, DateTime startsAt, String location, int capacity, String? imageUrl, List<EventTierDraft> tiers, String? currency
 });
 
 
@@ -68,7 +71,7 @@ class _$EventDraftCopyWithImpl<$Res>
 
 /// Create a copy of EventDraft
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? title = null,Object? description = null,Object? category = null,Object? startsAt = null,Object? location = null,Object? capacity = null,Object? imageUrl = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? title = null,Object? description = null,Object? category = null,Object? startsAt = null,Object? location = null,Object? capacity = null,Object? imageUrl = freezed,Object? tiers = null,Object? currency = freezed,}) {
   return _then(EventDraft(
 title: null == title ? _self.title : title // ignore: cast_nullable_to_non_nullable
 as String,description: null == description ? _self.description : description // ignore: cast_nullable_to_non_nullable
@@ -77,6 +80,8 @@ as EventCategory,startsAt: null == startsAt ? _self.startsAt : startsAt // ignor
 as DateTime,location: null == location ? _self.location : location // ignore: cast_nullable_to_non_nullable
 as String,capacity: null == capacity ? _self.capacity : capacity // ignore: cast_nullable_to_non_nullable
 as int,imageUrl: freezed == imageUrl ? _self.imageUrl : imageUrl // ignore: cast_nullable_to_non_nullable
+as String?,tiers: null == tiers ? _self.tiers : tiers // ignore: cast_nullable_to_non_nullable
+as List<EventTierDraft>,currency: freezed == currency ? _self.currency : currency // ignore: cast_nullable_to_non_nullable
 as String?,
   ));
 }
@@ -162,10 +167,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String title,  String description,  EventCategory category,  DateTime startsAt,  String location,  int capacity,  String? imageUrl)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String title,  String description,  EventCategory category,  DateTime startsAt,  String location,  int capacity,  String? imageUrl,  List<EventTierDraft> tiers,  String? currency)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _EventDraft() when $default != null:
-return $default(_that.title,_that.description,_that.category,_that.startsAt,_that.location,_that.capacity,_that.imageUrl);case _:
+return $default(_that.title,_that.description,_that.category,_that.startsAt,_that.location,_that.capacity,_that.imageUrl,_that.tiers,_that.currency);case _:
   return orElse();
 
 }
@@ -183,10 +188,10 @@ return $default(_that.title,_that.description,_that.category,_that.startsAt,_tha
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String title,  String description,  EventCategory category,  DateTime startsAt,  String location,  int capacity,  String? imageUrl)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String title,  String description,  EventCategory category,  DateTime startsAt,  String location,  int capacity,  String? imageUrl,  List<EventTierDraft> tiers,  String? currency)  $default,) {final _that = this;
 switch (_that) {
 case _EventDraft():
-return $default(_that.title,_that.description,_that.category,_that.startsAt,_that.location,_that.capacity,_that.imageUrl);case _:
+return $default(_that.title,_that.description,_that.category,_that.startsAt,_that.location,_that.capacity,_that.imageUrl,_that.tiers,_that.currency);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -203,10 +208,10 @@ return $default(_that.title,_that.description,_that.category,_that.startsAt,_tha
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String title,  String description,  EventCategory category,  DateTime startsAt,  String location,  int capacity,  String? imageUrl)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String title,  String description,  EventCategory category,  DateTime startsAt,  String location,  int capacity,  String? imageUrl,  List<EventTierDraft> tiers,  String? currency)?  $default,) {final _that = this;
 switch (_that) {
 case _EventDraft() when $default != null:
-return $default(_that.title,_that.description,_that.category,_that.startsAt,_that.location,_that.capacity,_that.imageUrl);case _:
+return $default(_that.title,_that.description,_that.category,_that.startsAt,_that.location,_that.capacity,_that.imageUrl,_that.tiers,_that.currency);case _:
   return null;
 
 }
@@ -218,7 +223,7 @@ return $default(_that.title,_that.description,_that.category,_that.startsAt,_tha
 
 
 class _EventDraft extends EventDraft {
-  const _EventDraft({required this.title, required this.description, required this.category, required this.startsAt, required this.location, required this.capacity, this.imageUrl}): super._();
+  const _EventDraft({required this.title, required this.description, required this.category, required this.startsAt, required this.location, required this.capacity, this.imageUrl,  List<EventTierDraft> tiers = const <EventTierDraft>[], this.currency}): _tiers = tiers,super._();
   
 
 @override final  String title;
@@ -226,8 +231,20 @@ class _EventDraft extends EventDraft {
 @override final  EventCategory category;
 @override final  DateTime startsAt;
 @override final  String location;
+/// Ignored when [tiers] is not empty: the capacity is then their sum.
 @override final  int capacity;
 @override final  String? imageUrl;
+/// Ticket types (F-12). Empty: one free pool of [capacity] seats.
+ final  List<EventTierDraft> _tiers;
+/// Ticket types (F-12). Empty: one free pool of [capacity] seats.
+@override@JsonKey() List<EventTierDraft> get tiers {
+  if (_tiers is EqualUnmodifiableListView) return _tiers;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_tiers);
+}
+
+/// Required as soon as one type is paid.
+@override final  String? currency;
 
 /// Create a copy of EventDraft
 /// with the given fields replaced by the non-null parameter values.
@@ -239,18 +256,18 @@ _$EventDraftCopyWith<_EventDraft> get copyWith => __$EventDraftCopyWithImpl<_Eve
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is _EventDraft&&(identical(other.title, title) || other.title == title)&&(identical(other.description, description) || other.description == description)&&(identical(other.category, category) || other.category == category)&&(identical(other.startsAt, startsAt) || other.startsAt == startsAt)&&(identical(other.location, location) || other.location == location)&&(identical(other.capacity, capacity) || other.capacity == capacity)&&(identical(other.imageUrl, imageUrl) || other.imageUrl == imageUrl));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _EventDraft&&(identical(other.title, title) || other.title == title)&&(identical(other.description, description) || other.description == description)&&(identical(other.category, category) || other.category == category)&&(identical(other.startsAt, startsAt) || other.startsAt == startsAt)&&(identical(other.location, location) || other.location == location)&&(identical(other.capacity, capacity) || other.capacity == capacity)&&(identical(other.imageUrl, imageUrl) || other.imageUrl == imageUrl)&&const DeepCollectionEquality().equals(other.tiers, _tiers)&&(identical(other.currency, currency) || other.currency == currency));
 }
 
 
 @override
 int get hashCode {
-    return Object.hash(runtimeType,title,description,category,startsAt,location,capacity,imageUrl);
+    return Object.hash(runtimeType,title,description,category,startsAt,location,capacity,imageUrl,const DeepCollectionEquality().hash(_tiers),currency);
 }
 
 @override
 String toString() {
-    return 'EventDraft(title: $title, description: $description, category: $category, startsAt: $startsAt, location: $location, capacity: $capacity, imageUrl: $imageUrl)';
+    return 'EventDraft(title: $title, description: $description, category: $category, startsAt: $startsAt, location: $location, capacity: $capacity, imageUrl: $imageUrl, tiers: $tiers, currency: $currency)';
 }
 
 
@@ -261,7 +278,7 @@ abstract mixin class _$EventDraftCopyWith<$Res> implements $EventDraftCopyWith<$
   factory _$EventDraftCopyWith(_EventDraft value, $Res Function(_EventDraft) _then) = __$EventDraftCopyWithImpl;
 @override @useResult
 $Res call({
- String title, String description, EventCategory category, DateTime startsAt, String location, int capacity, String? imageUrl
+ String title, String description, EventCategory category, DateTime startsAt, String location, int capacity, String? imageUrl, List<EventTierDraft> tiers, String? currency
 });
 
 
@@ -278,7 +295,7 @@ class __$EventDraftCopyWithImpl<$Res>
 
 /// Create a copy of EventDraft
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? title = null,Object? description = null,Object? category = null,Object? startsAt = null,Object? location = null,Object? capacity = null,Object? imageUrl = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? title = null,Object? description = null,Object? category = null,Object? startsAt = null,Object? location = null,Object? capacity = null,Object? imageUrl = freezed,Object? tiers = null,Object? currency = freezed,}) {
   return _then(_EventDraft(
 title: null == title ? _self.title : title // ignore: cast_nullable_to_non_nullable
 as String,description: null == description ? _self.description : description // ignore: cast_nullable_to_non_nullable
@@ -287,6 +304,8 @@ as EventCategory,startsAt: null == startsAt ? _self.startsAt : startsAt // ignor
 as DateTime,location: null == location ? _self.location : location // ignore: cast_nullable_to_non_nullable
 as String,capacity: null == capacity ? _self.capacity : capacity // ignore: cast_nullable_to_non_nullable
 as int,imageUrl: freezed == imageUrl ? _self.imageUrl : imageUrl // ignore: cast_nullable_to_non_nullable
+as String?,tiers: null == tiers ? _self._tiers : tiers // ignore: cast_nullable_to_non_nullable
+as List<EventTierDraft>,currency: freezed == currency ? _self.currency : currency // ignore: cast_nullable_to_non_nullable
 as String?,
   ));
 }

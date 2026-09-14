@@ -31,6 +31,10 @@ abstract final class NotificationRoute {
   static const staffJoined = 'staffJoined';
   static const staffRemoved = 'staffRemoved';
 
+  /// Payments (F-11): the ticket is ready; a late payment was refunded.
+  static const paymentConfirmed = 'paymentConfirmed';
+  static const paymentRefunded = 'paymentRefunded';
+
   static String? locationFor(Map<String, Object?> data) {
     final eventId = _nonEmpty(data['eventId']);
     final reservationId = _nonEmpty(data['reservationId']);
@@ -47,6 +51,10 @@ abstract final class NotificationRoute {
         eventId,
       ),
       staffRemoved => AppRoutes.organizerEvents,
+      paymentConfirmed when reservationId != null => AppRoutes.ticketPath(
+        reservationId,
+      ),
+      paymentRefunded => AppRoutes.reservations,
       reminder when reservationId != null => AppRoutes.ticketPath(
         reservationId,
       ),

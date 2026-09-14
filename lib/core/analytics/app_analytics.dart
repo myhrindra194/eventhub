@@ -52,6 +52,14 @@ class AppAnalytics {
   void reservationConfirmed(String eventId) =>
       _event('reservation_confirmed', {'event_id': eventId});
 
+  /// Firebase's recommended `begin_checkout` (the purchase itself is
+  /// confirmed server-side by the Stripe webhook).
+  void checkoutStarted(String eventId, String tierId) => _fire(
+    () => _analytics.logBeginCheckout(
+      items: [AnalyticsEventItem(itemId: eventId, itemVariant: tierId)],
+    ),
+  );
+
   void reservationCancelled(String eventId) =>
       _event('reservation_cancelled', {'event_id': eventId});
 

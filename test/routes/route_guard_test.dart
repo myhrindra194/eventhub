@@ -251,6 +251,24 @@ void main() {
     });
   });
 
+  group('payments', () {
+    test(
+      'the Stripe return link reaches a participant, never an organizer',
+      () {
+        expect(AppRoutes.paymentPath('e1_u1'), '/reservations/e1_u1/payment');
+        expect(redirect(signedIn(participant), AppRoutes.paySuccess), isNull);
+        expect(
+          redirect(signedIn(organizer), AppRoutes.paySuccess),
+          AppRoutes.organizerEvents,
+        );
+        expect(
+          redirect(signedIn(participant), AppRoutes.paymentPath('e1_u1')),
+          isNull,
+        );
+      },
+    );
+  });
+
   group('administration', () {
     test('opens the moderation area to admins of either role only', () {
       final entry = AppRoutes.adminModerationEntryPath('review_e1_p9');

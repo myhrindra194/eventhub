@@ -80,6 +80,14 @@ abstract final class AppRoutes {
   static const reservationConfirmation =
       '/reservations/:reservationId/confirmation';
   static const ticket = '/reservations/:reservationId/ticket';
+  static const payment = '/reservations/:reservationId/payment';
+  static const paymentName = 'payment';
+
+  /// Return URLs of Stripe Checkout (Hosting pages + App Links).
+  static const paySuccess = '/pay/success';
+  static const paySuccessName = 'pay-success';
+  static const payCancel = '/pay/cancel';
+  static const payCancelName = 'pay-cancel';
   static const favorites = '/favorites';
   static const favoritesName = 'favorites';
 
@@ -143,6 +151,9 @@ abstract final class AppRoutes {
   static String organizerEventCheckInPath(String eventId) =>
       '/organizer/events/${Uri.encodeComponent(eventId)}/checkin';
 
+  static String paymentPath(String reservationId) =>
+      '/reservations/${Uri.encodeComponent(reservationId)}/payment';
+
   static String ticketPath(String reservationId) =>
       '/reservations/${Uri.encodeComponent(reservationId)}/ticket';
 
@@ -203,7 +214,8 @@ abstract final class AppRoutes {
   static bool isDeepLinkTarget(String location) =>
       location.startsWith('/e/') ||
       location.startsWith('/events/') ||
-      location.startsWith('/organizers/');
+      location.startsWith('/organizers/') ||
+      location.startsWith('/pay/');
 
   /// Locations that belong to the organizer area of the product.
   static bool isPublic(String location) => _publicPaths.contains(location);

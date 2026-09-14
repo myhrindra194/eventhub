@@ -3,6 +3,7 @@ import 'package:eventhub/core/config/app_config.dart';
 import 'package:eventhub/core/extensions/context_x.dart';
 import 'package:eventhub/core/l10n/app_strings.dart';
 import 'package:eventhub/core/utils/date_formats.dart';
+import 'package:eventhub/core/utils/money.dart';
 import 'package:eventhub/core/widgets/design_system.dart';
 import 'package:eventhub/features/reservations/application/reservation_providers.dart';
 import 'package:eventhub/features/reservations/domain/entities/reservation.dart';
@@ -65,7 +66,13 @@ class _TicketBody extends ConsumerWidget {
     final isPast = !reservation.eventStartsAt.isAfter(now);
     final valid = reservation.isActive && !isPast;
 
-    final notice = reservation.isCancelled
+    final notice = reservation.isPending
+        ? (
+            AppTone.warning,
+            Icons.hourglass_top_rounded,
+            AppStrings.ticketPendingNotice,
+          )
+        : reservation.isCancelled
         ? (
             AppTone.danger,
             Icons.block_rounded,
@@ -172,10 +179,7 @@ class _Pass extends StatelessWidget {
                   children: [
                     ReservationStatusLabel(status: r.status),
                     const Spacer(),
-                    Text(
-                      AppStrings.generalAccess.toUpperCase(),
-                      style: text.labelSmall,
-                    ),
+                    Text(r.accessLabel.toUpperCase(), style: text.labelSmall),
                   ],
                 ),
                 const SizedBox(height: AppSpacing.lg),
@@ -216,6 +220,14 @@ class _Pass extends StatelessWidget {
             value: r.userName,
             sub: r.userEmail,
           ),
+          if (r.isPaid) ...[
+            const AppDivider(height: 1),
+            _Field(
+              label: AppStrings.amountPaid,
+              value: Money.format(r.pricePaid, r.currency ?? 'EUR'),
+              sub: r.isRefunded ? AppStrings.paymentRefundedTitle : null,
+            ),
+          ],
           const _TearLine(),
           Padding(
             padding: const EdgeInsets.fromLTRB(

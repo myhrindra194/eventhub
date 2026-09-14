@@ -2,6 +2,7 @@ import 'package:eventhub/features/auth/domain/entities/app_user.dart';
 import 'package:eventhub/features/auth/domain/entities/user_role.dart';
 import 'package:eventhub/features/events/domain/entities/event.dart';
 import 'package:eventhub/features/events/domain/entities/event_category.dart';
+import 'package:eventhub/features/events/domain/entities/event_tier.dart';
 import 'package:eventhub/features/reservations/domain/entities/reservation.dart';
 
 /// Deterministic fixtures for domain tests.
@@ -29,8 +30,12 @@ abstract final class Fixtures {
     DateTime? startsAt,
     String organizerId = 'org-1',
     List<String> staffIds = const [],
+    List<EventTier> tiers = const [],
+    String? currency,
   }) => Event(
     staffIds: staffIds,
+    tiers: tiers,
+    currency: currency,
     id: id,
     title: 'Flutter Meetup Madagascar',
     description: 'Rencontre de la communauté Flutter.',

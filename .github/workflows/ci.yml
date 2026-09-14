@@ -86,6 +86,11 @@ jobs:
           distribution: temurin
           java-version: 17
       - run: npm --prefix firebase/tests ci
+      # Placeholder Stripe secrets for the emulator: the tests sign webhook
+      # payloads with this value and never call the Stripe API.
+      - name: Emulator secrets
+        run: |
+          printf 'STRIPE_SECRET_KEY=sk_test_emulator_not_a_real_key\nSTRIPE_WEBHOOK_SECRET=whsec_emulator_local_testing_secret\n' > functions/.secret.local
       - name: Functions integration tests
         run: |
           firebase/tests/node_modules/.bin/firebase --project demo-eventhub emulators:exec --only auth,firestore,functions,storage "npm --prefix functions test"

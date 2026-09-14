@@ -362,7 +362,9 @@ class _ParticipantRow extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                 ),
                 Text(
-                  reservation.userEmail,
+                  reservation.tierName == null
+                      ? reservation.userEmail
+                      : '${reservation.accessLabel} · ${reservation.userEmail}',
                   style: text.bodySmall,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,

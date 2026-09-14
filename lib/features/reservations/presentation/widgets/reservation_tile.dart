@@ -1,5 +1,4 @@
 import 'package:eventhub/app/theme/theme.dart';
-import 'package:eventhub/core/l10n/app_strings.dart';
 import 'package:eventhub/core/utils/date_formats.dart';
 import 'package:eventhub/core/widgets/design_system.dart';
 import 'package:eventhub/features/reservations/domain/entities/reservation.dart';
@@ -106,7 +105,7 @@ class TicketCard extends StatelessWidget {
                           ReservationStatusLabel(status: reservation.status),
                           const Spacer(),
                           Text(
-                            AppStrings.generalAccess.toUpperCase(),
+                            reservation.accessLabel.toUpperCase(),
                             style: text.labelSmall,
                           ),
                         ],
@@ -235,6 +234,10 @@ class ReservationStatusLabel extends StatelessWidget {
       ReservationStatus.confirmed => (
         AppTone.success,
         Icons.check_circle_rounded,
+      ),
+      ReservationStatus.pending => (
+        AppTone.warning,
+        Icons.hourglass_top_rounded,
       ),
       ReservationStatus.cancelled => (AppTone.danger, Icons.cancel_rounded),
     };

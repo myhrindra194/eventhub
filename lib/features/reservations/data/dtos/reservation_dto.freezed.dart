@@ -16,7 +16,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$ReservationDto {
 
- String get eventId; String get userId; String get organizerId; String get userName; String get userEmail; String get eventTitle;@TimestampConverter() DateTime get eventStartsAt; String get eventLocation;@JsonKey(unknownEnumValue: ReservationStatus.cancelled) ReservationStatus get status;@TimestampConverter() DateTime get reservedAt;@NullableTimestampConverter() DateTime? get cancelledAt;
+ String get eventId; String get userId; String get organizerId; String get userName; String get userEmail; String get eventTitle;@TimestampConverter() DateTime get eventStartsAt; String get eventLocation;@JsonKey(unknownEnumValue: ReservationStatus.cancelled) ReservationStatus get status;@TimestampConverter() DateTime get reservedAt;@NullableTimestampConverter() DateTime? get cancelledAt;@JsonKey(includeIfNull: false) String? get tierId;@JsonKey(includeIfNull: false) String? get tierName; int get pricePaid;@JsonKey(includeIfNull: false) int? get amountDue;@JsonKey(includeIfNull: false) String? get currency;@JsonKey(includeIfNull: false) String? get paymentStatus;@JsonKey(includeIfNull: false) String? get checkoutUrl;@JsonKey(includeIfNull: false)@NullableTimestampConverter() DateTime? get holdExpiresAt;
 /// Create a copy of ReservationDto
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -30,20 +30,20 @@ $ReservationDtoCopyWith<ReservationDto> get copyWith => _$ReservationDtoCopyWith
 @override
 bool operator ==(Object other) {
   final _this = this as ReservationDto;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ReservationDto&&(identical(other.eventId, _this.eventId) || other.eventId == _this.eventId)&&(identical(other.userId, _this.userId) || other.userId == _this.userId)&&(identical(other.organizerId, _this.organizerId) || other.organizerId == _this.organizerId)&&(identical(other.userName, _this.userName) || other.userName == _this.userName)&&(identical(other.userEmail, _this.userEmail) || other.userEmail == _this.userEmail)&&(identical(other.eventTitle, _this.eventTitle) || other.eventTitle == _this.eventTitle)&&(identical(other.eventStartsAt, _this.eventStartsAt) || other.eventStartsAt == _this.eventStartsAt)&&(identical(other.eventLocation, _this.eventLocation) || other.eventLocation == _this.eventLocation)&&(identical(other.status, _this.status) || other.status == _this.status)&&(identical(other.reservedAt, _this.reservedAt) || other.reservedAt == _this.reservedAt)&&(identical(other.cancelledAt, _this.cancelledAt) || other.cancelledAt == _this.cancelledAt));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ReservationDto&&(identical(other.eventId, _this.eventId) || other.eventId == _this.eventId)&&(identical(other.userId, _this.userId) || other.userId == _this.userId)&&(identical(other.organizerId, _this.organizerId) || other.organizerId == _this.organizerId)&&(identical(other.userName, _this.userName) || other.userName == _this.userName)&&(identical(other.userEmail, _this.userEmail) || other.userEmail == _this.userEmail)&&(identical(other.eventTitle, _this.eventTitle) || other.eventTitle == _this.eventTitle)&&(identical(other.eventStartsAt, _this.eventStartsAt) || other.eventStartsAt == _this.eventStartsAt)&&(identical(other.eventLocation, _this.eventLocation) || other.eventLocation == _this.eventLocation)&&(identical(other.status, _this.status) || other.status == _this.status)&&(identical(other.reservedAt, _this.reservedAt) || other.reservedAt == _this.reservedAt)&&(identical(other.cancelledAt, _this.cancelledAt) || other.cancelledAt == _this.cancelledAt)&&(identical(other.tierId, _this.tierId) || other.tierId == _this.tierId)&&(identical(other.tierName, _this.tierName) || other.tierName == _this.tierName)&&(identical(other.pricePaid, _this.pricePaid) || other.pricePaid == _this.pricePaid)&&(identical(other.amountDue, _this.amountDue) || other.amountDue == _this.amountDue)&&(identical(other.currency, _this.currency) || other.currency == _this.currency)&&(identical(other.paymentStatus, _this.paymentStatus) || other.paymentStatus == _this.paymentStatus)&&(identical(other.checkoutUrl, _this.checkoutUrl) || other.checkoutUrl == _this.checkoutUrl)&&(identical(other.holdExpiresAt, _this.holdExpiresAt) || other.holdExpiresAt == _this.holdExpiresAt));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
   final _this = this as ReservationDto;
-  return Object.hash(runtimeType,_this.eventId,_this.userId,_this.organizerId,_this.userName,_this.userEmail,_this.eventTitle,_this.eventStartsAt,_this.eventLocation,_this.status,_this.reservedAt,_this.cancelledAt);
+  return Object.hashAll([runtimeType,_this.eventId,_this.userId,_this.organizerId,_this.userName,_this.userEmail,_this.eventTitle,_this.eventStartsAt,_this.eventLocation,_this.status,_this.reservedAt,_this.cancelledAt,_this.tierId,_this.tierName,_this.pricePaid,_this.amountDue,_this.currency,_this.paymentStatus,_this.checkoutUrl,_this.holdExpiresAt]);
 }
 
 @override
 String toString() {
   final _this = this as ReservationDto;
-  return 'ReservationDto(eventId: ${_this.eventId}, userId: ${_this.userId}, organizerId: ${_this.organizerId}, userName: ${_this.userName}, userEmail: ${_this.userEmail}, eventTitle: ${_this.eventTitle}, eventStartsAt: ${_this.eventStartsAt}, eventLocation: ${_this.eventLocation}, status: ${_this.status}, reservedAt: ${_this.reservedAt}, cancelledAt: ${_this.cancelledAt})';
+  return 'ReservationDto(eventId: ${_this.eventId}, userId: ${_this.userId}, organizerId: ${_this.organizerId}, userName: ${_this.userName}, userEmail: ${_this.userEmail}, eventTitle: ${_this.eventTitle}, eventStartsAt: ${_this.eventStartsAt}, eventLocation: ${_this.eventLocation}, status: ${_this.status}, reservedAt: ${_this.reservedAt}, cancelledAt: ${_this.cancelledAt}, tierId: ${_this.tierId}, tierName: ${_this.tierName}, pricePaid: ${_this.pricePaid}, amountDue: ${_this.amountDue}, currency: ${_this.currency}, paymentStatus: ${_this.paymentStatus}, checkoutUrl: ${_this.checkoutUrl}, holdExpiresAt: ${_this.holdExpiresAt})';
 }
 
 
@@ -54,7 +54,7 @@ abstract mixin class $ReservationDtoCopyWith<$Res>  {
   factory $ReservationDtoCopyWith(ReservationDto value, $Res Function(ReservationDto) _then) = _$ReservationDtoCopyWithImpl;
 @useResult
 $Res call({
- String eventId, String userId, String organizerId, String userName, String userEmail, String eventTitle,@TimestampConverter() DateTime eventStartsAt, String eventLocation,@JsonKey(unknownEnumValue: ReservationStatus.cancelled) ReservationStatus status,@TimestampConverter() DateTime reservedAt,@NullableTimestampConverter() DateTime? cancelledAt
+ String eventId, String userId, String organizerId, String userName, String userEmail, String eventTitle,@TimestampConverter() DateTime eventStartsAt, String eventLocation,@JsonKey(unknownEnumValue: ReservationStatus.cancelled) ReservationStatus status,@TimestampConverter() DateTime reservedAt,@NullableTimestampConverter() DateTime? cancelledAt,@JsonKey(includeIfNull: false) String? tierId,@JsonKey(includeIfNull: false) String? tierName, int pricePaid,@JsonKey(includeIfNull: false) int? amountDue,@JsonKey(includeIfNull: false) String? currency,@JsonKey(includeIfNull: false) String? paymentStatus,@JsonKey(includeIfNull: false) String? checkoutUrl,@JsonKey(includeIfNull: false)@NullableTimestampConverter() DateTime? holdExpiresAt
 });
 
 
@@ -71,7 +71,7 @@ class _$ReservationDtoCopyWithImpl<$Res>
 
 /// Create a copy of ReservationDto
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? eventId = null,Object? userId = null,Object? organizerId = null,Object? userName = null,Object? userEmail = null,Object? eventTitle = null,Object? eventStartsAt = null,Object? eventLocation = null,Object? status = null,Object? reservedAt = null,Object? cancelledAt = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? eventId = null,Object? userId = null,Object? organizerId = null,Object? userName = null,Object? userEmail = null,Object? eventTitle = null,Object? eventStartsAt = null,Object? eventLocation = null,Object? status = null,Object? reservedAt = null,Object? cancelledAt = freezed,Object? tierId = freezed,Object? tierName = freezed,Object? pricePaid = null,Object? amountDue = freezed,Object? currency = freezed,Object? paymentStatus = freezed,Object? checkoutUrl = freezed,Object? holdExpiresAt = freezed,}) {
   return _then(ReservationDto(
 eventId: null == eventId ? _self.eventId : eventId // ignore: cast_nullable_to_non_nullable
 as String,userId: null == userId ? _self.userId : userId // ignore: cast_nullable_to_non_nullable
@@ -84,6 +84,14 @@ as DateTime,eventLocation: null == eventLocation ? _self.eventLocation : eventLo
 as String,status: null == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
 as ReservationStatus,reservedAt: null == reservedAt ? _self.reservedAt : reservedAt // ignore: cast_nullable_to_non_nullable
 as DateTime,cancelledAt: freezed == cancelledAt ? _self.cancelledAt : cancelledAt // ignore: cast_nullable_to_non_nullable
+as DateTime?,tierId: freezed == tierId ? _self.tierId : tierId // ignore: cast_nullable_to_non_nullable
+as String?,tierName: freezed == tierName ? _self.tierName : tierName // ignore: cast_nullable_to_non_nullable
+as String?,pricePaid: null == pricePaid ? _self.pricePaid : pricePaid // ignore: cast_nullable_to_non_nullable
+as int,amountDue: freezed == amountDue ? _self.amountDue : amountDue // ignore: cast_nullable_to_non_nullable
+as int?,currency: freezed == currency ? _self.currency : currency // ignore: cast_nullable_to_non_nullable
+as String?,paymentStatus: freezed == paymentStatus ? _self.paymentStatus : paymentStatus // ignore: cast_nullable_to_non_nullable
+as String?,checkoutUrl: freezed == checkoutUrl ? _self.checkoutUrl : checkoutUrl // ignore: cast_nullable_to_non_nullable
+as String?,holdExpiresAt: freezed == holdExpiresAt ? _self.holdExpiresAt : holdExpiresAt // ignore: cast_nullable_to_non_nullable
 as DateTime?,
   ));
 }
@@ -169,10 +177,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String eventId,  String userId,  String organizerId,  String userName,  String userEmail,  String eventTitle, @TimestampConverter()  DateTime eventStartsAt,  String eventLocation, @JsonKey(unknownEnumValue: ReservationStatus.cancelled)  ReservationStatus status, @TimestampConverter()  DateTime reservedAt, @NullableTimestampConverter()  DateTime? cancelledAt)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String eventId,  String userId,  String organizerId,  String userName,  String userEmail,  String eventTitle, @TimestampConverter()  DateTime eventStartsAt,  String eventLocation, @JsonKey(unknownEnumValue: ReservationStatus.cancelled)  ReservationStatus status, @TimestampConverter()  DateTime reservedAt, @NullableTimestampConverter()  DateTime? cancelledAt, @JsonKey(includeIfNull: false)  String? tierId, @JsonKey(includeIfNull: false)  String? tierName,  int pricePaid, @JsonKey(includeIfNull: false)  int? amountDue, @JsonKey(includeIfNull: false)  String? currency, @JsonKey(includeIfNull: false)  String? paymentStatus, @JsonKey(includeIfNull: false)  String? checkoutUrl, @JsonKey(includeIfNull: false)@NullableTimestampConverter()  DateTime? holdExpiresAt)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _ReservationDto() when $default != null:
-return $default(_that.eventId,_that.userId,_that.organizerId,_that.userName,_that.userEmail,_that.eventTitle,_that.eventStartsAt,_that.eventLocation,_that.status,_that.reservedAt,_that.cancelledAt);case _:
+return $default(_that.eventId,_that.userId,_that.organizerId,_that.userName,_that.userEmail,_that.eventTitle,_that.eventStartsAt,_that.eventLocation,_that.status,_that.reservedAt,_that.cancelledAt,_that.tierId,_that.tierName,_that.pricePaid,_that.amountDue,_that.currency,_that.paymentStatus,_that.checkoutUrl,_that.holdExpiresAt);case _:
   return orElse();
 
 }
@@ -190,10 +198,10 @@ return $default(_that.eventId,_that.userId,_that.organizerId,_that.userName,_tha
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String eventId,  String userId,  String organizerId,  String userName,  String userEmail,  String eventTitle, @TimestampConverter()  DateTime eventStartsAt,  String eventLocation, @JsonKey(unknownEnumValue: ReservationStatus.cancelled)  ReservationStatus status, @TimestampConverter()  DateTime reservedAt, @NullableTimestampConverter()  DateTime? cancelledAt)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String eventId,  String userId,  String organizerId,  String userName,  String userEmail,  String eventTitle, @TimestampConverter()  DateTime eventStartsAt,  String eventLocation, @JsonKey(unknownEnumValue: ReservationStatus.cancelled)  ReservationStatus status, @TimestampConverter()  DateTime reservedAt, @NullableTimestampConverter()  DateTime? cancelledAt, @JsonKey(includeIfNull: false)  String? tierId, @JsonKey(includeIfNull: false)  String? tierName,  int pricePaid, @JsonKey(includeIfNull: false)  int? amountDue, @JsonKey(includeIfNull: false)  String? currency, @JsonKey(includeIfNull: false)  String? paymentStatus, @JsonKey(includeIfNull: false)  String? checkoutUrl, @JsonKey(includeIfNull: false)@NullableTimestampConverter()  DateTime? holdExpiresAt)  $default,) {final _that = this;
 switch (_that) {
 case _ReservationDto():
-return $default(_that.eventId,_that.userId,_that.organizerId,_that.userName,_that.userEmail,_that.eventTitle,_that.eventStartsAt,_that.eventLocation,_that.status,_that.reservedAt,_that.cancelledAt);case _:
+return $default(_that.eventId,_that.userId,_that.organizerId,_that.userName,_that.userEmail,_that.eventTitle,_that.eventStartsAt,_that.eventLocation,_that.status,_that.reservedAt,_that.cancelledAt,_that.tierId,_that.tierName,_that.pricePaid,_that.amountDue,_that.currency,_that.paymentStatus,_that.checkoutUrl,_that.holdExpiresAt);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -210,10 +218,10 @@ return $default(_that.eventId,_that.userId,_that.organizerId,_that.userName,_tha
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String eventId,  String userId,  String organizerId,  String userName,  String userEmail,  String eventTitle, @TimestampConverter()  DateTime eventStartsAt,  String eventLocation, @JsonKey(unknownEnumValue: ReservationStatus.cancelled)  ReservationStatus status, @TimestampConverter()  DateTime reservedAt, @NullableTimestampConverter()  DateTime? cancelledAt)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String eventId,  String userId,  String organizerId,  String userName,  String userEmail,  String eventTitle, @TimestampConverter()  DateTime eventStartsAt,  String eventLocation, @JsonKey(unknownEnumValue: ReservationStatus.cancelled)  ReservationStatus status, @TimestampConverter()  DateTime reservedAt, @NullableTimestampConverter()  DateTime? cancelledAt, @JsonKey(includeIfNull: false)  String? tierId, @JsonKey(includeIfNull: false)  String? tierName,  int pricePaid, @JsonKey(includeIfNull: false)  int? amountDue, @JsonKey(includeIfNull: false)  String? currency, @JsonKey(includeIfNull: false)  String? paymentStatus, @JsonKey(includeIfNull: false)  String? checkoutUrl, @JsonKey(includeIfNull: false)@NullableTimestampConverter()  DateTime? holdExpiresAt)?  $default,) {final _that = this;
 switch (_that) {
 case _ReservationDto() when $default != null:
-return $default(_that.eventId,_that.userId,_that.organizerId,_that.userName,_that.userEmail,_that.eventTitle,_that.eventStartsAt,_that.eventLocation,_that.status,_that.reservedAt,_that.cancelledAt);case _:
+return $default(_that.eventId,_that.userId,_that.organizerId,_that.userName,_that.userEmail,_that.eventTitle,_that.eventStartsAt,_that.eventLocation,_that.status,_that.reservedAt,_that.cancelledAt,_that.tierId,_that.tierName,_that.pricePaid,_that.amountDue,_that.currency,_that.paymentStatus,_that.checkoutUrl,_that.holdExpiresAt);case _:
   return null;
 
 }
@@ -225,7 +233,7 @@ return $default(_that.eventId,_that.userId,_that.organizerId,_that.userName,_tha
 @JsonSerializable()
 
 class _ReservationDto extends ReservationDto {
-  const _ReservationDto({required this.eventId, required this.userId, required this.organizerId, required this.userName, required this.userEmail, required this.eventTitle, @TimestampConverter() required this.eventStartsAt, required this.eventLocation, @JsonKey(unknownEnumValue: ReservationStatus.cancelled) required this.status, @TimestampConverter() required this.reservedAt, @NullableTimestampConverter() this.cancelledAt}): super._();
+  const _ReservationDto({required this.eventId, required this.userId, required this.organizerId, required this.userName, required this.userEmail, required this.eventTitle, @TimestampConverter() required this.eventStartsAt, required this.eventLocation, @JsonKey(unknownEnumValue: ReservationStatus.cancelled) required this.status, @TimestampConverter() required this.reservedAt, @NullableTimestampConverter() this.cancelledAt, @JsonKey(includeIfNull: false) this.tierId, @JsonKey(includeIfNull: false) this.tierName, this.pricePaid = 0, @JsonKey(includeIfNull: false) this.amountDue, @JsonKey(includeIfNull: false) this.currency, @JsonKey(includeIfNull: false) this.paymentStatus, @JsonKey(includeIfNull: false) this.checkoutUrl, @JsonKey(includeIfNull: false)@NullableTimestampConverter() this.holdExpiresAt}): super._();
   factory _ReservationDto.fromJson(Map<String, dynamic> json) => _$ReservationDtoFromJson(json);
 
 @override final  String eventId;
@@ -239,6 +247,14 @@ class _ReservationDto extends ReservationDto {
 @override@JsonKey(unknownEnumValue: ReservationStatus.cancelled) final  ReservationStatus status;
 @override@TimestampConverter() final  DateTime reservedAt;
 @override@NullableTimestampConverter() final  DateTime? cancelledAt;
+@override@JsonKey(includeIfNull: false) final  String? tierId;
+@override@JsonKey(includeIfNull: false) final  String? tierName;
+@override@JsonKey() final  int pricePaid;
+@override@JsonKey(includeIfNull: false) final  int? amountDue;
+@override@JsonKey(includeIfNull: false) final  String? currency;
+@override@JsonKey(includeIfNull: false) final  String? paymentStatus;
+@override@JsonKey(includeIfNull: false) final  String? checkoutUrl;
+@override@JsonKey(includeIfNull: false)@NullableTimestampConverter() final  DateTime? holdExpiresAt;
 
 /// Create a copy of ReservationDto
 /// with the given fields replaced by the non-null parameter values.
@@ -253,18 +269,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is _ReservationDto&&(identical(other.eventId, eventId) || other.eventId == eventId)&&(identical(other.userId, userId) || other.userId == userId)&&(identical(other.organizerId, organizerId) || other.organizerId == organizerId)&&(identical(other.userName, userName) || other.userName == userName)&&(identical(other.userEmail, userEmail) || other.userEmail == userEmail)&&(identical(other.eventTitle, eventTitle) || other.eventTitle == eventTitle)&&(identical(other.eventStartsAt, eventStartsAt) || other.eventStartsAt == eventStartsAt)&&(identical(other.eventLocation, eventLocation) || other.eventLocation == eventLocation)&&(identical(other.status, status) || other.status == status)&&(identical(other.reservedAt, reservedAt) || other.reservedAt == reservedAt)&&(identical(other.cancelledAt, cancelledAt) || other.cancelledAt == cancelledAt));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _ReservationDto&&(identical(other.eventId, eventId) || other.eventId == eventId)&&(identical(other.userId, userId) || other.userId == userId)&&(identical(other.organizerId, organizerId) || other.organizerId == organizerId)&&(identical(other.userName, userName) || other.userName == userName)&&(identical(other.userEmail, userEmail) || other.userEmail == userEmail)&&(identical(other.eventTitle, eventTitle) || other.eventTitle == eventTitle)&&(identical(other.eventStartsAt, eventStartsAt) || other.eventStartsAt == eventStartsAt)&&(identical(other.eventLocation, eventLocation) || other.eventLocation == eventLocation)&&(identical(other.status, status) || other.status == status)&&(identical(other.reservedAt, reservedAt) || other.reservedAt == reservedAt)&&(identical(other.cancelledAt, cancelledAt) || other.cancelledAt == cancelledAt)&&(identical(other.tierId, tierId) || other.tierId == tierId)&&(identical(other.tierName, tierName) || other.tierName == tierName)&&(identical(other.pricePaid, pricePaid) || other.pricePaid == pricePaid)&&(identical(other.amountDue, amountDue) || other.amountDue == amountDue)&&(identical(other.currency, currency) || other.currency == currency)&&(identical(other.paymentStatus, paymentStatus) || other.paymentStatus == paymentStatus)&&(identical(other.checkoutUrl, checkoutUrl) || other.checkoutUrl == checkoutUrl)&&(identical(other.holdExpiresAt, holdExpiresAt) || other.holdExpiresAt == holdExpiresAt));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
-    return Object.hash(runtimeType,eventId,userId,organizerId,userName,userEmail,eventTitle,eventStartsAt,eventLocation,status,reservedAt,cancelledAt);
+    return Object.hashAll([runtimeType,eventId,userId,organizerId,userName,userEmail,eventTitle,eventStartsAt,eventLocation,status,reservedAt,cancelledAt,tierId,tierName,pricePaid,amountDue,currency,paymentStatus,checkoutUrl,holdExpiresAt]);
 }
 
 @override
 String toString() {
-    return 'ReservationDto(eventId: $eventId, userId: $userId, organizerId: $organizerId, userName: $userName, userEmail: $userEmail, eventTitle: $eventTitle, eventStartsAt: $eventStartsAt, eventLocation: $eventLocation, status: $status, reservedAt: $reservedAt, cancelledAt: $cancelledAt)';
+    return 'ReservationDto(eventId: $eventId, userId: $userId, organizerId: $organizerId, userName: $userName, userEmail: $userEmail, eventTitle: $eventTitle, eventStartsAt: $eventStartsAt, eventLocation: $eventLocation, status: $status, reservedAt: $reservedAt, cancelledAt: $cancelledAt, tierId: $tierId, tierName: $tierName, pricePaid: $pricePaid, amountDue: $amountDue, currency: $currency, paymentStatus: $paymentStatus, checkoutUrl: $checkoutUrl, holdExpiresAt: $holdExpiresAt)';
 }
 
 
@@ -275,7 +291,7 @@ abstract mixin class _$ReservationDtoCopyWith<$Res> implements $ReservationDtoCo
   factory _$ReservationDtoCopyWith(_ReservationDto value, $Res Function(_ReservationDto) _then) = __$ReservationDtoCopyWithImpl;
 @override @useResult
 $Res call({
- String eventId, String userId, String organizerId, String userName, String userEmail, String eventTitle,@TimestampConverter() DateTime eventStartsAt, String eventLocation,@JsonKey(unknownEnumValue: ReservationStatus.cancelled) ReservationStatus status,@TimestampConverter() DateTime reservedAt,@NullableTimestampConverter() DateTime? cancelledAt
+ String eventId, String userId, String organizerId, String userName, String userEmail, String eventTitle,@TimestampConverter() DateTime eventStartsAt, String eventLocation,@JsonKey(unknownEnumValue: ReservationStatus.cancelled) ReservationStatus status,@TimestampConverter() DateTime reservedAt,@NullableTimestampConverter() DateTime? cancelledAt,@JsonKey(includeIfNull: false) String? tierId,@JsonKey(includeIfNull: false) String? tierName, int pricePaid,@JsonKey(includeIfNull: false) int? amountDue,@JsonKey(includeIfNull: false) String? currency,@JsonKey(includeIfNull: false) String? paymentStatus,@JsonKey(includeIfNull: false) String? checkoutUrl,@JsonKey(includeIfNull: false)@NullableTimestampConverter() DateTime? holdExpiresAt
 });
 
 
@@ -292,7 +308,7 @@ class __$ReservationDtoCopyWithImpl<$Res>
 
 /// Create a copy of ReservationDto
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? eventId = null,Object? userId = null,Object? organizerId = null,Object? userName = null,Object? userEmail = null,Object? eventTitle = null,Object? eventStartsAt = null,Object? eventLocation = null,Object? status = null,Object? reservedAt = null,Object? cancelledAt = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? eventId = null,Object? userId = null,Object? organizerId = null,Object? userName = null,Object? userEmail = null,Object? eventTitle = null,Object? eventStartsAt = null,Object? eventLocation = null,Object? status = null,Object? reservedAt = null,Object? cancelledAt = freezed,Object? tierId = freezed,Object? tierName = freezed,Object? pricePaid = null,Object? amountDue = freezed,Object? currency = freezed,Object? paymentStatus = freezed,Object? checkoutUrl = freezed,Object? holdExpiresAt = freezed,}) {
   return _then(_ReservationDto(
 eventId: null == eventId ? _self.eventId : eventId // ignore: cast_nullable_to_non_nullable
 as String,userId: null == userId ? _self.userId : userId // ignore: cast_nullable_to_non_nullable
@@ -305,6 +321,14 @@ as DateTime,eventLocation: null == eventLocation ? _self.eventLocation : eventLo
 as String,status: null == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
 as ReservationStatus,reservedAt: null == reservedAt ? _self.reservedAt : reservedAt // ignore: cast_nullable_to_non_nullable
 as DateTime,cancelledAt: freezed == cancelledAt ? _self.cancelledAt : cancelledAt // ignore: cast_nullable_to_non_nullable
+as DateTime?,tierId: freezed == tierId ? _self.tierId : tierId // ignore: cast_nullable_to_non_nullable
+as String?,tierName: freezed == tierName ? _self.tierName : tierName // ignore: cast_nullable_to_non_nullable
+as String?,pricePaid: null == pricePaid ? _self.pricePaid : pricePaid // ignore: cast_nullable_to_non_nullable
+as int,amountDue: freezed == amountDue ? _self.amountDue : amountDue // ignore: cast_nullable_to_non_nullable
+as int?,currency: freezed == currency ? _self.currency : currency // ignore: cast_nullable_to_non_nullable
+as String?,paymentStatus: freezed == paymentStatus ? _self.paymentStatus : paymentStatus // ignore: cast_nullable_to_non_nullable
+as String?,checkoutUrl: freezed == checkoutUrl ? _self.checkoutUrl : checkoutUrl // ignore: cast_nullable_to_non_nullable
+as String?,holdExpiresAt: freezed == holdExpiresAt ? _self.holdExpiresAt : holdExpiresAt // ignore: cast_nullable_to_non_nullable
 as DateTime?,
   ));
 }

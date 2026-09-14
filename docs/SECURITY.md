@@ -221,6 +221,21 @@ Tests : règles `make test-rules` (118), fonctions `make test-functions`.
 | Retrait | le principal retire un membre ou annule une invitation ; un membre peut partir ; le principal ne peut pas être retiré | `removeCoOrganizer` |
 | Suppression de compte | le membre est retiré de toutes les équipes et ses invitations en attente supprimées | `deleteAccount` |
 
+### v1.6 : types de billets (F-12) et paiement (F-11)
+
+| Surface | Garantie | Où |
+|---|---|---|
+| `events/{id}.tiers` | ≤ 6 types, ids `[a-z0-9]{1,20}` (sûrs dans un chemin de champ), prix entiers ≥ 0, `available ≤ capacity` ; `currency` dans une liste fermée ; les totaux de l'événement sont recalculés par `normalizeEventTiers` (transaction, idempotente) | règles + fonction |
+| Prise de place par un participant | le type bouge **dans la même écriture** que `availablePlaces` (`tierMoved`, `seatTierConsistent` via `getAfter` de la réservation) ; seul un type **gratuit** se réserve depuis le client | règles (testées) |
+| Réservation payante | un client ne peut ni créer un statut `pending`, ni écrire `pricePaid`, `paymentStatus`, `paymentIntentId`, `checkoutSessionId`, `holdExpiresAt`… (`serverPaymentFields()`) ; ni annuler un billet payé, ni re-réserver par-dessus un historique de paiement | règles (testées) |
+| Montant | fixé par `createCheckoutSession` à partir du type lu en transaction, jamais reçu du client | fonction |
+| Données de carte | jamais dans l'app ni chez nous : page Stripe Checkout hébergée (périmètre PCI SAQ A) | architecture |
+| Webhook | signature `Stripe-Signature` vérifiée sur le corps brut, `POST` seulement, 400 sinon ; traitement idempotent (confirmation ignorée si déjà confirmée, libération ignorée si plus en attente) | `stripeWebhook` (testé) |
+| Retour navigateur `/pay/success` | **n'est pas une preuve de paiement** : l'écran lit la réservation, que seul le webhook confirme | app + Hosting |
+| Surventes pendant le paiement | place tenue en transaction ; libérée par abandon, expiration Stripe ou balayage (`releaseExpiredHolds`, marge de 5 min) ; paiement tardif sans place → remboursé | fonctions (testées) |
+| Remboursement | `cancelPaidReservation` : propriétaire, billet payé actif, avant le début ; rembourse **avant** de libérer la place ; échecs de remboursements de masse marqués `refund_failed` et journalisés dans `audit` | fonction |
+| Secrets | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` dans Secret Manager, attachés aux seules fonctions qui les utilisent ; valeurs factices pour les émulateurs dans `functions/.secret.local` (ignoré par Git) | `defineSecret` |
+
 ### Notifications push : ce qui est privé, ce qui est serveur
 
 | Chemin | Client | Cloud Functions (SDK Admin, règles contournées) |

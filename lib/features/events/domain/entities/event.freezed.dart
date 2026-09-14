@@ -18,7 +18,10 @@ mixin _$Event {
  String get id; String get title; String get description; EventCategory get category; DateTime get startsAt; String get location; int get capacity; int get availablePlaces; String get organizerId; String get organizerName; String? get imageUrl; DateTime? get createdAt; DateTime? get updatedAt;/// Co-organizers (F-16): organizers who accepted an invitation. They
 /// manage the content, the guest list and the door; only the owner
 /// ([organizerId]) composes the team and may delete the event.
- List<String> get staffIds;
+ List<String> get staffIds;/// Ticket types (F-12), in display order. Empty for a simple event with
+/// one free pool of [capacity] seats.
+ List<EventTier> get tiers;/// ISO code of the paid types' prices (`EUR`, `USD`, `MGA`).
+ String? get currency;
 /// Create a copy of Event
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -30,20 +33,20 @@ $EventCopyWith<Event> get copyWith => _$EventCopyWithImpl<Event>(this as Event, 
 @override
 bool operator ==(Object other) {
   final _this = this as Event;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is Event&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.title, _this.title) || other.title == _this.title)&&(identical(other.description, _this.description) || other.description == _this.description)&&(identical(other.category, _this.category) || other.category == _this.category)&&(identical(other.startsAt, _this.startsAt) || other.startsAt == _this.startsAt)&&(identical(other.location, _this.location) || other.location == _this.location)&&(identical(other.capacity, _this.capacity) || other.capacity == _this.capacity)&&(identical(other.availablePlaces, _this.availablePlaces) || other.availablePlaces == _this.availablePlaces)&&(identical(other.organizerId, _this.organizerId) || other.organizerId == _this.organizerId)&&(identical(other.organizerName, _this.organizerName) || other.organizerName == _this.organizerName)&&(identical(other.imageUrl, _this.imageUrl) || other.imageUrl == _this.imageUrl)&&(identical(other.createdAt, _this.createdAt) || other.createdAt == _this.createdAt)&&(identical(other.updatedAt, _this.updatedAt) || other.updatedAt == _this.updatedAt)&&const DeepCollectionEquality().equals(other.staffIds, _this.staffIds));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is Event&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.title, _this.title) || other.title == _this.title)&&(identical(other.description, _this.description) || other.description == _this.description)&&(identical(other.category, _this.category) || other.category == _this.category)&&(identical(other.startsAt, _this.startsAt) || other.startsAt == _this.startsAt)&&(identical(other.location, _this.location) || other.location == _this.location)&&(identical(other.capacity, _this.capacity) || other.capacity == _this.capacity)&&(identical(other.availablePlaces, _this.availablePlaces) || other.availablePlaces == _this.availablePlaces)&&(identical(other.organizerId, _this.organizerId) || other.organizerId == _this.organizerId)&&(identical(other.organizerName, _this.organizerName) || other.organizerName == _this.organizerName)&&(identical(other.imageUrl, _this.imageUrl) || other.imageUrl == _this.imageUrl)&&(identical(other.createdAt, _this.createdAt) || other.createdAt == _this.createdAt)&&(identical(other.updatedAt, _this.updatedAt) || other.updatedAt == _this.updatedAt)&&const DeepCollectionEquality().equals(other.staffIds, _this.staffIds)&&const DeepCollectionEquality().equals(other.tiers, _this.tiers)&&(identical(other.currency, _this.currency) || other.currency == _this.currency));
 }
 
 
 @override
 int get hashCode {
   final _this = this as Event;
-  return Object.hash(runtimeType,_this.id,_this.title,_this.description,_this.category,_this.startsAt,_this.location,_this.capacity,_this.availablePlaces,_this.organizerId,_this.organizerName,_this.imageUrl,_this.createdAt,_this.updatedAt,const DeepCollectionEquality().hash(_this.staffIds));
+  return Object.hash(runtimeType,_this.id,_this.title,_this.description,_this.category,_this.startsAt,_this.location,_this.capacity,_this.availablePlaces,_this.organizerId,_this.organizerName,_this.imageUrl,_this.createdAt,_this.updatedAt,const DeepCollectionEquality().hash(_this.staffIds),const DeepCollectionEquality().hash(_this.tiers),_this.currency);
 }
 
 @override
 String toString() {
   final _this = this as Event;
-  return 'Event(id: ${_this.id}, title: ${_this.title}, description: ${_this.description}, category: ${_this.category}, startsAt: ${_this.startsAt}, location: ${_this.location}, capacity: ${_this.capacity}, availablePlaces: ${_this.availablePlaces}, organizerId: ${_this.organizerId}, organizerName: ${_this.organizerName}, imageUrl: ${_this.imageUrl}, createdAt: ${_this.createdAt}, updatedAt: ${_this.updatedAt}, staffIds: ${_this.staffIds})';
+  return 'Event(id: ${_this.id}, title: ${_this.title}, description: ${_this.description}, category: ${_this.category}, startsAt: ${_this.startsAt}, location: ${_this.location}, capacity: ${_this.capacity}, availablePlaces: ${_this.availablePlaces}, organizerId: ${_this.organizerId}, organizerName: ${_this.organizerName}, imageUrl: ${_this.imageUrl}, createdAt: ${_this.createdAt}, updatedAt: ${_this.updatedAt}, staffIds: ${_this.staffIds}, tiers: ${_this.tiers}, currency: ${_this.currency})';
 }
 
 
@@ -54,7 +57,7 @@ abstract mixin class $EventCopyWith<$Res>  {
   factory $EventCopyWith(Event value, $Res Function(Event) _then) = _$EventCopyWithImpl;
 @useResult
 $Res call({
- String id, String title, String description, EventCategory category, DateTime startsAt, String location, int capacity, int availablePlaces, String organizerId, String organizerName, String? imageUrl, DateTime? createdAt, DateTime? updatedAt, List<String> staffIds
+ String id, String title, String description, EventCategory category, DateTime startsAt, String location, int capacity, int availablePlaces, String organizerId, String organizerName, String? imageUrl, DateTime? createdAt, DateTime? updatedAt, List<String> staffIds, List<EventTier> tiers, String? currency
 });
 
 
@@ -71,7 +74,7 @@ class _$EventCopyWithImpl<$Res>
 
 /// Create a copy of Event
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? title = null,Object? description = null,Object? category = null,Object? startsAt = null,Object? location = null,Object? capacity = null,Object? availablePlaces = null,Object? organizerId = null,Object? organizerName = null,Object? imageUrl = freezed,Object? createdAt = freezed,Object? updatedAt = freezed,Object? staffIds = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? title = null,Object? description = null,Object? category = null,Object? startsAt = null,Object? location = null,Object? capacity = null,Object? availablePlaces = null,Object? organizerId = null,Object? organizerName = null,Object? imageUrl = freezed,Object? createdAt = freezed,Object? updatedAt = freezed,Object? staffIds = null,Object? tiers = null,Object? currency = freezed,}) {
   return _then(Event(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,title: null == title ? _self.title : title // ignore: cast_nullable_to_non_nullable
@@ -87,7 +90,9 @@ as String,imageUrl: freezed == imageUrl ? _self.imageUrl : imageUrl // ignore: c
 as String?,createdAt: freezed == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
 as DateTime?,updatedAt: freezed == updatedAt ? _self.updatedAt : updatedAt // ignore: cast_nullable_to_non_nullable
 as DateTime?,staffIds: null == staffIds ? _self.staffIds : staffIds // ignore: cast_nullable_to_non_nullable
-as List<String>,
+as List<String>,tiers: null == tiers ? _self.tiers : tiers // ignore: cast_nullable_to_non_nullable
+as List<EventTier>,currency: freezed == currency ? _self.currency : currency // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 
@@ -172,10 +177,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String title,  String description,  EventCategory category,  DateTime startsAt,  String location,  int capacity,  int availablePlaces,  String organizerId,  String organizerName,  String? imageUrl,  DateTime? createdAt,  DateTime? updatedAt,  List<String> staffIds)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String title,  String description,  EventCategory category,  DateTime startsAt,  String location,  int capacity,  int availablePlaces,  String organizerId,  String organizerName,  String? imageUrl,  DateTime? createdAt,  DateTime? updatedAt,  List<String> staffIds,  List<EventTier> tiers,  String? currency)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _Event() when $default != null:
-return $default(_that.id,_that.title,_that.description,_that.category,_that.startsAt,_that.location,_that.capacity,_that.availablePlaces,_that.organizerId,_that.organizerName,_that.imageUrl,_that.createdAt,_that.updatedAt,_that.staffIds);case _:
+return $default(_that.id,_that.title,_that.description,_that.category,_that.startsAt,_that.location,_that.capacity,_that.availablePlaces,_that.organizerId,_that.organizerName,_that.imageUrl,_that.createdAt,_that.updatedAt,_that.staffIds,_that.tiers,_that.currency);case _:
   return orElse();
 
 }
@@ -193,10 +198,10 @@ return $default(_that.id,_that.title,_that.description,_that.category,_that.star
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String title,  String description,  EventCategory category,  DateTime startsAt,  String location,  int capacity,  int availablePlaces,  String organizerId,  String organizerName,  String? imageUrl,  DateTime? createdAt,  DateTime? updatedAt,  List<String> staffIds)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String title,  String description,  EventCategory category,  DateTime startsAt,  String location,  int capacity,  int availablePlaces,  String organizerId,  String organizerName,  String? imageUrl,  DateTime? createdAt,  DateTime? updatedAt,  List<String> staffIds,  List<EventTier> tiers,  String? currency)  $default,) {final _that = this;
 switch (_that) {
 case _Event():
-return $default(_that.id,_that.title,_that.description,_that.category,_that.startsAt,_that.location,_that.capacity,_that.availablePlaces,_that.organizerId,_that.organizerName,_that.imageUrl,_that.createdAt,_that.updatedAt,_that.staffIds);case _:
+return $default(_that.id,_that.title,_that.description,_that.category,_that.startsAt,_that.location,_that.capacity,_that.availablePlaces,_that.organizerId,_that.organizerName,_that.imageUrl,_that.createdAt,_that.updatedAt,_that.staffIds,_that.tiers,_that.currency);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -213,10 +218,10 @@ return $default(_that.id,_that.title,_that.description,_that.category,_that.star
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String title,  String description,  EventCategory category,  DateTime startsAt,  String location,  int capacity,  int availablePlaces,  String organizerId,  String organizerName,  String? imageUrl,  DateTime? createdAt,  DateTime? updatedAt,  List<String> staffIds)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String title,  String description,  EventCategory category,  DateTime startsAt,  String location,  int capacity,  int availablePlaces,  String organizerId,  String organizerName,  String? imageUrl,  DateTime? createdAt,  DateTime? updatedAt,  List<String> staffIds,  List<EventTier> tiers,  String? currency)?  $default,) {final _that = this;
 switch (_that) {
 case _Event() when $default != null:
-return $default(_that.id,_that.title,_that.description,_that.category,_that.startsAt,_that.location,_that.capacity,_that.availablePlaces,_that.organizerId,_that.organizerName,_that.imageUrl,_that.createdAt,_that.updatedAt,_that.staffIds);case _:
+return $default(_that.id,_that.title,_that.description,_that.category,_that.startsAt,_that.location,_that.capacity,_that.availablePlaces,_that.organizerId,_that.organizerName,_that.imageUrl,_that.createdAt,_that.updatedAt,_that.staffIds,_that.tiers,_that.currency);case _:
   return null;
 
 }
@@ -228,7 +233,7 @@ return $default(_that.id,_that.title,_that.description,_that.category,_that.star
 
 
 class _Event extends Event {
-  const _Event({required this.id, required this.title, required this.description, required this.category, required this.startsAt, required this.location, required this.capacity, required this.availablePlaces, required this.organizerId, required this.organizerName, this.imageUrl, this.createdAt, this.updatedAt,  List<String> staffIds = const <String>[]}): _staffIds = staffIds,super._();
+  const _Event({required this.id, required this.title, required this.description, required this.category, required this.startsAt, required this.location, required this.capacity, required this.availablePlaces, required this.organizerId, required this.organizerName, this.imageUrl, this.createdAt, this.updatedAt,  List<String> staffIds = const <String>[],  List<EventTier> tiers = const <EventTier>[], this.currency}): _staffIds = staffIds,_tiers = tiers,super._();
   
 
 @override final  String id;
@@ -257,6 +262,19 @@ class _Event extends Event {
   return EqualUnmodifiableListView(_staffIds);
 }
 
+/// Ticket types (F-12), in display order. Empty for a simple event with
+/// one free pool of [capacity] seats.
+ final  List<EventTier> _tiers;
+/// Ticket types (F-12), in display order. Empty for a simple event with
+/// one free pool of [capacity] seats.
+@override@JsonKey() List<EventTier> get tiers {
+  if (_tiers is EqualUnmodifiableListView) return _tiers;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_tiers);
+}
+
+/// ISO code of the paid types' prices (`EUR`, `USD`, `MGA`).
+@override final  String? currency;
 
 /// Create a copy of Event
 /// with the given fields replaced by the non-null parameter values.
@@ -268,18 +286,18 @@ _$EventCopyWith<_Event> get copyWith => __$EventCopyWithImpl<_Event>(this, _$ide
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is _Event&&(identical(other.id, id) || other.id == id)&&(identical(other.title, title) || other.title == title)&&(identical(other.description, description) || other.description == description)&&(identical(other.category, category) || other.category == category)&&(identical(other.startsAt, startsAt) || other.startsAt == startsAt)&&(identical(other.location, location) || other.location == location)&&(identical(other.capacity, capacity) || other.capacity == capacity)&&(identical(other.availablePlaces, availablePlaces) || other.availablePlaces == availablePlaces)&&(identical(other.organizerId, organizerId) || other.organizerId == organizerId)&&(identical(other.organizerName, organizerName) || other.organizerName == organizerName)&&(identical(other.imageUrl, imageUrl) || other.imageUrl == imageUrl)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt)&&const DeepCollectionEquality().equals(other.staffIds, _staffIds));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _Event&&(identical(other.id, id) || other.id == id)&&(identical(other.title, title) || other.title == title)&&(identical(other.description, description) || other.description == description)&&(identical(other.category, category) || other.category == category)&&(identical(other.startsAt, startsAt) || other.startsAt == startsAt)&&(identical(other.location, location) || other.location == location)&&(identical(other.capacity, capacity) || other.capacity == capacity)&&(identical(other.availablePlaces, availablePlaces) || other.availablePlaces == availablePlaces)&&(identical(other.organizerId, organizerId) || other.organizerId == organizerId)&&(identical(other.organizerName, organizerName) || other.organizerName == organizerName)&&(identical(other.imageUrl, imageUrl) || other.imageUrl == imageUrl)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt)&&const DeepCollectionEquality().equals(other.staffIds, _staffIds)&&const DeepCollectionEquality().equals(other.tiers, _tiers)&&(identical(other.currency, currency) || other.currency == currency));
 }
 
 
 @override
 int get hashCode {
-    return Object.hash(runtimeType,id,title,description,category,startsAt,location,capacity,availablePlaces,organizerId,organizerName,imageUrl,createdAt,updatedAt,const DeepCollectionEquality().hash(_staffIds));
+    return Object.hash(runtimeType,id,title,description,category,startsAt,location,capacity,availablePlaces,organizerId,organizerName,imageUrl,createdAt,updatedAt,const DeepCollectionEquality().hash(_staffIds),const DeepCollectionEquality().hash(_tiers),currency);
 }
 
 @override
 String toString() {
-    return 'Event(id: $id, title: $title, description: $description, category: $category, startsAt: $startsAt, location: $location, capacity: $capacity, availablePlaces: $availablePlaces, organizerId: $organizerId, organizerName: $organizerName, imageUrl: $imageUrl, createdAt: $createdAt, updatedAt: $updatedAt, staffIds: $staffIds)';
+    return 'Event(id: $id, title: $title, description: $description, category: $category, startsAt: $startsAt, location: $location, capacity: $capacity, availablePlaces: $availablePlaces, organizerId: $organizerId, organizerName: $organizerName, imageUrl: $imageUrl, createdAt: $createdAt, updatedAt: $updatedAt, staffIds: $staffIds, tiers: $tiers, currency: $currency)';
 }
 
 
@@ -290,7 +308,7 @@ abstract mixin class _$EventCopyWith<$Res> implements $EventCopyWith<$Res> {
   factory _$EventCopyWith(_Event value, $Res Function(_Event) _then) = __$EventCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String title, String description, EventCategory category, DateTime startsAt, String location, int capacity, int availablePlaces, String organizerId, String organizerName, String? imageUrl, DateTime? createdAt, DateTime? updatedAt, List<String> staffIds
+ String id, String title, String description, EventCategory category, DateTime startsAt, String location, int capacity, int availablePlaces, String organizerId, String organizerName, String? imageUrl, DateTime? createdAt, DateTime? updatedAt, List<String> staffIds, List<EventTier> tiers, String? currency
 });
 
 
@@ -307,7 +325,7 @@ class __$EventCopyWithImpl<$Res>
 
 /// Create a copy of Event
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? title = null,Object? description = null,Object? category = null,Object? startsAt = null,Object? location = null,Object? capacity = null,Object? availablePlaces = null,Object? organizerId = null,Object? organizerName = null,Object? imageUrl = freezed,Object? createdAt = freezed,Object? updatedAt = freezed,Object? staffIds = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? title = null,Object? description = null,Object? category = null,Object? startsAt = null,Object? location = null,Object? capacity = null,Object? availablePlaces = null,Object? organizerId = null,Object? organizerName = null,Object? imageUrl = freezed,Object? createdAt = freezed,Object? updatedAt = freezed,Object? staffIds = null,Object? tiers = null,Object? currency = freezed,}) {
   return _then(_Event(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,title: null == title ? _self.title : title // ignore: cast_nullable_to_non_nullable
@@ -323,7 +341,9 @@ as String,imageUrl: freezed == imageUrl ? _self.imageUrl : imageUrl // ignore: c
 as String?,createdAt: freezed == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
 as DateTime?,updatedAt: freezed == updatedAt ? _self.updatedAt : updatedAt // ignore: cast_nullable_to_non_nullable
 as DateTime?,staffIds: null == staffIds ? _self._staffIds : staffIds // ignore: cast_nullable_to_non_nullable
-as List<String>,
+as List<String>,tiers: null == tiers ? _self._tiers : tiers // ignore: cast_nullable_to_non_nullable
+as List<EventTier>,currency: freezed == currency ? _self.currency : currency // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 

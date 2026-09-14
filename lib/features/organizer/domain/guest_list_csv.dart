@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:eventhub/core/utils/money.dart';
 import 'package:eventhub/features/reservations/domain/entities/reservation.dart';
 
 /// Serialises a guest list to CSV.
@@ -9,12 +10,22 @@ import 'package:eventhub/features/reservations/domain/entities/reservation.dart'
 ///    as a single column, and `;` is what it expects;
 ///  * `\r\n` line endings and double-quote escaping, per RFC 4180;
 ///  * dates as `yyyy-MM-dd HH:mm` — sortable as text, unambiguous across
-///    locales, unlike `03/04`.
+///    locales, unlike `03/04`;
+///  * the ticket type and the amount paid (F-12, F-11), as the door and the
+///    accounting read them.
 ///
 /// Pure and locale-free so it is unit-testable without a widget tree.
 abstract final class GuestListCsv {
   static const separator = ';';
-  static const header = ['N°', 'Nom', 'Email', 'Réservé le', 'Code billet'];
+  static const header = [
+    'N°',
+    'Nom',
+    'Email',
+    'Réservé le',
+    'Billet',
+    'Montant payé',
+    'Code billet',
+  ];
 
   static String build(List<Reservation> guests) {
     final rows = <List<String>>[
@@ -25,6 +36,11 @@ abstract final class GuestListCsv {
           guests[i].userName,
           guests[i].userEmail,
           _timestamp(guests[i].reservedAt),
+          guests[i].accessLabel,
+          if (guests[i].isPaid)
+            Money.format(guests[i].pricePaid, guests[i].currency ?? 'EUR')
+          else
+            'Gratuit',
           guests[i].ticketCode,
         ],
     ];

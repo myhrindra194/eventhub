@@ -53,6 +53,7 @@ coverage/
 # Cloud Functions build output and dependencies
 functions/node_modules/
 functions/lib/
+functions/.secret.local
 
 # Security-rules test suite (Node)
 firebase/tests/node_modules/

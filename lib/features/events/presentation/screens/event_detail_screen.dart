@@ -6,13 +6,16 @@ import 'package:eventhub/core/extensions/context_x.dart';
 import 'package:eventhub/core/l10n/app_strings.dart';
 import 'package:eventhub/core/result/result.dart';
 import 'package:eventhub/core/utils/date_formats.dart';
+import 'package:eventhub/core/utils/money.dart';
 import 'package:eventhub/core/widgets/design_system.dart';
 import 'package:eventhub/features/auth/application/auth_providers.dart';
 import 'package:eventhub/features/events/application/event_providers.dart';
 import 'package:eventhub/features/events/domain/entities/event.dart';
+import 'package:eventhub/features/events/domain/entities/event_tier.dart';
 import 'package:eventhub/features/events/presentation/widgets/event_card.dart';
 import 'package:eventhub/features/events/presentation/widgets/share_event_sheet.dart';
 import 'package:eventhub/features/events/presentation/widgets/social_proof_row.dart';
+import 'package:eventhub/features/events/presentation/widgets/ticket_types.dart';
 import 'package:eventhub/features/favorites/presentation/widgets/favorite_button.dart';
 import 'package:eventhub/features/moderation/domain/report.dart';
 import 'package:eventhub/features/moderation/presentation/widgets/report_sheet.dart';
@@ -24,6 +27,7 @@ import 'package:eventhub/routes/routes.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 /// Event detail — the conversion screen.
 ///
@@ -116,6 +120,7 @@ class _Body extends ConsumerWidget {
     final user = ref.watch(currentUserProvider);
     final mine = ref.watch(myReservationForEventProvider(event.id)).value;
     final reservation = (mine != null && mine.isActive) ? mine : null;
+    final pending = (mine != null && mine.isPending) ? mine : null;
     final availability = _Availability.of(event, now);
 
     return Stack(
@@ -187,6 +192,10 @@ class _Body extends ConsumerWidget {
                       ),
                       const SizedBox(height: AppSpacing.md),
                       _CapacityCard(event: event),
+                      if (event.hasTiers) ...[
+                        const SizedBox(height: AppSpacing.xxl),
+                        TicketTypesSection(event: event),
+                      ],
                       const SizedBox(height: AppSpacing.xxxl),
                       const SectionLabel(AppStrings.aboutEvent),
                       const SizedBox(height: AppSpacing.md),
@@ -259,6 +268,7 @@ class _Body extends ConsumerWidget {
             event: event,
             availability: availability,
             reservation: reservation,
+            pending: pending,
           ),
         ),
       ],
@@ -428,12 +438,14 @@ class _OrganizerRow extends StatelessWidget {
             vertical: AppSpacing.sm,
           ),
           decoration: BoxDecoration(
-            color: t.success.bg,
-            borderRadius: AppRadius.brSm,
+            color: event.isFree ? t.success.bg : t.brand.withValues(alpha: 0.1),
+            borderRadius: AppRadius.brButton,
           ),
           child: Text(
-            AppStrings.free,
-            style: text.titleMedium?.copyWith(color: t.success.fg),
+            eventPriceLabel(event),
+            style: text.titleMedium?.copyWith(
+              color: event.isFree ? t.success.fg : t.brand,
+            ),
           ),
         ),
       ],
@@ -610,16 +622,29 @@ class _ActionBar extends ConsumerWidget {
     required this.event,
     required this.availability,
     required this.reservation,
+    required this.pending,
   });
 
   final Event event;
   final _Availability availability;
   final Reservation? reservation;
 
+  /// A paid seat held while the user was on the Stripe page (F-11).
+  final Reservation? pending;
+
+  /// A simple event books directly; an event with ticket types asks which
+  /// one first, then books a free seat or opens the payment.
   Future<void> _reserve(BuildContext context, WidgetRef ref) async {
+    String? tierId;
+    if (event.hasTiers) {
+      final tier = await showTicketTypePicker(context, event);
+      if (tier == null || !context.mounted) return;
+      if (!tier.isFree) return _checkout(context, ref, tier);
+      tierId = tier.id;
+    }
     final result = await ref
         .read(reservationControllerProvider.notifier)
-        .reserve(event.id);
+        .reserve(event.id, tierId: tierId);
     if (!context.mounted) return;
     switch (result) {
       case Ok(:final value):
@@ -631,24 +656,62 @@ class _ActionBar extends ConsumerWidget {
     }
   }
 
+  Future<void> _checkout(
+    BuildContext context,
+    WidgetRef ref,
+    EventTier tier,
+  ) async {
+    final result = await ref
+        .read(reservationControllerProvider.notifier)
+        .startCheckout(eventId: event.id, tierId: tier.id);
+    if (!context.mounted) return;
+    switch (result) {
+      case Ok(:final value):
+        // The payment screen follows the reservation; the Stripe page opens
+        // on top of the app, in the browser.
+        unawaited(context.push(AppRoutes.paymentPath(value.reservationId)));
+        final opened = await launchUrl(
+          value.url,
+          mode: LaunchMode.externalApplication,
+        ).catchError((_) => false);
+        if (!opened && context.mounted) {
+          context.showToast(AppStrings.openPaymentFailed);
+        }
+      case Err(:final failure):
+        context.showFailure(failure);
+    }
+  }
+
   Future<void> _cancel(BuildContext context, WidgetRef ref) async {
     final r = reservation;
     if (r == null) return;
+    final price = Money.format(r.pricePaid, r.currency ?? event.currencyCode);
     final confirmed = await showConfirmSheet(
       context,
-      icon: Icons.event_busy_rounded,
-      title: AppStrings.cancelReservationTitle,
-      message: AppStrings.cancelReservationConfirm,
-      confirmLabel: AppStrings.cancelReservation,
+      icon: r.isPaid
+          ? Icons.currency_exchange_rounded
+          : Icons.event_busy_rounded,
+      title: r.isPaid
+          ? AppStrings.refundTitle
+          : AppStrings.cancelReservationTitle,
+      message: r.isPaid
+          ? AppStrings.refundMessage(price)
+          : AppStrings.cancelReservationConfirm,
+      confirmLabel: r.isPaid
+          ? AppStrings.refundTicket
+          : AppStrings.cancelReservation,
     );
     if (!confirmed || !context.mounted) return;
-    final result = await ref
-        .read(reservationControllerProvider.notifier)
-        .cancel(r.id);
+    final controller = ref.read(reservationControllerProvider.notifier);
+    final result = r.isPaid
+        ? await controller.refund(event.id)
+        : await controller.cancel(r.id);
     if (!context.mounted) return;
     switch (result) {
       case Ok():
-        context.showSuccess(AppStrings.reservationCancelled);
+        context.showSuccess(
+          r.isPaid ? AppStrings.refunded : AppStrings.reservationCancelled,
+        );
       case Err(:final failure):
         context.showFailure(failure);
     }
@@ -661,8 +724,19 @@ class _ActionBar extends ConsumerWidget {
         ref.watch(currentUserProvider)?.isParticipant ?? false;
     final bottom = MediaQuery.paddingOf(context).bottom;
 
+    // Paid-only events say "choose a ticket" rather than "book my seat".
+    final bookLabel = event.hasTiers && !event.hasFreeTier
+        ? AppStrings.chooseTicket
+        : AppStrings.reserve;
+
     final Widget action;
-    if (reservation != null) {
+    if (pending != null) {
+      action = AppButton.primary(
+        label: AppStrings.paymentInProgress,
+        icon: Icons.hourglass_top_rounded,
+        onPressed: () => context.push(AppRoutes.paymentPath(pending!.id)),
+      );
+    } else if (reservation != null) {
       action = Row(
         children: [
           Expanded(
@@ -706,7 +780,7 @@ class _ActionBar extends ConsumerWidget {
           onPressed: isParticipant ? () => _reserve(context, ref) : null,
         ),
         _Availability.available => AppButton.primary(
-          label: AppStrings.reserve,
+          label: bookLabel,
           icon: Icons.confirmation_number_rounded,
           isLoading: isBusy,
           loadingLabel: 'Réservation…',

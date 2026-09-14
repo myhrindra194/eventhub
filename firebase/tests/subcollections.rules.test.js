@@ -13,6 +13,7 @@ import {
   setDoc,
   updateDoc,
   where,
+  writeBatch,
 } from 'firebase/firestore';
 
 import {
@@ -597,6 +598,145 @@ describe('reports (F-19 moderation)', () => {
     await assertFails(
       updateDoc(doc(db, 'reports', 'event_e1_p1'), { status: 'resolved' }),
     );
+  });
+});
+
+// ===========================================================================
+//  events.tiers, paid reservations — F-12 / F-11
+// ===========================================================================
+
+describe('ticket types and payments (F-12, F-11)', () => {
+  const tiers = {
+    free: { name: 'Standard', price: 0, capacity: 10, available: 10, order: 0 },
+    vip: { name: 'VIP', price: 2500, capacity: 5, available: 5, order: 1 },
+  };
+
+  beforeEach(async () => {
+    await seedEvent('e1', {
+      capacity: 15,
+      availablePlaces: 15,
+      currency: 'EUR',
+      tiers,
+    });
+  });
+
+  const book = (db, { tierId, tierName, placeField, extra = {} }) => {
+    const batch = writeBatch(db);
+    batch.set(doc(db, 'reservations', 'e1_p1'), {
+      ...reservationData({ tierId, tierName, pricePaid: 0 }),
+      ...extra,
+    });
+    batch.update(doc(db, 'events', 'e1'), {
+      availablePlaces: 14,
+      [`tiers.${placeField}.available`]: tiers[placeField].available - 1,
+      updatedAt: serverTimestamp(),
+    });
+    return batch.commit();
+  };
+
+  it('lets a participant take a free seat, in its own type, atomically', async () => {
+    const db = asParticipant(env, 'p1').firestore();
+    await assertSucceeds(
+      book(db, { tierId: 'free', tierName: 'Standard', placeField: 'free' }),
+    );
+  });
+
+  it('refuses a participant taking a paid seat without paying', async () => {
+    const db = asParticipant(env, 'p1').firestore();
+    await assertFails(book(db, { tierId: 'vip', tierName: 'VIP', placeField: 'vip' }));
+  });
+
+  it('refuses a seat taken from another type than the reservation says', async () => {
+    const db = asParticipant(env, 'p1').firestore();
+    await assertFails(
+      book(db, { tierId: 'free', tierName: 'Standard', placeField: 'vip' }),
+    );
+  });
+
+  it('refuses a forged type name, a pending status or payment fields', async () => {
+    const db = asParticipant(env, 'p1').firestore();
+    await assertFails(
+      book(db, { tierId: 'free', tierName: 'VIP gratuit', placeField: 'free' }),
+    );
+    await assertFails(
+      book(db, {
+        tierId: 'free',
+        tierName: 'Standard',
+        placeField: 'free',
+        extra: { status: 'pending' },
+      }),
+    );
+    await assertFails(
+      book(db, {
+        tierId: 'free',
+        tierName: 'Standard',
+        placeField: 'free',
+        extra: { paymentStatus: 'paid' },
+      }),
+    );
+  });
+
+  it('refuses booking a simple seat on an event that has types', async () => {
+    const db = asParticipant(env, 'p1').firestore();
+    const batch = writeBatch(db);
+    batch.set(doc(db, 'reservations', 'e1_p1'), reservationData());
+    batch.update(doc(db, 'events', 'e1'), {
+      availablePlaces: 14,
+      updatedAt: serverTimestamp(),
+    });
+    await assertFails(batch.commit());
+  });
+
+  it('refuses cancelling a paid ticket directly — refunds go through a function', async () => {
+    await seed(async (db) => {
+      await setDoc(doc(db, 'reservations', 'e1_p1'), {
+        ...reservationData({ tierId: 'vip', tierName: 'VIP', pricePaid: 2500 }),
+        currency: 'EUR',
+        paymentStatus: 'paid',
+        paymentIntentId: 'pi_1',
+      });
+      await updateDoc(doc(db, 'events', 'e1'), {
+        availablePlaces: 14,
+        'tiers.vip.available': 4,
+      });
+    });
+    const db = asParticipant(env, 'p1').firestore();
+    const batch = writeBatch(db);
+    batch.update(doc(db, 'reservations', 'e1_p1'), {
+      status: 'cancelled',
+      cancelledAt: new Date(),
+    });
+    batch.update(doc(db, 'events', 'e1'), {
+      availablePlaces: 15,
+      'tiers.vip.available': 5,
+      updatedAt: serverTimestamp(),
+    });
+    await assertFails(batch.commit());
+  });
+
+  it('lets a participant cancel a free ticket, giving the seat back to its type', async () => {
+    await seed(async (db) => {
+      await setDoc(
+        doc(db, 'reservations', 'e1_p1'),
+        reservationData({ tierId: 'free', tierName: 'Standard', pricePaid: 0 }),
+      );
+      await updateDoc(doc(db, 'events', 'e1'), {
+        availablePlaces: 14,
+        'tiers.free.available': 9,
+      });
+    });
+    const db = asParticipant(env, 'p1').firestore();
+    const batch = writeBatch(db);
+    batch.update(doc(db, 'reservations', 'e1_p1'), {
+      status: 'cancelled',
+      cancelledAt: new Date(),
+    });
+    batch.update(doc(db, 'events', 'e1'), {
+      availablePlaces: 15,
+      'tiers.free.available': 10,
+      updatedAt: serverTimestamp(),
+    });
+    await assertSucceeds(batch.commit());
   });
 });
 

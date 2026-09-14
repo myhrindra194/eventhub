@@ -6,6 +6,9 @@ part 'reservation_dto.freezed.dart';
 part 'reservation_dto.g.dart';
 
 /// Firestore document `reservations/{eventId}_{userId}`.
+///
+/// Payment fields are omitted when null: the rules refuse a client write
+/// that carries any of them (they belong to the payment functions).
 @freezed
 abstract class ReservationDto with _$ReservationDto {
   const ReservationDto._();
@@ -23,6 +26,16 @@ abstract class ReservationDto with _$ReservationDto {
     required ReservationStatus status,
     @TimestampConverter() required DateTime reservedAt,
     @NullableTimestampConverter() DateTime? cancelledAt,
+    @JsonKey(includeIfNull: false) String? tierId,
+    @JsonKey(includeIfNull: false) String? tierName,
+    @Default(0) int pricePaid,
+    @JsonKey(includeIfNull: false) int? amountDue,
+    @JsonKey(includeIfNull: false) String? currency,
+    @JsonKey(includeIfNull: false) String? paymentStatus,
+    @JsonKey(includeIfNull: false) String? checkoutUrl,
+    @JsonKey(includeIfNull: false)
+    @NullableTimestampConverter()
+    DateTime? holdExpiresAt,
   }) = _ReservationDto;
 
   factory ReservationDto.fromJson(Map<String, dynamic> json) =>
@@ -40,6 +53,14 @@ abstract class ReservationDto with _$ReservationDto {
     status: r.status,
     reservedAt: r.reservedAt,
     cancelledAt: r.cancelledAt,
+    tierId: r.tierId,
+    tierName: r.tierName,
+    pricePaid: r.pricePaid,
+    amountDue: r.amountDue,
+    currency: r.currency,
+    paymentStatus: r.paymentStatus,
+    checkoutUrl: r.checkoutUrl,
+    holdExpiresAt: r.holdExpiresAt,
   );
 
   Reservation toDomain(String id) => Reservation(
@@ -55,5 +76,13 @@ abstract class ReservationDto with _$ReservationDto {
     status: status,
     reservedAt: reservedAt,
     cancelledAt: cancelledAt,
+    tierId: tierId,
+    tierName: tierName,
+    pricePaid: pricePaid,
+    amountDue: amountDue,
+    currency: currency,
+    paymentStatus: paymentStatus,
+    checkoutUrl: checkoutUrl,
+    holdExpiresAt: holdExpiresAt,
   );
 }

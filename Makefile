@@ -3,7 +3,7 @@ DEVICE ?=
 FLAVOR ?= dev
 DART_DEFINES = --dart-define=FLAVOR=$(FLAVOR)
 
-.PHONY: help setup gen watch analyze format test test-cov test-rules rules-setup run run-emu build-apk clean emulators firebase-deploy functions-setup functions-build test-functions deploy grant-admin
+.PHONY: help setup gen watch analyze format test test-cov test-rules rules-setup run run-emu build-apk clean emulators firebase-deploy functions-setup functions-build test-functions functions-secrets deploy grant-admin
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-16s\033[0m %s\n", $$1, $$2}'
@@ -57,7 +57,10 @@ functions-setup: ## Install the Cloud Functions dependencies
 functions-build: ## Compile the Cloud Functions (TypeScript)
 	npm --prefix functions run build
 
-test-functions: functions-build ## Cloud Functions integration tests, against the emulators (needs Java)
+functions-secrets: ## Local placeholder secrets for the emulators (never real keys)
+	test -f functions/.secret.local || printf 'STRIPE_SECRET_KEY=sk_test_emulator_not_a_real_key\nSTRIPE_WEBHOOK_SECRET=whsec_emulator_local_testing_secret\n' > functions/.secret.local
+
+test-functions: functions-build functions-secrets ## Cloud Functions integration tests, against the emulators (needs Java)
 	firebase/tests/node_modules/.bin/firebase --project demo-eventhub emulators:exec --only auth,firestore,functions,storage "npm --prefix functions test"
 
 deploy: functions-build ## Deploy rules, indexes, Storage rules, Cloud Functions and Hosting (Blaze plan)

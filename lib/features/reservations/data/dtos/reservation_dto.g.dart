@@ -26,6 +26,16 @@ _ReservationDto _$ReservationDtoFromJson(
   ),
   reservedAt: const TimestampConverter().fromJson(json['reservedAt'] as Object),
   cancelledAt: const NullableTimestampConverter().fromJson(json['cancelledAt']),
+  tierId: json['tierId'] as String?,
+  tierName: json['tierName'] as String?,
+  pricePaid: (json['pricePaid'] as num?)?.toInt() ?? 0,
+  amountDue: (json['amountDue'] as num?)?.toInt(),
+  currency: json['currency'] as String?,
+  paymentStatus: json['paymentStatus'] as String?,
+  checkoutUrl: json['checkoutUrl'] as String?,
+  holdExpiresAt: const NullableTimestampConverter().fromJson(
+    json['holdExpiresAt'],
+  ),
 );
 
 Map<String, dynamic> _$ReservationDtoToJson(
@@ -44,9 +54,20 @@ Map<String, dynamic> _$ReservationDtoToJson(
   'cancelledAt': const NullableTimestampConverter().toJson(
     instance.cancelledAt,
   ),
+  'tierId': ?instance.tierId,
+  'tierName': ?instance.tierName,
+  'pricePaid': instance.pricePaid,
+  'amountDue': ?instance.amountDue,
+  'currency': ?instance.currency,
+  'paymentStatus': ?instance.paymentStatus,
+  'checkoutUrl': ?instance.checkoutUrl,
+  'holdExpiresAt': ?const NullableTimestampConverter().toJson(
+    instance.holdExpiresAt,
+  ),
 };
 
 const _$ReservationStatusEnumMap = {
   ReservationStatus.confirmed: 'confirmed',
+  ReservationStatus.pending: 'pending',
   ReservationStatus.cancelled: 'cancelled',
 };

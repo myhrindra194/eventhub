@@ -108,7 +108,22 @@ merges `organizerEventsProvider` and `coOrganizedEventsProvider`
 the team, under the invitee for their inbox — and every change goes through
 `inviteCoOrganizer`, `respondToStaffInvite` or `removeCoOrganizer`.
 
-Pure calculators: `Reservation.ticketCode/ticketPayload`, `TicketPayload.parse`,
+### Ticket types and payments
+
+`Event.tiers` (sorted by `order`) and `currency`; amounts are integer minor
+units, formatted by `Money`. `TierPlanner.apply` computes an edit that keeps
+each type's sales (and refuses removing a sold type or switching mode after a
+sale); `EventRemoteDataSource.update` runs it inside the transaction. A free
+type is booked client-side like before, moving `tiers.{id}.available` with
+`availablePlaces`. A paid type never is: `ReservationController.startCheckout`
+calls `createCheckoutSession`, which holds the seat (`pending`) and returns
+the Stripe Checkout URL opened with `url_launcher`. The payment screen only
+*watches* the reservation — the webhook is the single writer of `confirmed`.
+`/pay/success` and `/pay/cancel` (App Links) redirect to it.
+`ReservationPolicy`: `canReserve(tierId)`, `canCheckout`, `canCancel`
+(free only), `canRefund`.
+
+Pure calculators: `Money`, `TierPlanner`, `Reservation.ticketCode/ticketPayload`, `TicketPayload.parse`,
 `GuestListCsv` (+ `fileBytes`, `fileNameFor`), `OrganizerStats`,
 `OrganizerAlerts`, `ReviewSummary`, `mergeCatalogue`, `NotificationRoute`,
 `NotificationPreferences`, `Attendance.sentence`, `Recommender.rank`,

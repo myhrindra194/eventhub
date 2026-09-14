@@ -48,6 +48,8 @@ abstract final class EventFields {
   static const availablePlaces = 'availablePlaces';
   static const organizerId = 'organizerId';
   static const organizerName = 'organizerName';
+  static const tiers = 'tiers';
+  static const currency = 'currency';
   static const createdAt = 'createdAt';
   static const updatedAt = 'updatedAt';
 }

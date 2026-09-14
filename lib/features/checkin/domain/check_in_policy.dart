@@ -13,6 +13,9 @@ enum CheckInStatus {
   /// was tampered with.
   invalidCode,
 
+  /// A paid seat still on hold: the payment never went through (F-11).
+  unpaid,
+
   /// The participant cancelled: the seat was released.
   cancelled,
 
@@ -57,6 +60,9 @@ abstract final class CheckInPolicy {
         CheckInStatus.invalidCode,
         reservation: reservation,
       );
+    }
+    if (reservation.isPending) {
+      return CheckInVerdict(CheckInStatus.unpaid, reservation: reservation);
     }
     if (reservation.isCancelled) {
       return CheckInVerdict(CheckInStatus.cancelled, reservation: reservation);

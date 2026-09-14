@@ -67,6 +67,24 @@ void main() {
     );
   });
 
+  test('payment notices open the ticket or the tickets list', () {
+    expect(
+      NotificationRoute.locationFor({
+        'type': 'paymentConfirmed',
+        'eventId': 'e1',
+        'reservationId': 'e1_u1',
+      }),
+      AppRoutes.ticketPath('e1_u1'),
+    );
+    expect(
+      NotificationRoute.locationFor({
+        'type': 'paymentRefunded',
+        'eventId': 'e1',
+      }),
+      AppRoutes.reservations,
+    );
+  });
+
   test('unknown or incomplete payloads open nothing', () {
     expect(NotificationRoute.locationFor({}), isNull);
     expect(NotificationRoute.locationFor({'type': 'promo'}), isNull);

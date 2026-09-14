@@ -6,8 +6,10 @@ import 'package:eventhub/core/result/result.dart';
 import 'package:eventhub/features/auth/application/auth_providers.dart';
 import 'package:eventhub/features/auth/domain/entities/app_user.dart';
 import 'package:eventhub/features/events/application/event_providers.dart';
+import 'package:eventhub/features/reservations/data/datasources/payment_functions_data_source.dart';
 import 'package:eventhub/features/reservations/data/datasources/reservation_remote_data_source.dart';
 import 'package:eventhub/features/reservations/data/repositories/reservation_repository_impl.dart';
+import 'package:eventhub/features/reservations/domain/entities/checkout.dart';
 import 'package:eventhub/features/reservations/domain/entities/reservation.dart';
 import 'package:eventhub/features/reservations/domain/repositories/reservation_repository.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart' hide AsyncResult;
@@ -21,6 +23,7 @@ ReservationRepository reservationRepository(Ref ref) {
       ref.watch(firestoreProvider),
       ref.watch(clockProvider),
     ),
+    PaymentFunctionsDataSource(ref.watch(firebaseFunctionsProvider)),
   );
 }
 
@@ -66,14 +69,55 @@ class ReservationController extends _$ReservationController {
   @override
   FutureOr<void> build() {}
 
-  Future<Result<Reservation>> reserve(String eventId) async {
+  Future<Result<Reservation>> reserve(String eventId, {String? tierId}) async {
     final result = await _run((user) {
       return ref
           .read(reservationRepositoryProvider)
-          .reserve(eventId: eventId, participant: user);
+          .reserve(eventId: eventId, participant: user, tierId: tierId);
     });
     if (result is Ok<Reservation>) {
       ref.read(appAnalyticsProvider).reservationConfirmed(eventId);
+    }
+    return result;
+  }
+
+  /// Holds a paid seat and returns the Stripe page to open (F-11).
+  Future<Result<CheckoutStart>> startCheckout({
+    required String eventId,
+    required String tierId,
+  }) async {
+    final result = await _run(
+      (user) => user.isParticipant
+          ? ref
+                .read(reservationRepositoryProvider)
+                .startCheckout(eventId: eventId, tierId: tierId)
+          : Future.value(
+              const Err<CheckoutStart>(
+                PermissionFailure(
+                  message: 'Seul un participant peut acheter un billet.',
+                ),
+              ),
+            ),
+    );
+    if (result is Ok<CheckoutStart>) {
+      ref.read(appAnalyticsProvider).checkoutStarted(eventId, tierId);
+    }
+    return result;
+  }
+
+  Future<Result<void>> cancelPendingCheckout(String eventId) => _run(
+    (_) => ref
+        .read(reservationRepositoryProvider)
+        .cancelPendingCheckout(eventId: eventId),
+  );
+
+  /// Refund of a paid ticket; the seat goes back on sale.
+  Future<Result<void>> refund(String eventId) async {
+    final result = await _run(
+      (_) => ref.read(reservationRepositoryProvider).refund(eventId: eventId),
+    );
+    if (result is Ok<void>) {
+      ref.read(appAnalyticsProvider).reservationCancelled(eventId);
     }
     return result;
   }

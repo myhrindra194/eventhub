@@ -168,7 +168,14 @@ files are committed.
 
 `FLAVOR`, `USE_EMULATORS`, `GOOGLE_SERVER_CLIENT_ID`, `FIREBASE_WEB_VAPID_KEY`,
 `APP_CHECK_RECAPTCHA_SITE_KEY` (dart-defines); `AppConfig.functionsRegion`
-must equal `REGION` in the functions.
+must equal `REGION` in the functions — `us-central1`, because the `(default)`
+Firestore database is in `nam5` and Firestore triggers must run in the
+database's location.
+
+`firebase.json` also carries the `flutter` block written by
+`flutterfire configure` (app ids per platform), so `flutterfire configure`
+without arguments regenerates `lib/firebase_options.dart` and
+`android/app/google-services.json`, both git-ignored.
 
 ## Testing strategy
 

@@ -33,10 +33,12 @@ initializeApp();
 const db = getFirestore();
 
 /**
- * Firestore-triggered functions must run in the database's location.
- * Check with `firebase firestore:databases:get "(default)"` before deploying.
+ * Firestore-triggered functions must run in the database's location. The
+ * `(default)` database is in `nam5` (US multi-region, see firebase.json),
+ * whose triggers run in `us-central1`. Keep equal to
+ * `AppConfig.functionsRegion` in the Flutter app.
  */
-const REGION = "europe-west1";
+const REGION = "us-central1";
 /** Time zone used to phrase times inside notifications. */
 const TIME_ZONE = "Indian/Antananarivo";
 /** Must match the channel created by the app and AndroidManifest.xml. */

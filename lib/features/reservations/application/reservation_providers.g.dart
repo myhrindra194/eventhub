@@ -188,12 +188,16 @@ final class MyReservationForEventFamily extends $Family
   String toString() => r'myReservationForEventProvider';
 }
 
-/// Active reservations of one of the signed-in organizer's events.
+/// Active reservations of an event the signed-in organizer owns or
+/// co-organizes. The query differs (owner: `organizerId ==`, team:
+/// `eventId ==` only), because each is what the rules can prove.
 
 @ProviderFor(eventParticipants)
 final eventParticipantsProvider = EventParticipantsFamily._();
 
-/// Active reservations of one of the signed-in organizer's events.
+/// Active reservations of an event the signed-in organizer owns or
+/// co-organizes. The query differs (owner: `organizerId ==`, team:
+/// `eventId ==` only), because each is what the rules can prove.
 
 final class EventParticipantsProvider
     extends
@@ -205,7 +209,9 @@ final class EventParticipantsProvider
     with
         $FutureModifier<List<Reservation>>,
         $StreamProvider<List<Reservation>> {
-  /// Active reservations of one of the signed-in organizer's events.
+  /// Active reservations of an event the signed-in organizer owns or
+  /// co-organizes. The query differs (owner: `organizerId ==`, team:
+  /// `eventId ==` only), because each is what the rules can prove.
   EventParticipantsProvider._({
     required EventParticipantsFamily super.from,
     required String super.argument,
@@ -250,9 +256,11 @@ final class EventParticipantsProvider
   }
 }
 
-String _$eventParticipantsHash() => r'7b916c4f99c7ec9152bb7685ff9e3b9b77bbb1b4';
+String _$eventParticipantsHash() => r'7e693d94c3c35c13b38782d969b96e813b72d772';
 
-/// Active reservations of one of the signed-in organizer's events.
+/// Active reservations of an event the signed-in organizer owns or
+/// co-organizes. The query differs (owner: `organizerId ==`, team:
+/// `eventId ==` only), because each is what the rules can prove.
 
 final class EventParticipantsFamily extends $Family
     with $FunctionalFamilyOverride<Stream<List<Reservation>>, String> {
@@ -265,7 +273,9 @@ final class EventParticipantsFamily extends $Family
         isAutoDispose: true,
       );
 
-  /// Active reservations of one of the signed-in organizer's events.
+  /// Active reservations of an event the signed-in organizer owns or
+  /// co-organizes. The query differs (owner: `organizerId ==`, team:
+  /// `eventId ==` only), because each is what the rules can prove.
 
   EventParticipantsProvider call(String eventId) =>
       EventParticipantsProvider._(argument: eventId, from: this);

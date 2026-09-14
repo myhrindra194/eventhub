@@ -616,6 +616,134 @@ describe('administration', () => {
   });
 });
 
+describe('co-organizers (F-16)', () => {
+  async function organizer(label) {
+    const account = await signUp(`${label}-${Date.now()}-${Math.random()}@example.com`);
+    await db.doc(`users/${account.uid}`).set({
+      name: label,
+      email: account.email,
+      role: 'organizer',
+      createdAt: Timestamp.now(),
+    });
+    return account;
+  }
+
+  it('invites by email; the invitee accepts, then gets booking alerts', async () => {
+    const owner = await organizer('Mirindra');
+    const helper = await organizer('Hery');
+    await db.doc('events/e1').set(eventDoc({ organizerId: owner.uid }));
+
+    const refused = await callFn('inviteCoOrganizer', helper.idToken, {
+      eventId: 'e1',
+      email: owner.email,
+    });
+    assert.equal(refused.status, 403, 'only the owner invites');
+
+    const invited = await callFn('inviteCoOrganizer', owner.idToken, {
+      eventId: 'e1',
+      email: helper.email,
+    });
+    assert.equal(invited.status, 200);
+    assert.equal((await db.doc(`events/e1/invitations/${helper.uid}`).get()).get('status'), 'pending');
+    assert.equal(
+      (await db.doc(`users/${helper.uid}/staffInvitations/e1`).get()).get('eventTitle'),
+      'Flutter Meetup',
+    );
+    assert.equal((await notificationsOf(helper.uid))[0]?.type, 'staffInvite');
+
+    const accepted = await callFn('respondToStaffInvite', helper.idToken, {
+      eventId: 'e1',
+      accept: true,
+    });
+    assert.equal(accepted.status, 200);
+    assert.deepEqual((await db.doc('events/e1').get()).get('staffIds'), [helper.uid]);
+    const joined = await eventually(async () =>
+      (await notificationsOf(owner.uid)).some((n) => n.type === 'staffJoined'),
+    );
+    assert.ok(joined, 'owner told');
+
+    await db.doc('reservations/e1_p1').set(reservationDoc({ organizerId: owner.uid }));
+    const alerted = await eventually(async () =>
+      (await notificationsOf(helper.uid)).some((n) => n.type === 'booking'),
+    );
+    assert.ok(alerted, 'co-organizer receives the booking alert');
+
+    const again = await callFn('respondToStaffInvite', helper.idToken, {
+      eventId: 'e1',
+      accept: true,
+    });
+    assert.equal(again.status, 404, 'an invitation answers once');
+  });
+
+  it('refuses inviting a participant account or an unknown email', async () => {
+    const owner = await organizer('Mirindra');
+    const participant = await signUp(`p-${Date.now()}@example.com`);
+    await db.doc(`users/${participant.uid}`).set({
+      name: 'Jean',
+      email: participant.email,
+      role: 'participant',
+      createdAt: Timestamp.now(),
+    });
+    await db.doc('events/e1').set(eventDoc({ organizerId: owner.uid }));
+
+    const notOrganizer = await callFn('inviteCoOrganizer', owner.idToken, {
+      eventId: 'e1',
+      email: participant.email,
+    });
+    assert.equal(notOrganizer.status, 400);
+    const unknown = await callFn('inviteCoOrganizer', owner.idToken, {
+      eventId: 'e1',
+      email: 'personne@example.com',
+    });
+    assert.equal(unknown.status, 404);
+  });
+
+  it('lets the owner remove a member, who is told; a member may leave', async () => {
+    const owner = await organizer('Mirindra');
+    const a = await organizer('Hery');
+    const b = await organizer('Soa');
+    await db.doc('events/e1').set(eventDoc({ organizerId: owner.uid, staffIds: [a.uid, b.uid] }));
+
+    const byStranger = await callFn('removeCoOrganizer', a.idToken, {
+      eventId: 'e1',
+      userId: b.uid,
+    });
+    assert.equal(byStranger.status, 403);
+
+    assert.equal(
+      (await callFn('removeCoOrganizer', owner.idToken, { eventId: 'e1', userId: a.uid })).status,
+      200,
+    );
+    assert.equal((await notificationsOf(a.uid))[0]?.type, 'staffRemoved');
+
+    assert.equal(
+      (await callFn('removeCoOrganizer', b.idToken, { eventId: 'e1', userId: b.uid })).status,
+      200,
+    );
+    assert.deepEqual((await db.doc('events/e1').get()).get('staffIds'), []);
+
+    const ownerLeaves = await callFn('removeCoOrganizer', owner.idToken, {
+      eventId: 'e1',
+      userId: owner.uid,
+    });
+    assert.equal(ownerLeaves.status, 400);
+  });
+});
+
+/** Calls a callable function on the emulator with an ID token. */
+async function callFn(name, idToken, data) {
+  const host = process.env.FUNCTIONS_EMULATOR_HOST ?? '127.0.0.1:5001';
+  const res = await fetch(`http://${host}/${PROJECT_ID}/${REGION}/${name}`, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      authorization: `Bearer ${idToken}`,
+    },
+    body: JSON.stringify({ data }),
+  });
+  return { status: res.status, body: await res.json() };
+}
+
 describe('publicEventPage (F-08)', () => {
   const host = () => process.env.FUNCTIONS_EMULATOR_HOST ?? '127.0.0.1:5001';
   const page = (path) =>

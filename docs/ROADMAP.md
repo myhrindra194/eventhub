@@ -224,7 +224,7 @@ bouton « suivre ».
 | F-13 | Événements récurrents et séries | Meetup | Modèle `series` + génération d'occurrences |
 | F-14 | Carte et géolocalisation (« près de moi ») | Airbnb | Geohash + `geoflutterfire`; l'index `location + startsAt` est déjà là |
 | F-15 | Export CSV de la liste des participants | Eventbrite | ✅ **v1.4 : fichier via la feuille de partage**, généré sur l'appareil (aucune donnée personnelle déposée dans Storage, pas d'URL signée à gérer) ; copie conservée |
-| F-16 | Co-organisateurs / équipe | Eventbrite | Passage d'un `organizerId` à un tableau `staffIds` — impacte les règles |
+| F-16 | Co-organisateurs / équipe | Eventbrite | ✅ **v1.5** : `staffIds` (≤ 10) écrit par fonctions, invitations par email avec acceptation, équipe (modifier, participants, entrée, alertes) sans suppression ni composition d'équipe ; règles `isEventTeam()` |
 | F-17 | Chat ou fil de discussion par événement | Meetup | Coût de modération élevé : à ne lancer qu'avec F-19 |
 | F-18 | Recommandations personnalisées | Luma, Airbnb | ✅ **v1.4 : heuristique locale** (abonnements, catégories des billets et favoris) ; reste un modèle serveur quand le volume le justifiera |
 | F-19 | Signalement et modération | Toutes | ✅ **v1.4** : signalement, masquage automatique des avis ; ✅ **v1.5** : écran d'administration (file, dossier, décisions : masquer, retirer un événement, suspendre un compte), gestion des administrateurs, `make grant-admin` |

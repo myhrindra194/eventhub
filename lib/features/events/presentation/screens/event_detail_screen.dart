@@ -228,7 +228,7 @@ class _Body extends ConsumerWidget {
                     : context.go(AppRoutes.events),
               ),
               const Spacer(),
-              if (user != null && !event.isOwnedBy(user.id)) ...[
+              if (user != null && !event.isManagedBy(user.id)) ...[
                 OverlayIconButton(
                   icon: Icons.flag_outlined,
                   tooltip: AppStrings.reportAction,

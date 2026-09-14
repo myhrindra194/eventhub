@@ -22,6 +22,10 @@ class ReservationRepositoryImpl implements ReservationRepository {
   }) => _remote.watchActiveByEvent(eventId: eventId, organizerId: organizerId);
 
   @override
+  Stream<List<Reservation>> watchByEventForTeam(String eventId) =>
+      _remote.watchActiveByEventForTeam(eventId);
+
+  @override
   Stream<List<Reservation>> watchByOrganizer(String organizerId) =>
       _remote.watchByOrganizer(organizerId);
 

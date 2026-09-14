@@ -5,6 +5,7 @@ import 'package:eventhub/core/firebase/firebase_providers.dart';
 import 'package:eventhub/core/result/result.dart';
 import 'package:eventhub/features/auth/application/auth_providers.dart';
 import 'package:eventhub/features/auth/domain/entities/app_user.dart';
+import 'package:eventhub/features/events/application/event_providers.dart';
 import 'package:eventhub/features/reservations/data/datasources/reservation_remote_data_source.dart';
 import 'package:eventhub/features/reservations/data/repositories/reservation_repository_impl.dart';
 import 'package:eventhub/features/reservations/domain/entities/reservation.dart';
@@ -41,14 +42,19 @@ Stream<Reservation?> myReservationForEvent(Ref ref, String eventId) {
       .watchForEvent(eventId: eventId, userId: user.id);
 }
 
-/// Active reservations of one of the signed-in organizer's events.
+/// Active reservations of an event the signed-in organizer owns or
+/// co-organizes. The query differs (owner: `organizerId ==`, team:
+/// `eventId ==` only), because each is what the rules can prove.
 @riverpod
 Stream<List<Reservation>> eventParticipants(Ref ref, String eventId) {
   final user = ref.watch(currentUserProvider);
   if (user == null) return Stream.value(const []);
-  return ref
-      .watch(reservationRepositoryProvider)
-      .watchByEvent(eventId: eventId, organizerId: user.id);
+  final event = ref.watch(eventByIdProvider(eventId)).value;
+  final repo = ref.watch(reservationRepositoryProvider);
+  if (event != null && event.isStaff(user.id)) {
+    return repo.watchByEventForTeam(eventId);
+  }
+  return repo.watchByEvent(eventId: eventId, organizerId: user.id);
 }
 
 @riverpod

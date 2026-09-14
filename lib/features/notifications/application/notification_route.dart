@@ -25,6 +25,12 @@ abstract final class NotificationRoute {
   /// The user's review was hidden: open the event it was left on.
   static const reviewHidden = 'reviewHidden';
 
+  /// Co-organizers (F-16): an invitation to answer, a member who joined
+  /// (open the team), removal from a team (back to the dashboard).
+  static const staffInvite = 'staffInvite';
+  static const staffJoined = 'staffJoined';
+  static const staffRemoved = 'staffRemoved';
+
   static String? locationFor(Map<String, Object?> data) {
     final eventId = _nonEmpty(data['eventId']);
     final reservationId = _nonEmpty(data['reservationId']);
@@ -36,6 +42,11 @@ abstract final class NotificationRoute {
       newEvent ||
       reviewHidden when eventId != null => AppRoutes.eventDetailPath(eventId),
       eventRemoved => AppRoutes.reservations,
+      staffInvite => AppRoutes.organizerInvitations,
+      staffJoined when eventId != null => AppRoutes.organizerEventTeamPath(
+        eventId,
+      ),
+      staffRemoved => AppRoutes.organizerEvents,
       reminder when reservationId != null => AppRoutes.ticketPath(
         reservationId,
       ),

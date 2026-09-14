@@ -156,6 +156,18 @@ class _NotificationRow extends ConsumerWidget {
         Icons.event_busy_rounded,
         AppTone.danger,
       ),
+      NotificationRoute.staffInvite => (
+        Icons.mail_outline_rounded,
+        AppTone.info,
+      ),
+      NotificationRoute.staffJoined => (
+        Icons.diversity_3_rounded,
+        AppTone.success,
+      ),
+      NotificationRoute.staffRemoved => (
+        Icons.person_remove_outlined,
+        AppTone.neutral,
+      ),
       NotificationRoute.reviewHidden => (
         Icons.visibility_off_outlined,
         AppTone.warning,

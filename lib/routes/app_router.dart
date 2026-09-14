@@ -37,6 +37,8 @@ import 'package:eventhub/features/reservations/presentation/screens/ticket_scree
 import 'package:eventhub/features/support/presentation/screens/about_screen.dart';
 import 'package:eventhub/features/support/presentation/screens/help_center_screen.dart';
 import 'package:eventhub/features/support/presentation/screens/privacy_screen.dart';
+import 'package:eventhub/features/team/presentation/screens/event_team_screen.dart';
+import 'package:eventhub/features/team/presentation/screens/staff_invitations_screen.dart';
 import 'package:eventhub/routes/app_routes.dart';
 import 'package:eventhub/routes/route_guard.dart';
 import 'package:eventhub/routes/route_observer.dart';
@@ -470,6 +472,22 @@ final _organizerLeafRoutes = <RouteBase>[
         eventId: state.pathParameters[AppRoutes.eventIdParam]!,
       ),
     ),
+  ),
+  GoRoute(
+    path: AppRoutes.organizerEventTeam,
+    name: AppRoutes.organizerEventTeamName,
+    parentNavigatorKey: rootNavigatorKey,
+    pageBuilder: (_, state) => AppPage.screen(
+      state,
+      EventTeamScreen(eventId: state.pathParameters[AppRoutes.eventIdParam]!),
+    ),
+  ),
+  GoRoute(
+    path: AppRoutes.organizerInvitations,
+    name: AppRoutes.organizerInvitationsName,
+    parentNavigatorKey: rootNavigatorKey,
+    pageBuilder: (_, state) =>
+        AppPage.screen(state, const StaffInvitationsScreen()),
   ),
   GoRoute(
     path: AppRoutes.organizerEventCheckIn,

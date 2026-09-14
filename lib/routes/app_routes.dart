@@ -105,6 +105,10 @@ abstract final class AppRoutes {
   static const organizerEventPublished = '/organizer/events/:eventId/published';
   static const organizerEventCheckIn = '/organizer/events/:eventId/checkin';
   static const organizerEventCheckInName = 'organizer-event-checkin';
+  static const organizerEventTeam = '/organizer/events/:eventId/team';
+  static const organizerEventTeamName = 'organizer-event-team';
+  static const organizerInvitations = '/organizer/invitations';
+  static const organizerInvitationsName = 'organizer-invitations';
   static const organizerStats = '/organizer/stats';
   static const organizerAlerts = '/organizer/alerts';
   static const organizerStatsName = 'organizer-stats';
@@ -132,6 +136,9 @@ abstract final class AppRoutes {
 
   static String reservationConfirmationPath(String reservationId) =>
       '/reservations/${Uri.encodeComponent(reservationId)}/confirmation';
+
+  static String organizerEventTeamPath(String eventId) =>
+      '/organizer/events/${Uri.encodeComponent(eventId)}/team';
 
   static String organizerEventCheckInPath(String eventId) =>
       '/organizer/events/${Uri.encodeComponent(eventId)}/checkin';

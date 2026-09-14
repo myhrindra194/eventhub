@@ -26,6 +26,9 @@ abstract class EventDto with _$EventDto {
     String? imageUrl,
     @NullableTimestampConverter() DateTime? createdAt,
     @NullableTimestampConverter() DateTime? updatedAt,
+
+    /// Written by Cloud Functions only; a new event is created with `[]`.
+    @Default(<String>[]) List<String> staffIds,
   }) = _EventDto;
 
   factory EventDto.fromJson(Map<String, dynamic> json) =>
@@ -63,5 +66,6 @@ abstract class EventDto with _$EventDto {
     imageUrl: imageUrl,
     createdAt: createdAt,
     updatedAt: updatedAt,
+    staffIds: staffIds,
   );
 }

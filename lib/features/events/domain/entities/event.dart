@@ -26,6 +26,11 @@ abstract class Event with _$Event {
     String? imageUrl,
     DateTime? createdAt,
     DateTime? updatedAt,
+
+    /// Co-organizers (F-16): organizers who accepted an invitation. They
+    /// manage the content, the guest list and the door; only the owner
+    /// ([organizerId]) composes the team and may delete the event.
+    @Default(<String>[]) List<String> staffIds,
   }) = _Event;
 
   DateTime get date => DateTime(startsAt.year, startsAt.month, startsAt.day);
@@ -38,6 +43,10 @@ abstract class Event with _$Event {
 
   bool hasStarted(DateTime now) => !startsAt.isAfter(now);
   bool isOwnedBy(String userId) => organizerId == userId;
+  bool isStaff(String userId) => staffIds.contains(userId);
+
+  /// Owner or co-organizer.
+  bool isManagedBy(String userId) => isOwnedBy(userId) || isStaff(userId);
 }
 
 /// Flutter-free time-of-day value so the domain stays framework-agnostic.

@@ -94,7 +94,10 @@ type NotificationType =
   | "waitlist"
   | "newEvent"
   | "eventRemoved"
-  | "reviewHidden";
+  | "reviewHidden"
+  | "staffInvite"
+  | "staffJoined"
+  | "staffRemoved";
 
 interface Reservation {
   eventId: string;
@@ -185,18 +188,23 @@ export const notifyOrganizerOnReservation = onDocumentWritten(
         .delete();
     }
 
-    const prefs = await preferencesOf(after.organizerId);
-    if (prefs.bookingAlerts === false) return;
-
-    await notify(after.organizerId, {
-      type: booked ? "booking" : "cancellation",
-      title: booked ? "Nouvelle réservation" : "Réservation annulée",
-      body: booked
-        ? `${after.userName} a réservé une place pour « ${after.eventTitle} ».`
-        : `${after.userName} a libéré sa place pour « ${after.eventTitle} ».`,
-      eventId: after.eventId,
-      reservationId: event.params.reservationId,
-    });
+    // The organizer and every co-organizer (F-16), each with their own
+    // preference.
+    const eventSnap = await db.doc(`events/${after.eventId}`).get();
+    const staff = (eventSnap.get("staffIds") as string[] | undefined) ?? [];
+    for (const uid of new Set([after.organizerId, ...staff])) {
+      const prefs = await preferencesOf(uid);
+      if (prefs.bookingAlerts === false) continue;
+      await notify(uid, {
+        type: booked ? "booking" : "cancellation",
+        title: booked ? "Nouvelle réservation" : "Réservation annulée",
+        body: booked ?
+          `${after.userName} a réservé une place pour « ${after.eventTitle} ».` :
+          `${after.userName} a libéré sa place pour « ${after.eventTitle} ».`,
+        eventId: after.eventId,
+        reservationId: event.params.reservationId,
+      });
+    }
   },
 );
 
@@ -429,6 +437,23 @@ export const deleteAccount = onCall(async (request) => {
     reviews.docs.map((d) => d.ref.update({authorName: DELETED_NAME})),
   );
 
+  // Co-organizer seats on other people's events, and pending invitations.
+  const staffed = await db
+    .collection("events")
+    .where("staffIds", "array-contains", uid)
+    .get();
+  await Promise.all(
+    staffed.docs.map((d) =>
+      d.ref.update({staffIds: FieldValue.arrayRemove(uid)}),
+    ),
+  );
+  const invitations = await userRef.collection("staffInvitations").get();
+  await Promise.all(
+    invitations.docs.map((d) =>
+      db.doc(`events/${d.id}/invitations/${uid}`).delete(),
+    ),
+  );
+
   await db.recursiveDelete(userRef);
   await bucket.deleteFiles({prefix: `avatars/${uid}/`});
   await getAuth().deleteUser(uid);
@@ -626,6 +651,237 @@ export const aggregateOrganizerRating = onDocumentWritten(
     });
   },
 );
+
+// --------------------------------------------------------------------------
+// 5b. Co-organizers (F-16)
+// --------------------------------------------------------------------------
+
+/** Team size, owner excluded. Mirrored in firestore.rules and the app. */
+export const MAX_STAFF = 10;
+
+/**
+ * The owner invites an organizer by email. The invitation is written twice —
+ * under the event (the team sees who is pending) and under the invitee (their
+ * inbox) — and pushed. Only an organizer account can be invited: a
+ * co-organizer works in the organizer area (guest list, door scanner).
+ */
+export const inviteCoOrganizer = onCall(async (request) => {
+  const uid = requireSignedIn(request);
+  const {eventId, email} = (request.data ?? {}) as {
+    eventId?: unknown;
+    email?: unknown;
+  };
+  if (typeof eventId !== "string" || !eventId || eventId.includes("/")) {
+    throw new HttpsError("invalid-argument", "Événement invalide.");
+  }
+  if (typeof email !== "string" || !/^[^@\s]+@[^@\s]+$/.test(email.trim())) {
+    throw new HttpsError("invalid-argument", "Adresse email invalide.");
+  }
+
+  const eventRef = db.doc(`events/${eventId}`);
+  const event = await eventRef.get();
+  if (!event.exists) throw new HttpsError("not-found", "Événement introuvable.");
+  if (event.get("organizerId") !== uid) {
+    throw new HttpsError(
+      "permission-denied",
+      "Seul l'organisateur principal compose l'équipe.",
+    );
+  }
+  if ((event.get("startsAt") as Timestamp).toMillis() <= Date.now()) {
+    throw new HttpsError("failed-precondition", "Cet événement est passé.");
+  }
+
+  const invitee = await getAuth()
+    .getUserByEmail(email.trim().toLowerCase())
+    .catch(() => {
+      throw new HttpsError("not-found", "Aucun compte EventHub avec cet email.");
+    });
+  if (invitee.uid === uid) {
+    throw new HttpsError(
+      "failed-precondition",
+      "Vous êtes déjà l'organisateur de cet événement.",
+    );
+  }
+  const profile = await db.doc(`users/${invitee.uid}`).get();
+  if (profile.get("role") !== "organizer") {
+    throw new HttpsError(
+      "failed-precondition",
+      "Ce compte n'est pas organisateur : seul un organisateur peut co-organiser.",
+    );
+  }
+  const staff = (event.get("staffIds") as string[] | undefined) ?? [];
+  if (staff.includes(invitee.uid)) {
+    throw new HttpsError(
+      "failed-precondition",
+      "Cette personne fait déjà partie de l'équipe.",
+    );
+  }
+  const pending = (
+    await eventRef
+      .collection("invitations")
+      .where("status", "==", "pending")
+      .count()
+      .get()
+  ).data().count;
+  if (staff.length + pending >= MAX_STAFF) {
+    throw new HttpsError(
+      "failed-precondition",
+      `Équipe complète : ${MAX_STAFF} co-organisateurs au plus.`,
+    );
+  }
+
+  const invitation = {
+    eventId,
+    userId: invitee.uid,
+    email: invitee.email ?? email.trim().toLowerCase(),
+    name: (profile.get("name") as string | undefined) ?? "",
+    invitedBy: uid,
+    invitedByName: event.get("organizerName") as string,
+    eventTitle: event.get("title") as string,
+    eventStartsAt: event.get("startsAt") as Timestamp,
+    status: "pending",
+    createdAt: FieldValue.serverTimestamp(),
+  };
+  const batch = db.batch();
+  batch.set(eventRef.collection("invitations").doc(invitee.uid), invitation);
+  batch.set(
+    db.doc(`users/${invitee.uid}/staffInvitations/${eventId}`),
+    invitation,
+  );
+  await batch.commit();
+
+  await notify(invitee.uid, {
+    type: "staffInvite",
+    title: "Invitation à co-organiser",
+    body:
+      `${invitation.invitedByName} vous propose de co-organiser ` +
+      `« ${invitation.eventTitle} ».`,
+    eventId,
+    reservationId: "",
+  });
+  await audit("staff.invited", {eventId, userId: invitee.uid, by: uid});
+  return {userId: invitee.uid, name: invitation.name};
+});
+
+/** The invitee accepts (joins `staffIds`) or declines. */
+export const respondToStaffInvite = onCall(async (request) => {
+  const uid = requireSignedIn(request);
+  const {eventId, accept} = (request.data ?? {}) as {
+    eventId?: unknown;
+    accept?: unknown;
+  };
+  if (typeof eventId !== "string" || !eventId || eventId.includes("/")) {
+    throw new HttpsError("invalid-argument", "Événement invalide.");
+  }
+  if (typeof accept !== "boolean") {
+    throw new HttpsError("invalid-argument", "Requête invalide.");
+  }
+
+  const eventRef = db.doc(`events/${eventId}`);
+  const inviteRef = eventRef.collection("invitations").doc(uid);
+  const mirrorRef = db.doc(`users/${uid}/staffInvitations/${eventId}`);
+
+  const outcome = await db.runTransaction(async (tx) => {
+    const [invite, event] = await Promise.all([
+      tx.get(inviteRef),
+      tx.get(eventRef),
+    ]);
+    if (!invite.exists || invite.get("status") !== "pending" || !event.exists) {
+      throw new HttpsError("not-found", "Cette invitation n'est plus valable.");
+    }
+    const staff = (event.get("staffIds") as string[] | undefined) ?? [];
+    if (accept && !staff.includes(uid) && staff.length >= MAX_STAFF) {
+      throw new HttpsError("failed-precondition", "L'équipe est déjà complète.");
+    }
+    const update = {
+      status: accept ? "accepted" : "declined",
+      respondedAt: FieldValue.serverTimestamp(),
+    };
+    tx.update(inviteRef, update);
+    tx.set(mirrorRef, update, {merge: true});
+    if (accept) tx.update(eventRef, {staffIds: FieldValue.arrayUnion(uid)});
+    return {
+      ownerId: event.get("organizerId") as string,
+      title: event.get("title") as string,
+      name: (invite.get("name") as string | undefined) ?? "",
+    };
+  });
+
+  if (accept) {
+    await notify(outcome.ownerId, {
+      type: "staffJoined",
+      title: "Nouveau co-organisateur",
+      body:
+        `${outcome.name || "Un organisateur"} a rejoint l'équipe de ` +
+        `« ${outcome.title} ».`,
+      eventId,
+      reservationId: "",
+    });
+  }
+  await audit(accept ? "staff.accepted" : "staff.declined", {eventId, uid});
+  return {accepted: accept};
+});
+
+/**
+ * The owner removes a member or cancels a pending invitation; a member may
+ * also leave on their own. The owner can never be removed.
+ */
+export const removeCoOrganizer = onCall(async (request) => {
+  const uid = requireSignedIn(request);
+  const {eventId, userId} = (request.data ?? {}) as {
+    eventId?: unknown;
+    userId?: unknown;
+  };
+  if (
+    typeof eventId !== "string" || !eventId || eventId.includes("/") ||
+    typeof userId !== "string" || !userId || userId.includes("/")
+  ) {
+    throw new HttpsError("invalid-argument", "Requête invalide.");
+  }
+  const eventRef = db.doc(`events/${eventId}`);
+  const event = await eventRef.get();
+  if (!event.exists) throw new HttpsError("not-found", "Événement introuvable.");
+
+  const ownerId = event.get("organizerId") as string;
+  const leaving = userId === uid;
+  if (!leaving && ownerId !== uid) {
+    throw new HttpsError(
+      "permission-denied",
+      "Seul l'organisateur principal retire un membre de l'équipe.",
+    );
+  }
+  if (userId === ownerId) {
+    throw new HttpsError(
+      "failed-precondition",
+      "L'organisateur principal ne quitte pas son propre événement.",
+    );
+  }
+  const wasMember = (
+    (event.get("staffIds") as string[] | undefined) ?? []
+  ).includes(userId);
+
+  const batch = db.batch();
+  batch.update(eventRef, {staffIds: FieldValue.arrayRemove(userId)});
+  batch.delete(eventRef.collection("invitations").doc(userId));
+  batch.delete(db.doc(`users/${userId}/staffInvitations/${eventId}`));
+  await batch.commit();
+
+  if (wasMember && !leaving) {
+    await notify(userId, {
+      type: "staffRemoved",
+      title: "Retiré de l'équipe",
+      body: `Vous ne co-organisez plus « ${event.get("title")} ».`,
+      eventId,
+      reservationId: "",
+    });
+  }
+  await audit(leaving ? "staff.left" : "staff.removed", {
+    eventId,
+    userId,
+    by: uid,
+  });
+  return {removed: true};
+});
 
 // --------------------------------------------------------------------------
 // 6. Social proof (F-07)
@@ -1079,6 +1335,19 @@ export async function applyAdminClaim(
     await mirror.delete();
   }
   await audit(admin ? "admin.granted" : "admin.revoked", {uid, by});
+}
+
+function requireSignedIn(request: {
+  app?: unknown;
+  auth?: {uid: string};
+}): string {
+  if (ENFORCE_APP_CHECK.value() && !request.app) {
+    throw new HttpsError("permission-denied", "Application non vérifiée.");
+  }
+  if (!request.auth) {
+    throw new HttpsError("unauthenticated", "Vous devez être connecté.");
+  }
+  return request.auth.uid;
 }
 
 function requireAdmin(request: {

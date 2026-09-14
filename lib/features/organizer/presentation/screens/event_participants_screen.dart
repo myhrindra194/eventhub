@@ -137,6 +137,12 @@ class _EventParticipantsScreenState
         title: const Text(AppStrings.participants),
         actions: [
           IconButton(
+            tooltip: AppStrings.teamTitle,
+            icon: const Icon(Icons.diversity_3_rounded),
+            onPressed: () =>
+                context.push(AppRoutes.organizerEventTeamPath(widget.eventId)),
+          ),
+          IconButton(
             tooltip: AppStrings.scanTickets,
             icon: const Icon(Icons.qr_code_scanner_rounded),
             onPressed: () => context.push(

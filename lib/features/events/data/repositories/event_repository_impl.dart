@@ -29,6 +29,10 @@ class EventRepositoryImpl implements EventRepository {
       _remote.watchByOrganizer(organizerId);
 
   @override
+  Stream<List<Event>> watchCoOrganized(String userId) =>
+      _remote.watchByStaff(userId);
+
+  @override
   Stream<Event?> watchById(String eventId) => _remote.watchById(eventId);
 
   @override

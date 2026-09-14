@@ -11,21 +11,30 @@ import 'package:flutter/material.dart';
 /// panel. Same photo, different information hierarchy: lifecycle badge
 /// first (en ligne / complet / terminé), then the two numbers that decide
 /// what to do next (remplissage, date), then the actions.
+///
+/// A co-organized event (F-16) carries a "Co-organisé" mark and no delete
+/// action: only the owner may delete.
 class OrganizerEventTile extends StatelessWidget {
   const OrganizerEventTile({
     required this.event,
     required this.now,
     required this.onParticipants,
     required this.onEdit,
-    required this.onDelete,
+    required this.onTeam,
     super.key,
+    this.onDelete,
+    this.coOrganized = false,
   });
 
   final Event event;
   final DateTime now;
   final VoidCallback onParticipants;
   final VoidCallback onEdit;
-  final VoidCallback onDelete;
+  final VoidCallback onTeam;
+
+  /// `null` hides the action (co-organized events).
+  final VoidCallback? onDelete;
+  final bool coOrganized;
 
   @override
   Widget build(BuildContext context) {
@@ -62,7 +71,19 @@ class OrganizerEventTile extends StatelessWidget {
                 Positioned(
                   top: AppSpacing.md,
                   left: AppSpacing.md,
-                  child: badge,
+                  child: Row(
+                    children: [
+                      badge,
+                      if (coOrganized) ...[
+                        const SizedBox(width: AppSpacing.sm),
+                        const AppBadge(
+                          label: AppStrings.coOrganizedBadge,
+                          tone: AppTone.info,
+                          style: BadgeStyle.solid,
+                        ),
+                      ],
+                    ],
+                  ),
                 ),
                 Positioned(
                   left: AppSpacing.lg,
@@ -130,18 +151,26 @@ class OrganizerEventTile extends StatelessWidget {
                     ),
                     const SizedBox(width: AppSpacing.sm),
                     IconActionButton(
+                      icon: Icons.diversity_3_rounded,
+                      tooltip: AppStrings.teamTitle,
+                      onPressed: onTeam,
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
+                    IconActionButton(
                       icon: Icons.edit_outlined,
                       tooltip: AppStrings.editEvent,
                       onPressed: onEdit,
                     ),
-                    const SizedBox(width: AppSpacing.sm),
-                    IconActionButton(
-                      icon: Icons.delete_outline_rounded,
-                      tooltip: AppStrings.delete,
-                      color: t.danger.fg,
-                      background: t.danger.bg,
-                      onPressed: onDelete,
-                    ),
+                    if (onDelete != null) ...[
+                      const SizedBox(width: AppSpacing.sm),
+                      IconActionButton(
+                        icon: Icons.delete_outline_rounded,
+                        tooltip: AppStrings.delete,
+                        color: t.danger.fg,
+                        background: t.danger.bg,
+                        onPressed: onDelete,
+                      ),
+                    ],
                   ],
                 ),
               ],

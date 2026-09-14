@@ -3,7 +3,7 @@ DEVICE ?=
 FLAVOR ?= dev
 DART_DEFINES = --dart-define=FLAVOR=$(FLAVOR)
 
-.PHONY: help setup gen watch analyze format test test-cov test-rules rules-setup run run-emu build-apk clean emulators firebase-deploy functions-setup functions-build test-functions deploy
+.PHONY: help setup gen watch analyze format test test-cov test-rules rules-setup run run-emu build-apk clean emulators firebase-deploy functions-setup functions-build test-functions deploy grant-admin
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-16s\033[0m %s\n", $$1, $$2}'
@@ -62,6 +62,9 @@ test-functions: functions-build ## Cloud Functions integration tests, against th
 
 deploy: functions-build ## Deploy rules, indexes, Storage rules, Cloud Functions and Hosting (Blaze plan)
 	firebase deploy --only firestore,storage,functions,hosting
+
+grant-admin: functions-build ## Grant the admin claim: EMAIL=<email> [REVOKE=1] (needs gcloud ADC)
+	node functions/scripts/grant-admin.mjs $(EMAIL) $(if $(REVOKE),--revoke,)
 
 clean: ## Clean build artefacts
 	flutter clean

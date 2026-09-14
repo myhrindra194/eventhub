@@ -92,7 +92,9 @@ type NotificationType =
   | "cancellation"
   | "reminder"
   | "waitlist"
-  | "newEvent";
+  | "newEvent"
+  | "eventRemoved"
+  | "reviewHidden";
 
 interface Reservation {
   eventId: string;
@@ -170,6 +172,11 @@ export const notifyOrganizerOnReservation = onDocumentWritten(
     const cancelled =
       before?.status === "confirmed" && after.status === "cancelled";
     if (!booked && !cancelled) return;
+    // A moderation removal cancels every seat at once and tells the organizer
+    // in a single message (see removeEventByModeration), not one per guest.
+    if (cancelled && (after as {cancelledBy?: string}).cancelledBy === "moderation") {
+      return;
+    }
 
     // Holding a seat ends the wait, whatever the organizer's preferences.
     if (booked) {
@@ -753,6 +760,7 @@ export const onReportCreated = onDocumentCreated(
         tx.update(review, {hidden: true, hiddenAt: FieldValue.serverTimestamp()});
         return true;
       });
+      if (hidden) await notifyReviewAuthor(targetId, null);
     }
 
     await db.doc(`moderationQueue/${targetType}_${targetId}`).set(
@@ -777,71 +785,317 @@ export const onReportCreated = onDocumentCreated(
   },
 );
 
+type ModerationAction =
+  | "hide"
+  | "restore"
+  | "removeEvent"
+  | "suspend"
+  | "reinstate"
+  | "dismiss";
+
+/** What an admin may decide, per target. Mirrored in the app's policy. */
+export const ACTIONS_BY_TARGET: Record<TargetType, ModerationAction[]> = {
+  review: ["hide", "restore", "dismiss"],
+  event: ["removeEvent", "dismiss"],
+  user: ["suspend", "reinstate", "dismiss"],
+};
+
+/** Decisions that change something for a person must say why. */
+const NOTE_REQUIRED: ModerationAction[] = ["removeEvent", "suspend"];
+
 /**
- * Admin decision on a queue entry. `hide` / `restore` apply to reviews and
- * stamp `moderatedAt`, which stops the automatic threshold from overriding
- * the decision; `dismiss` closes the entry for any target type.
+ * Admin decision on a queue entry.
  *
- * Callable only with the `admin` custom claim (set from the Admin SDK — no
- * client path can grant it).
+ *  - review — `hide` / `restore` stamp `moderatedAt` (the automatic threshold
+ *    never overrides a human decision); the author is told when hidden;
+ *  - event — `removeEvent` cancels every confirmed seat, tells each holder
+ *    and the organizer once, then deletes the event, its subcollections and
+ *    its banner;
+ *  - user — `suspend` disables the Auth account and revokes its refresh
+ *    tokens (existing ID tokens expire within the hour); `reinstate` undoes
+ *    it. An admin cannot suspend themselves;
+ *  - any — `dismiss` closes the entry without touching the content.
+ *
+ * Every decision is appended to `moderationQueue/{id}/decisions` and to the
+ * audit trail. Callable only with the `admin` custom claim.
  */
 export const moderateContent = onCall(async (request) => {
-  if (ENFORCE_APP_CHECK.value() && !request.app) {
-    throw new HttpsError("permission-denied", "Application non vérifiée.");
-  }
-  if (request.auth?.token.admin !== true) {
-    throw new HttpsError("permission-denied", "Réservé à la modération.");
-  }
-  const {targetType, targetId, action} = (request.data ?? {}) as {
+  const adminUid = requireAdmin(request);
+  const {targetType, targetId, action, note} = (request.data ?? {}) as {
     targetType?: string;
     targetId?: string;
     action?: string;
+    note?: unknown;
   };
   if (
-    !["event", "user", "review"].includes(targetType ?? "") ||
+    !(targetType === "event" || targetType === "user" || targetType === "review") ||
     typeof targetId !== "string" ||
     targetId.length === 0 ||
     targetId.length > 200 ||
-    !["hide", "restore", "dismiss"].includes(action ?? "")
+    targetId.includes("/")
   ) {
     throw new HttpsError("invalid-argument", "Requête de modération invalide.");
   }
-  if (action !== "dismiss" && targetType !== "review") {
+  const allowed = ACTIONS_BY_TARGET[targetType];
+  if (!allowed.includes(action as ModerationAction)) {
     throw new HttpsError(
       "invalid-argument",
-      "Seuls les avis peuvent être masqués ou rétablis.",
+      "Cette décision ne s'applique pas à ce type de contenu.",
+    );
+  }
+  const decision = action as ModerationAction;
+  const text = typeof note === "string" ? note.trim() : "";
+  if (text.length > 500) {
+    throw new HttpsError("invalid-argument", "Note : 500 caractères maximum.");
+  }
+  if (NOTE_REQUIRED.includes(decision) && text.length === 0) {
+    throw new HttpsError(
+      "invalid-argument",
+      "Expliquez la décision : la personne concernée la recevra.",
     );
   }
 
-  if (action !== "dismiss") {
-    const review = db.doc(`reviews/${targetId}`);
-    if (!(await review.get()).exists) {
-      throw new HttpsError("not-found", "Avis introuvable.");
+  let outcome: Record<string, unknown> = {};
+  switch (decision) {
+    case "hide":
+    case "restore": {
+      const review = db.doc(`reviews/${targetId}`);
+      if (!(await review.get()).exists) {
+        throw new HttpsError("not-found", "Avis introuvable.");
+      }
+      await review.update({
+        hidden: decision === "hide",
+        moderatedAt: FieldValue.serverTimestamp(),
+        moderatedBy: adminUid,
+      });
+      if (decision === "hide") await notifyReviewAuthor(targetId, text || null);
+      break;
     }
-    await review.update({
-      hidden: action === "hide",
-      moderatedAt: FieldValue.serverTimestamp(),
-      moderatedBy: request.auth.uid,
-    });
+    case "removeEvent":
+      outcome = await removeEventByModeration(targetId, text);
+      break;
+    case "suspend":
+    case "reinstate": {
+      if (targetId === adminUid) {
+        throw new HttpsError(
+          "failed-precondition",
+          "Vous ne pouvez pas suspendre votre propre compte.",
+        );
+      }
+      const auth = getAuth();
+      await auth.getUser(targetId).catch(() => {
+        throw new HttpsError("not-found", "Compte introuvable.");
+      });
+      await auth.updateUser(targetId, {disabled: decision === "suspend"});
+      if (decision === "suspend") await auth.revokeRefreshTokens(targetId);
+      const organizer = db.doc(`organizers/${targetId}`);
+      if ((await organizer.get()).exists) {
+        await organizer.update({
+          suspended: decision === "suspend" ? true : FieldValue.delete(),
+        });
+      }
+      break;
+    }
+    case "dismiss":
+      break;
   }
-  await db.doc(`moderationQueue/${targetType}_${targetId}`).set(
+
+  const entry = db.doc(`moderationQueue/${targetType}_${targetId}`);
+  await entry.set(
     {
       targetType,
       targetId,
-      status: action === "dismiss" ? "dismissed" : "resolved",
-      decision: action,
-      decidedBy: request.auth.uid,
+      status: decision === "dismiss" ? "dismissed" : "resolved",
+      decision,
+      decisionNote: text || FieldValue.delete(),
+      decidedBy: adminUid,
+      decidedAt: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp(),
     },
     {merge: true},
   );
-  await audit(`moderation.${action}`, {
+  await entry.collection("decisions").add({
+    action: decision,
+    note: text,
+    by: adminUid,
+    at: FieldValue.serverTimestamp(),
+  });
+  await audit(`moderation.${decision}`, {
     targetType,
     targetId,
-    by: request.auth.uid,
+    by: adminUid,
+    note: text,
+    ...outcome,
   });
-  return {ok: true};
+  return {ok: true, ...outcome};
 });
+
+/** Cancels, notifies, deletes. Returns how many seats were cancelled. */
+async function removeEventByModeration(
+  eventId: string,
+  note: string,
+): Promise<{cancelledReservations: number}> {
+  const eventRef = db.doc(`events/${eventId}`);
+  const snap = await eventRef.get();
+  if (!snap.exists) throw new HttpsError("not-found", "Événement introuvable.");
+  const event = snap.data()!;
+
+  const seats = await db
+    .collection("reservations")
+    .where("eventId", "==", eventId)
+    .where("status", "==", "confirmed")
+    .get();
+
+  for (const doc of seats.docs) {
+    // `cancelledBy` tells notifyOrganizerOnReservation to stay silent: the
+    // organizer gets one message below, not one per guest.
+    await doc.ref.update({
+      status: "cancelled",
+      cancelledAt: Timestamp.now(),
+      cancelledBy: "moderation",
+    });
+    await notify(doc.get("userId") as string, {
+      type: "eventRemoved",
+      title: "Événement annulé",
+      body:
+        `« ${event.title} » a été retiré d'EventHub. ` +
+        "Votre réservation est annulée.",
+      eventId,
+      reservationId: doc.id,
+    });
+  }
+
+  await notify(event.organizerId as string, {
+    type: "eventRemoved",
+    title: "Événement retiré par la modération",
+    body: `« ${event.title} » : ${note}`,
+    eventId,
+    reservationId: "",
+  });
+
+  await db.recursiveDelete(eventRef);
+  const banner = storagePathFromUrl(event.imageUrl);
+  if (banner?.startsWith("events/")) {
+    await getStorage()
+      .bucket()
+      .file(banner)
+      .delete({ignoreNotFound: true});
+  }
+  return {cancelledReservations: seats.size};
+}
+
+/** `.../o/events%2Fuid%2F123.jpg?alt=media&token=…` → `events/uid/123.jpg`. */
+export function storagePathFromUrl(url: unknown): string | null {
+  if (typeof url !== "string") return null;
+  const match = /\/o\/([^?]+)/.exec(url);
+  if (!match) return null;
+  try {
+    return decodeURIComponent(match[1]);
+  } catch {
+    return null;
+  }
+}
+
+async function notifyReviewAuthor(
+  reviewId: string,
+  note: string | null,
+): Promise<void> {
+  const review = await db.doc(`reviews/${reviewId}`).get();
+  if (!review.exists) return;
+  await notify(review.get("authorId") as string, {
+    type: "reviewHidden",
+    title: "Votre avis est masqué",
+    body: note ?
+      `Motif : ${note}` :
+      "Plusieurs personnes l'ont signalé. La modération va le vérifier.",
+    eventId: review.get("eventId") as string,
+    reservationId: "",
+  });
+}
+
+// --------------------------------------------------------------------------
+// 7b. Administrators
+// --------------------------------------------------------------------------
+
+/**
+ * Grants or revokes the `admin` claim by email. Admin-only; an admin cannot
+ * revoke themselves (so the last admin can never lock the project out). The
+ * first admin is created from a terminal: `make grant-admin EMAIL=…`, which
+ * runs the same [applyAdminClaim].
+ */
+export const setAdminRole = onCall(async (request) => {
+  const adminUid = requireAdmin(request);
+  const {email, admin} = (request.data ?? {}) as {
+    email?: unknown;
+    admin?: unknown;
+  };
+  if (typeof email !== "string" || !/^[^@\s]+@[^@\s]+$/.test(email.trim())) {
+    throw new HttpsError("invalid-argument", "Adresse email invalide.");
+  }
+  if (typeof admin !== "boolean") {
+    throw new HttpsError("invalid-argument", "Requête invalide.");
+  }
+  const user = await getAuth()
+    .getUserByEmail(email.trim().toLowerCase())
+    .catch(() => {
+      throw new HttpsError("not-found", "Aucun compte avec cet email.");
+    });
+  if (!admin && user.uid === adminUid) {
+    throw new HttpsError(
+      "failed-precondition",
+      "Vous ne pouvez pas retirer votre propre rôle d'administrateur.",
+    );
+  }
+  await applyAdminClaim(user.uid, admin, adminUid);
+  return {uid: user.uid, email: user.email ?? null, admin};
+});
+
+/**
+ * Sets or clears the claim (other claims kept), mirrors it in `admins/{uid}`
+ * for the in-app list, and records it in the audit trail. The user sees the
+ * change after their ID token refreshes (sign out and in, or within an hour).
+ */
+export async function applyAdminClaim(
+  uid: string,
+  admin: boolean,
+  by: string,
+): Promise<void> {
+  const auth = getAuth();
+  const user = await auth.getUser(uid);
+  const claims = {...(user.customClaims ?? {})} as Record<string, unknown>;
+  if (admin) claims.admin = true;
+  else delete claims.admin;
+  await auth.setCustomUserClaims(uid, claims);
+
+  const mirror = db.doc(`admins/${uid}`);
+  if (admin) {
+    await mirror.set({
+      email: user.email ?? null,
+      name: user.displayName ?? null,
+      grantedBy: by,
+      grantedAt: FieldValue.serverTimestamp(),
+    });
+  } else {
+    await mirror.delete();
+  }
+  await audit(admin ? "admin.granted" : "admin.revoked", {uid, by});
+}
+
+function requireAdmin(request: {
+  app?: unknown;
+  auth?: {uid: string; token: Record<string, unknown>};
+}): string {
+  if (ENFORCE_APP_CHECK.value() && !request.app) {
+    throw new HttpsError("permission-denied", "Application non vérifiée.");
+  }
+  if (!request.auth) {
+    throw new HttpsError("unauthenticated", "Vous devez être connecté.");
+  }
+  if (request.auth.token.admin !== true) {
+    throw new HttpsError("permission-denied", "Réservé à l'administration.");
+  }
+  return request.auth.uid;
+}
 
 // --------------------------------------------------------------------------
 // 8. Public event page (F-08)

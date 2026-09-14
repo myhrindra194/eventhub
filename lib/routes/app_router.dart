@@ -1,4 +1,7 @@
 import 'package:eventhub/core/analytics/app_analytics.dart';
+import 'package:eventhub/features/admin/presentation/screens/admin_roles_screen.dart';
+import 'package:eventhub/features/admin/presentation/screens/moderation_entry_screen.dart';
+import 'package:eventhub/features/admin/presentation/screens/moderation_queue_screen.dart';
 import 'package:eventhub/features/auth/application/auth_providers.dart';
 import 'package:eventhub/features/auth/presentation/screens/change_password_screen.dart';
 import 'package:eventhub/features/auth/presentation/screens/complete_profile_screen.dart';
@@ -198,6 +201,31 @@ final _commonRoutes = <RouteBase>[
     name: AppRoutes.followingName,
     parentNavigatorKey: rootNavigatorKey,
     pageBuilder: (_, state) => AppPage.screen(state, const FollowingScreen()),
+  ),
+  // Administration — the guard requires the `admin` claim.
+  GoRoute(
+    path: AppRoutes.adminModeration,
+    name: AppRoutes.adminModerationName,
+    parentNavigatorKey: rootNavigatorKey,
+    pageBuilder: (_, state) =>
+        AppPage.screen(state, const ModerationQueueScreen()),
+  ),
+  GoRoute(
+    path: AppRoutes.adminModerationEntry,
+    name: AppRoutes.adminModerationEntryName,
+    parentNavigatorKey: rootNavigatorKey,
+    pageBuilder: (_, state) => AppPage.screen(
+      state,
+      ModerationEntryScreen(
+        entryId: state.pathParameters[AppRoutes.entryIdParam]!,
+      ),
+    ),
+  ),
+  GoRoute(
+    path: AppRoutes.adminRoles,
+    name: AppRoutes.adminRolesName,
+    parentNavigatorKey: rootNavigatorKey,
+    pageBuilder: (_, state) => AppPage.screen(state, const AdminRolesScreen()),
   ),
   // Shared link https://<host>/e/{id}, delivered by Android App Links.
   GoRoute(

@@ -152,6 +152,14 @@ class _NotificationRow extends ConsumerWidget {
         AppTone.warning,
       ),
       NotificationRoute.newEvent => (Icons.campaign_outlined, AppTone.info),
+      NotificationRoute.eventRemoved => (
+        Icons.event_busy_rounded,
+        AppTone.danger,
+      ),
+      NotificationRoute.reviewHidden => (
+        Icons.visibility_off_outlined,
+        AppTone.warning,
+      ),
       _ => (Icons.notifications_rounded, AppTone.neutral),
     };
     final colors = t.resolve(tone);

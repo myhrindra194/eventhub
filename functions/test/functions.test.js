@@ -429,6 +429,24 @@ describe('moderation (F-19)', () => {
     assert.equal((await db.doc('events/e1').get()).exists, true);
   });
 
+  it('tells the author when their review is hidden by the threshold', async () => {
+    await db.doc('reviews/e1_p9').set({
+      eventId: 'e1',
+      authorId: 'p9',
+      authorName: 'Troll',
+      rating: 1,
+      comment: 'Texte abusif',
+      createdAt: Timestamp.now(),
+    });
+    for (const p of ['p1', 'p2', 'p3']) await fileReport(p);
+    const items = await eventually(async () => {
+      const list = await notificationsOf('p9');
+      return list.length > 0 ? list : null;
+    });
+    assert.equal(items?.[0].type, 'reviewHidden');
+    assert.equal(items?.[0].eventId, 'e1');
+  });
+
   it('lets an admin restore a hidden review, and only an admin', async () => {
     await db.doc('reviews/e1_p9').set({
       eventId: 'e1',
@@ -463,6 +481,138 @@ describe('moderation (F-19)', () => {
     const review = (await db.doc('reviews/e1_p9').get()).data();
     assert.equal(review.hidden, false);
     assert.ok(review.moderatedAt, 'decision stamped');
+  });
+});
+
+describe('administration', () => {
+  const host = () => process.env.FUNCTIONS_EMULATOR_HOST ?? '127.0.0.1:5001';
+  const call = async (name, idToken, data) => {
+    const res = await fetch(`http://${host()}/${PROJECT_ID}/${REGION}/${name}`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        authorization: `Bearer ${idToken}`,
+      },
+      body: JSON.stringify({ data }),
+    });
+    return { status: res.status, body: await res.json() };
+  };
+  const newAdmin = async () => {
+    const admin = await signUp(`admin-${Date.now()}-${Math.random()}@example.com`);
+    const { applyAdminClaim } = require('../lib/index.js');
+    await applyAdminClaim(admin.uid, true, 'test');
+    return { ...admin, idToken: (await signIn(admin.email)).idToken };
+  };
+
+  it('removes an event: seats cancelled, holders and organizer told once', async () => {
+    const admin = await newAdmin();
+    await db.doc('events/e1').set(eventDoc({ availablePlaces: 8 }));
+    await db.doc('reservations/e1_p1').set(reservationDoc({ userId: 'p1' }));
+    await db.doc('reservations/e1_p2').set(reservationDoc({ userId: 'p2' }));
+    // Let the booking notifications land before counting the organizer's.
+    await eventually(async () => (await notificationsOf('o1')).length === 2);
+
+    const refused = await call('moderateContent', admin.idToken, {
+      targetType: 'event',
+      targetId: 'e1',
+      action: 'removeEvent',
+    });
+    assert.equal(refused.status, 400, 'a removal must carry a note');
+
+    const { status, body } = await call('moderateContent', admin.idToken, {
+      targetType: 'event',
+      targetId: 'e1',
+      action: 'removeEvent',
+      note: 'Événement frauduleux.',
+    });
+    assert.equal(status, 200);
+    assert.equal(body.result.cancelledReservations, 2);
+    assert.equal((await db.doc('events/e1').get()).exists, false);
+    assert.equal((await db.doc('reservations/e1_p1').get()).get('status'), 'cancelled');
+    assert.equal((await notificationsOf('p1'))[0]?.type, 'eventRemoved');
+
+    await new Promise((r) => setTimeout(r, 2_500));
+    const organizer = await notificationsOf('o1');
+    assert.equal(organizer.filter((n) => n.type === 'cancellation').length, 0);
+    assert.equal(organizer.filter((n) => n.type === 'eventRemoved').length, 1);
+    const decisions = await db.collection('moderationQueue/event_e1/decisions').get();
+    assert.equal(decisions.size, 1);
+    assert.equal((await db.doc('moderationQueue/event_e1').get()).get('status'), 'resolved');
+  });
+
+  it('suspends and reinstates an account, never the admin themselves', async () => {
+    const admin = await newAdmin();
+    const target = await signUp(`target-${Date.now()}@example.com`);
+
+    const self = await call('moderateContent', admin.idToken, {
+      targetType: 'user',
+      targetId: admin.uid,
+      action: 'suspend',
+      note: 'test',
+    });
+    assert.equal(self.status, 400);
+
+    const suspended = await call('moderateContent', admin.idToken, {
+      targetType: 'user',
+      targetId: target.uid,
+      action: 'suspend',
+      note: 'Harcèlement répété.',
+    });
+    assert.equal(suspended.status, 200);
+    assert.equal((await auth.getUser(target.uid)).disabled, true);
+
+    await call('moderateContent', admin.idToken, {
+      targetType: 'user',
+      targetId: target.uid,
+      action: 'reinstate',
+    });
+    assert.equal((await auth.getUser(target.uid)).disabled, false);
+  });
+
+  it('refuses a decision that does not fit the target type', async () => {
+    const admin = await newAdmin();
+    const { status } = await call('moderateContent', admin.idToken, {
+      targetType: 'review',
+      targetId: 'e1_p1',
+      action: 'suspend',
+      note: 'x',
+    });
+    assert.equal(status, 400);
+  });
+
+  it('grants and revokes the admin role, mirrored for the in-app list', async () => {
+    const admin = await newAdmin();
+    const other = await signUp(`other-${Date.now()}@example.com`);
+
+    const notAdmin = await call('setAdminRole', other.idToken, {
+      email: admin.email,
+      admin: false,
+    });
+    assert.equal(notAdmin.status, 403);
+
+    const granted = await call('setAdminRole', admin.idToken, {
+      email: other.email,
+      admin: true,
+    });
+    assert.equal(granted.status, 200);
+    assert.equal((await auth.getUser(other.uid)).customClaims?.admin, true);
+    assert.ok((await db.doc(`admins/${other.uid}`).get()).exists);
+
+    const selfRevoke = await call('setAdminRole', admin.idToken, {
+      email: admin.email,
+      admin: false,
+    });
+    assert.equal(selfRevoke.status, 400);
+
+    await call('setAdminRole', admin.idToken, { email: other.email, admin: false });
+    assert.equal((await auth.getUser(other.uid)).customClaims?.admin, undefined);
+    assert.equal((await db.doc(`admins/${other.uid}`).get()).exists, false);
+
+    const unknown = await call('setAdminRole', admin.idToken, {
+      email: 'nobody@example.com',
+      admin: true,
+    });
+    assert.equal(unknown.status, 404);
   });
 });
 

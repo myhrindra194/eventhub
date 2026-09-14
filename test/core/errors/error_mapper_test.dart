@@ -48,12 +48,32 @@ void main() {
         ),
       );
       expect(failure, isA<BusinessRuleFailure>());
-      expect(
-        (failure as BusinessRuleFailure).rule,
-        BusinessRule.accountDeletionBlocked,
-      );
+      expect((failure as BusinessRuleFailure).rule, BusinessRule.actionRefused);
       expect(failure.message, 'Suppression impossible : 1 événement');
     });
+
+    test(
+      'maps refusals, bad requests and missing targets with the server text',
+      () {
+        final denied = map(
+          functions('permission-denied', 'Réservé à l’administration.'),
+        );
+        expect(denied, isA<PermissionFailure>());
+        expect(denied.message, 'Réservé à l’administration.');
+
+        final invalid = map(
+          functions('invalid-argument', 'Expliquez la décision.'),
+        );
+        expect(invalid, isA<ValidationFailure>());
+        expect(invalid.message, 'Expliquez la décision.');
+
+        final missing = map(
+          functions('not-found', 'Aucun compte avec cet email.'),
+        );
+        expect(missing, isA<NotFoundFailure>());
+        expect(missing.message, 'Aucun compte avec cet email.');
+      },
+    );
 
     test('maps unauthenticated to a sign-in failure', () {
       final failure = map(functions('unauthenticated'));

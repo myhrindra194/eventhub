@@ -34,6 +34,22 @@ abstract final class AppRoutes {
   static const privacyPolicyName = 'privacy';
   static const aboutName = 'about';
 
+  // Administration — any role, `admin` claim required (see RouteGuard).
+  static const adminPrefix = '/admin';
+  static const adminModeration = '/admin/moderation';
+  static const adminModerationName = 'admin-moderation';
+  static const adminModerationEntry = '/admin/moderation/:entryId';
+  static const adminModerationEntryName = 'admin-moderation-entry';
+  static const adminRoles = '/admin/roles';
+  static const adminRolesName = 'admin-roles';
+  static const entryIdParam = 'entryId';
+
+  static String adminModerationEntryPath(String entryId) =>
+      '/admin/moderation/${Uri.encodeComponent(entryId)}';
+
+  static bool isAdminArea(String location) =>
+      location == adminPrefix || location.startsWith('$adminPrefix/');
+
   // Public organizer profile and follows (F-10) — shared by both roles.
   static const organizerPublicProfile = '/organizers/:organizerId';
   static const organizerPublicProfileName = 'organizer-public-profile';

@@ -13,9 +13,9 @@
 ![Dart](https://img.shields.io/badge/Dart-3.13-0175C2?logo=dart&logoColor=white)
 ![Riverpod](https://img.shields.io/badge/Riverpod-3-6366F1)
 ![Firebase](https://img.shields.io/badge/Firebase-Auth_·_Firestore_·_Storage_·_FCM_·_Functions_·_App_Check-FFCA28?logo=firebase&logoColor=black)
-![Tests Dart](https://img.shields.io/badge/tests_Dart-149_passing-10B981)
-![Tests règles](https://img.shields.io/badge/tests_règles-131_passing-10B981)
-![Tests fonctions](https://img.shields.io/badge/tests_fonctions-21_passing-10B981)
+![Tests Dart](https://img.shields.io/badge/tests_Dart-164_passing-10B981)
+![Tests règles](https://img.shields.io/badge/tests_règles-132_passing-10B981)
+![Tests fonctions](https://img.shields.io/badge/tests_fonctions-26_passing-10B981)
 
 ---
 
@@ -120,7 +120,16 @@ d'émulateurs, qui exécute les vraies règles.
 | Stats · Alertes | remplissage, 14 jours de réservations (graphique + tableau), classement ; à surveiller + journal |
 | Push | réservation et annulation en temps réel |
 
-### 2.4 Transverse
+### 2.4 Administration (compte avec le rôle `admin`, quel que soit son rôle métier)
+
+| Fonctionnalité | Détail |
+|---|---|
+| **File de modération** | Profil → Modération (pastille du nombre de dossiers ouverts) : « À traiter » trié par nombre de signalements, « Traités » par date ; filtre Avis / Événements / Organisateurs ; marque « Masqué auto » |
+| **Dossier** | contenu signalé tel quel (avis masqué compris, événement avec description, compte avec email), chaque signalement (motif, précisions, date, clé courte du signaleur), historique des décisions |
+| **Décisions** | avis : masquer / rétablir ; événement : **retirer** (réservations annulées, inscrits et organisateur prévenus, suppression) ; compte : **suspendre** / réactiver ; tous : classer sans suite. Conséquence expliquée avant confirmation, note obligatoire quand une personne perd quelque chose |
+| **Administrateurs** | liste, ajout par email, retrait (jamais soi-même) |
+
+### 2.5 Transverse
 
 Bandeau **hors ligne** (les données en cache restent consultables, les
 écritures sont envoyées au retour du réseau), rapport de plantage, consentement
@@ -175,10 +184,16 @@ généré par FlutterFire et ignoré par Git (`flutterfire configure --project=e
    contenir l'empreinte **SHA-256** de chaque clé de signature : celle de la
    clé de debug de ce poste y est ; **ajouter celle de la clé release** avant
    publication.
-10. **Modération** : un compte administrateur reçoit le claim `admin` depuis
-    le SDK Admin (`auth.setCustomUserClaims(uid, {admin: true})`) ; il traite
-    `moderationQueue` dans la console et décide via la fonction
-    `moderateContent`.
+10. **Premier administrateur** : le compte doit exister dans l'app, puis,
+    depuis ce poste (une fois : `gcloud auth application-default login` avec
+    un compte ayant le rôle *Firebase Admin* sur le projet) :
+    ```sh
+    make grant-admin EMAIL=moderation@exemple.org          # accorder
+    make grant-admin EMAIL=moderation@exemple.org REVOKE=1 # retirer
+    ```
+    La personne se déconnecte puis se reconnecte : l'entrée **Modération**
+    apparaît dans son profil. Les administrateurs suivants s'ajoutent depuis
+    l'app (Modération → Administrateurs).
 
 ```sh
 firebase login
@@ -403,6 +418,7 @@ aplat plein écran. Détails : [`docs/DESIGN_SYSTEM.md`](docs/DESIGN_SYSTEM.md).
 | Fiche événement (favori, partage, liste d'attente, avis, signalement) | `/events/:eventId` |
 | Lien partagé (App Links) → fiche | `/e/:eventId` |
 | Profil organisateur public · Organisateurs suivis | `/organizers/:organizerId` · `/following` |
+| Modération · Dossier · Administrateurs (claim `admin`) | `/admin/moderation` · `/admin/moderation/:entryId` · `/admin/roles` |
 | Confirmation · Billet | `/reservations/:reservationId/confirmation` · `/reservations/:reservationId/ticket` |
 | Mes favoris | `/favorites` |
 | Paramètres · Modifier le profil | `/profile/settings`, `/organizer/profile/settings` · `/account/edit` |
@@ -469,6 +485,7 @@ aplat plein écran. Détails : [`docs/DESIGN_SYSTEM.md`](docs/DESIGN_SYSTEM.md).
 | `make emulators` | suite d'émulateurs |
 | `make firebase-deploy` · `make deploy` | règles + index + Storage · tout, fonctions et Hosting compris |
 | `make build-apk FLAVOR=prod` | APK release |
+| `make grant-admin EMAIL=… [REVOKE=1]` | accorder / retirer le rôle administrateur (identifiants Google Cloud du poste) |
 
 ---
 
@@ -549,7 +566,6 @@ CI.
 | Clés à fournir | `GOOGLE_SERVER_CLIENT_ID`, `FIREBASE_WEB_VAPID_KEY`, `APP_CHECK_RECAPTCHA_SITE_KEY`, keystore release |
 | « Add to Cal » | plugin natif de calendrier |
 | Empreinte release dans `assetlinks.json` | à ajouter avec la keystore release, sinon les liens s'ouvrent dans le navigateur |
-| Interface d'administration de la modération | la file `moderationQueue` se traite dans la console et via `moderateContent` ; un écran dédié reste à faire |
 | Paiement (F-11), types de billets (F-12), séries (F-13), carte (F-14), co-organisateurs (F-16), discussion (F-17), multilingue (F-20) | backlog P2 : Stripe et Maps exigent des comptes tiers ; les autres changent le modèle de données |
 | Revue juridique | notice de confidentialité et consentement à valider (DPO) |
 
@@ -573,6 +589,8 @@ CI.
 | Un lien `/e/…` s'ouvre dans le navigateur au lieu de l'app | empreinte SHA-256 de la clé de signature absente de `assetlinks.json`, ou Hosting non déployé ; `adb shell pm get-app-links com.example.eventhub` |
 | « Vous avez déjà signalé ce contenu » | normal : un signalement par compte et par contenu |
 | Profil organisateur « indisponible » | fonctions non déployées (profil public jamais créé) ou compte supprimé |
+| Pas d'entrée « Modération » après `make grant-admin` | se déconnecter puis se reconnecter (le rôle est dans le jeton) |
+| `make grant-admin` : « Could not load the default credentials » | `gcloud auth application-default login`, ou `GOOGLE_APPLICATION_CREDENTIALS=<clé>` |
 
 ---
 

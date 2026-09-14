@@ -704,6 +704,29 @@ describe('moderationQueue (F-19)', () => {
     );
   });
 
+  it('keeps the decision history and the admin list admin-only and server-written', async () => {
+    await seed(async (db) => {
+      await setDoc(doc(db, 'moderationQueue', 'review_e1_p2', 'decisions', 'd1'), {
+        action: 'hide',
+      });
+      await setDoc(doc(db, 'admins', 'admin1'), { email: 'admin1@example.com' });
+    });
+    const admin = asAdmin(env).firestore();
+    await assertSucceeds(
+      getDoc(doc(admin, 'moderationQueue', 'review_e1_p2', 'decisions', 'd1')),
+    );
+    await assertSucceeds(getDoc(doc(admin, 'admins', 'admin1')));
+    await assertFails(setDoc(doc(admin, 'admins', 'o1'), { email: 'x' }));
+    await assertFails(
+      getDoc(doc(asOrganizer(env, 'o1').firestore(), 'admins', 'admin1')),
+    );
+    await assertFails(
+      getDoc(
+        doc(asParticipant(env, 'p1').firestore(), 'moderationQueue', 'review_e1_p2', 'decisions', 'd1'),
+      ),
+    );
+  });
+
   it('is written by functions only, admins included', async () => {
     await assertFails(
       updateDoc(doc(asAdmin(env).firestore(), 'moderationQueue', 'review_e1_p2'), {

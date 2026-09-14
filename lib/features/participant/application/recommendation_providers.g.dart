@@ -61,4 +61,4 @@ final class RecommendedEventsProvider
   }
 }
 
-String _$recommendedEventsHash() => r'f6c1e830751472e7dd511f4870e122becc03575a';
+String _$recommendedEventsHash() => r'f950d596a2925887e7dbd28d3a94ad7dc3c14a58';

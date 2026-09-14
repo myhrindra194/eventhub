@@ -18,6 +18,13 @@ abstract final class NotificationRoute {
   /// An organizer the user follows published an event.
   static const newEvent = 'newEvent';
 
+  /// Moderation removed an event: holders see their cancelled tickets
+  /// (the event itself no longer exists).
+  static const eventRemoved = 'eventRemoved';
+
+  /// The user's review was hidden: open the event it was left on.
+  static const reviewHidden = 'reviewHidden';
+
   static String? locationFor(Map<String, Object?> data) {
     final eventId = _nonEmpty(data['eventId']);
     final reservationId = _nonEmpty(data['reservationId']);
@@ -26,7 +33,9 @@ abstract final class NotificationRoute {
       booking || cancellation when eventId != null =>
         AppRoutes.organizerEventParticipantsPath(eventId),
       waitlist ||
-      newEvent when eventId != null => AppRoutes.eventDetailPath(eventId),
+      newEvent ||
+      reviewHidden when eventId != null => AppRoutes.eventDetailPath(eventId),
+      eventRemoved => AppRoutes.reservations,
       reminder when reservationId != null => AppRoutes.ticketPath(
         reservationId,
       ),

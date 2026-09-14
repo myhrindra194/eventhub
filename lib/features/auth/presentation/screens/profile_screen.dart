@@ -5,6 +5,7 @@ import 'package:eventhub/core/l10n/app_strings.dart';
 import 'package:eventhub/core/result/result.dart';
 import 'package:eventhub/core/utils/date_formats.dart';
 import 'package:eventhub/core/widgets/design_system.dart';
+import 'package:eventhub/features/admin/application/moderation_providers.dart';
 import 'package:eventhub/features/auth/application/auth_controller.dart';
 import 'package:eventhub/features/auth/application/auth_providers.dart';
 import 'package:eventhub/features/auth/domain/entities/app_user.dart';
@@ -103,6 +104,13 @@ class ProfileScreen extends ConsumerWidget {
                   label: AppStrings.followingTitle,
                   onTap: () => context.push(AppRoutes.following),
                 ),
+                if (user.isAdmin)
+                  _MenuItem(
+                    icon: Icons.gavel_rounded,
+                    label: AppStrings.moderationTitle,
+                    onTap: () => context.push(AppRoutes.adminModeration),
+                    trailing: const _ModerationBadge(),
+                  ),
                 if (user.isParticipant)
                   _MenuItem(
                     icon: Icons.favorite_border_rounded,
@@ -340,12 +348,31 @@ class _Stats extends ConsumerWidget {
   }
 }
 
+/// Open moderation files, next to the chevron.
+class _ModerationBadge extends ConsumerWidget {
+  const _ModerationBadge();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final count = ref.watch(openModerationCountProvider);
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (count > 0) CountBadge(count: count, tone: AppTone.danger),
+        const SizedBox(width: AppSpacing.xs),
+        Icon(Icons.chevron_right_rounded, color: context.tokens.textTertiary),
+      ],
+    );
+  }
+}
+
 class _MenuItem {
   const _MenuItem({
     required this.icon,
     required this.label,
     required this.onTap,
-  }) : trailing = null;
+    this.trailing,
+  });
 
   final IconData icon;
   final String label;

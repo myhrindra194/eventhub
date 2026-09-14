@@ -22,6 +22,10 @@ abstract final class FirestorePaths {
   /// organizers/{uid} — public organizer profile, written by functions only.
   static const organizers = 'organizers';
 
+  /// moderationQueue/{targetType}_{targetId} and admins/{uid} — admin-only.
+  static const moderationQueue = 'moderationQueue';
+  static const admins = 'admins';
+
   /// aggregates/{docId} — server-maintained, read-only for clients.
   static const aggregates = 'aggregates';
 

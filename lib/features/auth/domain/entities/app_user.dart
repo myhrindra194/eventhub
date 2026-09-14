@@ -22,6 +22,11 @@ abstract class AppUser with _$AppUser {
     /// Read from Firebase Auth, never stored in Firestore: the token claim
     /// `email_verified` is what the security rules trust.
     @Default(false) bool emailVerified,
+
+    /// The `admin` custom claim, read from the ID token — never from
+    /// Firestore, where nobody could be trusted to write it. Gives access to
+    /// the moderation area; the server checks the claim again on every call.
+    @Default(false) bool isAdmin,
   }) = _AppUser;
 
   bool get isOrganizer => role == UserRole.organizer;

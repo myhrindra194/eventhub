@@ -41,6 +41,17 @@ void main() {
     },
   );
 
+  test('moderation notices open the event or the tickets', () {
+    expect(
+      NotificationRoute.locationFor({'type': 'reviewHidden', 'eventId': 'e1'}),
+      AppRoutes.eventDetailPath('e1'),
+    );
+    expect(
+      NotificationRoute.locationFor({'type': 'eventRemoved', 'eventId': 'e1'}),
+      AppRoutes.reservations,
+    );
+  });
+
   test('unknown or incomplete payloads open nothing', () {
     expect(NotificationRoute.locationFor({}), isNull);
     expect(NotificationRoute.locationFor({'type': 'promo'}), isNull);

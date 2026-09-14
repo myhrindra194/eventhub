@@ -33,6 +33,7 @@ lib/
     ├── organizer/              dashboard, stats, alerts, participants, CSV (file + clipboard)
     ├── organizers/             public organizer profile (organizers/{id}), follows
     ├── moderation/             reports: ReportPolicy, repository, report sheet
+    ├── admin/                  moderation queue, file, decisions, admin roles (claim `admin`)
     ├── notifications/          preferences, devices, FCM pipeline, notification centre
     ├── participant/            participant shell, "Pour vous" recommendations
     └── support/                help, privacy, about
@@ -124,6 +125,17 @@ function; role-agnostic pages (`/welcome`, `/change-password`,
 `/account/edit`, `/notifications`, `/help`, `/privacy`, `/about`,
 `/following`, and every `/organizers/{id}`) are declared in `AppRoutes`. The
 router observer reports screen views to analytics.
+
+### Administration
+
+`/admin/**` is outside both role areas. `RouteGuard` lets it through only for
+`AppUser.isAdmin`, which `AuthRepositoryImpl` reads from the ID token claims
+(`FirebaseAuthDataSource.hasAdminClaim`). The admin feature composes other
+features' providers for previews (`eventByIdProvider`,
+`reviewRepositoryProvider`, `organizerProfileProvider`) and owns only the
+queue, reports, decisions, reported account and admin list reads, plus the
+`moderateContent` / `setAdminRole` callables. `ModerationPolicy.actionsFor`
+mirrors `ACTIONS_BY_TARGET` on the server.
 
 ### Deep links
 

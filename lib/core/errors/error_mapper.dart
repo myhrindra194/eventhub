@@ -86,8 +86,25 @@ abstract final class ErrorMapper {
           stackTrace: st,
         ),
         'failed-precondition' => BusinessRuleFailure(
-          rule: BusinessRule.accountDeletionBlocked,
+          rule: BusinessRule.actionRefused,
           message: serverMessage ?? 'Action impossible pour le moment.',
+          cause: e,
+          stackTrace: st,
+        ),
+        'permission-denied' => PermissionFailure(
+          message:
+              serverMessage ?? "Vous n'avez pas les droits pour cette action.",
+          cause: e,
+          stackTrace: st,
+        ),
+        'invalid-argument' => ValidationFailure(
+          message: serverMessage ?? 'Requête invalide.',
+          cause: e,
+          stackTrace: st,
+        ),
+        'not-found' => NotFoundFailure(
+          resource: 'function',
+          message: serverMessage ?? 'Ressource introuvable.',
           cause: e,
           stackTrace: st,
         ),

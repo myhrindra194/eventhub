@@ -99,7 +99,10 @@ enum BusinessRule {
   capacityBelowReservations,
   eventHasReservations,
   emailNotVerified,
-  accountDeletionBlocked,
+
+  /// The server refused an action whose preconditions are not met
+  /// (`failed-precondition` from a callable function); the message says why.
+  actionRefused,
   notAttendee,
   eventNotStarted,
   waitlistNotAvailable,

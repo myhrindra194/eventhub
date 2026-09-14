@@ -56,12 +56,20 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   Stream<AuthSession> _sessionFor(User user) {
+    return Stream.fromFuture(
+      _auth.hasAdminClaim(user),
+    ).switchMap((isAdmin) => _profileSession(user, isAdmin: isAdmin));
+  }
+
+  Stream<AuthSession> _profileSession(User user, {required bool isAdmin}) {
     return _users.watch(user.uid).switchMap<AuthSession>((dto) {
       if (dto != null) {
         _ensureRoleClaimOnce(user.uid, dto.role);
         return Stream.value(
           SignedIn(
-            dto.toDomain(user.uid).copyWith(emailVerified: user.emailVerified),
+            dto
+                .toDomain(user.uid)
+                .copyWith(emailVerified: user.emailVerified, isAdmin: isAdmin),
           ),
         );
       }

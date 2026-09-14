@@ -562,6 +562,72 @@ abstract final class AppStrings {
   static const exportCsvFile = 'Exporter le CSV';
   static const copyCsv = 'Copier le CSV dans le presse-papiers';
 
+  // Administration — modération
+  static const moderationTitle = 'Modération';
+  static const moderationOpen = 'À traiter';
+  static const moderationClosed = 'Traités';
+  static const moderationAll = 'Tout';
+  static const moderationNothingOpenTitle = 'Rien à traiter';
+  static const moderationNothingOpen =
+      'Les nouveaux signalements apparaîtront ici, les plus signalés en '
+      'premier.';
+  static const moderationNothingClosedTitle = 'Aucun dossier traité';
+  static const moderationNothingClosed =
+      'Les décisions prises apparaîtront ici, les plus récentes en premier.';
+  static String reportsCount(int n) =>
+      n > 1 ? '$n signalements' : '$n signalement';
+  static const moderationEntryTitle = 'Dossier de modération';
+  static const moderationEntryNotFound = 'Ce dossier n’existe plus.';
+  static const reportedContent = 'Contenu signalé';
+  static const reportsSection = 'Signalements';
+  static const decisionsSection = 'Décisions';
+  static const noDecisionYet = 'Aucune décision pour le moment.';
+  static const lastReason = 'Dernier motif';
+  static const unknownReason = 'Motif inconnu';
+  static const autoHidden = 'Masqué automatiquement';
+  static const autoHiddenShort = 'Masqué auto';
+  static const hiddenBadge = 'Masqué';
+  static const suspendedBadge = 'Suspendu';
+  static const deletedContent = 'Contenu supprimé depuis le signalement.';
+  static const emptyComment = 'Note sans commentaire.';
+  static const seatsBookedSuffix = 'places réservées';
+  static const openOrganizerProfile = 'Voir le profil public';
+  static const statusOpen = 'À traiter';
+  static const statusResolved = 'Décidé';
+  static const statusDismissed = 'Classé';
+  static String reporterLabel(String key) => 'Compte ·$key';
+  static const decisionNote = 'Note (facultative)';
+  static const decisionNoteRequired = 'Note (obligatoire)';
+  static const decisionNoteHint =
+      'Transmise à la personne concernée et gardée dans l’historique.';
+  static const decisionSending = 'Enregistrement…';
+  static const decisionSaved = 'Décision enregistrée.';
+  static String eventRemovedToast(int n) =>
+      'Événement retiré · $n réservation${n > 1 ? 's' : ''} '
+      'annulée${n > 1 ? 's' : ''}.';
+
+  // Administration — rôles
+  static const adminRolesTitle = 'Administrateurs';
+  static const adminRolesLead =
+      'Un administrateur voit les signalements et décide : masquer un avis, '
+      'retirer un événement, suspendre un compte. Le compte doit déjà exister '
+      'dans EventHub.';
+  static const adminEmailHint = 'email du compte';
+  static const grantAdmin = 'Accorder le rôle';
+  static const revokeAdmin = 'Retirer';
+  static const revokeAdminTitle = 'Retirer le rôle ?';
+  static String revokeAdminMessage(String email) =>
+      '$email n’aura plus accès à la modération après sa prochaine connexion.';
+  static String adminGranted(String email) =>
+      'Rôle accordé à $email. Il sera actif à sa prochaine connexion.';
+  static String adminRevoked(String email) => 'Rôle retiré à $email.';
+  static String adminSince(String date) => 'Administrateur depuis le $date';
+  static const adminRelogHint =
+      'Le rôle est porté par le jeton de connexion : la personne doit se '
+      'déconnecter puis se reconnecter pour que le changement s’applique.';
+  static const you = 'Vous';
+  static const participantRole = 'Participant';
+
   // Recommandations (F-18)
   static const forYou = 'Pour vous';
   static const forYouSubtitle =

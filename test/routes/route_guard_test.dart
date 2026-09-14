@@ -251,6 +251,32 @@ void main() {
     });
   });
 
+  group('administration', () {
+    test('opens the moderation area to admins of either role only', () {
+      final entry = AppRoutes.adminModerationEntryPath('review_e1_p9');
+      expect(entry, '/admin/moderation/review_e1_p9');
+      for (final path in [
+        AppRoutes.adminModeration,
+        entry,
+        AppRoutes.adminRoles,
+      ]) {
+        expect(
+          redirect(signedIn(participant.copyWith(isAdmin: true)), path),
+          isNull,
+          reason: path,
+        );
+        expect(
+          redirect(signedIn(organizer.copyWith(isAdmin: true)), path),
+          isNull,
+          reason: path,
+        );
+        expect(redirect(signedIn(participant), path), AppRoutes.events);
+        expect(redirect(signedIn(organizer), path), AppRoutes.organizerEvents);
+        expect(redirect(signedOut(), path), AppRoutes.login);
+      }
+    });
+  });
+
   group('route classification', () {
     test('recognises the organizer area without prefix collisions', () {
       expect(AppRoutes.isOrganizerArea('/organizer/events'), isTrue);

@@ -195,6 +195,19 @@ Tests : règles `make test-rules` (118), fonctions `make test-functions`.
 | `?from=` (lien profond conservé) | liste blanche de destinations (`/e/`, `/events/`, `/organizers/`) : un `from` forgé ne peut ouvrir ni une URL externe ni un écran arbitraire ; la confinement par rôle s'applique ensuite | `RouteGuard` (testé) |
 | Analytics de signalement | type de cible et motif seulement, jamais l'id ou le contenu signalé | `AppAnalytics.contentReported` |
 
+### v1.5 : administration et décisions de modération
+
+| Surface | Garantie | Où |
+|---|---|---|
+| Rôle administrateur | **custom claim `admin`** uniquement : aucun document ne le confère. Accordé par `setAdminRole` (admin requis) ou, pour le premier, par `make grant-admin EMAIL=…` avec les identifiants Google Cloud du poste. Un admin ne peut pas retirer son propre rôle : le dernier admin ne peut pas verrouiller le projet | `functions/src/index.ts`, `functions/scripts/grant-admin.mjs` |
+| Écrans `/admin/**` | le guard exige `AppUser.isAdmin` (lu dans le jeton, jamais dans Firestore). **Confort seulement** : chaque lecture est refusée par les règles et chaque décision par la fonction sans le claim | `RouteGuard`, règles |
+| `moderationQueue`, `…/decisions`, `admins`, `reports` | lecture admin, écriture serveur uniquement (même un admin n'écrit pas directement : tout passe par une fonction qui journalise) | règles (testées) |
+| `moderateContent` | claim vérifié, App Check si activé, action validée **par type de cible** (`ACTIONS_BY_TARGET`), note obligatoire pour retirer un événement ou suspendre un compte (elle est envoyée à la personne), ≤ 500 caractères ; historique append-only + audit | fonction (tests d'intégration) |
+| Retrait d'un événement | réservations annulées avec `cancelledBy: moderation` (l'organisateur reçoit un seul message, pas un par invité), chaque détenteur prévenu, événement, sous-collections et bannière supprimés | `removeEventByModeration` |
+| Suspension | compte Auth désactivé + jetons de rafraîchissement révoqués ; le jeton d'accès en cours reste valable **jusqu'à une heure** (limite Firebase assumée) ; impossible sur soi-même | `moderateContent` |
+| Identité des signaleurs | l'écran admin n'affiche qu'une clé courte (6 caractères de l'uid) pour repérer un compte qui signale en rafale, jamais le nom | `ModerationRemoteDataSource` |
+| Erreurs des fonctions | `permission-denied`, `invalid-argument`, `not-found`, `failed-precondition` gardent le message français du serveur | `ErrorMapper` |
+
 ### Notifications push : ce qui est privé, ce qui est serveur
 
 | Chemin | Client | Cloud Functions (SDK Admin, règles contournées) |
@@ -372,8 +385,8 @@ teste **en même temps** que la fonctionnalité qui la consomme.
   un client non officiel reste limité par les règles, pas bloqué.
 - **Suppression de compte : cascade côté serveur** (`deleteAccount`), refusée
   tant qu'un événement à venir de l'organisateur a des participants.
-- **Pas d'interface d'administration.** La file `moderationQueue` se traite
-  dans la console Firebase, les décisions passent par `moderateContent`.
+- **Suspension : jusqu'à une heure de latence.** Firebase ne révoque pas un
+  jeton d'accès déjà émis ; les règles ne consultent pas l'état du compte.
 - **La page publique est cachée 5 à 10 minutes** (CDN Hosting) : un événement
   supprimé ou modifié peut y apparaître encore quelques minutes.
 - **La suppression d'un événement ne cascade pas.** Elle est simplement

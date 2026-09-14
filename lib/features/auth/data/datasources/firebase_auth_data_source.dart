@@ -19,6 +19,17 @@ class FirebaseAuthDataSource {
 
   User? get currentUser => _auth.currentUser;
 
+  /// Whether the ID token carries the `admin` claim. Uses the cached token
+  /// (works offline); a newly granted role shows after the next refresh.
+  Future<bool> hasAdminClaim(User user) async {
+    try {
+      final token = await user.getIdTokenResult();
+      return token.claims?['admin'] == true;
+    } on Object {
+      return false;
+    }
+  }
+
   bool get usesPasswordSignIn =>
       _auth.currentUser?.providerData.any(
         (p) => p.providerId == EmailAuthProvider.PROVIDER_ID,

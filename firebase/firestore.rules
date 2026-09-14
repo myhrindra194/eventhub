@@ -667,6 +667,19 @@ service cloud.firestore {
     match /moderationQueue/{entryId} {
       allow read: if isAdmin();
       allow write: if false;
+
+      // Append-only history of decisions on this entry.
+      match /decisions/{decisionId} {
+        allow read: if isAdmin();
+        allow write: if false;
+      }
+    }
+
+    // Mirror of the `admin` custom claim, for the in-app list of
+    // administrators. Written by `applyAdminClaim` only.
+    match /admins/{adminId} {
+      allow read: if isAdmin();
+      allow write: if false;
     }
 
     // Server-side audit trail. Not readable by anyone through the client API,

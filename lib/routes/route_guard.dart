@@ -85,6 +85,7 @@ abstract final class RouteGuard {
         location: location,
         home: user.role.homePath,
         isOrganizer: user.isOrganizer,
+        isAdmin: user.isAdmin,
         pending: pending,
       ),
     };
@@ -117,8 +118,14 @@ abstract final class RouteGuard {
     required String location,
     required String home,
     required bool isOrganizer,
+    required bool isAdmin,
     required String? pending,
   }) {
+    // Administration sits outside both role areas and requires the `admin`
+    // claim. Hiding the screens is comfort only: every read is refused by
+    // the rules and every decision by the callable without the claim.
+    if (AppRoutes.isAdminArea(location)) return isAdmin ? null : home;
+
     // Screens both roles share (the post-sign-up celebration, the password
     // change, public organizer profiles) bypass the confinement rule below.
     if (AppRoutes.isRoleAgnostic(location)) return null;

@@ -24,6 +24,11 @@ enum AuthFailureCode {
   tooManyRequests,
   notSignedIn,
   profileMissing,
+
+  /// The user closed the Google picker or popup: not an error to display.
+  cancelled,
+  accountExistsWithDifferentCredential,
+  requiresRecentLogin,
   unknown,
 }
 
@@ -92,6 +97,12 @@ enum BusinessRule {
   notReservationOwner,
   notEventOwner,
   capacityBelowReservations,
+  eventHasReservations,
+  emailNotVerified,
+  accountDeletionBlocked,
+  notAttendee,
+  eventNotStarted,
+  waitlistNotAvailable,
 }
 
 final class BusinessRuleFailure extends Failure {

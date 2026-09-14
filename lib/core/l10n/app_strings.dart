@@ -106,8 +106,13 @@ abstract final class AppStrings {
   static const editEvent = "Modifier l'événement";
   static const deleteEvent = "Supprimer l'événement ?";
   static const deleteEventConfirm =
-      'Cette action est irréversible. Toutes les réservations associées '
-      'seront perdues.';
+      "Cette action est irréversible. L'événement disparaît du catalogue.";
+
+  /// Server rule: an event with seats taken cannot be deleted.
+  static String cannotDeleteWithReservations(int count) =>
+      'Impossible de supprimer : $count participant${count > 1 ? 's ont' : ' a'} '
+      'réservé. Modifiez l’événement, ou attendez que les places soient '
+      'libérées.';
   static const deletePermanently = 'Supprimer définitivement';
   static const publish = 'Publier';
   static const save = 'Enregistrer';
@@ -206,6 +211,9 @@ abstract final class AppStrings {
   static const notificationsReminder = 'Rappel avant un événement';
   static const notificationsReminderHint =
       'Recevoir une alerte 24 h avant le début';
+  static const notificationsBookings = 'Réservations sur mes événements';
+  static const notificationsBookingsHint =
+      'Une notification à chaque réservation ou annulation';
   static const notificationsNews = 'Nouveautés et recommandations';
   static const notificationsNewsHint =
       "Événements suggérés selon vos centres d'intérêt";
@@ -321,6 +329,131 @@ abstract final class AppStrings {
   static const legalNotice =
       "En créant un compte, vous acceptez les conditions d'utilisation et la "
       'politique de confidentialité.';
+
+  // Favoris
+  static const favorites = 'Favoris';
+  static const myFavorites = 'Mes favoris';
+  static const addFavorite = 'Ajouter aux favoris';
+  static const removeFavorite = 'Retirer des favoris';
+  static const noFavoritesTitle = 'Aucun favori';
+  static const noFavorites =
+      'Touchez le cœur d’un événement pour le retrouver ici, même quand vous '
+      'n’avez pas encore réservé.';
+  static const favoriteAdded = 'Ajouté à vos favoris.';
+  static const favoriteRemoved = 'Retiré de vos favoris.';
+
+  // Liste d'attente
+  static const joinWaitlist = 'Rejoindre la liste d’attente';
+  static const leaveWaitlist = 'Quitter la liste';
+  static const onWaitlist = 'Vous êtes sur la liste d’attente';
+  static const waitlistHint =
+      'Vous recevrez une notification dès qu’une place se libère. Premier '
+      'arrivé, premier servi.';
+  static const waitlistJoined = 'Inscrit sur la liste d’attente.';
+  static const waitlistLeft = 'Retiré de la liste d’attente.';
+  static String waitlistCount(int n) =>
+      '$n personne${n > 1 ? 's' : ''} en liste d’attente';
+
+  // Avis
+  static const reviews = 'Avis';
+  static const leaveReview = 'Laisser un avis';
+  static const editReview = 'Modifier mon avis';
+  static const yourReview = 'Votre avis';
+  static const ratingLabel = 'Note';
+  static const commentHint = 'Ce qui vous a plu, ce qui pourrait changer…';
+  static const publishReview = 'Publier l’avis';
+  static const reviewPublished = 'Merci pour votre avis.';
+  static const reviewDeleted = 'Avis supprimé.';
+  static const deleteReview = 'Supprimer mon avis';
+  static const noReviews = 'Pas encore d’avis sur cet événement.';
+  static String reviewsCount(int n) => '$n avis';
+
+  // Contrôle des billets
+  static const scanTickets = 'Scanner les billets';
+  static const checkInTitle = 'Contrôle à l’entrée';
+  static const admitted = 'Entrée validée';
+  static String alreadyCheckedIn(String time) => 'Déjà scanné à $time';
+  static const ticketCancelledAtDoor = 'Billet annulé';
+  static const ticketWrongEvent = 'Billet d’un autre événement';
+  static const ticketInvalidCode = 'Code invalide';
+  static const ticketUnknown = 'Billet introuvable';
+  static const notATicket = 'Ce QR code n’est pas un billet EventHub.';
+  static const manualEntry = 'Saisir un code';
+  static const manualEntryHint = 'EH-XXXX-XXXX';
+  static const checkCode = 'Vérifier';
+  static String checkedInCount(int n, int total) => '$n / $total entrés';
+  static const cameraUnavailable =
+      'Caméra indisponible. Autorisez l’accès à la caméra dans les réglages, '
+      'ou saisissez le code du billet.';
+  static const scanNext = 'Scanner le suivant';
+  static const checkedIn = 'Entré';
+  static const scanHint = 'Placez le QR code du billet dans le cadre.';
+  static const torch = 'Lampe';
+  static const deletedEvent = 'Événement supprimé';
+  static String seeAllReviews(int n) => 'Voir les $n avis';
+
+  // Catalogue, hors ligne, mesure d'audience
+  static const loadMoreEvents = 'Charger plus d’événements';
+  static const offlineBanner =
+      'Hors ligne · vos actions seront envoyées au retour du réseau.';
+  static const consentTitle = 'Aidez-nous à améliorer EventHub';
+  static const consentBody =
+      'Acceptez-vous une mesure d’audience de l’application ?';
+  static const consentDetails =
+      'Nous mesurons les écrans consultés et quelques actions (réservation, '
+      'favori, avis) avec Firebase Analytics, rattachés à un identifiant '
+      'technique — jamais à votre nom ni à votre email. Rien n’est vendu ni '
+      'utilisé pour de la publicité. Vous pouvez changer d’avis à tout moment '
+      'dans les Paramètres.';
+  static const consentAccept = 'Accepter';
+  static const consentRefuse = 'Refuser';
+  static const analyticsSetting = 'Mesure d’audience';
+  static const analyticsSettingHint =
+      'Écrans consultés et actions clés, sans nom ni email';
+
+  // Centre de notifications
+  static const notificationsTitle = 'Notifications';
+  static const markAllRead = 'Tout lire';
+  static const noNotificationsTitle = 'Aucune notification';
+  static const noNotifications =
+      'Les réservations, annulations et rappels apparaîtront ici. Ils sont '
+      'conservés 30 jours.';
+  static const notificationDeleted = 'Notification supprimée.';
+
+  // Connexion Google
+  static const continueWithGoogle = 'Continuer avec Google';
+  static const googleSigningIn = 'Connexion Google…';
+
+  // Vérification d'email
+  static const verifyEmailTitle = 'Confirmez votre adresse email';
+  static String verifyEmailBody(String email) =>
+      'Un lien a été envoyé à $email. Il débloque la publication '
+      'd’événements et les avis.';
+  static const resendVerification = 'Renvoyer le lien';
+  static const iVerifiedEmail = 'C’est fait';
+  static const verificationSent = 'Lien de vérification envoyé.';
+  static const stillNotVerified =
+      'Adresse pas encore confirmée. Ouvrez le lien reçu par email, puis '
+      'réessayez.';
+  static const emailVerified = 'Adresse email confirmée.';
+  static const emailNotVerifiedForEvent =
+      'Confirmez votre adresse email avant de publier un événement : le lien '
+      'est dans votre boîte de réception.';
+
+  // Suppression de compte
+  static const dangerZone = 'Zone sensible';
+  static const deleteAccount = 'Supprimer mon compte';
+  static const deleteAccountTitle = 'Supprimer définitivement le compte ?';
+  static const deleteAccountBody =
+      'Votre profil, vos appareils et vos préférences sont effacés. Vos '
+      'réservations à venir sont annulées et leurs places libérées. Cette '
+      'action est irréversible.';
+  static const deleteAccountPasswordLead =
+      'Saisissez votre mot de passe pour confirmer.';
+  static const deleteAccountGoogleLead =
+      'Vous allez confirmer avec votre compte Google.';
+  static const deletingAccount = 'Suppression…';
+  static const accountDeleted = 'Votre compte a été supprimé.';
 
   // Changement de mot de passe
   static const changePassword = 'Changer le mot de passe';

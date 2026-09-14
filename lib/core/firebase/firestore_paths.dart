@@ -4,6 +4,22 @@ abstract final class FirestorePaths {
   static const users = 'users';
   static const events = 'events';
   static const reservations = 'reservations';
+
+  // users/{uid} subcollections
+  static const devices = 'devices';
+  static const private = 'private';
+  static const notifications = 'notifications';
+  static const favorites = 'favorites';
+
+  // events/{id} subcollections
+  static const waitlist = 'waitlist';
+  static const checkins = 'checkins';
+
+  static const reviews = 'reviews';
+
+  /// users/{uid}/private/notifications — push preferences. Same document
+  /// path is read by the Cloud Functions before sending.
+  static const notificationPreferencesDoc = 'notifications';
 }
 
 abstract final class EventFields {

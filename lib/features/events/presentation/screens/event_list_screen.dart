@@ -7,6 +7,8 @@ import 'package:eventhub/features/events/application/event_providers.dart';
 import 'package:eventhub/features/events/domain/entities/event.dart';
 import 'package:eventhub/features/events/presentation/widgets/event_card.dart';
 import 'package:eventhub/features/events/presentation/widgets/event_filters.dart';
+import 'package:eventhub/features/events/presentation/widgets/load_more_events_button.dart';
+import 'package:eventhub/features/notifications/presentation/widgets/notification_bell_button.dart';
 import 'package:eventhub/routes/routes.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -43,7 +45,9 @@ class EventListScreen extends ConsumerWidget {
       body: SafeArea(
         bottom: false,
         child: RefreshIndicator(
-          onRefresh: () async => ref.invalidate(upcomingEventsProvider),
+          onRefresh: () async => ref
+            ..invalidate(upcomingEventsProvider)
+            ..invalidate(catalogueExtraPagesProvider),
           child: CustomScrollView(
             slivers: [
               SliverToBoxAdapter(
@@ -52,9 +56,16 @@ class EventListScreen extends ConsumerWidget {
                       ? AppStrings.exploreCaption
                       : '$greeting $firstName 👋',
                   title: AppStrings.exploreTitle,
-                  trailing: GestureDetector(
-                    onTap: () => context.go(AppRoutes.profile),
-                    child: AppAvatar(name: user?.name ?? '', size: 46),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const NotificationBellButton(),
+                      const SizedBox(width: AppSpacing.sm),
+                      GestureDetector(
+                        onTap: () => context.go(AppRoutes.profile),
+                        child: AppAvatar(name: user?.name ?? '', size: 42),
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -99,7 +110,7 @@ class _CuratedFeed extends ConsumerWidget {
     final featured = ref.watch(featuredEventsProvider);
     final week = ref.watch(weekEventsProvider);
     final trending = ref.watch(trendingEventsProvider);
-    final all = ref.watch(upcomingEventsProvider);
+    final all = ref.watch(catalogueProvider);
 
     // A single loading gate for the whole feed: showing three skeleton
     // rails that resolve at different times reads as a glitch.
@@ -171,6 +182,7 @@ class _CuratedFeed extends ConsumerWidget {
           ),
           const SizedBox(height: AppSpacing.xl),
         ],
+        const LoadMoreEventsButton(),
       ],
     );
   }
@@ -310,9 +322,10 @@ class _FilteredResults extends ConsumerWidget {
       data: (list) => SliverPadding(
         padding: const EdgeInsets.symmetric(horizontal: AppSpacing.gutter),
         sliver: SliverList.separated(
-          itemCount: list.length,
+          itemCount: list.length + 1,
           separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.xl),
           itemBuilder: (context, index) {
+            if (index == list.length) return const LoadMoreEventsButton();
             final event = list[index];
             return EventCard(
               event: event,

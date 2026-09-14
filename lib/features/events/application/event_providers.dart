@@ -1,8 +1,8 @@
 import 'package:eventhub/core/config/app_config.dart';
 import 'package:eventhub/core/firebase/firebase_providers.dart';
-import 'package:eventhub/core/mock/mock_repositories.dart';
-import 'package:eventhub/core/mock/mock_store.dart';
+import 'package:eventhub/core/result/result.dart';
 import 'package:eventhub/core/utils/date_formats.dart';
+import 'package:eventhub/features/events/application/catalogue.dart';
 import 'package:eventhub/features/events/data/datasources/event_remote_data_source.dart';
 import 'package:eventhub/features/events/data/datasources/firebase_storage_data_source.dart';
 import 'package:eventhub/features/events/data/repositories/event_repository_impl.dart';
@@ -11,18 +11,15 @@ import 'package:eventhub/features/events/domain/entities/event.dart';
 import 'package:eventhub/features/events/domain/entities/event_category.dart';
 import 'package:eventhub/features/events/domain/repositories/event_repository.dart';
 import 'package:eventhub/features/events/domain/repositories/image_storage_repository.dart';
-import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart' hide AsyncResult;
 
 part 'event_providers.g.dart';
 
+/// Page size of the catalogue; the security rules cap a `list` at 100.
+const cataloguePageSize = EventRemoteDataSource.maxPageSize;
+
 @Riverpod(keepAlive: true)
 EventRepository eventRepository(Ref ref) {
-  if (ref.watch(appConfigProvider).useMockBackend) {
-    return MockEventRepository(
-      ref.watch(mockStoreProvider),
-      ref.watch(clockProvider),
-    );
-  }
   return EventRepositoryImpl(
     remote: EventRemoteDataSource(ref.watch(firestoreProvider)),
     clock: ref.watch(clockProvider),
@@ -31,19 +28,63 @@ EventRepository eventRepository(Ref ref) {
 
 @Riverpod(keepAlive: true)
 ImageStorageRepository imageStorageRepository(Ref ref) {
-  if (ref.watch(appConfigProvider).useMockBackend) {
-    return const MockImageStorageRepository();
-  }
   return ImageStorageRepositoryImpl(
     FirebaseStorageDataSource(ref.watch(firebaseStorageProvider)),
   );
 }
 
-/// Events from today onwards (today's events stay visible until midnight).
+/// First page of upcoming events, live (today's events stay visible until
+/// midnight).
 @riverpod
 Stream<List<Event>> upcomingEvents(Ref ref) {
   final from = ref.watch(clockProvider)().startOfDay;
   return ref.watch(eventRepositoryProvider).watchUpcoming(from: from);
+}
+
+/// Older catalogue pages, loaded when the user reaches the end of the list.
+@Riverpod(keepAlive: true)
+class CatalogueExtraPages extends _$CatalogueExtraPages {
+  @override
+  CataloguePages build() => const CataloguePages();
+
+  Future<void> loadMore() async {
+    if (state.loading || !state.hasMore) return;
+    final loaded = ref.read(catalogueProvider).value ?? const <Event>[];
+    if (loaded.isEmpty) return;
+
+    state = state.copyWith(loading: true);
+    final result = await ref
+        .read(eventRepositoryProvider)
+        .fetchUpcomingAfter(
+          from: ref.read(clockProvider)().startOfDay,
+          after: loaded.last,
+          limit: cataloguePageSize,
+        );
+    state = switch (result) {
+      Ok(:final value) => CataloguePages(
+        events: [...state.events, ...value],
+        hasMore: value.length == cataloguePageSize,
+      ),
+      Err() => state.copyWith(loading: false),
+    };
+  }
+}
+
+/// Everything loaded so far: live first page + older pages.
+@riverpod
+AsyncValue<List<Event>> catalogue(Ref ref) {
+  final older = ref.watch(catalogueExtraPagesProvider).events;
+  return ref
+      .watch(upcomingEventsProvider)
+      .whenData((live) => mergeCatalogue(live, older));
+}
+
+/// A "load more" makes sense only once the live page is full.
+@riverpod
+bool canLoadMoreEvents(Ref ref) {
+  final live = ref.watch(upcomingEventsProvider).value;
+  if (live == null || live.length < cataloguePageSize) return false;
+  return ref.watch(catalogueExtraPagesProvider).hasMore;
 }
 
 @riverpod
@@ -57,11 +98,11 @@ Stream<Event?> eventById(Ref ref, String eventId) =>
 // ---------------------------------------------------------------------------
 // Search & filter
 //
-// Filtering is done client-side: the catalogue is small enough for the MVP,
-// which avoids both a full-text index and a composite index per filter
-// combination. The seam is deliberate — `filteredEvents` is the only place
-// that knows how a query is applied, so switching to Algolia/Typesense (or
-// to server-side pagination) touches one provider, not the UI.
+// Filtering is done client-side over the loaded catalogue: it avoids both a
+// full-text index and a composite index per filter combination. The seam is
+// deliberate — `filteredEvents` is the only place that knows how a query is
+// applied, so switching to Algolia/Typesense (or to server-side filtering)
+// touches one provider, not the UI.
 // ---------------------------------------------------------------------------
 
 /// Ordering offered in the search sheet.
@@ -172,7 +213,7 @@ AsyncValue<List<Event>> filteredEvents(Ref ref) {
   final hideSoldOut = ref.watch(hideSoldOutProvider);
   final now = ref.watch(clockProvider)();
 
-  return ref.watch(upcomingEventsProvider).whenData((events) {
+  return ref.watch(catalogueProvider).whenData((events) {
     final result =
         events
             .where((e) => category == null || e.category == category)
@@ -216,7 +257,7 @@ int Function(Event, Event) _comparator(EventSort sort) => switch (sort) {
 /// Editorial selection: the soonest events that still have seats.
 @riverpod
 AsyncValue<List<Event>> featuredEvents(Ref ref) => ref
-    .watch(upcomingEventsProvider)
+    .watch(catalogueProvider)
     .whenData((events) => events.where((e) => !e.isFull).take(5).toList());
 
 /// Everything happening in the next seven days.
@@ -225,7 +266,7 @@ AsyncValue<List<Event>> weekEvents(Ref ref) {
   final now = ref.watch(clockProvider)();
   final limit = now.add(const Duration(days: 7));
   return ref
-      .watch(upcomingEventsProvider)
+      .watch(catalogueProvider)
       .whenData(
         (events) => events.where((e) => e.startsAt.isBefore(limit)).toList(),
       );
@@ -235,7 +276,7 @@ AsyncValue<List<Event>> weekEvents(Ref ref) {
 /// filled first. It is the strongest conversion surface of the home screen.
 @riverpod
 AsyncValue<List<Event>> trendingEvents(Ref ref) =>
-    ref.watch(upcomingEventsProvider).whenData((events) {
+    ref.watch(catalogueProvider).whenData((events) {
       final list = events.where((e) => !e.isFull && e.fillRate >= 0.6).toList()
         ..sort((a, b) => b.fillRate.compareTo(a.fillRate));
       return list.take(10).toList();

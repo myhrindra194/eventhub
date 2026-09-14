@@ -9,13 +9,6 @@
       "args": ["--dart-define=FLAVOR=dev"]
     },
     {
-      "name": "EventHub (dev, simulation sans Firebase)",
-      "request": "launch",
-      "type": "dart",
-      "program": "lib/main_dev.dart",
-      "args": ["--dart-define=FLAVOR=dev", "--dart-define=MOCK=true"]
-    },
-    {
       "name": "EventHub (dev, emulators)",
       "request": "launch",
       "type": "dart",

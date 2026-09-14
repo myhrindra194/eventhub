@@ -5,6 +5,8 @@ import 'package:eventhub/core/result/result.dart';
 import 'package:eventhub/core/utils/validators.dart';
 import 'package:eventhub/core/widgets/design_system.dart';
 import 'package:eventhub/features/auth/application/auth_controller.dart';
+import 'package:eventhub/features/auth/application/auth_providers.dart';
+import 'package:eventhub/features/auth/domain/entities/auth_session.dart';
 import 'package:eventhub/features/auth/domain/entities/user_role.dart';
 import 'package:eventhub/features/auth/presentation/widgets/auth_scaffold.dart';
 import 'package:eventhub/features/auth/presentation/widgets/role_selector.dart';
@@ -29,6 +31,17 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
   final _formKey = GlobalKey<FormState>();
   final _name = TextEditingController();
   UserRole _role = UserRole.participant;
+
+  @override
+  void initState() {
+    super.initState();
+    // First Google sign-in: the account already has a display name.
+    if (ref.read(authSessionProvider).value case ProfileMissing(
+      :final displayName?,
+    )) {
+      _name.text = displayName;
+    }
+  }
 
   @override
   void dispose() {

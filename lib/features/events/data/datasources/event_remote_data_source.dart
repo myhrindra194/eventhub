@@ -25,17 +25,33 @@ class EventRemoteDataSource {
   /// query would be rejected outright in production.
   static const maxPageSize = 100;
 
+  /// First page of the catalogue, live. Ordered by start date then document
+  /// id, so a page boundary is a total order and [fetchUpcomingAfter] can
+  /// resume exactly after the last event (two events at the same minute
+  /// would otherwise be skipped or repeated).
   Stream<List<Event>> watchUpcoming({required DateTime from}) {
-    return _events
-        .where(
-          EventFields.startsAt,
-          isGreaterThanOrEqualTo: Timestamp.fromDate(from),
-        )
-        .orderBy(EventFields.startsAt)
-        .limit(maxPageSize)
-        .snapshots()
-        .map(_toDomainList);
+    return _upcoming(from).limit(maxPageSize).snapshots().map(_toDomainList);
   }
+
+  Future<List<Event>> fetchUpcomingAfter({
+    required DateTime from,
+    required Event after,
+    required int limit,
+  }) async {
+    final snapshot = await _upcoming(from)
+        .startAfter([Timestamp.fromDate(after.startsAt), after.id])
+        .limit(limit.clamp(1, maxPageSize))
+        .get();
+    return _toDomainList(snapshot);
+  }
+
+  Query<Map<String, dynamic>> _upcoming(DateTime from) => _events
+      .where(
+        EventFields.startsAt,
+        isGreaterThanOrEqualTo: Timestamp.fromDate(from),
+      )
+      .orderBy(EventFields.startsAt)
+      .orderBy(FieldPath.documentId);
 
   Stream<List<Event>> watchByOrganizer(String organizerId) {
     return _events

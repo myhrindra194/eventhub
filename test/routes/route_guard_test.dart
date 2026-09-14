@@ -126,6 +126,7 @@ void main() {
         AppRoutes.help,
         AppRoutes.privacyPolicy,
         AppRoutes.about,
+        AppRoutes.notificationsCenter,
         AppRoutes.changePassword,
       ]) {
         expect(redirect(signedIn(participant), path), isNull, reason: path);
@@ -145,6 +146,18 @@ void main() {
           reason: path,
         );
       }
+    });
+
+    test('favourites belong to participants, door check-in to organizers', () {
+      expect(redirect(signedIn(participant), AppRoutes.favorites), isNull);
+      expect(
+        redirect(signedIn(organizer), AppRoutes.favorites),
+        AppRoutes.organizerEvents,
+      );
+      final checkIn = AppRoutes.organizerEventCheckInPath('e1');
+      expect(checkIn, '/organizer/events/e1/checkin');
+      expect(redirect(signedIn(organizer), checkIn), isNull);
+      expect(redirect(signedIn(participant), checkIn), AppRoutes.events);
     });
 
     test('keeps tickets inside the participant area', () {

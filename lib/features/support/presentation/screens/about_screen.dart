@@ -62,7 +62,9 @@ class AboutScreen extends ConsumerWidget {
             _Row(label: 'Environnement', value: config.flavor.name),
             _Row(
               label: 'Données',
-              value: config.useMockBackend ? 'Démo locale' : 'Firebase',
+              value: config.useFirebaseEmulators
+                  ? 'Émulateurs Firebase'
+                  : 'Firebase',
             ),
           ],
         ),

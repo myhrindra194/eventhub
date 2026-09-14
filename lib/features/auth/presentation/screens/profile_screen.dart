@@ -8,6 +8,7 @@ import 'package:eventhub/core/widgets/design_system.dart';
 import 'package:eventhub/features/auth/application/auth_controller.dart';
 import 'package:eventhub/features/auth/application/auth_providers.dart';
 import 'package:eventhub/features/auth/domain/entities/app_user.dart';
+import 'package:eventhub/features/auth/presentation/widgets/email_verification_banner.dart';
 import 'package:eventhub/features/events/application/event_providers.dart';
 import 'package:eventhub/features/reservations/application/reservation_providers.dart';
 import 'package:eventhub/routes/routes.dart';
@@ -64,6 +65,9 @@ class ProfileScreen extends ConsumerWidget {
           ),
           children: [
             _IdentityCard(user: user),
+            const EmailVerificationBanner(
+              padding: EdgeInsets.only(top: AppSpacing.lg),
+            ),
             const SizedBox(height: AppSpacing.xl),
             _Stats(user: user),
             const SizedBox(height: AppSpacing.xxl),
@@ -84,8 +88,14 @@ class ProfileScreen extends ConsumerWidget {
                 _MenuItem(
                   icon: Icons.notifications_none_rounded,
                   label: AppStrings.notifications,
-                  onTap: () => context.push(settingsPath),
+                  onTap: () => context.push(AppRoutes.notificationsCenter),
                 ),
+                if (user.isParticipant)
+                  _MenuItem(
+                    icon: Icons.favorite_border_rounded,
+                    label: AppStrings.myFavorites,
+                    onTap: () => context.push(AppRoutes.favorites),
+                  ),
               ],
             ),
             const SizedBox(height: AppSpacing.xxl),

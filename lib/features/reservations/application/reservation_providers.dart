@@ -1,8 +1,7 @@
+import 'package:eventhub/core/analytics/app_analytics.dart';
 import 'package:eventhub/core/config/app_config.dart';
 import 'package:eventhub/core/errors/failure.dart';
 import 'package:eventhub/core/firebase/firebase_providers.dart';
-import 'package:eventhub/core/mock/mock_repositories.dart';
-import 'package:eventhub/core/mock/mock_store.dart';
 import 'package:eventhub/core/result/result.dart';
 import 'package:eventhub/features/auth/application/auth_providers.dart';
 import 'package:eventhub/features/auth/domain/entities/app_user.dart';
@@ -16,12 +15,6 @@ part 'reservation_providers.g.dart';
 
 @Riverpod(keepAlive: true)
 ReservationRepository reservationRepository(Ref ref) {
-  if (ref.watch(appConfigProvider).useMockBackend) {
-    return MockReservationRepository(
-      ref.watch(mockStoreProvider),
-      ref.watch(clockProvider),
-    );
-  }
   return ReservationRepositoryImpl(
     ReservationRemoteDataSource(
       ref.watch(firestoreProvider),
@@ -67,20 +60,30 @@ class ReservationController extends _$ReservationController {
   @override
   FutureOr<void> build() {}
 
-  Future<Result<Reservation>> reserve(String eventId) {
-    return _run((user) {
+  Future<Result<Reservation>> reserve(String eventId) async {
+    final result = await _run((user) {
       return ref
           .read(reservationRepositoryProvider)
           .reserve(eventId: eventId, participant: user);
     });
+    if (result is Ok<Reservation>) {
+      ref.read(appAnalyticsProvider).reservationConfirmed(eventId);
+    }
+    return result;
   }
 
-  Future<Result<void>> cancel(String reservationId) {
-    return _run((user) {
+  Future<Result<void>> cancel(String reservationId) async {
+    final result = await _run((user) {
       return ref
           .read(reservationRepositoryProvider)
           .cancel(reservationId: reservationId, participant: user);
     });
+    if (result is Ok<void>) {
+      ref
+          .read(appAnalyticsProvider)
+          .reservationCancelled(reservationId.split('_').first);
+    }
+    return result;
   }
 
   Future<Result<T>> _run<T>(

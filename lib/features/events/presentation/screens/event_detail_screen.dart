@@ -12,8 +12,11 @@ import 'package:eventhub/features/events/application/event_providers.dart';
 import 'package:eventhub/features/events/domain/entities/event.dart';
 import 'package:eventhub/features/events/presentation/widgets/event_card.dart';
 import 'package:eventhub/features/events/presentation/widgets/share_event_sheet.dart';
+import 'package:eventhub/features/favorites/presentation/widgets/favorite_button.dart';
 import 'package:eventhub/features/reservations/application/reservation_providers.dart';
 import 'package:eventhub/features/reservations/domain/entities/reservation.dart';
+import 'package:eventhub/features/reviews/presentation/widgets/reviews_section.dart';
+import 'package:eventhub/features/waitlist/presentation/widgets/waitlist_action.dart';
 import 'package:eventhub/routes/routes.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -189,6 +192,7 @@ class _Body extends ConsumerWidget {
                           height: 1.65,
                         ),
                       ),
+                      ReviewsSection(event: event),
                       if (reservation != null) ...[
                         const SizedBox(height: AppSpacing.xxxl),
                         GestureDetector(
@@ -219,6 +223,8 @@ class _Body extends ConsumerWidget {
                     : context.go(AppRoutes.events),
               ),
               const Spacer(),
+              FavoriteButton(eventId: event.id),
+              const SizedBox(width: AppSpacing.sm),
               OverlayIconButton(
                 icon: Icons.ios_share_rounded,
                 tooltip: AppStrings.share,
@@ -636,10 +642,14 @@ class _ActionBar extends ConsumerWidget {
           label: AppStrings.past,
           onPressed: null,
         ),
-        _Availability.soldOut => const AppButton.primary(
-          label: AppStrings.soldOut,
-          onPressed: null,
-        ),
+        // A sold-out event is a queue, not a dead end.
+        _Availability.soldOut =>
+          isParticipant
+              ? WaitlistAction(event: event)
+              : const AppButton.primary(
+                  label: AppStrings.soldOut,
+                  onPressed: null,
+                ),
         _Availability.lastSeats => AppButton(
           label: AppStrings.grabLast,
           variant: AppButtonVariant.danger,

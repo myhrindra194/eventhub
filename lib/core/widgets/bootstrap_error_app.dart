@@ -26,14 +26,14 @@ class BootstrapErrorApp extends StatelessWidget {
                 const Icon(Icons.cloud_off, size: 72),
                 const SizedBox(height: 24),
                 Text(
-                  'Firebase non configuré',
+                  'Connexion à Firebase impossible',
                   style: Theme.of(context).textTheme.headlineSmall,
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 12),
                 const Text(
-                  'Exécutez `flutterfire configure` puis relancez '
-                  "l'application.",
+                  'Vérifiez que lib/firebase_options.dart correspond au projet '
+                  '(flutterfire configure) puis relancez l’application.',
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 24),

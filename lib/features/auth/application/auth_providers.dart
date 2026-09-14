@@ -1,7 +1,6 @@
 import 'package:eventhub/core/config/app_config.dart';
 import 'package:eventhub/core/firebase/firebase_providers.dart';
-import 'package:eventhub/core/mock/mock_repositories.dart';
-import 'package:eventhub/core/mock/mock_store.dart';
+import 'package:eventhub/features/auth/data/datasources/account_functions_data_source.dart';
 import 'package:eventhub/features/auth/data/datasources/firebase_auth_data_source.dart';
 import 'package:eventhub/features/auth/data/datasources/user_remote_data_source.dart';
 import 'package:eventhub/features/auth/data/repositories/auth_repository_impl.dart';
@@ -14,13 +13,15 @@ part 'auth_providers.g.dart';
 
 @Riverpod(keepAlive: true)
 AuthRepository authRepository(Ref ref) {
-  if (ref.watch(appConfigProvider).useMockBackend) {
-    return MockAuthRepository(ref.watch(mockStoreProvider));
-  }
+  final config = ref.watch(appConfigProvider);
   return AuthRepositoryImpl(
     authDataSource: FirebaseAuthDataSource(ref.watch(firebaseAuthProvider)),
     userDataSource: UserRemoteDataSource(ref.watch(firestoreProvider)),
-    profileGracePeriod: ref.watch(appConfigProvider).profileGracePeriod,
+    accountFunctions: AccountFunctionsDataSource(
+      ref.watch(firebaseFunctionsProvider),
+    ),
+    profileGracePeriod: config.profileGracePeriod,
+    googleServerClientId: config.googleServerClientId,
   );
 }
 

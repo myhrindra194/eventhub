@@ -20,10 +20,17 @@ final class SignedIn extends AuthSession {
 }
 
 final class ProfileMissing extends AuthSession {
-  const ProfileMissing({required this.uid, required this.email});
+  const ProfileMissing({
+    required this.uid,
+    required this.email,
+    this.displayName,
+  });
 
   final String uid;
   final String email;
+
+  /// Provided by Google Sign-In; pre-fills the profile completion form.
+  final String? displayName;
 }
 
 extension AuthSessionX on AuthSession {

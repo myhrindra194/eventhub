@@ -1,0 +1,14 @@
+# Copy to android/key.properties (git-ignored) and fill in.
+#
+# Create the upload keystore once:
+#   keytool -genkey -v -keystore ~/eventhub-upload.jks -keyalg RSA \
+#     -keysize 2048 -validity 10000 -alias upload
+#
+# Then register its SHA-1 and SHA-256 in the Firebase console
+# (Project settings → Android app), required by Google Sign-In and
+# App Check (Play Integrity):
+#   keytool -list -v -keystore ~/eventhub-upload.jks -alias upload
+storePassword=CHANGE_ME
+keyPassword=CHANGE_ME
+keyAlias=upload
+storeFile=C:/Users/you/eventhub-upload.jks

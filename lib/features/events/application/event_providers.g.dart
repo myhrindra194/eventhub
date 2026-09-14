@@ -49,7 +49,7 @@ final class EventRepositoryProvider
   }
 }
 
-String _$eventRepositoryHash() => r'38f83ce27d7811b57fe63c2ca6a811be99700b72';
+String _$eventRepositoryHash() => r'e2fe9819abf84eaf0a027fecbbe49a3419790d8c';
 
 @ProviderFor(imageStorageRepository)
 final imageStorageRepositoryProvider = ImageStorageRepositoryProvider._();
@@ -97,14 +97,16 @@ final class ImageStorageRepositoryProvider
 }
 
 String _$imageStorageRepositoryHash() =>
-    r'd16114fcee50ce9d94f99acae0e5887ebe4332fe';
+    r'515de9df7b3e03f314e84e8c2a5ab04276690e0c';
 
-/// Events from today onwards (today's events stay visible until midnight).
+/// First page of upcoming events, live (today's events stay visible until
+/// midnight).
 
 @ProviderFor(upcomingEvents)
 final upcomingEventsProvider = UpcomingEventsProvider._();
 
-/// Events from today onwards (today's events stay visible until midnight).
+/// First page of upcoming events, live (today's events stay visible until
+/// midnight).
 
 final class UpcomingEventsProvider
     extends
@@ -114,7 +116,8 @@ final class UpcomingEventsProvider
           Stream<List<Event>>
         >
     with $FutureModifier<List<Event>>, $StreamProvider<List<Event>> {
-  /// Events from today onwards (today's events stay visible until midnight).
+  /// First page of upcoming events, live (today's events stay visible until
+  /// midnight).
   UpcomingEventsProvider._()
     : super(
         from: null,
@@ -142,6 +145,163 @@ final class UpcomingEventsProvider
 }
 
 String _$upcomingEventsHash() => r'747d1ccbb4f1d42f60e1233fa611f39b640c5be7';
+
+/// Older catalogue pages, loaded when the user reaches the end of the list.
+
+@ProviderFor(CatalogueExtraPages)
+final catalogueExtraPagesProvider = CatalogueExtraPagesProvider._();
+
+/// Older catalogue pages, loaded when the user reaches the end of the list.
+final class CatalogueExtraPagesProvider
+    extends $NotifierProvider<CatalogueExtraPages, CataloguePages> {
+  /// Older catalogue pages, loaded when the user reaches the end of the list.
+  CatalogueExtraPagesProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'catalogueExtraPagesProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$catalogueExtraPagesHash();
+
+  @$internal
+  @override
+  CatalogueExtraPages create() => CatalogueExtraPages();
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(CataloguePages value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<CataloguePages>(value),
+    );
+  }
+}
+
+String _$catalogueExtraPagesHash() =>
+    r'b4d775562b93f12f67be0358bc65c1d81d9f7085';
+
+/// Older catalogue pages, loaded when the user reaches the end of the list.
+
+abstract class _$CatalogueExtraPages extends $Notifier<CataloguePages> {
+  CataloguePages build();
+  @$mustCallSuper
+  @override
+  WhenComplete runBuild() {
+    final ref = this.ref as $Ref<CataloguePages, CataloguePages>;
+    final element =
+        ref.element
+            as $ClassProviderElement<
+              AnyNotifier<CataloguePages, CataloguePages>,
+              CataloguePages,
+              Object?,
+              Object?
+            >;
+    return element.handleCreate(ref, build);
+  }
+}
+
+/// Everything loaded so far: live first page + older pages.
+
+@ProviderFor(catalogue)
+final catalogueProvider = CatalogueProvider._();
+
+/// Everything loaded so far: live first page + older pages.
+
+final class CatalogueProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<List<Event>>,
+          AsyncValue<List<Event>>,
+          AsyncValue<List<Event>>
+        >
+    with $Provider<AsyncValue<List<Event>>> {
+  /// Everything loaded so far: live first page + older pages.
+  CatalogueProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'catalogueProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$catalogueHash();
+
+  @$internal
+  @override
+  $ProviderElement<AsyncValue<List<Event>>> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  AsyncValue<List<Event>> create(Ref ref) {
+    return catalogue(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(AsyncValue<List<Event>> value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<AsyncValue<List<Event>>>(value),
+    );
+  }
+}
+
+String _$catalogueHash() => r'c862c70a5cb079599e04bfda52fcc748cda49e58';
+
+/// A "load more" makes sense only once the live page is full.
+
+@ProviderFor(canLoadMoreEvents)
+final canLoadMoreEventsProvider = CanLoadMoreEventsProvider._();
+
+/// A "load more" makes sense only once the live page is full.
+
+final class CanLoadMoreEventsProvider
+    extends $FunctionalProvider<bool, bool, bool>
+    with $Provider<bool> {
+  /// A "load more" makes sense only once the live page is full.
+  CanLoadMoreEventsProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'canLoadMoreEventsProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$canLoadMoreEventsHash();
+
+  @$internal
+  @override
+  $ProviderElement<bool> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  bool create(Ref ref) {
+    return canLoadMoreEvents(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(bool value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<bool>(value),
+    );
+  }
+}
+
+String _$canLoadMoreEventsHash() => r'985c4777bb301e823566c178f8785cb3c02c2be7';
 
 @ProviderFor(organizerEvents)
 final organizerEventsProvider = OrganizerEventsFamily._();
@@ -650,7 +810,7 @@ final class FilteredEventsProvider
   }
 }
 
-String _$filteredEventsHash() => r'c9255e81562c887f71169eea8e539bd9f4dd18c3';
+String _$filteredEventsHash() => r'd5bb7450d4506a36cec7ce8c525825cf1798666a';
 
 /// Editorial selection: the soonest events that still have seats.
 
@@ -702,7 +862,7 @@ final class FeaturedEventsProvider
   }
 }
 
-String _$featuredEventsHash() => r'e48c36dfbbb66f3055849056f851e2bffd4f4309';
+String _$featuredEventsHash() => r'8c70cadcea4ab17770c5e6095111e9bade398ca0';
 
 /// Everything happening in the next seven days.
 
@@ -754,7 +914,7 @@ final class WeekEventsProvider
   }
 }
 
-String _$weekEventsHash() => r'1800d18b8d1e01b1ff868a8d21babeeceaa39f88';
+String _$weekEventsHash() => r'2d9a980bf1f0ebe89b9f46042fbd004e50475b59';
 
 /// Scarcity-driven rail: events at least 60 % full but not sold out, most
 /// filled first. It is the strongest conversion surface of the home screen.
@@ -809,4 +969,4 @@ final class TrendingEventsProvider
   }
 }
 
-String _$trendingEventsHash() => r'2b316d468c6af4579aa9baf9fc2c7caada67bb34';
+String _$trendingEventsHash() => r'6a2c343649e6f9262b702c49ee8098e03af9058c';

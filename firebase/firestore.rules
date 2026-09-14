@@ -331,7 +331,11 @@ service cloud.firestore {
       allow get: if isSignedIn();
       allow list: if isSignedIn() && request.query.limit <= 100;
 
+      // A published event is content every user sees: the organizer must
+      // have confirmed their email (see isVerified()). Google accounts are
+      // verified by construction.
       allow create: if isOrganizer()
+        && isVerified()
         && validEventShape()
         && incoming().organizerId == uid()
         // A brand-new event starts empty; seeding it as half full would fake
@@ -381,7 +385,11 @@ service cloud.firestore {
         allow create: if isSelf(userId) && isParticipant()
           && incoming().keys().hasOnly(['userId', 'userName', 'createdAt'])
           && incoming().userId == uid()
-          && isServerTime(incoming().createdAt);
+          && isServerTime(incoming().createdAt)
+          // A queue only makes sense for a sold-out event that has not
+          // started (mirrors WaitlistPolicy.canJoin).
+          && get(/databases/$(database)/documents/events/$(eventId)).data.availablePlaces == 0
+          && get(/databases/$(database)/documents/events/$(eventId)).data.startsAt > request.time;
         allow update: if false;
         allow delete: if isSelf(userId);
       }
@@ -454,8 +462,17 @@ service cloud.firestore {
       // Readable by the participant it belongs to and by the organizer of the
       // event. Both branches are provable from a query filter (`userId ==` /
       // `organizerId ==`), which is what makes the list rule below work.
+      //
+      // A missing document has no `resource`: without the first branch every
+      // read of a reservation that does not exist yet — the booking
+      // transaction's own `tx.get`, the event detail checking "have I booked
+      // this?" — fails with permission-denied. The id is deterministic
+      // (`<eventId>_<uid>`), so a caller may only probe ids ending with their
+      // own uid: absence of *someone else's* booking is never disclosed.
       allow get: if isSignedIn()
-        && (existing().userId == uid() || existing().organizerId == uid());
+        && (resource == null
+          ? reservationId.matches('.+_' + uid())
+          : (existing().userId == uid() || existing().organizerId == uid()));
 
       // The same two branches, and they are mandatory. Firestore evaluates a
       // `list` rule against the query's constraints, so a query that does not
@@ -472,7 +489,8 @@ service cloud.firestore {
         && reservationId == incoming().eventId + '_' + uid()
         && incoming().userId == uid()
         && incoming().status == 'confirmed'
-        && !('cancelledAt' in incoming())
+        // Serialisers emit `cancelledAt: null` for an active reservation.
+        && (!('cancelledAt' in incoming()) || incoming().cancelledAt == null)
         && matchesEvent()
         // No booking a past event, and none on a sold-out one.
         && eventDoc().startsAt > request.time
@@ -487,16 +505,21 @@ service cloud.firestore {
         && incoming().userId == existing().userId
         && incoming().eventId == existing().eventId
         && incoming().organizerId == existing().organizerId
-        && incoming().reservedAt == existing().reservedAt
         && (
-          // confirmed → cancelled
+          // confirmed → cancelled: the booking time is history and stays.
           (existing().status == 'confirmed'
             && incoming().status == 'cancelled'
+            && incoming().reservedAt == existing().reservedAt
             && isRecentTime(incoming().cancelledAt))
           ||
-          // cancelled → confirmed (seat taken again)
+          // cancelled → confirmed: a new booking, stamped now (the organizer's
+          // timeline and alerts count it on the day it happens), with the
+          // cancellation stamp cleared and the event copy re-checked.
           (existing().status == 'cancelled'
             && incoming().status == 'confirmed'
+            && isRecentTime(incoming().reservedAt)
+            && (!('cancelledAt' in incoming()) || incoming().cancelledAt == null)
+            && matchesEvent()
             && eventDoc().startsAt > request.time
             && eventDoc().availablePlaces > 0)
         );
@@ -531,13 +554,17 @@ service cloud.firestore {
         && isInt(incoming().rating, 1, 5)
         && isString(incoming().comment, 0, 2000)
         && isServerTime(incoming().createdAt)
-        // Attendance is the right to speak.
-        && reservationOf(incoming().eventId).status == 'confirmed';
+        // Attendance is the right to speak — and only once there was
+        // something to attend. The reservation carries the start date, so
+        // this costs no extra read.
+        && reservationOf(incoming().eventId).status == 'confirmed'
+        && reservationOf(incoming().eventId).eventStartsAt < request.time;
 
       allow update: if isSignedIn()
         && existing().authorId == uid()
         && onlyChanged(['rating', 'comment', 'updatedAt'])
         && isInt(incoming().rating, 1, 5)
+        && isString(incoming().comment, 0, 2000)
         && notTooFast('updatedAt');
 
       allow delete: if (isSignedIn() && existing().authorId == uid()) || isAdmin();

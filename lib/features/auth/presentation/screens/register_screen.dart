@@ -7,6 +7,7 @@ import 'package:eventhub/core/widgets/design_system.dart';
 import 'package:eventhub/features/auth/application/auth_controller.dart';
 import 'package:eventhub/features/auth/domain/entities/user_role.dart';
 import 'package:eventhub/features/auth/presentation/widgets/auth_scaffold.dart';
+import 'package:eventhub/features/auth/presentation/widgets/google_sign_in_button.dart';
 import 'package:eventhub/features/auth/presentation/widgets/role_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -223,6 +224,7 @@ class _IdentityStepState extends State<_IdentityStep> {
                 elevated: false,
                 onPressed: widget.onContinue,
               ),
+              const GoogleSignInButton(),
             ],
           ),
         ),

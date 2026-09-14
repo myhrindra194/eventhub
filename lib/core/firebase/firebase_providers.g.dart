@@ -102,7 +102,101 @@ final class FirestoreProvider
   }
 }
 
-String _$firestoreHash() => r'276faf7aed6baa73c5d6ef01a854ba2ed6706a94';
+String _$firestoreHash() => r'497cd36bc078d28b53fb0c286d52aa8ba42ee44b';
+
+@ProviderFor(firebaseMessaging)
+final firebaseMessagingProvider = FirebaseMessagingProvider._();
+
+final class FirebaseMessagingProvider
+    extends
+        $FunctionalProvider<
+          FirebaseMessaging,
+          FirebaseMessaging,
+          FirebaseMessaging
+        >
+    with $Provider<FirebaseMessaging> {
+  FirebaseMessagingProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'firebaseMessagingProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$firebaseMessagingHash();
+
+  @$internal
+  @override
+  $ProviderElement<FirebaseMessaging> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  FirebaseMessaging create(Ref ref) {
+    return firebaseMessaging(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(FirebaseMessaging value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<FirebaseMessaging>(value),
+    );
+  }
+}
+
+String _$firebaseMessagingHash() => r'6765ce963b9b8c50186b5132356d60eb68265741';
+
+@ProviderFor(firebaseFunctions)
+final firebaseFunctionsProvider = FirebaseFunctionsProvider._();
+
+final class FirebaseFunctionsProvider
+    extends
+        $FunctionalProvider<
+          FirebaseFunctions,
+          FirebaseFunctions,
+          FirebaseFunctions
+        >
+    with $Provider<FirebaseFunctions> {
+  FirebaseFunctionsProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'firebaseFunctionsProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$firebaseFunctionsHash();
+
+  @$internal
+  @override
+  $ProviderElement<FirebaseFunctions> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  FirebaseFunctions create(Ref ref) {
+    return firebaseFunctions(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(FirebaseFunctions value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<FirebaseFunctions>(value),
+    );
+  }
+}
+
+String _$firebaseFunctionsHash() => r'a223e9669247ff5b18532eff9be96071cd821648';
 
 @ProviderFor(firebaseStorage)
 final firebaseStorageProvider = FirebaseStorageProvider._();

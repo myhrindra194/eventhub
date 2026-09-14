@@ -58,6 +58,18 @@
 | Organisateur | **Onglet Alertes** : « à surveiller » (J-1, dernières places, complet) + journal d'activité | ✅ v1.1 |
 | Compte | Modifier son nom ; centre d'aide, confidentialité, à propos | ✅ v1.1 |
 | Sécurité | Règle `list` des réservations : la requête doit prouver l'appartenance | ✅ v1.1 — correctif |
+| Backend | **Branchement réel sur Firebase** (`eventhub-d411f`), suppression du backend simulé | ✅ v1.2 |
+| Push | **Notifications push Android** : réservation / annulation (organisateur), rappel J-1 (participant), préférences, routage au tap | ✅ v1.2 — F-02 |
+| Sécurité | **Rôle en custom claim** posé par Cloud Function | ✅ v1.2 — F-03 partiel |
+| Auth | **Connexion Google**, **vérification d'email** (requise pour publier et pour les avis), **suppression de compte** en cascade | ✅ v1.3 — F-03 |
+| Push | **Centre de notifications** (historique 30 j), push **web** (service worker + VAPID), config iOS | ✅ v1.3 — F-02 |
+| Découverte | **Favoris** | ✅ v1.3 — F-05 |
+| Réservation | **Liste d'attente** avec notification à la libération d'une place | ✅ v1.3 — F-06 |
+| Avis | **Avis** après l'événement, moyenne et répartition | ✅ v1.3 — F-09 |
+| Organisateur | **Contrôle à l'entrée** : scanner, saisie manuelle, anti-doublon multi-portes | ✅ v1.3 — F-01 (sans signature, voir ADR) |
+| Catalogue | **Pagination** : page live + pages par curseur | ✅ v1.3 — F-04 |
+| Production | App Check, Crashlytics, Analytics sur consentement, cache hors ligne et bandeau, signature release | ✅ v1.3 |
+| Tests | Tests d'intégration des Cloud Functions sur émulateurs | ✅ v1.3 |
 
 ---
 
@@ -96,6 +108,11 @@ Rappel J-1 et H-2, alerte d'annulation, place libérée sur liste d'attente.
   `users/{uid}/notifications` avec **TTL sur `expiresAt`** (déjà déclaré dans
   `firestore.indexes.json`), Cloud Function planifiée qui interroge l'index
   `reservations(status, eventStartsAt)` — également déjà déclaré.
+- **État (v1.2)** : livré sur Android — `functions/src/index.ts`
+  (`notifyOrganizerOnReservation`, `sendEventReminders`) et
+  `lib/features/notifications/`. Restent iOS (clé APNs), le web (VAPID +
+  service worker), l'alerte « place libérée » qui dépend de F-06, et
+  l'affichage dans l'app de l'historique `users/{uid}/notifications`.
 
 #### F-03 · Vérification d'email et rôles par custom claims
 *Inspiré de : toutes les plateformes*
@@ -107,6 +124,9 @@ Aujourd'hui le rôle est lu dans le document `users/{uid}`, ce qui coûte un
 - **Impact** : sécurité et coût. Les règles gèrent déjà les deux chemins
   (claim prioritaire, document en secours) — il ne reste que la fonction.
 - **Technique** : Cloud Function + `auth.currentUser.getIdToken(true)` côté client.
+- **État (v1.2)** : `setRoleClaim` pose le claim à la création du profil. Restent
+  le rafraîchissement forcé du jeton côté client juste après l'inscription
+  (les règles utilisent le repli document d'ici là) et la vérification d'email.
 
 #### F-04 · Pagination réelle du catalogue
 Les requêtes sont bornées à 100 documents (`maxPageSize`), imposé par les
@@ -238,12 +258,13 @@ fonctionnalité, c'est livrer une faille pendant l'intervalle.
 
 | Prêt côté serveur | Utilisé par le client | Fonctionnalité cible |
 |---|---|---|
-| `users/{uid}/favorites` | ❌ | F-05 |
-| `users/{uid}/devices` | ❌ | F-02 |
-| `users/{uid}/notifications` (+ TTL) | ❌ | F-02 |
-| `events/{id}/waitlist` | ❌ | F-06 |
-| `events/{id}/checkins` | ❌ | F-01 |
-| `reviews` | ❌ | F-09 |
+| `users/{uid}/favorites` | ✅ v1.3 | F-05 |
+| `users/{uid}/devices` | ✅ v1.2 | F-02 |
+| `users/{uid}/private/notifications` | ✅ v1.2 (préférences) | F-02 |
+| `users/{uid}/notifications` (+ TTL) | ✅ v1.3 (centre de notifications) | F-02 |
+| `events/{id}/waitlist` | ✅ v1.3 | F-06 |
+| `events/{id}/checkins` | ✅ v1.3 | F-01 |
+| `reviews` | ✅ v1.3 | F-09 |
 | `reports` | ❌ | F-19 |
 | `aggregates` (lecture seule) | ❌ | F-07 |
 | `config` (lecture publique) | ❌ | remote config |

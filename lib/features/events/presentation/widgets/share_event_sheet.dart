@@ -1,4 +1,5 @@
 import 'package:eventhub/app/theme/theme.dart';
+import 'package:eventhub/core/analytics/app_analytics.dart';
 import 'package:eventhub/core/config/app_links.dart';
 import 'package:eventhub/core/extensions/context_x.dart';
 import 'package:eventhub/core/l10n/app_strings.dart';
@@ -7,6 +8,7 @@ import 'package:eventhub/core/widgets/design_system.dart';
 import 'package:eventhub/features/events/domain/entities/event.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 /// Share an event.
 ///
@@ -20,7 +22,11 @@ Future<void> showShareEventSheet(BuildContext context, Event event) {
     builder: (sheetContext) {
       // The toast is raised on the *page* context once the sheet is gone:
       // shown from inside the sheet, it would slide in behind it.
-      void done(String message) {
+      void done(String message, String method) {
+        ProviderScope.containerOf(
+          sheetContext,
+          listen: false,
+        ).read(appAnalyticsProvider).share(event.id, method);
         Navigator.of(sheetContext).pop();
         if (context.mounted) context.showSuccess(message);
       }
@@ -35,13 +41,13 @@ Future<void> showShareEventSheet(BuildContext context, Event event) {
             elevated: false,
             onPressed: () async {
               await Clipboard.setData(ClipboardData(text: _invitation(event)));
-              done(AppStrings.invitationCopied);
+              done(AppStrings.invitationCopied, 'invitation');
             },
           ),
         ],
         child: PublicLinkField(
           url: AppLinks.event(event.id),
-          onCopied: () => done(AppStrings.linkCopied),
+          onCopied: () => done(AppStrings.linkCopied, 'link'),
         ),
       );
     },

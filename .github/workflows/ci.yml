@@ -65,9 +65,34 @@ jobs:
         run: |
           firebase/tests/node_modules/.bin/firebase --project demo-eventhub emulators:exec --only firestore,storage "npm --prefix firebase/tests test"
 
+  functions:
+    name: Cloud Functions (build)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: functions/package-lock.json
+      - run: npm --prefix functions ci
+      - run: npm --prefix functions run build
+
+      # Integration tests need the emulators (Java) and the Firebase CLI from
+      # the rules test suite.
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - run: npm --prefix firebase/tests ci
+      - name: Functions integration tests
+        run: |
+          firebase/tests/node_modules/.bin/firebase --project demo-eventhub emulators:exec --only auth,firestore,functions,storage "npm --prefix functions test"
+
   android:
     name: Build APK (dev)
-    needs: [quality, rules]
+    needs: [quality, rules, functions]
     runs-on: ubuntu-latest
     timeout-minutes: 30
     if: github.event_name == 'push'

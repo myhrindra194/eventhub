@@ -52,6 +52,21 @@ void main() {
     );
   });
 
+  test('team notices open the invitations, the team or the dashboard', () {
+    expect(
+      NotificationRoute.locationFor({'type': 'staffInvite', 'eventId': 'e1'}),
+      AppRoutes.organizerInvitations,
+    );
+    expect(
+      NotificationRoute.locationFor({'type': 'staffJoined', 'eventId': 'e1'}),
+      AppRoutes.organizerEventTeamPath('e1'),
+    );
+    expect(
+      NotificationRoute.locationFor({'type': 'staffRemoved', 'eventId': 'e1'}),
+      AppRoutes.organizerEvents,
+    );
+  });
+
   test('unknown or incomplete payloads open nothing', () {
     expect(NotificationRoute.locationFor({}), isNull);
     expect(NotificationRoute.locationFor({'type': 'promo'}), isNull);

@@ -3,16 +3,37 @@ import 'package:eventhub/core/result/result.dart';
 import 'package:eventhub/features/auth/domain/entities/app_user.dart';
 import 'package:eventhub/features/events/domain/entities/event.dart';
 
-/// Ownership and capacity rules for organizers. Pure, synchronous, unit-tested.
-/// Mirrored server-side in `firestore.rules`.
+/// Ownership, team and capacity rules for organizers. Pure, synchronous,
+/// unit-tested. Mirrored server-side in `firestore.rules` and the team
+/// Cloud Functions.
+///
+/// | action                      | owner | co-organizer |
+/// |-----------------------------|:-----:|:------------:|
+/// | edit content, guest list, door | ✓  | ✓            |
+/// | delete the event            | ✓     |              |
+/// | invite / remove members     | ✓     | leave only   |
 abstract final class EventPolicy {
+  /// Maximum co-organizers per event (owner excluded).
+  static const maxStaff = 10;
+
   static Result<void> canManage({required Event event, required AppUser user}) {
-    if (!user.isOrganizer || !event.isOwnedBy(user.id)) {
+    if (!user.isOrganizer || !event.isManagedBy(user.id)) {
       return const Err(
         BusinessRuleFailure(
           rule: BusinessRule.notEventOwner,
-          message: 'Vous ne pouvez gérer que vos propres événements.',
+          message:
+              'Vous ne pouvez gérer que vos événements ou ceux que vous '
+              'co-organisez.',
         ),
+      );
+    }
+    return const Ok(null);
+  }
+
+  static Result<void> _owner(Event event, AppUser user, String message) {
+    if (!user.isOrganizer || !event.isOwnedBy(user.id)) {
+      return Err(
+        BusinessRuleFailure(rule: BusinessRule.notEventOwner, message: message),
       );
     }
     return const Ok(null);
@@ -22,7 +43,12 @@ abstract final class EventPolicy {
   /// Mirrors `allow delete: if isOwner() && takenSeats() == 0` in the rules,
   /// so the organizer gets a sentence instead of a permission error.
   static Result<void> canDelete({required Event event, required AppUser user}) {
-    if (canManage(event: event, user: user) case Err(:final failure)) {
+    if (_owner(
+          event,
+          user,
+          'Seul l’organisateur principal peut supprimer cet événement.',
+        )
+        case Err(:final failure)) {
       return Err(failure);
     }
     if (event.reservedCount > 0) {
@@ -39,6 +65,12 @@ abstract final class EventPolicy {
     }
     return const Ok(null);
   }
+
+  /// Inviting and removing co-organizers is the owner's call.
+  static Result<void> canManageTeam({
+    required Event event,
+    required AppUser user,
+  }) => _owner(event, user, 'Seul l’organisateur principal compose l’équipe.');
 
   /// A capacity change must keep room for existing reservations.
   static Result<int> availablePlacesAfterCapacityChange({

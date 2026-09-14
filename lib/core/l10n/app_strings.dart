@@ -628,6 +628,60 @@ abstract final class AppStrings {
   static const you = 'Vous';
   static const participantRole = 'Participant';
 
+  // Co-organisateurs (F-16)
+  static const teamTitle = 'Équipe';
+  static const teamLead =
+      'Les co-organisateurs modifient l’événement, consultent la liste des '
+      'participants et scannent les billets. Seul l’organisateur principal '
+      'compose l’équipe et peut supprimer l’événement.';
+  static const inviteCoOrganizer = 'Inviter un co-organisateur';
+  static const coOrganizerEmailHint = 'email d’un compte organisateur';
+  static String teamSeatsLeft(int n) =>
+      '$n place${n > 1 ? 's' : ''} libre${n > 1 ? 's' : ''} dans l’équipe.';
+  static const teamFull = 'Équipe complète : 10 co-organisateurs au plus.';
+  static const sendInvitation = 'Envoyer l’invitation';
+  static String invitationSent(String email) => 'Invitation envoyée à $email.';
+  static const teamMembers = 'Membres';
+  static const teamOwner = 'Principal';
+  static const pendingInvitations = 'Invitations en attente';
+  static const removeMember = 'Retirer';
+  static const removeMemberTitle = 'Retirer de l’équipe ?';
+  static const removeMemberMessage =
+      'Cette personne n’aura plus accès à la liste des participants ni au '
+      'contrôle des billets. Elle en sera prévenue.';
+  static const memberRemoved = 'Membre retiré de l’équipe.';
+  static const cancelInvitation = 'Annuler';
+  static const cancelInvitationTitle = 'Annuler l’invitation ?';
+  static const cancelInvitationMessage =
+      'L’invitation ne pourra plus être acceptée.';
+  static const invitationCancelled = 'Invitation annulée.';
+  static const leaveTeam = 'Quitter l’équipe';
+  static const leaveTeamTitle = 'Quitter l’équipe ?';
+  static const leaveTeamMessage =
+      'Vous n’aurez plus accès à cet événement. L’organisateur principal '
+      'pourra vous inviter de nouveau.';
+  static const teamLeft = 'Vous avez quitté l’équipe.';
+  static const coOrganizedBadge = 'Co-organisé';
+  static const coOrganizedTitle = 'Co-organisés';
+  static String coOrganizedSubtitle(int n) =>
+      '$n événement${n > 1 ? 's' : ''} où vous faites partie de l’équipe';
+  static const invitationsTitle = 'Invitations';
+  static const noInvitationsTitle = 'Aucune invitation';
+  static const noInvitations =
+      'Quand un organisateur vous invitera à co-organiser un événement, '
+      'l’invitation apparaîtra ici.';
+  static String invitedBy(String name) => 'Invitation de $name';
+  static const coOrganizerRights =
+      'En acceptant, vous pourrez modifier l’événement, voir les participants '
+      'et scanner les billets à l’entrée.';
+  static const accept = 'Accepter';
+  static const decline = 'Refuser';
+  static String invitationAccepted(String title) =>
+      'Vous co-organisez « $title ».';
+  static const invitationDeclined = 'Invitation refusée.';
+  static String pendingInvitationsBanner(int n) =>
+      n > 1 ? '$n invitations à co-organiser' : '1 invitation à co-organiser';
+
   // Recommandations (F-18)
   static const forYou = 'Pour vous';
   static const forYouSubtitle =

@@ -2,12 +2,17 @@ import { after, before, beforeEach, describe, it } from 'node:test';
 
 import { assertFails, assertSucceeds } from '@firebase/rules-unit-testing';
 import {
+  collection,
   deleteDoc,
   doc,
   getDoc,
+  getDocs,
+  limit,
+  query,
   serverTimestamp,
   setDoc,
   updateDoc,
+  where,
 } from 'firebase/firestore';
 
 import {
@@ -16,6 +21,7 @@ import {
   asParticipant,
   createTestEnv,
   eventData,
+  reservationData,
 } from './helpers.js';
 
 /**
@@ -590,6 +596,109 @@ describe('reports (F-19 moderation)', () => {
     const db = asOrganizer(env, 'o1').firestore();
     await assertFails(
       updateDoc(doc(db, 'reports', 'event_e1_p1'), { status: 'resolved' }),
+    );
+  });
+});
+
+// ===========================================================================
+//  events.staffIds, invitations — F-16 (co-organizers)
+// ===========================================================================
+
+describe('co-organizers (F-16)', () => {
+  beforeEach(async () => {
+    await seedEvent('e1', { capacity: 10, availablePlaces: 9, staffIds: ['o2'] });
+    await seed(async (db) => {
+      await setDoc(doc(db, 'reservations', 'e1_p1'), reservationData());
+      await setDoc(doc(db, 'events', 'e1', 'invitations', 'o4'), {
+        userId: 'o4',
+        status: 'pending',
+      });
+    });
+  });
+
+  const guestList = (db) =>
+    getDocs(
+      query(
+        collection(db, 'reservations'),
+        where('eventId', '==', 'e1'),
+        where('status', '==', 'confirmed'),
+        limit(100),
+      ),
+    );
+
+  it('lets a co-organizer read the guest list, queried by event', async () => {
+    const db = asOrganizer(env, 'o2').firestore();
+    await assertSucceeds(guestList(db));
+    await assertSucceeds(getDoc(doc(db, 'reservations', 'e1_p1')));
+  });
+
+  it('hides the guest list from an organizer outside the team', async () => {
+    const db = asOrganizer(env, 'o3').firestore();
+    await assertFails(guestList(db));
+    await assertFails(getDoc(doc(db, 'reservations', 'e1_p1')));
+  });
+
+  it('lets the whole team scan tickets at the door', async () => {
+    const scan = (uid) =>
+      setDoc(doc(asOrganizer(env, uid).firestore(), 'events', 'e1', 'checkins', `e1_p1_${uid}`), {
+        reservationId: 'e1_p1',
+        scannedBy: uid,
+        scannedAt: serverTimestamp(),
+      });
+    await assertSucceeds(scan('o2'));
+    await assertFails(scan('o3'));
+  });
+
+  it('lets a co-organizer edit the content, never the team nor delete', async () => {
+    const db = asOrganizer(env, 'o2').firestore();
+    await assertSucceeds(
+      updateDoc(doc(db, 'events', 'e1'), {
+        title: 'Flutter Meetup — édition 2',
+        updatedAt: serverTimestamp(),
+      }),
+    );
+    await assertFails(updateDoc(doc(db, 'events', 'e1'), { staffIds: ['o2', 'o3'] }));
+    await assertFails(updateDoc(doc(db, 'events', 'e1'), { organizerName: 'Moi' }));
+    await assertFails(deleteDoc(doc(db, 'events', 'e1')));
+  });
+
+  it('refuses the owner rewriting the team, and an event created with one', async () => {
+    const db = asOrganizer(env, 'o1').firestore();
+    await assertFails(updateDoc(doc(db, 'events', 'e1'), { staffIds: [] }));
+    await assertFails(
+      setDoc(doc(db, 'events', 'e9'), {
+        ...eventData({ staffIds: ['o2'] }),
+        createdAt: serverTimestamp(),
+      }),
+    );
+    await assertSucceeds(
+      setDoc(doc(db, 'events', 'e8'), {
+        ...eventData({ staffIds: [] }),
+        createdAt: serverTimestamp(),
+      }),
+    );
+  });
+
+  it('shows invitations to the team and the invitee, and lets nobody write them', async () => {
+    await assertSucceeds(
+      getDoc(doc(asOrganizer(env, 'o2').firestore(), 'events', 'e1', 'invitations', 'o4')),
+    );
+    await assertSucceeds(
+      getDoc(doc(asOrganizer(env, 'o4').firestore(), 'events', 'e1', 'invitations', 'o4')),
+    );
+    await assertFails(
+      getDoc(doc(asOrganizer(env, 'o3').firestore(), 'events', 'e1', 'invitations', 'o4')),
+    );
+    await assertFails(
+      setDoc(doc(asOrganizer(env, 'o1').firestore(), 'events', 'e1', 'invitations', 'o5'), {
+        userId: 'o5',
+        status: 'pending',
+      }),
+    );
+    await assertFails(
+      setDoc(doc(asOrganizer(env, 'o4').firestore(), 'users', 'o4', 'staffInvitations', 'e1'), {
+        status: 'accepted',
+      }),
     );
   });
 });

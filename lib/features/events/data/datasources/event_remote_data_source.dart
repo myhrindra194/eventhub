@@ -62,6 +62,16 @@ class EventRemoteDataSource {
         .map(_toDomainList);
   }
 
+  /// Events the user co-organizes (F-16), most recent first.
+  Stream<List<Event>> watchByStaff(String userId) {
+    return _events
+        .where('staffIds', arrayContains: userId)
+        .orderBy(EventFields.startsAt, descending: true)
+        .limit(maxPageSize)
+        .snapshots()
+        .map(_toDomainList);
+  }
+
   Stream<Event?> watchById(String eventId) =>
       _events.doc(eventId).snapshots().map(_toDomainOrNull);
 
@@ -91,11 +101,13 @@ class EventRemoteDataSource {
     return _firestore.runTransaction((tx) async {
       final current = _toDomainOrNull(await tx.get(ref));
       if (current == null) throw FailureException(_notFound(eventId));
-      if (!current.isOwnedBy(organizerId)) {
+      if (!current.isManagedBy(organizerId)) {
         throw const FailureException(
           BusinessRuleFailure(
             rule: BusinessRule.notEventOwner,
-            message: 'Vous ne pouvez modifier que vos propres événements.',
+            message:
+                'Vous ne pouvez modifier que vos événements ou ceux que vous '
+                'co-organisez.',
           ),
         );
       }

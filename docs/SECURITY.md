@@ -208,6 +208,19 @@ Tests : règles `make test-rules` (118), fonctions `make test-functions`.
 | Identité des signaleurs | l'écran admin n'affiche qu'une clé courte (6 caractères de l'uid) pour repérer un compte qui signale en rafale, jamais le nom | `ModerationRemoteDataSource` |
 | Erreurs des fonctions | `permission-denied`, `invalid-argument`, `not-found`, `failed-precondition` gardent le message français du serveur | `ErrorMapper` |
 
+### v1.5 : co-organisateurs (F-16)
+
+| Surface | Garantie | Où |
+|---|---|---|
+| `events/{id}.staffIds` | **jamais écrit par un client**, ni par le principal ni par un membre (`unchanged('staffIds')`) ; vide à la création ; ≤ 10 | règles + fonctions d'équipe |
+| Membre de l'équipe | `isEventTeam(eventId)` : principal ou uid dans `staffIds` (une lecture) ; `isStaff()` exige en plus le rôle organisateur | règles |
+| Modifier l'événement | principal ou membre, mêmes contraintes de capacité ; `organizerId`, `organizerName`, `createdAt` figés ; **suppression réservée au principal** | règles (testées) |
+| Liste des participants | lecture d'une réservation ou requête par `eventId ==` pour un membre ; un organisateur hors équipe est refusé | règles (testées) |
+| Entrées et liste d'attente | lecture et scan ouverts à l'équipe, append-only inchangé | règles (testées) |
+| Invitations | écrites par fonctions seulement ; lisibles par l'équipe et l'invité ; l'invité doit être un **compte organisateur existant** ; une invitation ne se répond qu'une fois ; équipe complète vérifiée à l'envoi et à l'acceptation (transaction) | `inviteCoOrganizer`, `respondToStaffInvite` |
+| Retrait | le principal retire un membre ou annule une invitation ; un membre peut partir ; le principal ne peut pas être retiré | `removeCoOrganizer` |
+| Suppression de compte | le membre est retiré de toutes les équipes et ses invitations en attente supprimées | `deleteAccount` |
+
 ### Notifications push : ce qui est privé, ce qui est serveur
 
 | Chemin | Client | Cloud Functions (SDK Admin, règles contournées) |

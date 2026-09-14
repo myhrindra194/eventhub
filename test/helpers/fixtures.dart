@@ -28,7 +28,9 @@ abstract final class Fixtures {
     int? availablePlaces,
     DateTime? startsAt,
     String organizerId = 'org-1',
+    List<String> staffIds = const [],
   }) => Event(
+    staffIds: staffIds,
     id: id,
     title: 'Flutter Meetup Madagascar',
     description: 'Rencontre de la communauté Flutter.',

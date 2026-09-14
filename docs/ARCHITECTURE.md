@@ -34,6 +34,7 @@ lib/
     ├── organizers/             public organizer profile (organizers/{id}), follows
     ├── moderation/             reports: ReportPolicy, repository, report sheet
     ├── admin/                  moderation queue, file, decisions, admin roles (claim `admin`)
+    ├── team/                   co-organizers: invitations, team screen, TeamPolicy
     ├── notifications/          preferences, devices, FCM pipeline, notification centre
     ├── participant/            participant shell, "Pour vous" recommendations
     └── support/                help, privacy, about
@@ -93,6 +94,19 @@ Repositories never throw; `guard()` maps exceptions through `ErrorMapper`:
 | Follow: not oneself; counter server-side | `FollowPolicy` + rules + `onFollowWritten` |
 | Report: closed reasons, one per account, not one's own content | `ReportPolicy` + rules (deterministic id) |
 | Review hidden after 3 distinct reports, or by an admin | `onReportCreated`, `moderateContent`; filtered client-side |
+| Team: owner or co-organizer manages; only the owner deletes and composes the team | `EventPolicy`, `TeamPolicy` + rules `isEventTeam()` + team callables |
+
+### Co-organizers
+
+`Event.staffIds` lists co-organizers; `isManagedBy(uid)` = owner or staff.
+The guest list uses two queries on purpose: the owner's pins
+`organizerId ==` (no extra rule read), a co-organizer's pins `eventId ==` so
+the rules can read that event and check `staffIds`
+(`eventParticipantsProvider` picks one from the loaded event). The dashboard
+merges `organizerEventsProvider` and `coOrganizedEventsProvider`
+(`staffIds array-contains`). Invitations exist twice — under the event for
+the team, under the invitee for their inbox — and every change goes through
+`inviteCoOrganizer`, `respondToStaffInvite` or `removeCoOrganizer`.
 
 Pure calculators: `Reservation.ticketCode/ticketPayload`, `TicketPayload.parse`,
 `GuestListCsv` (+ `fileBytes`, `fileNameFor`), `OrganizerStats`,

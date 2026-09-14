@@ -13,9 +13,9 @@
 ![Dart](https://img.shields.io/badge/Dart-3.13-0175C2?logo=dart&logoColor=white)
 ![Riverpod](https://img.shields.io/badge/Riverpod-3-6366F1)
 ![Firebase](https://img.shields.io/badge/Firebase-Auth_·_Firestore_·_Storage_·_FCM_·_Functions_·_App_Check-FFCA28?logo=firebase&logoColor=black)
-![Tests Dart](https://img.shields.io/badge/tests_Dart-164_passing-10B981)
-![Tests règles](https://img.shields.io/badge/tests_règles-132_passing-10B981)
-![Tests fonctions](https://img.shields.io/badge/tests_fonctions-26_passing-10B981)
+![Tests Dart](https://img.shields.io/badge/tests_Dart-172_passing-10B981)
+![Tests règles](https://img.shields.io/badge/tests_règles-138_passing-10B981)
+![Tests fonctions](https://img.shields.io/badge/tests_fonctions-29_passing-10B981)
 
 ---
 
@@ -116,6 +116,7 @@ d'émulateurs, qui exécute les vraies règles.
 | Créer / modifier | bannière Storage, validation, email vérifié requis pour publier |
 | Participants | recherche, **export CSV en fichier** (feuille de partage : Drive, email, tableur ; UTF-8 avec BOM pour Excel, séparateur `;`) ou copie, **compteur d'entrées**, **personnes en liste d'attente**, marqueur « Entré · HH:mm » |
 | Profil public | présentation modifiable, abonnés, note moyenne sur les avis visibles ; chaque publication prévient les abonnés |
+| **Équipe (co-organisateurs)** | l'organisateur principal invite jusqu'à 10 organisateurs par email ; l'invité accepte ou refuse depuis « Invitations » ; un co-organisateur modifie l'événement, voit les participants, scanne les billets et reçoit les alertes de réservation, mais ne supprime pas l'événement et ne compose pas l'équipe ; il peut la quitter. Les événements co-organisés apparaissent dans le tableau de bord, marqués « Co-organisé » |
 | **Contrôle à l'entrée** | scanner caméra (lampe), verdict plein écran en couleur : entrée validée, déjà scanné (heure), billet annulé, autre événement, code invalide, introuvable ; saisie manuelle du code ; retour haptique distinct ; enregistrement anti-doublon même à plusieurs portes |
 | Stats · Alertes | remplissage, 14 jours de réservations (graphique + tableau), classement ; à surveiller + journal |
 | Push | réservation et annulation en temps réel |
@@ -301,7 +302,8 @@ users/{uid}                       name, email, role, bio?, createdAt, updatedAt?
   ├── private/notifications       eventReminders, bookingAlerts, followedOrganizers
   ├── notifications/{id}          type, title, body, eventId, reservationId, createdAt, readAt, expiresAt (TTL)
   ├── favorites/{eventId}         eventId, createdAt
-  └── following/{organizerId}     organizerId, createdAt
+  ├── following/{organizerId}     organizerId, createdAt
+  └── staffInvitations/{eventId}  copie de l'invitation, pour la boîte de l'invité          (serveur)
 
 organizers/{uid}                  name, bio, photoUrl, memberSince, followerCount, eventCount,
                                   ratingSum, ratingCount, updatedAt                        (public, serveur)
@@ -313,9 +315,12 @@ moderationQueue/{type}_{targetId} reportCount, lastReason, status, autoHidden?, 
 audit/{id}                        action, détails, at, expiresAt (TTL) — et fx_{triggerId} (idempotence)
 
 events/{id}                       title, description, imageUrl?, category, startsAt, location,
-                                  capacity, availablePlaces, organizerId, organizerName, createdAt, updatedAt
+                                  capacity, availablePlaces, organizerId, organizerName, createdAt, updatedAt,
+                                  staffIds [≤ 10]                                          (équipe : serveur)
   ├── waitlist/{userId}           userId, userName, createdAt, notifiedAt? (serveur)
-  └── checkins/{reservationId}    reservationId, scannedBy, scannedAt
+  ├── checkins/{reservationId}    reservationId, scannedBy, scannedAt
+  └── invitations/{userId}        eventId, userId, email, name, invitedBy(Name), eventTitle, eventStartsAt,
+                                  status (pending · accepted · declined), createdAt, respondedAt?  (serveur)
 
 reservations/{eventId}_{userId}   eventId, userId, organizerId, userName, userEmail,
                                   eventTitle, eventStartsAt, eventLocation, status, reservedAt, cancelledAt?
@@ -353,6 +358,7 @@ lecture supplémentaire. Code billet dérivé de l'id, jamais stocké.
 | Signaler | `ReportPolicy` : motif de la liste, précisions si « Autre », ≤ 2 000, pas son propre contenu | règles : id `type_cible_uid` (un par compte), motifs fermés, lecture admin seule |
 | Masquer un avis | automatique à 3 signalements distincts, ou décision admin | fonctions `onReportCreated` / `moderateContent` ; l'auteur ne peut pas modifier `hidden` |
 | Profil public | le client ne l'écrit jamais | règles : écriture refusée ; `syncOrganizerProfile` copie nom et présentation |
+| Équipe d'un événement | `EventPolicy` (gérer : principal ou co-organisateur ; supprimer et composer l'équipe : principal), `TeamPolicy` (email, pas soi-même, événement à venir, ≤ 10 avec les invitations en attente) | règles : `staffIds` jamais écrit par un client, `isEventTeam()` pour participants, entrées, liste d'attente ; fonctions `inviteCoOrganizer` (compte organisateur existant), `respondToStaffInvite`, `removeCoOrganizer` |
 
 ---
 
@@ -374,7 +380,9 @@ restreintes à l'appelant. Tout est détaillé et testé : [`docs/SECURITY.md`](
 
 | Notification | Destinataire | Déclencheur | Tap ouvre | Préférence |
 |---|---|---|---|---|
-| Nouvelle réservation / annulation | organisateur | `notifyOrganizerOnReservation` | liste des participants | `bookingAlerts` |
+| Nouvelle réservation / annulation | organisateur **et co-organisateurs** | `notifyOrganizerOnReservation` | liste des participants | `bookingAlerts` (chacun la sienne) |
+| Invitation à co-organiser · Nouveau co-organisateur · Retiré de l'équipe | invité · principal · membre retiré | `inviteCoOrganizer` · `respondToStaffInvite` · `removeCoOrganizer` | invitations · équipe · tableau de bord | — (transactionnel) |
+| Événement annulé · Avis masqué | détenteurs et organisateur · auteur | `moderateContent`, `onReportCreated` | billets · fiche | — (transactionnel) |
 | Demain : … | participant | `sendEventReminders` (horaire) | billet | `eventReminders` |
 | Une place s'est libérée | participant en attente | `notifyWaitlistOnSeatRelease` | fiche de l'événement | `eventReminders` |
 | « Mirindra publie un événement » | abonnés de l'organisateur | `onEventWritten` (création, événement à venir) | fiche de l'événement | `followedOrganizers` |
@@ -427,6 +435,7 @@ aplat plein écran. Détails : [`docs/DESIGN_SYSTEM.md`](docs/DESIGN_SYSTEM.md).
 | Mes événements · Stats · Alertes | `/organizer/events` · `/organizer/stats` · `/organizer/alerts` |
 | Créer · Modifier · Publié | `/organizer/events/new` · `/organizer/events/:eventId/edit` · `/organizer/events/:eventId/published` |
 | Participants · Contrôle à l'entrée | `/organizer/events/:eventId/participants` · `/organizer/events/:eventId/checkin` |
+| Équipe · Invitations à co-organiser | `/organizer/events/:eventId/team` · `/organizer/invitations` |
 
 ---
 
@@ -453,7 +462,7 @@ aplat plein écran. Détails : [`docs/DESIGN_SYSTEM.md`](docs/DESIGN_SYSTEM.md).
 ## 14. Qualité : lint, tests, CI
 
 - **Analyse** : zéro issue (`flutter_lints` strict, `riverpod_lint`).
-- **Tests Dart** (`make test`, **149**) : policies (réservation,
+- **Tests Dart** (`make test`, **172**) : policies (réservation,
   événement dont suppression, liste d'attente, avis, entrée, abonnement,
   signalement), code billet, CSV (fichier, BOM, nom), stats et alertes,
   catalogue paginé, recommandations, phrase de preuve sociale, profil public,
@@ -461,8 +470,8 @@ aplat plein écran. Détails : [`docs/DESIGN_SYSTEM.md`](docs/DESIGN_SYSTEM.md).
   `RouteGuard` (dont liens profonds conservés à travers le splash et la
   connexion) ; widgets et goldens (connexion, écrans d'auth, démarrage, billet,
   stats, centre de notifications).
-- **Tests de règles** (`make test-rules`, **131**) contre les émulateurs.
-- **Tests des fonctions** (`make test-functions`, **21**) :
+- **Tests de règles** (`make test-rules`, **138**) contre les émulateurs.
+- **Tests des fonctions** (`make test-functions`, **29**) :
   claim de rôle, notifications organisateur et préférences, liste d'attente,
   rappels J-1, suppression de compte, profil public (publication, compteur
   d'abonnés, annonce aux abonnés, note moyenne hors avis masqués), preuve
@@ -544,6 +553,9 @@ Deux appareils Android, projet déployé.
 | 20 | Recommandations sur l'appareil, heuristique explicable | aucun profilage serveur ; chaque suggestion a une raison vraie |
 | 21 | Page publique rendue par fonction derrière Hosting, App Links vérifiés | aperçu dans les messageries sans exposer les règles Firestore ; lien unique pour app et web |
 | 22 | Lien profond conservé dans `?from=` à travers splash et connexion, liste blanche de destinations | un lien ouvre souvent l'app à froid ; `from` vient de l'extérieur |
+| 23 | Rôle admin en claim, décisions par fonctions journalisées, premier admin en ligne de commande | aucun document ne confère de pouvoir ; chaque décision est traçable ; pas de porte dérobée dans l'app |
+| 24 | Co-organisateurs dans `staffIds` sur l'événement, modifié par fonctions seulement ; invitation dupliquée (événement + invité) | une seule lecture pour que les règles prouvent l'appartenance ; chacun lit sa copie sans requête de groupe |
+| 25 | Liste des participants : requête différente pour le principal (`organizerId ==`) et l'équipe (`eventId ==`) | chaque requête est celle que les règles savent prouver ; le principal ne paie aucune lecture supplémentaire |
 
 ---
 
@@ -566,7 +578,7 @@ CI.
 | Clés à fournir | `GOOGLE_SERVER_CLIENT_ID`, `FIREBASE_WEB_VAPID_KEY`, `APP_CHECK_RECAPTCHA_SITE_KEY`, keystore release |
 | « Add to Cal » | plugin natif de calendrier |
 | Empreinte release dans `assetlinks.json` | à ajouter avec la keystore release, sinon les liens s'ouvrent dans le navigateur |
-| Paiement (F-11), types de billets (F-12), séries (F-13), carte (F-14), co-organisateurs (F-16), discussion (F-17), multilingue (F-20) | backlog P2 : Stripe et Maps exigent des comptes tiers ; les autres changent le modèle de données |
+| Types de billets (F-12), paiement Stripe (F-11), séries (F-13), carte (F-14), discussion (F-17), multilingue (F-20) | en cours, lot par lot (voir `docs/ROADMAP.md`) |
 | Revue juridique | notice de confidentialité et consentement à valider (DPO) |
 
 ---

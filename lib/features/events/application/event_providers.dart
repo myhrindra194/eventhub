@@ -91,6 +91,11 @@ bool canLoadMoreEvents(Ref ref) {
 Stream<List<Event>> organizerEvents(Ref ref, String organizerId) =>
     ref.watch(eventRepositoryProvider).watchByOrganizer(organizerId);
 
+/// Events the signed-in organizer co-organizes (F-16).
+@riverpod
+Stream<List<Event>> coOrganizedEvents(Ref ref, String userId) =>
+    ref.watch(eventRepositoryProvider).watchCoOrganized(userId);
+
 @riverpod
 Stream<Event?> eventById(Ref ref, String eventId) =>
     ref.watch(eventRepositoryProvider).watchById(eventId);

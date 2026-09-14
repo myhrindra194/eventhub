@@ -97,6 +97,15 @@ service cloud.firestore {
       return isSignedIn() && request.auth.token.get('email_verified', false) == true;
     }
 
+    /// The organizer of an event **or one of its co-organizers** (F-16).
+    /// One `get()`. Co-organizers are added and removed by Cloud Functions
+    /// only (invitation accepted, member removed), never by a client write.
+    function isEventTeam(eventId) {
+      let event = get(/databases/$(database)/documents/events/$(eventId)).data;
+      return isSignedIn()
+        && (event.organizerId == uid() || event.get('staffIds', []).hasAny([uid()]));
+    }
+
     // ============================================================== shape ===
 
     function incoming() {
@@ -274,6 +283,12 @@ service cloud.firestore {
         allow delete: if isSelf(userId);
       }
 
+      // ---- invitations to co-organize (F-16), mirror for the invitee -----
+      match /staffInvitations/{eventId} {
+        allow read: if isSelf(userId);
+        allow write: if false;
+      }
+
       // ---- in-app notifications -----------------------------------------
       //  Written by Cloud Functions only; the user may just mark them read.
       match /notifications/{notificationId} {
@@ -341,8 +356,12 @@ service cloud.firestore {
           && incoming().keys().hasOnly([
                'title', 'description', 'category', 'startsAt', 'location',
                'capacity', 'availablePlaces', 'organizerId', 'organizerName',
-               'imageUrl', 'createdAt', 'updatedAt'
+               'imageUrl', 'createdAt', 'updatedAt', 'staffIds'
              ])
+          // Co-organizers: at most 10, never written by a client (see the
+          // create and update branches).
+          && (!('staffIds' in incoming())
+              || (incoming().staffIds is list && incoming().staffIds.size() <= 10))
           && isString(incoming().title, 3, 120)
           && isString(incoming().description, 1, 5000)
           && validCategory(incoming().category)
@@ -358,6 +377,11 @@ service cloud.firestore {
 
       function isOwner() {
         return isSignedIn() && existing().organizerId == uid();
+      }
+
+      /// A co-organizer: an organizer listed in `staffIds`.
+      function isStaff() {
+        return isOrganizer() && existing().get('staffIds', []).hasAny([uid()]);
       }
 
       /// Seats already taken, derived rather than stored, so it cannot drift.
@@ -381,15 +405,21 @@ service cloud.firestore {
         // A brand-new event starts empty; seeding it as half full would fake
         // social proof.
         && incoming().availablePlaces == incoming().capacity
+        // …and without a team: co-organizers join by accepting an invitation.
+        && (!('staffIds' in incoming()) || incoming().staffIds.size() == 0)
         && isFuture(incoming().startsAt)
         && isServerTime(incoming().createdAt);
 
       allow update: if
-        // ---- (a) the owner edits the content --------------------------
-        (isOwner()
+        // ---- (a) the owner or a co-organizer edits the content ----------
+        // Neither may touch the team itself: `staffIds` only changes through
+        // the invitation functions. Deleting stays with the owner (below).
+        ((isOwner() || isStaff())
           && validEventShape()
           && incoming().organizerId == existing().organizerId
+          && incoming().organizerName == existing().organizerName
           && unchanged('createdAt')
+          && unchanged('staffIds')
           // Capacity may grow freely, and may shrink only down to the seats
           // already sold — otherwise existing tickets would be invalidated.
           && incoming().capacity >= takenSeats()
@@ -419,9 +449,7 @@ service cloud.firestore {
 
       // ---- waiting list, for sold-out events -----------------------------
       match /waitlist/{userId} {
-        allow read: if isSelf(userId)
-          || (isSignedIn()
-              && get(/databases/$(database)/documents/events/$(eventId)).data.organizerId == uid());
+        allow read: if isSelf(userId) || isEventTeam(eventId);
         allow create: if isSelf(userId) && isParticipant()
           && incoming().keys().hasOnly(['userId', 'userName', 'createdAt'])
           && incoming().userId == uid()
@@ -436,17 +464,22 @@ service cloud.firestore {
 
       // ---- door check-in, organizer-only ---------------------------------
       match /checkins/{reservationId} {
-        function eventOrganizer() {
-          return get(/databases/$(database)/documents/events/$(eventId)).data.organizerId;
-        }
-
-        allow read: if isSignedIn() && eventOrganizer() == uid();
-        allow create: if isSignedIn() && eventOrganizer() == uid()
+        // The whole team works the door.
+        allow read: if isEventTeam(eventId);
+        allow create: if isEventTeam(eventId)
           && incoming().keys().hasOnly(['reservationId', 'scannedBy', 'scannedAt'])
           && incoming().scannedBy == uid()
           && isServerTime(incoming().scannedAt);
         // A check-in is an append-only fact: never edited, never removed.
         allow update, delete: if false;
+      }
+
+      // ---- co-organizer invitations (F-16) -------------------------------
+      //  Written by `inviteCoOrganizer` / `respondToStaffInvite` only.
+      //  Visible to the team, and to the invited person.
+      match /invitations/{userId} {
+        allow read: if isSelf(userId) || isEventTeam(eventId);
+        allow write: if false;
       }
     }
 
@@ -512,16 +545,25 @@ service cloud.firestore {
       allow get: if isSignedIn()
         && (resource == null
           ? reservationId.matches('.+_' + uid())
-          : (existing().userId == uid() || existing().organizerId == uid()));
+          : (existing().userId == uid()
+              || existing().organizerId == uid()
+              || isEventTeam(existing().eventId)));
 
       // The same two branches, and they are mandatory. Firestore evaluates a
       // `list` rule against the query's constraints, so a query that does not
       // itself pin `userId == uid` or `organizerId == uid` is refused outright.
       // Without this clause any signed-in account could page through every
       // guest list — names and emails included.
+      //
+      // A co-organizer has a third branch, provable only when the query pins
+      // `eventId ==` (the rule then reads that one event). Kept last: for the
+      // participant and organizer queries the first two branches decide
+      // without any document read.
       allow list: if isSignedIn()
         && request.query.limit <= 200
-        && (resource.data.userId == uid() || resource.data.organizerId == uid());
+        && (resource.data.userId == uid()
+            || resource.data.organizerId == uid()
+            || isEventTeam(resource.data.eventId));
 
       allow create: if isParticipant()
         && validReservationShape()

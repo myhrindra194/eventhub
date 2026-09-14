@@ -10,6 +10,7 @@ import 'package:eventhub/features/events/application/event_form_controller.dart'
 import 'package:eventhub/features/events/application/event_providers.dart';
 import 'package:eventhub/features/events/domain/entities/event.dart';
 import 'package:eventhub/features/organizer/presentation/widgets/organizer_event_tile.dart';
+import 'package:eventhub/features/team/application/team_providers.dart';
 import 'package:eventhub/routes/routes.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -69,6 +70,9 @@ class _OrganizerDashboardScreenState
     if (user == null) return const SizedBox.shrink();
 
     final events = ref.watch(organizerEventsProvider(user.id));
+    final coOrganized =
+        ref.watch(coOrganizedEventsProvider(user.id)).value ?? const <Event>[];
+    final invitations = ref.watch(myStaffInvitationsProvider).value ?? const [];
     final now = ref.watch(clockProvider)();
 
     return AppScaffold(
@@ -104,11 +108,16 @@ class _OrganizerDashboardScreenState
                   ),
                 ),
               ),
+              if (invitations.isNotEmpty)
+                SliverToBoxAdapter(
+                  child: _InvitationsBanner(count: invitations.length),
+                ),
               AsyncValueWidget(
                 value: events,
                 sliver: true,
                 onRetry: () => ref.invalidate(organizerEventsProvider(user.id)),
-                isEmpty: (list) => list.isEmpty,
+                // A co-organizer without events of their own still has work.
+                isEmpty: (list) => list.isEmpty && coOrganized.isEmpty,
                 loading: SliverPadding(
                   padding: const EdgeInsets.symmetric(
                     horizontal: AppSpacing.gutter,
@@ -138,6 +147,7 @@ class _OrganizerDashboardScreenState
                 ),
                 data: (list) => _Dashboard(
                   events: list,
+                  coOrganized: coOrganized,
                   now: now,
                   showPast: _showPast,
                   onToggle: (v) => setState(() => _showPast = v),
@@ -155,9 +165,55 @@ class _OrganizerDashboardScreenState
   }
 }
 
+/// "2 invitations à co-organiser" — a ruled strip, not a card.
+class _InvitationsBanner extends StatelessWidget {
+  const _InvitationsBanner({required this.count});
+
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.gutter,
+        0,
+        AppSpacing.gutter,
+        AppSpacing.lg,
+      ),
+      child: InkWell(
+        onTap: () => context.push(AppRoutes.organizerInvitations),
+        child: Container(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          decoration: BoxDecoration(
+            color: t.info.bg,
+            border: Border(left: BorderSide(color: t.info.solid, width: 3)),
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.mail_outline_rounded, size: 20, color: t.info.fg),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Text(
+                  AppStrings.pendingInvitationsBanner(count),
+                  style: context.textTheme.titleSmall?.copyWith(
+                    color: t.info.fg,
+                  ),
+                ),
+              ),
+              Icon(Icons.chevron_right_rounded, color: t.info.fg),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _Dashboard extends StatelessWidget {
   const _Dashboard({
     required this.events,
+    required this.coOrganized,
     required this.now,
     required this.showPast,
     required this.onToggle,
@@ -165,6 +221,9 @@ class _Dashboard extends StatelessWidget {
   });
 
   final List<Event> events;
+
+  /// Events of other organizers this one helps run (F-16).
+  final List<Event> coOrganized;
   final DateTime now;
   final bool showPast;
   // ignore: avoid_positional_boolean_parameters
@@ -261,11 +320,42 @@ class _Dashboard extends StatelessWidget {
                 ),
                 onEdit: () =>
                     context.push(AppRoutes.organizerEventEditPath(event.id)),
+                onTeam: () =>
+                    context.push(AppRoutes.organizerEventTeamPath(event.id)),
                 onDelete: () => onDelete(event),
               ),
             ),
             const SizedBox(height: AppSpacing.lg),
           ],
+        if (coOrganized.isNotEmpty) ...[
+          const SizedBox(height: AppSpacing.lg),
+          SectionHeader(
+            title: AppStrings.coOrganizedTitle,
+            subtitle: AppStrings.coOrganizedSubtitle(coOrganized.length),
+          ),
+          for (final event in coOrganized.where(
+            (e) => showPast ? e.hasStarted(now) : !e.hasStarted(now),
+          )) ...[
+            Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.gutter,
+              ),
+              child: OrganizerEventTile(
+                event: event,
+                now: now,
+                coOrganized: true,
+                onParticipants: () => context.push(
+                  AppRoutes.organizerEventParticipantsPath(event.id),
+                ),
+                onEdit: () =>
+                    context.push(AppRoutes.organizerEventEditPath(event.id)),
+                onTeam: () =>
+                    context.push(AppRoutes.organizerEventTeamPath(event.id)),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.lg),
+          ],
+        ],
       ],
     );
   }

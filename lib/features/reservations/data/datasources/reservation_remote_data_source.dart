@@ -62,6 +62,19 @@ class ReservationRemoteDataSource {
   /// All statuses: cancellations are part of what an organizer monitors.
   /// Backed by the `(organizerId, reservedAt desc)` composite index; the
   /// equality on `organizerId` is what lets the list rule prove access.
+  /// Same list for a co-organizer (F-16). No `organizerId` filter — the
+  /// caller is not the owner — so the rules prove access from the `eventId`
+  /// equality instead (`isEventTeam(resource.data.eventId)`).
+  Stream<List<Reservation>> watchActiveByEventForTeam(String eventId) {
+    return _reservations
+        .where(ReservationFields.eventId, isEqualTo: eventId)
+        .where(ReservationFields.status, isEqualTo: 'confirmed')
+        .orderBy(ReservationFields.reservedAt, descending: true)
+        .limit(maxPageSize)
+        .snapshots()
+        .map(_toDomainList);
+  }
+
   Stream<List<Reservation>> watchByOrganizer(String organizerId) {
     return _reservations
         .where(ReservationFields.organizerId, isEqualTo: organizerId)

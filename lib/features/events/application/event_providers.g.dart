@@ -378,6 +378,90 @@ final class OrganizerEventsFamily extends $Family
   String toString() => r'organizerEventsProvider';
 }
 
+/// Events the signed-in organizer co-organizes (F-16).
+
+@ProviderFor(coOrganizedEvents)
+final coOrganizedEventsProvider = CoOrganizedEventsFamily._();
+
+/// Events the signed-in organizer co-organizes (F-16).
+
+final class CoOrganizedEventsProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<List<Event>>,
+          List<Event>,
+          Stream<List<Event>>
+        >
+    with $FutureModifier<List<Event>>, $StreamProvider<List<Event>> {
+  /// Events the signed-in organizer co-organizes (F-16).
+  CoOrganizedEventsProvider._({
+    required CoOrganizedEventsFamily super.from,
+    required String super.argument,
+  }) : super(
+         retry: null,
+         name: r'coOrganizedEventsProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
+
+  @override
+  String debugGetCreateSourceHash() => _$coOrganizedEventsHash();
+
+  @override
+  String toString() {
+    return r'coOrganizedEventsProvider'
+        ''
+        '($argument)';
+  }
+
+  @$internal
+  @override
+  $StreamProviderElement<List<Event>> $createElement(
+    $ProviderPointer pointer,
+  ) => $StreamProviderElement(pointer);
+
+  @override
+  Stream<List<Event>> create(Ref ref) {
+    final argument = this.argument as String;
+    return coOrganizedEvents(ref, argument);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is CoOrganizedEventsProvider && other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
+  }
+}
+
+String _$coOrganizedEventsHash() => r'8c8e3702166901f72b2f350ac173c3b8b439a313';
+
+/// Events the signed-in organizer co-organizes (F-16).
+
+final class CoOrganizedEventsFamily extends $Family
+    with $FunctionalFamilyOverride<Stream<List<Event>>, String> {
+  CoOrganizedEventsFamily._()
+    : super(
+        retry: null,
+        name: r'coOrganizedEventsProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
+
+  /// Events the signed-in organizer co-organizes (F-16).
+
+  CoOrganizedEventsProvider call(String userId) =>
+      CoOrganizedEventsProvider._(argument: userId, from: this);
+
+  @override
+  String toString() => r'coOrganizedEventsProvider';
+}
+
 @ProviderFor(eventById)
 final eventByIdProvider = EventByIdFamily._();
 

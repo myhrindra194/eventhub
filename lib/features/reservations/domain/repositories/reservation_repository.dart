@@ -12,6 +12,9 @@ abstract interface class ReservationRepository {
     required String organizerId,
   });
 
+  /// Active reservations of an event, for one of its co-organizers.
+  Stream<List<Reservation>> watchByEventForTeam(String eventId);
+
   /// Every reservation (all statuses) on the organizer's events, most recent
   /// first. Feeds the organizer's statistics and activity feed.
   Stream<List<Reservation>> watchByOrganizer(String organizerId);

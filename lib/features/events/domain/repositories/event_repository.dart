@@ -10,6 +10,9 @@ abstract interface class EventRepository {
   /// All events of an organizer, most recent first.
   Stream<List<Event>> watchByOrganizer(String organizerId);
 
+  /// Events [userId] co-organizes, most recent first.
+  Stream<List<Event>> watchCoOrganized(String userId);
+
   /// Emits `null` when the event does not exist (or was deleted).
   Stream<Event?> watchById(String eventId);
 

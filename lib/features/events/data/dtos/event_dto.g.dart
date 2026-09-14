@@ -23,6 +23,9 @@ _EventDto _$EventDtoFromJson(Map<String, dynamic> json) => _EventDto(
   imageUrl: json['imageUrl'] as String?,
   createdAt: const NullableTimestampConverter().fromJson(json['createdAt']),
   updatedAt: const NullableTimestampConverter().fromJson(json['updatedAt']),
+  staffIds:
+      (json['staffIds'] as List<dynamic>?)?.map((e) => e as String).toList() ??
+      const <String>[],
 );
 
 Map<String, dynamic> _$EventDtoToJson(_EventDto instance) => <String, dynamic>{
@@ -38,6 +41,7 @@ Map<String, dynamic> _$EventDtoToJson(_EventDto instance) => <String, dynamic>{
   'imageUrl': instance.imageUrl,
   'createdAt': const NullableTimestampConverter().toJson(instance.createdAt),
   'updatedAt': const NullableTimestampConverter().toJson(instance.updatedAt),
+  'staffIds': instance.staffIds,
 };
 
 const _$EventCategoryEnumMap = {

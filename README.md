@@ -143,9 +143,12 @@ généré par FlutterFire et ignoré par Git (`flutterfire configure --project=e
    Android* (`keytool -list -v -keystore …`, voir `android/key.properties.example`),
    puis récupérer l'**ID client OAuth Web** (type 3 dans `google-services.json`)
    → `GOOGLE_SERVER_CLIENT_ID`.
-2. **Firestore Database** : base `(default)`, mode production ; noter
-   l'emplacement et reporter la région dans `REGION` (`functions/src/index.ts`)
-   et `AppConfig.functionsRegion`.
+2. **Firestore Database** : base `(default)`, mode production, emplacement
+   **`nam5`** (multi-région États-Unis, déclaré dans `firebase.json`). Les
+   fonctions déclenchées par Firestore doivent tourner dans la région de la
+   base : `REGION` (`functions/src/index.ts`) et `AppConfig.functionsRegion`
+   valent donc **`us-central1`**. Si la base est un jour recréée ailleurs,
+   changer ces deux constantes ensemble.
 3. **Storage** : activer.
 4. **Plan Blaze** : requis pour les Cloud Functions et Cloud Scheduler.
 5. **Cloud Messaging** : *Web Push certificates* → générer la clé
@@ -161,7 +164,7 @@ généré par FlutterFire et ignoré par Git (`flutterfire configure --project=e
 
 ```sh
 firebase login
-firebase firestore:databases:get "(default)"    # région → REGION
+firebase firestore:databases:get "(default)"    # doit afficher nam5
 make deploy                                     # règles, index, Storage, fonctions
 ```
 
@@ -377,7 +380,8 @@ aplat plein écran. Détails : [`docs/DESIGN_SYSTEM.md`](docs/DESIGN_SYSTEM.md).
 
 | Constante / paramètre | Où | À aligner avec |
 |---|---|---|
-| `REGION` / `AppConfig.functionsRegion` | `functions/src/index.ts` / `app_config.dart` | emplacement Firestore |
+| `REGION` / `AppConfig.functionsRegion` = `us-central1` | `functions/src/index.ts` / `app_config.dart` | emplacement Firestore `nam5` |
+| bloc `flutter` de `firebase.json` | écrit par `flutterfire configure` | apps Android, iOS, macOS, web, Windows du projet `eventhub-d411f` ; régénère `lib/firebase_options.dart` et `android/app/google-services.json` (ignorés par Git) |
 | `ENFORCE_APP_CHECK` | paramètre des fonctions | enregistrement App Check fait |
 | `eventhub_default` | canal Android | manifeste, fonctions, app |
 | `applicationId` | `build.gradle.kts` | app Android Firebase |

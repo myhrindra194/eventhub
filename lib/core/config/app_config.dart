@@ -44,8 +44,9 @@ class AppConfig {
   };
 
   /// Region of the callable Cloud Functions. Must equal `REGION` in
-  /// `functions/src/index.ts`, itself aligned on the Firestore location.
-  static const functionsRegion = 'europe-west1';
+  /// `functions/src/index.ts`, itself aligned on the Firestore location
+  /// (`nam5` → `us-central1`).
+  static const functionsRegion = 'us-central1';
 
   final Flavor flavor;
   final String appName;

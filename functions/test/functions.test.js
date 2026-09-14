@@ -19,7 +19,7 @@ const { getAuth } = require('firebase-admin/auth');
 const { getFirestore, Timestamp } = require('firebase-admin/firestore');
 
 const PROJECT_ID = process.env.GCLOUD_PROJECT ?? 'demo-eventhub';
-const REGION = 'europe-west1';
+const REGION = 'us-central1';
 const HOUR = 3_600_000;
 
 if (!process.env.FIRESTORE_EMULATOR_HOST) {

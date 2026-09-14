@@ -41,7 +41,8 @@ abstract interface class AuthRepository {
   /// security rules, so the contract does not even offer to change them.
   /// Names already denormalised on past reservations are left untouched —
   /// a ticket keeps the name it was issued under.
-  AsyncResult<AppUser> updateProfile({required String name});
+  /// [bio] is left untouched when `null`; an empty string clears it.
+  AsyncResult<AppUser> updateProfile({required String name, String? bio});
 
   AsyncResult<void> sendPasswordReset({required String email});
 

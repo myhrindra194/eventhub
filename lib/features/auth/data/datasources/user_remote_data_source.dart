@@ -16,11 +16,13 @@ class UserRemoteDataSource {
     });
   }
 
-  /// Touches `name` and `updatedAt` only — the exact field set the security
-  /// rules accept on update.
-  Future<void> updateName(String uid, String name) {
+  /// Touches `name`, `bio` (when given) and `updatedAt` only — within the
+  /// field set the security rules accept on update. An empty bio is stored
+  /// as `null` rather than `""`.
+  Future<void> updateProfile(String uid, {required String name, String? bio}) {
     return _users.doc(uid).update({
       UserFields.name: name,
+      if (bio != null) UserFields.bio: bio.isEmpty ? null : bio,
       UserFields.updatedAt: FieldValue.serverTimestamp(),
     });
   }

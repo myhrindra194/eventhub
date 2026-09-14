@@ -25,6 +25,8 @@ import 'package:eventhub/features/organizer/presentation/screens/event_published
 import 'package:eventhub/features/organizer/presentation/screens/organizer_alerts_screen.dart';
 import 'package:eventhub/features/organizer/presentation/screens/organizer_dashboard_screen.dart';
 import 'package:eventhub/features/organizer/presentation/screens/organizer_stats_screen.dart';
+import 'package:eventhub/features/organizers/presentation/screens/following_screen.dart';
+import 'package:eventhub/features/organizers/presentation/screens/organizer_profile_screen.dart';
 import 'package:eventhub/features/participant/presentation/participant_shell.dart';
 import 'package:eventhub/features/reservations/presentation/screens/my_reservations_screen.dart';
 import 'package:eventhub/features/reservations/presentation/screens/reservation_confirmation_screen.dart';
@@ -82,6 +84,7 @@ GoRouter appRouter(Ref ref) {
     redirect: (context, state) => RouteGuard.redirect(
       state: _guardState(ref),
       location: state.matchedLocation,
+      from: state.uri.queryParameters[AppRoutes.fromParam],
     ),
     routes: [
       ..._commonRoutes,
@@ -177,6 +180,32 @@ final _commonRoutes = <RouteBase>[
     name: AppRoutes.aboutName,
     parentNavigatorKey: rootNavigatorKey,
     pageBuilder: (_, state) => AppPage.screen(state, const AboutScreen()),
+  ),
+  // Public organizer profiles and follows: open to both roles.
+  GoRoute(
+    path: AppRoutes.organizerPublicProfile,
+    name: AppRoutes.organizerPublicProfileName,
+    parentNavigatorKey: rootNavigatorKey,
+    pageBuilder: (_, state) => AppPage.screen(
+      state,
+      OrganizerProfileScreen(
+        organizerId: state.pathParameters[AppRoutes.organizerIdParam]!,
+      ),
+    ),
+  ),
+  GoRoute(
+    path: AppRoutes.following,
+    name: AppRoutes.followingName,
+    parentNavigatorKey: rootNavigatorKey,
+    pageBuilder: (_, state) => AppPage.screen(state, const FollowingScreen()),
+  ),
+  // Shared link https://<host>/e/{id}, delivered by Android App Links.
+  GoRoute(
+    path: AppRoutes.publicEventLink,
+    name: AppRoutes.publicEventLinkName,
+    redirect: (_, state) => AppRoutes.eventDetailPath(
+      state.pathParameters[AppRoutes.eventIdParam]!,
+    ),
   ),
   GoRoute(
     path: AppRoutes.forgotPassword,

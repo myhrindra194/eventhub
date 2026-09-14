@@ -10,12 +10,23 @@ abstract final class FirestorePaths {
   static const private = 'private';
   static const notifications = 'notifications';
   static const favorites = 'favorites';
+  static const following = 'following';
 
   // events/{id} subcollections
   static const waitlist = 'waitlist';
   static const checkins = 'checkins';
 
   static const reviews = 'reviews';
+  static const reports = 'reports';
+
+  /// organizers/{uid} — public organizer profile, written by functions only.
+  static const organizers = 'organizers';
+
+  /// aggregates/{docId} — server-maintained, read-only for clients.
+  static const aggregates = 'aggregates';
+
+  /// aggregates/event_{eventId} — recent attendees of an event (F-07).
+  static String eventAggregateDoc(String eventId) => 'event_$eventId';
 
   /// users/{uid}/private/notifications — push preferences. Same document
   /// path is read by the Cloud Functions before sending.
@@ -50,6 +61,7 @@ abstract final class UserFields {
   static const name = 'name';
   static const email = 'email';
   static const role = 'role';
+  static const bio = 'bio';
   static const createdAt = 'createdAt';
   static const updatedAt = 'updatedAt';
 }

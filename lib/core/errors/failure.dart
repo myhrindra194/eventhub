@@ -103,6 +103,9 @@ enum BusinessRule {
   notAttendee,
   eventNotStarted,
   waitlistNotAvailable,
+  cannotFollowSelf,
+  cannotReportSelf,
+  alreadyReported,
 }
 
 final class BusinessRuleFailure extends Failure {

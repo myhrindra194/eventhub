@@ -180,6 +180,77 @@ void main() {
     });
   });
 
+  group('public organizer profiles and deep links', () {
+    test('opens organizer profiles and the following list to both roles', () {
+      final profile = AppRoutes.organizerPublicProfilePath('o1');
+      expect(profile, '/organizers/o1');
+      for (final path in [profile, AppRoutes.following]) {
+        expect(redirect(signedIn(participant), path), isNull, reason: path);
+        expect(redirect(signedIn(organizer), path), isNull, reason: path);
+      }
+      expect(redirect(signedOut(), profile), '/login?from=%2Forganizers%2Fo1');
+    });
+
+    test('carries a shared link through the splash and the login', () {
+      final link = AppRoutes.publicEventLinkPath('e1');
+      expect(link, '/e/e1');
+      expect(redirect(booting(), link), '/splash?from=%2Fe%2Fe1');
+      expect(
+        RouteGuard.redirect(
+          state: signedOut(),
+          location: AppRoutes.splash,
+          from: link,
+        ),
+        '/login?from=%2Fe%2Fe1',
+      );
+      expect(
+        redirect(signedOut(), AppRoutes.eventDetailPath('e1')),
+        '/login?from=%2Fevents%2Fe1',
+      );
+      expect(
+        RouteGuard.redirect(
+          state: signedOut(),
+          location: AppRoutes.login,
+          from: link,
+        ),
+        isNull,
+      );
+    });
+
+    test('resumes the link once signed in, within role confinement', () {
+      final link = AppRoutes.publicEventLinkPath('e1');
+      expect(
+        RouteGuard.redirect(
+          state: signedIn(participant),
+          location: AppRoutes.login,
+          from: link,
+        ),
+        link,
+      );
+      expect(redirect(signedIn(participant), link), isNull);
+      expect(redirect(signedIn(organizer), link), AppRoutes.organizerEvents);
+    });
+
+    test('ignores a from parameter that is not a deep-link target', () {
+      expect(
+        RouteGuard.redirect(
+          state: signedIn(participant),
+          location: AppRoutes.login,
+          from: '/organizer/events',
+        ),
+        AppRoutes.events,
+      );
+      expect(
+        RouteGuard.redirect(
+          state: signedOut(),
+          location: AppRoutes.splash,
+          from: 'https://evil.example/e/1',
+        ),
+        AppRoutes.login,
+      );
+    });
+  });
+
   group('route classification', () {
     test('recognises the organizer area without prefix collisions', () {
       expect(AppRoutes.isOrganizerArea('/organizer/events'), isTrue);

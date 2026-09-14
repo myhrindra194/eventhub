@@ -20,6 +20,10 @@ class ReviewRemoteDataSource {
       .map(
         (s) => s.docs
             .map((d) => reviewFromFirestore(d.id, d.data()))
+            // Filtered here rather than in the query: `hidden` is absent on
+            // most documents, and `!= true` cannot be combined with this
+            // order without another composite index.
+            .where((r) => !r.hidden)
             .toList(growable: false),
       );
 
@@ -73,6 +77,7 @@ class ReviewRemoteDataSource {
       comment: data['comment'] as String? ?? '',
       createdAt: time('createdAt') ?? DateTime.now(),
       updatedAt: time('updatedAt'),
+      hidden: data['hidden'] == true,
     );
   }
 }

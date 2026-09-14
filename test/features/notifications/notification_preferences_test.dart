@@ -24,9 +24,27 @@ void main() {
       const prefs = NotificationPreferences(
         eventReminders: false,
         bookingAlerts: false,
+        followedOrganizers: false,
       );
       expect(NotificationPreferences.fromMap(prefs.toMap()), prefs);
     });
+
+    test(
+      'keeps followed-organizer pushes on for documents written before the switch existed',
+      () {
+        final prefs = NotificationPreferences.fromMap({
+          'eventReminders': false,
+          'bookingAlerts': true,
+        });
+        expect(prefs.followedOrganizers, isTrue);
+        expect(
+          prefs
+              .copyWith(followedOrganizers: false)
+              .toMap()['followedOrganizers'],
+          isFalse,
+        );
+      },
+    );
   });
 
   group('deviceIdFor', () {

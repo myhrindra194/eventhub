@@ -3,38 +3,73 @@ import 'package:eventhub/core/analytics/app_analytics.dart';
 import 'package:eventhub/core/config/app_links.dart';
 import 'package:eventhub/core/extensions/context_x.dart';
 import 'package:eventhub/core/l10n/app_strings.dart';
+import 'package:eventhub/core/utils/app_logger.dart';
 import 'package:eventhub/core/utils/date_formats.dart';
 import 'package:eventhub/core/widgets/design_system.dart';
 import 'package:eventhub/features/events/domain/entities/event.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:share_plus/share_plus.dart';
 
-/// Share an event.
+/// Share an event (F-08).
 ///
-/// Clipboard-based on purpose. The native share sheet (`share_plus`) needs
-/// per-platform setup and behaves differently on web and desktop; copying a
-/// link works identically everywhere, and the two things people actually
-/// paste — a bare link or a ready-made invitation — are both one tap away.
+/// The native share sheet first — it reaches WhatsApp, Messenger or SMS in
+/// two taps — then the two things people paste by hand: the bare link and a
+/// ready-made invitation. The link points at the Hosting page
+/// (`publicEventPage`), which unfurls with an Open Graph preview and opens
+/// the app directly on Android (App Links).
 Future<void> showShareEventSheet(BuildContext context, Event event) {
   return showAppSheet<void>(
     context: context,
     builder: (sheetContext) {
+      AppAnalytics analytics() => ProviderScope.containerOf(
+        sheetContext,
+        listen: false,
+      ).read(appAnalyticsProvider);
+
       // The toast is raised on the *page* context once the sheet is gone:
       // shown from inside the sheet, it would slide in behind it.
       void done(String message, String method) {
-        ProviderScope.containerOf(
-          sheetContext,
-          listen: false,
-        ).read(appAnalyticsProvider).share(event.id, method);
+        analytics().share(event.id, method);
         Navigator.of(sheetContext).pop();
         if (context.mounted) context.showSuccess(message);
+      }
+
+      Future<void> shareNative() async {
+        final box = sheetContext.findRenderObject() as RenderBox?;
+        try {
+          final result = await SharePlus.instance.share(
+            ShareParams(
+              text: _invitation(event),
+              subject: event.title,
+              // Required on iPad, where the sheet is a popover.
+              sharePositionOrigin: box == null
+                  ? null
+                  : box.localToGlobal(Offset.zero) & box.size,
+            ),
+          );
+          if (result.status == ShareResultStatus.success) {
+            analytics().share(event.id, 'native');
+          }
+          if (sheetContext.mounted) Navigator.of(sheetContext).pop();
+        } on Object catch (e) {
+          // No share target on this platform: the copy actions remain.
+          AppLogger.debug('native share unavailable: $e');
+        }
       }
 
       return AppSheet(
         title: AppStrings.shareTitle,
         subtitle: AppStrings.shareLead,
         actions: [
+          AppButton.primary(
+            label: AppStrings.shareNative,
+            icon: Icons.ios_share_rounded,
+            elevated: false,
+            onPressed: shareNative,
+          ),
+          const SizedBox(height: AppSpacing.md),
           AppButton.secondary(
             label: AppStrings.copyInvitation,
             icon: Icons.notes_rounded,
@@ -69,8 +104,8 @@ String _invitation(Event event) {
       'Réserver : ${AppLinks.event(event.id)}';
 }
 
-/// "Lien public · eventhub.app/e/… · Copier" — the field from the 002
-/// success board, reused by the share sheet.
+/// "Lien public · eventhub-d411f.web.app/e/… · Copier" — the field from the
+/// 002 success board, reused by the share sheet.
 class PublicLinkField extends StatelessWidget {
   const PublicLinkField({required this.url, super.key, this.onCopied});
 

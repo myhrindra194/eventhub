@@ -16,7 +16,10 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$UserDto {
 
- String get name; String get email;@JsonKey(unknownEnumValue: UserRole.participant) UserRole get role;@NullableTimestampConverter() DateTime? get createdAt;
+ String get name; String get email;@JsonKey(unknownEnumValue: UserRole.participant) UserRole get role;@NullableTimestampConverter() DateTime? get createdAt;/// Published on `organizers/{uid}` by the `syncOrganizerProfile` Cloud
+/// Function. `includeIfNull: false`: a profile without a bio is created
+/// without the field, which the rules accept either way.
+@JsonKey(includeIfNull: false) String? get bio;
 /// Create a copy of UserDto
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -30,20 +33,20 @@ $UserDtoCopyWith<UserDto> get copyWith => _$UserDtoCopyWithImpl<UserDto>(this as
 @override
 bool operator ==(Object other) {
   final _this = this as UserDto;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is UserDto&&(identical(other.name, _this.name) || other.name == _this.name)&&(identical(other.email, _this.email) || other.email == _this.email)&&(identical(other.role, _this.role) || other.role == _this.role)&&(identical(other.createdAt, _this.createdAt) || other.createdAt == _this.createdAt));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is UserDto&&(identical(other.name, _this.name) || other.name == _this.name)&&(identical(other.email, _this.email) || other.email == _this.email)&&(identical(other.role, _this.role) || other.role == _this.role)&&(identical(other.createdAt, _this.createdAt) || other.createdAt == _this.createdAt)&&(identical(other.bio, _this.bio) || other.bio == _this.bio));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
   final _this = this as UserDto;
-  return Object.hash(runtimeType,_this.name,_this.email,_this.role,_this.createdAt);
+  return Object.hash(runtimeType,_this.name,_this.email,_this.role,_this.createdAt,_this.bio);
 }
 
 @override
 String toString() {
   final _this = this as UserDto;
-  return 'UserDto(name: ${_this.name}, email: ${_this.email}, role: ${_this.role}, createdAt: ${_this.createdAt})';
+  return 'UserDto(name: ${_this.name}, email: ${_this.email}, role: ${_this.role}, createdAt: ${_this.createdAt}, bio: ${_this.bio})';
 }
 
 
@@ -54,7 +57,7 @@ abstract mixin class $UserDtoCopyWith<$Res>  {
   factory $UserDtoCopyWith(UserDto value, $Res Function(UserDto) _then) = _$UserDtoCopyWithImpl;
 @useResult
 $Res call({
- String name, String email,@JsonKey(unknownEnumValue: UserRole.participant) UserRole role,@NullableTimestampConverter() DateTime? createdAt
+ String name, String email,@JsonKey(unknownEnumValue: UserRole.participant) UserRole role,@NullableTimestampConverter() DateTime? createdAt,@JsonKey(includeIfNull: false) String? bio
 });
 
 
@@ -71,13 +74,14 @@ class _$UserDtoCopyWithImpl<$Res>
 
 /// Create a copy of UserDto
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? name = null,Object? email = null,Object? role = null,Object? createdAt = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? name = null,Object? email = null,Object? role = null,Object? createdAt = freezed,Object? bio = freezed,}) {
   return _then(UserDto(
 name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String,email: null == email ? _self.email : email // ignore: cast_nullable_to_non_nullable
 as String,role: null == role ? _self.role : role // ignore: cast_nullable_to_non_nullable
 as UserRole,createdAt: freezed == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
-as DateTime?,
+as DateTime?,bio: freezed == bio ? _self.bio : bio // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 
@@ -162,10 +166,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String name,  String email, @JsonKey(unknownEnumValue: UserRole.participant)  UserRole role, @NullableTimestampConverter()  DateTime? createdAt)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String name,  String email, @JsonKey(unknownEnumValue: UserRole.participant)  UserRole role, @NullableTimestampConverter()  DateTime? createdAt, @JsonKey(includeIfNull: false)  String? bio)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _UserDto() when $default != null:
-return $default(_that.name,_that.email,_that.role,_that.createdAt);case _:
+return $default(_that.name,_that.email,_that.role,_that.createdAt,_that.bio);case _:
   return orElse();
 
 }
@@ -183,10 +187,10 @@ return $default(_that.name,_that.email,_that.role,_that.createdAt);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String name,  String email, @JsonKey(unknownEnumValue: UserRole.participant)  UserRole role, @NullableTimestampConverter()  DateTime? createdAt)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String name,  String email, @JsonKey(unknownEnumValue: UserRole.participant)  UserRole role, @NullableTimestampConverter()  DateTime? createdAt, @JsonKey(includeIfNull: false)  String? bio)  $default,) {final _that = this;
 switch (_that) {
 case _UserDto():
-return $default(_that.name,_that.email,_that.role,_that.createdAt);case _:
+return $default(_that.name,_that.email,_that.role,_that.createdAt,_that.bio);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -203,10 +207,10 @@ return $default(_that.name,_that.email,_that.role,_that.createdAt);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String name,  String email, @JsonKey(unknownEnumValue: UserRole.participant)  UserRole role, @NullableTimestampConverter()  DateTime? createdAt)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String name,  String email, @JsonKey(unknownEnumValue: UserRole.participant)  UserRole role, @NullableTimestampConverter()  DateTime? createdAt, @JsonKey(includeIfNull: false)  String? bio)?  $default,) {final _that = this;
 switch (_that) {
 case _UserDto() when $default != null:
-return $default(_that.name,_that.email,_that.role,_that.createdAt);case _:
+return $default(_that.name,_that.email,_that.role,_that.createdAt,_that.bio);case _:
   return null;
 
 }
@@ -218,13 +222,17 @@ return $default(_that.name,_that.email,_that.role,_that.createdAt);case _:
 @JsonSerializable()
 
 class _UserDto extends UserDto {
-  const _UserDto({required this.name, required this.email, @JsonKey(unknownEnumValue: UserRole.participant) required this.role, @NullableTimestampConverter() this.createdAt}): super._();
+  const _UserDto({required this.name, required this.email, @JsonKey(unknownEnumValue: UserRole.participant) required this.role, @NullableTimestampConverter() this.createdAt, @JsonKey(includeIfNull: false) this.bio}): super._();
   factory _UserDto.fromJson(Map<String, dynamic> json) => _$UserDtoFromJson(json);
 
 @override final  String name;
 @override final  String email;
 @override@JsonKey(unknownEnumValue: UserRole.participant) final  UserRole role;
 @override@NullableTimestampConverter() final  DateTime? createdAt;
+/// Published on `organizers/{uid}` by the `syncOrganizerProfile` Cloud
+/// Function. `includeIfNull: false`: a profile without a bio is created
+/// without the field, which the rules accept either way.
+@override@JsonKey(includeIfNull: false) final  String? bio;
 
 /// Create a copy of UserDto
 /// with the given fields replaced by the non-null parameter values.
@@ -239,18 +247,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is _UserDto&&(identical(other.name, name) || other.name == name)&&(identical(other.email, email) || other.email == email)&&(identical(other.role, role) || other.role == role)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _UserDto&&(identical(other.name, name) || other.name == name)&&(identical(other.email, email) || other.email == email)&&(identical(other.role, role) || other.role == role)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.bio, bio) || other.bio == bio));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
-    return Object.hash(runtimeType,name,email,role,createdAt);
+    return Object.hash(runtimeType,name,email,role,createdAt,bio);
 }
 
 @override
 String toString() {
-    return 'UserDto(name: $name, email: $email, role: $role, createdAt: $createdAt)';
+    return 'UserDto(name: $name, email: $email, role: $role, createdAt: $createdAt, bio: $bio)';
 }
 
 
@@ -261,7 +269,7 @@ abstract mixin class _$UserDtoCopyWith<$Res> implements $UserDtoCopyWith<$Res> {
   factory _$UserDtoCopyWith(_UserDto value, $Res Function(_UserDto) _then) = __$UserDtoCopyWithImpl;
 @override @useResult
 $Res call({
- String name, String email,@JsonKey(unknownEnumValue: UserRole.participant) UserRole role,@NullableTimestampConverter() DateTime? createdAt
+ String name, String email,@JsonKey(unknownEnumValue: UserRole.participant) UserRole role,@NullableTimestampConverter() DateTime? createdAt,@JsonKey(includeIfNull: false) String? bio
 });
 
 
@@ -278,13 +286,14 @@ class __$UserDtoCopyWithImpl<$Res>
 
 /// Create a copy of UserDto
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? name = null,Object? email = null,Object? role = null,Object? createdAt = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? name = null,Object? email = null,Object? role = null,Object? createdAt = freezed,Object? bio = freezed,}) {
   return _then(_UserDto(
 name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String,email: null == email ? _self.email : email // ignore: cast_nullable_to_non_nullable
 as String,role: null == role ? _self.role : role // ignore: cast_nullable_to_non_nullable
 as UserRole,createdAt: freezed == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
-as DateTime?,
+as DateTime?,bio: freezed == bio ? _self.bio : bio // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 

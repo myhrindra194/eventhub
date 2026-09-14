@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:eventhub/features/reservations/domain/entities/reservation.dart';
 
 /// Serialises a guest list to CSV.
@@ -27,6 +29,58 @@ abstract final class GuestListCsv {
         ],
     ];
     return rows.map((row) => row.map(_escape).join(separator)).join('\r\n');
+  }
+
+  /// File contents: UTF-8 **with a byte-order mark**. Without it, Excel on
+  /// Windows decodes the file as ANSI and "Réservé" becomes "RÃ©servÃ©".
+  /// The clipboard path keeps [build] as is — a BOM pasted into a cell is an
+  /// invisible stray character.
+  static List<int> fileBytes(List<Reservation> guests) =>
+      utf8.encode('\uFEFF${build(guests)}');
+
+  /// `participants-flutter-meetup-tana.csv`: lowercase ASCII, accents
+  /// folded, anything else collapsed to single dashes, at most 60 characters
+  /// of title. Falls back to `participants.csv`.
+  static String fileNameFor(String eventTitle) {
+    const folded = {
+      'à': 'a',
+      'â': 'a',
+      'ä': 'a',
+      'á': 'a',
+      'ã': 'a',
+      'ç': 'c',
+      'é': 'e',
+      'è': 'e',
+      'ê': 'e',
+      'ë': 'e',
+      'î': 'i',
+      'ï': 'i',
+      'í': 'i',
+      'ô': 'o',
+      'ö': 'o',
+      'ó': 'o',
+      'õ': 'o',
+      'ù': 'u',
+      'û': 'u',
+      'ü': 'u',
+      'ú': 'u',
+      'ÿ': 'y',
+      'ñ': 'n',
+      'œ': 'oe',
+      'æ': 'ae',
+    };
+    final ascii = eventTitle
+        .toLowerCase()
+        .split('')
+        .map((c) => folded[c] ?? c)
+        .join();
+    var slug = ascii
+        .replaceAll(RegExp('[^a-z0-9]+'), '-')
+        .replaceAll(RegExp(r'^-+|-+$'), '');
+    if (slug.length > 60) {
+      slug = slug.substring(0, 60).replaceAll(RegExp(r'-+$'), '');
+    }
+    return slug.isEmpty ? 'participants.csv' : 'participants-$slug.csv';
   }
 
   static String _timestamp(DateTime d) {

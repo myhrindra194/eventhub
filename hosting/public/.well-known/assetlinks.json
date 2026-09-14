@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.example.eventhub",
+      "sha256_cert_fingerprints": [
+        "D6:94:F7:3E:7B:47:D4:79:B4:B6:29:D0:FC:42:89:04:4B:76:DE:3D:6E:F0:05:92:9C:53:D0:6F:32:08:53:83"
+      ]
+    }
+  }
+]

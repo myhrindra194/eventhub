@@ -90,6 +90,19 @@ class ProfileScreen extends ConsumerWidget {
                   label: AppStrings.notifications,
                   onTap: () => context.push(AppRoutes.notificationsCenter),
                 ),
+                if (user.isOrganizer)
+                  _MenuItem(
+                    icon: Icons.storefront_outlined,
+                    label: AppStrings.publicProfile,
+                    onTap: () => context.push(
+                      AppRoutes.organizerPublicProfilePath(user.id),
+                    ),
+                  ),
+                _MenuItem(
+                  icon: Icons.person_add_alt_outlined,
+                  label: AppStrings.followingTitle,
+                  onTap: () => context.push(AppRoutes.following),
+                ),
                 if (user.isParticipant)
                   _MenuItem(
                     icon: Icons.favorite_border_rounded,

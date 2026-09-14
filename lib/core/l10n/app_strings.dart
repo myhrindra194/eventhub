@@ -489,4 +489,81 @@ abstract final class AppStrings {
   static const errorGeneric = 'Une erreur est survenue.';
   static const connectionLost = 'Connexion perdue';
   static const confirm = 'Confirmer';
+
+  // Profil organisateur public (F-10)
+  static const organizerProfileTitle = 'Organisateur';
+  static const organizerNotFoundTitle = 'Profil indisponible';
+  static const organizerNotFound =
+      "Ce compte n'organise plus d'événements sur EventHub, ou il a été "
+      'supprimé.';
+  static const organizerNoBio = 'Pas encore de présentation.';
+  static String organizerSince(String date) => 'Sur EventHub depuis le $date';
+  static const followAction = 'Suivre';
+  static const followingState = 'Abonné';
+  static const followHint =
+      'Une notification à chaque nouvel événement publié. Désabonnement en '
+      'un geste.';
+  static const followingHint =
+      'Vous êtes prévenu de ses nouveaux événements. Touchez « Abonné » pour '
+      'vous désabonner.';
+  static String followersLabel(int n) => n > 1 ? 'abonnés' : 'abonné';
+  static String eventsLabel(int n) => n > 1 ? 'événements' : 'événement';
+  static const noRatingYet = 'pas encore d’avis';
+  static String ratingCountLabel(int n) => n > 1 ? 'sur $n avis' : 'sur 1 avis';
+  static const upcomingEventsTitle = 'À venir';
+  static const pastEventsTitle = 'Déjà passés';
+  static const noUpcomingForOrganizer =
+      'Aucune date annoncée pour le moment. Abonnez-vous pour être prévenu '
+      'de la prochaine.';
+  static const noUpcomingForSelf =
+      'Aucun événement à venir. Ceux que vous publierez apparaîtront ici.';
+  static const editPublicProfile = 'Modifier ma présentation';
+  static const publicProfile = 'Mon profil public';
+  static const seeOrganizerProfile = 'Voir le profil';
+  static const followingTitle = 'Organisateurs suivis';
+  static const noFollowingTitle = 'Aucun abonnement';
+  static const noFollowing =
+      "Sur la fiche d'un événement, touchez le nom de l'organisateur puis "
+      '« Suivre » : ses prochaines dates vous seront notifiées.';
+  static const deletedOrganizer = 'Organisateur supprimé';
+  static const bioLabel = 'Présentation';
+  static const bioHint =
+      'Ce que vous organisez, pour qui, où. Visible sur votre profil public.';
+  static const bioTooLong = '500 caractères maximum.';
+  static const publicProfileSection = 'Profil public';
+  static const publicProfileHelp =
+      'Votre nom et cette présentation sont visibles par les utilisateurs '
+      'connectés. Votre email ne l’est jamais.';
+
+  // Notifications — organisateurs suivis
+  static const notificationsFollowed = 'Nouveaux événements';
+  static const notificationsFollowedHint =
+      'Quand un organisateur que vous suivez publie une date.';
+
+  // Signalement (F-19)
+  static const reportAction = 'Signaler';
+  static const reportTitle = 'Signaler';
+  static const reportLead =
+      'Le signalement est anonyme : la personne concernée ne saura pas qui '
+      "l'a envoyé. Un avis signalé par plusieurs personnes est masqué en "
+      'attendant la vérification.';
+  static const reportReasonLabel = 'Motif';
+  static const reportDetails = 'Précisions';
+  static const reportDetailsHint = 'Ce qui vous a alerté, en quelques mots.';
+  static const reportSend = 'Envoyer le signalement';
+  static const reportSending = 'Envoi…';
+  static const reportSent =
+      'Merci. Le signalement a été transmis à la modération.';
+  static const reviewHiddenNotice =
+      'Votre avis est masqué le temps d’une vérification par la modération.';
+
+  // Partage et export (F-08, F-15)
+  static const shareNative = 'Partager…';
+  static const exportCsvFile = 'Exporter le CSV';
+  static const copyCsv = 'Copier le CSV dans le presse-papiers';
+
+  // Recommandations (F-18)
+  static const forYou = 'Pour vous';
+  static const forYouSubtitle =
+      'D’après vos billets, vos favoris et les organisateurs que vous suivez';
 }

@@ -15,6 +15,9 @@ abstract final class NotificationRoute {
   /// A seat opened on an event the user waits for: open the event to book.
   static const waitlist = 'waitlist';
 
+  /// An organizer the user follows published an event.
+  static const newEvent = 'newEvent';
+
   static String? locationFor(Map<String, Object?> data) {
     final eventId = _nonEmpty(data['eventId']);
     final reservationId = _nonEmpty(data['reservationId']);
@@ -22,7 +25,8 @@ abstract final class NotificationRoute {
     return switch (data['type']) {
       booking || cancellation when eventId != null =>
         AppRoutes.organizerEventParticipantsPath(eventId),
-      waitlist when eventId != null => AppRoutes.eventDetailPath(eventId),
+      waitlist ||
+      newEvent when eventId != null => AppRoutes.eventDetailPath(eventId),
       reminder when reservationId != null => AppRoutes.ticketPath(
         reservationId,
       ),

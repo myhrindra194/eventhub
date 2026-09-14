@@ -70,6 +70,12 @@
 | Catalogue | **Pagination** : page live + pages par curseur | ✅ v1.3 — F-04 |
 | Production | App Check, Crashlytics, Analytics sur consentement, cache hors ligne et bandeau, signature release | ✅ v1.3 |
 | Tests | Tests d'intégration des Cloud Functions sur émulateurs | ✅ v1.3 |
+| Social | **Profil organisateur public** (présentation, événements, abonnés, note), **abonnements** et push « nouvel événement » | ✅ v1.4 — F-10 |
+| Social | **Preuve sociale** : « Soa, Hery R. et 40 autres y vont » + visages | ✅ v1.4 — F-07 |
+| Partage | **Feuille de partage native**, **page publique** `/e/{id}` avec Open Graph (Hosting + fonction), **App Links** Android, lien conservé à travers la connexion | ✅ v1.4 — F-08 |
+| Organisateur | **Export CSV en fichier** via la feuille de partage (UTF-8 + BOM) | ✅ v1.4 — F-15 |
+| Découverte | Rail **« Pour vous »** (heuristique locale explicable) | ✅ v1.4 — F-18 |
+| Confiance | **Signalement** (événement, organisateur, avis), masquage automatique des avis, file de modération, décision admin | ✅ v1.4 — F-19 |
 
 ---
 
@@ -169,6 +175,8 @@ avec 30 minutes d'exclusivité.
 - **Technique** : compteur dénormalisé maintenu par Cloud Function
   (`aggregates/` est déjà déclaré en lecture seule côté client). Le composant
   `AvatarStack` existe et attend ses données.
+- **État (v1.4)** : livré. Le nombre vient de la jauge de l'événement (exacte),
+  les noms courts de `aggregates/event_{id}` (`aggregateAttendance`).
 
 #### F-08 · Partage et lien public
 *Inspiré de : Luma, Shotgun*
@@ -182,6 +190,9 @@ Deep link `eventhub.app/e/{id}`, aperçu Open Graph, bouton natif de partage.
   invitation texte se copient depuis la fiche et l'écran « Événement publié ».
   Restent la feuille de partage native, l'hébergement de la page publique et
   l'aperçu Open Graph.
+- **État (v1.4)** : livré sans Dynamic Links (service arrêté par Google) :
+  `share_plus`, Hosting + fonction `publicEventPage`, App Links vérifiés par
+  `assetlinks.json`. Reste : empreinte de la clé release, Universal Links iOS.
 
 #### F-09 · Avis après l'événement
 *Inspiré de : Airbnb, Eventbrite*
@@ -198,6 +209,9 @@ Une page par organisateur : bio, événements passés et à venir, note moyenne,
 bouton « suivre ».
 
 - **Impact** : fidélise autour d'un organisateur plutôt que d'un événement isolé.
+- **État (v1.4)** : livré. `organizers/{id}` public en lecture seule,
+  `users/{uid}/following` privé, compteurs et annonce aux abonnés par
+  fonctions ; photo de profil non encore proposée (initiales).
 
 ---
 
@@ -209,11 +223,11 @@ bouton « suivre ».
 | F-12 | Types de billets multiples (early bird, VIP, gratuit) | Shotgun | Sous-collection `events/{id}/tiers` |
 | F-13 | Événements récurrents et séries | Meetup | Modèle `series` + génération d'occurrences |
 | F-14 | Carte et géolocalisation (« près de moi ») | Airbnb | Geohash + `geoflutterfire`; l'index `location + startsAt` est déjà là |
-| F-15 | Export CSV de la liste des participants | Eventbrite | **v1.1 : CSV copié dans le presse-papiers** (`GuestListCsv`). Reste le fichier téléchargeable : Cloud Function + URL signée, préfixe `private/` (Storage déjà fermé au client) |
+| F-15 | Export CSV de la liste des participants | Eventbrite | ✅ **v1.4 : fichier via la feuille de partage**, généré sur l'appareil (aucune donnée personnelle déposée dans Storage, pas d'URL signée à gérer) ; copie conservée |
 | F-16 | Co-organisateurs / équipe | Eventbrite | Passage d'un `organizerId` à un tableau `staffIds` — impacte les règles |
 | F-17 | Chat ou fil de discussion par événement | Meetup | Coût de modération élevé : à ne lancer qu'avec F-19 |
-| F-18 | Recommandations personnalisées | Luma, Airbnb | À partir des favoris et de l'historique ; commencer par des heuristiques |
-| F-19 | Signalement et modération | Toutes | Collection `reports` — **règles déjà écrites** (write-only côté client) |
+| F-18 | Recommandations personnalisées | Luma, Airbnb | ✅ **v1.4 : heuristique locale** (abonnements, catégories des billets et favoris) ; reste un modèle serveur quand le volume le justifiera |
+| F-19 | Signalement et modération | Toutes | ✅ **v1.4** : signalement, masquage automatique des avis, file et décision admin ; reste un écran d'administration |
 | F-20 | Multilingue (fr / en / mg) | Toutes | `AppStrings` est déjà centralisé : migration ARB mécanique |
 
 ---
@@ -265,7 +279,9 @@ fonctionnalité, c'est livrer une faille pendant l'intervalle.
 | `events/{id}/waitlist` | ✅ v1.3 | F-06 |
 | `events/{id}/checkins` | ✅ v1.3 | F-01 |
 | `reviews` | ✅ v1.3 | F-09 |
-| `reports` | ❌ | F-19 |
-| `aggregates` (lecture seule) | ❌ | F-07 |
+| `reports` | ✅ v1.4 | F-19 |
+| `aggregates` (lecture seule) | ✅ v1.4 | F-07 |
+| `organizers` + `users/{uid}/following` | ✅ v1.4 | F-10 |
+| `moderationQueue` (admin) | ✅ v1.4 (console) | F-19 |
 | `config` (lecture publique) | ❌ | remote config |
-| `audit` (fermé au client) | ❌ | conformité |
+| `audit` (fermé au client) | ✅ v1.4 (journal de modération, marqueurs d'idempotence, TTL) | conformité |

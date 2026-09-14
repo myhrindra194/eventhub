@@ -151,6 +151,7 @@ class _NotificationRow extends ConsumerWidget {
         Icons.hourglass_top_rounded,
         AppTone.warning,
       ),
+      NotificationRoute.newEvent => (Icons.campaign_outlined, AppTone.info),
       _ => (Icons.notifications_rounded, AppTone.neutral),
     };
     final colors = t.resolve(tone);

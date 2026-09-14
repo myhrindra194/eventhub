@@ -4,7 +4,10 @@ import 'package:eventhub/core/extensions/context_x.dart';
 import 'package:eventhub/core/l10n/app_strings.dart';
 import 'package:eventhub/core/utils/date_formats.dart';
 import 'package:eventhub/core/widgets/design_system.dart';
+import 'package:eventhub/features/auth/application/auth_providers.dart';
 import 'package:eventhub/features/events/domain/entities/event.dart';
+import 'package:eventhub/features/moderation/domain/report.dart';
+import 'package:eventhub/features/moderation/presentation/widgets/report_sheet.dart';
 import 'package:eventhub/features/reviews/application/review_providers.dart';
 import 'package:eventhub/features/reviews/domain/review.dart';
 import 'package:eventhub/features/reviews/presentation/widgets/review_sheet.dart';
@@ -69,6 +72,28 @@ class ReviewsSection extends ConsumerWidget {
                   child: Text(AppStrings.seeAllReviews(reviews.length)),
                 ),
               ),
+          ],
+          if (mine?.hidden ?? false) ...[
+            const SizedBox(height: AppSpacing.lg),
+            Container(
+              padding: const EdgeInsets.all(AppSpacing.md),
+              decoration: BoxDecoration(
+                color: context.tokens.warning.bg,
+                border: Border(
+                  left: BorderSide(
+                    color: context.tokens.warning.solid,
+                    width: 3,
+                  ),
+                ),
+              ),
+              child: Text(
+                AppStrings.reviewHiddenNotice,
+                style: text.bodySmall?.copyWith(
+                  color: context.tokens.warning.fg,
+                  height: 1.45,
+                ),
+              ),
+            ),
           ],
           if (canReview) ...[
             const SizedBox(height: AppSpacing.lg),
@@ -218,15 +243,17 @@ class _Summary extends StatelessWidget {
   }
 }
 
-class _ReviewTile extends StatelessWidget {
+class _ReviewTile extends ConsumerWidget {
   const _ReviewTile({required this.review});
 
   final Review review;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final t = context.tokens;
     final text = context.textTheme;
+    final user = ref.watch(currentUserProvider);
+    final canReport = user != null && user.id != review.authorId;
 
     return Container(
       padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
@@ -256,6 +283,45 @@ class _ReviewTile extends StatelessWidget {
                       AppDateFormats.shortDate(review.createdAt),
                       style: text.labelSmall?.copyWith(letterSpacing: 0),
                     ),
+                    if (canReport)
+                      SizedBox(
+                        width: 32,
+                        height: 24,
+                        child: PopupMenuButton<ReportTarget>(
+                          tooltip: AppStrings.reportAction,
+                          padding: EdgeInsets.zero,
+                          iconSize: 18,
+                          icon: Icon(
+                            Icons.more_horiz_rounded,
+                            color: t.textTertiary,
+                          ),
+                          shape: const RoundedRectangleBorder(
+                            borderRadius: AppRadius.brButton,
+                          ),
+                          onSelected: (target) => showReportSheet(
+                            context,
+                            target: target,
+                            targetId: review.id,
+                            subject: review.authorName,
+                          ),
+                          itemBuilder: (_) => [
+                            PopupMenuItem(
+                              value: ReportTarget.review,
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.flag_outlined,
+                                    size: 18,
+                                    color: t.danger.fg,
+                                  ),
+                                  const SizedBox(width: AppSpacing.md),
+                                  const Text(AppStrings.reportAction),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                   ],
                 ),
                 const SizedBox(height: AppSpacing.xxs),

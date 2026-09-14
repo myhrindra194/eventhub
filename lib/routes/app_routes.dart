@@ -34,6 +34,17 @@ abstract final class AppRoutes {
   static const privacyPolicyName = 'privacy';
   static const aboutName = 'about';
 
+  // Public organizer profile and follows (F-10) — shared by both roles.
+  static const organizerPublicProfile = '/organizers/:organizerId';
+  static const organizerPublicProfileName = 'organizer-public-profile';
+  static const following = '/following';
+  static const followingName = 'following';
+
+  /// Shared link `https://<host>/e/{id}`, opened by the app through App
+  /// Links; redirects to the event detail.
+  static const publicEventLink = '/e/:eventId';
+  static const publicEventLinkName = 'public-event-link';
+
   static const splashName = 'splash';
   static const onboardingName = 'onboarding';
   static const loginName = 'login';
@@ -94,6 +105,10 @@ abstract final class AppRoutes {
   // ---------------------------------------------------------------- params
   static const eventIdParam = 'eventId';
   static const reservationIdParam = 'reservationId';
+  static const organizerIdParam = 'organizerId';
+
+  /// Query parameter carrying a deep link across the splash and the login.
+  static const fromParam = 'from';
 
   // -------------------------------------------------------------- builders
   static String eventDetailPath(String eventId) =>
@@ -116,6 +131,17 @@ abstract final class AppRoutes {
 
   static String organizerEventPublishedPath(String eventId) =>
       '/organizer/events/${Uri.encodeComponent(eventId)}/published';
+
+  static String organizerPublicProfilePath(String organizerId) =>
+      '/organizers/${Uri.encodeComponent(organizerId)}';
+
+  static String publicEventLinkPath(String eventId) =>
+      '/e/${Uri.encodeComponent(eventId)}';
+
+  /// [base] with the location to resume after it, e.g.
+  /// `/login?from=%2Fevents%2Fabc`.
+  static String withFrom(String base, String location) =>
+      Uri(path: base, queryParameters: {fromParam: location}).toString();
 
   // ----------------------------------------------------------- classifiers
   /// Locations reachable without a session.
@@ -140,10 +166,21 @@ abstract final class AppRoutes {
     privacyPolicy,
     about,
     notificationsCenter,
+    following,
   };
 
   static bool isRoleAgnostic(String location) =>
-      _roleAgnosticPaths.contains(location);
+      _roleAgnosticPaths.contains(location) ||
+      location.startsWith('/organizers/');
+
+  /// Locations an external link may lead to (a shared event, an organizer
+  /// profile). When one is requested before the session is ready, the guard
+  /// remembers it in [fromParam] and resumes it after sign-in. Anything else
+  /// in `from` is ignored — the parameter is user-controlled.
+  static bool isDeepLinkTarget(String location) =>
+      location.startsWith('/e/') ||
+      location.startsWith('/events/') ||
+      location.startsWith('/organizers/');
 
   /// Locations that belong to the organizer area of the product.
   static bool isPublic(String location) => _publicPaths.contains(location);

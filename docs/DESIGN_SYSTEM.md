@@ -251,6 +251,33 @@ valeur.
 Il explique pourquoi les données ne se rafraîchissent pas ; le cache permet de
 continuer à consulter ses billets.
 
+**Un profil organisateur se lit comme un en-tête de lettre.**
+Identité et présentation alignées à gauche, puis trois faits dans une rangée
+à filets (événements, abonnés, note) — chiffre en grand, unité en petit
+dessous — puis l'unique action. Pas de bannière, pas d'avatar centré sur un
+dégradé : ce qui fait confiance, ce sont les chiffres et les dates.
+
+**Suivre et Abonné ne sont pas le même bouton.**
+L'état « à faire » est un aplat de marque, l'état « fait » un bouton
+secondaire avec une coche. Changer seulement le libellé d'un bouton plein
+ferait croire qu'il reste une action à accomplir.
+
+**La preuve sociale est une phrase, pas un badge.**
+« Soa, Hery R. et 40 autres y vont » : deux prénoms puis un nombre, les
+visages à gauche. Le nombre vient de la jauge, donc il est juste avant même
+que les noms n'arrivent ; la ligne disparaît quand personne ne s'est inscrit.
+
+**Signaler se fait dans une liste fermée, en rouge retenu.**
+Chaque motif a sa ligne d'explication ; la sélection teinte la ligne et
+épaissit l'anneau plutôt que d'ajouter une coche. Le bouton d'envoi reste
+désactivé tant qu'aucun motif n'est choisi, et la feuille dit d'emblée que le
+signalement est anonyme.
+
+**La page web publique parle la même langue que l'app.**
+Filets, rayon de 6 px, une seule couleur d'accent, clair et sombre selon le
+système, aucune image de remplissage : la table « Date · Heure · Lieu ·
+Organisé par » reprend la grille du billet.
+
 **Les états vides ont une action.**
 Un état vide sans issue est un cul-de-sac. Chacun propose un bouton qui en
 sort (« Effacer les filtres », « Explorer les événements »).

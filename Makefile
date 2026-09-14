@@ -45,7 +45,7 @@ run-emu: ## Run against the local Firebase emulator suite
 build-apk: ## Release APK for FLAVOR
 	flutter build apk --release $(DART_DEFINES)
 
-emulators: ## Start Firebase emulators (auth, firestore, storage)
+emulators: ## Start Firebase emulators (auth, firestore, storage, functions, hosting)
 	firebase emulators:start
 
 firebase-deploy: ## Deploy Firestore/Storage rules and indexes
@@ -60,8 +60,8 @@ functions-build: ## Compile the Cloud Functions (TypeScript)
 test-functions: functions-build ## Cloud Functions integration tests, against the emulators (needs Java)
 	firebase/tests/node_modules/.bin/firebase --project demo-eventhub emulators:exec --only auth,firestore,functions,storage "npm --prefix functions test"
 
-deploy: functions-build ## Deploy rules, indexes, Storage rules and Cloud Functions (Blaze plan)
-	firebase deploy --only firestore,storage,functions
+deploy: functions-build ## Deploy rules, indexes, Storage rules, Cloud Functions and Hosting (Blaze plan)
+	firebase deploy --only firestore,storage,functions,hosting
 
 clean: ## Clean build artefacts
 	flutter clean

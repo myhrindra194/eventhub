@@ -13,9 +13,9 @@
 ![Dart](https://img.shields.io/badge/Dart-3.13-0175C2?logo=dart&logoColor=white)
 ![Riverpod](https://img.shields.io/badge/Riverpod-3-6366F1)
 ![Firebase](https://img.shields.io/badge/Firebase-Auth_·_Firestore_·_Storage_·_FCM_·_Functions_·_App_Check-FFCA28?logo=firebase&logoColor=black)
-![Tests Dart](https://img.shields.io/badge/tests_Dart-113_passing-10B981)
-![Tests règles](https://img.shields.io/badge/tests_règles-118_passing-10B981)
-![Tests fonctions](https://img.shields.io/badge/tests_fonctions-10_passing-10B981)
+![Tests Dart](https://img.shields.io/badge/tests_Dart-149_passing-10B981)
+![Tests règles](https://img.shields.io/badge/tests_règles-131_passing-10B981)
+![Tests fonctions](https://img.shields.io/badge/tests_fonctions-21_passing-10B981)
 
 ---
 
@@ -54,8 +54,8 @@ menace, règles, fonctions), [`docs/DESIGN_SYSTEM.md`](docs/DESIGN_SYSTEM.md)
 
 | Rôle             | En une phrase |
 |------------------|---------------|
-| **Participant**  | découvre les événements, en garde en favoris, réserve une place ou rejoint la liste d'attente, présente son billet QR, laisse un avis après l'événement |
-| **Organisateur** | publie ses événements, reçoit une notification à chaque réservation, suit stats et alertes, exporte sa liste d'invités et scanne les billets à l'entrée |
+| **Participant**  | découvre les événements (dont une sélection « Pour vous »), voit qui y va, en garde en favoris, suit ses organisateurs préférés, réserve une place ou rejoint la liste d'attente, présente son billet QR, laisse un avis après l'événement |
+| **Organisateur** | publie ses événements (ses abonnés sont prévenus), soigne son profil public, reçoit une notification à chaque réservation, suit stats et alertes, exporte sa liste d'invités en fichier CSV et scanne les billets à l'entrée |
 
 **Il n'y a pas de backend simulé.** Toutes les données viennent du projet
 Firebase `eventhub-d411f` ; le développement local passe par la suite
@@ -64,10 +64,11 @@ d'émulateurs, qui exécute les vraies règles.
 | Service Firebase | Rôle dans EventHub |
 |---|---|
 | Authentication | email / mot de passe, **Google**, vérification d'email, réinitialisation, changement de mot de passe |
-| Cloud Firestore | profils, événements, réservations, favoris, liste d'attente, avis, entrées scannées, appareils, préférences, historique de notifications ; cache hors ligne |
+| Cloud Firestore | profils privés et publics, événements, réservations, favoris, abonnements, liste d'attente, avis, signalements, entrées scannées, appareils, préférences, historique de notifications, agrégats ; cache hors ligne |
 | Cloud Storage | bannières d'événements |
 | Cloud Messaging | notifications push Android, web (et iOS une fois la clé APNs fournie) |
-| Cloud Functions | rôle en custom claim, push organisateur, rappels J-1, liste d'attente, **suppression de compte en cascade** |
+| Cloud Functions | rôle en custom claim, push organisateur, rappels J-1, liste d'attente, **suppression de compte en cascade**, profils organisateurs publics et compteurs, annonce aux abonnés, preuve sociale, modération, page publique d'événement |
+| Hosting | page publique `/e/{id}` avec aperçu Open Graph, vérification des App Links Android |
 | App Check | n'accepte que les requêtes de l'application authentique (Play Integrity, App Attest, reCAPTCHA v3) |
 | Crashlytics · Analytics | rapports de plantage ; mesure d'audience **sur consentement** |
 
@@ -83,8 +84,11 @@ d'émulateurs, qui exécute les vraies règles.
 | Connexion | email + mot de passe, ou **« Continuer avec Google »** (un premier compte Google choisit son rôle sur l'écran de complétion, nom pré-rempli) |
 | Vérification d'email | bandeau « Confirmez votre adresse » (profil, tableau de bord organisateur) : renvoi limité à 1/min, « C'est fait » recharge le compte et le jeton. **Obligatoire pour publier un événement et laisser un avis** |
 | Mots de passe | oubli (lien Firebase), changement avec ré-authentification |
-| Profil | identité, statistiques du rôle, modification du nom |
-| Paramètres | thème ; notifications (préférence réelle lue par le serveur) ; **mesure d'audience** ; **suppression du compte** (ré-authentification par mot de passe ou Google, cascade côté serveur) |
+| Profil | identité, statistiques du rôle, modification du nom (et de la **présentation publique** pour un organisateur) |
+| **Profil organisateur public** | `/organizers/{id}`, ouvert depuis la fiche d'un événement : présentation, nombre d'événements, d'abonnés et note moyenne (tous calculés côté serveur), dates à venir puis passées, bouton **Suivre** |
+| **Abonnements** | « Organisateurs suivis » : liste, désabonnement ; push à chaque nouvel événement publié par un organisateur suivi |
+| **Signalement** | événement, organisateur ou avis : motif dans une liste fermée + précisions ; anonyme ; un signalement par compte et par contenu ; un avis signalé par 3 personnes est masqué en attendant la modération |
+| Paramètres | thème ; notifications (préférences réelles lues par le serveur, dont « Nouveaux événements ») ; **mesure d'audience** ; **suppression du compte** (ré-authentification par mot de passe ou Google, cascade côté serveur) |
 | Centre de notifications | historique 30 jours des push, groupé par jour, « tout lire », balayage pour supprimer, tap vers l'écran concerné ; cloche à pastille sur l'accueil et les alertes |
 | Aide · Confidentialité · À propos | FAQ, notice fondée sur les vraies règles, version |
 
@@ -92,10 +96,12 @@ d'émulateurs, qui exécute les vraies règles.
 
 | Fonctionnalité | Détail |
 |---|---|
-| Fil éditorialisé | à la une, ça se remplit vite, cette semaine, catalogue **paginé** (100 en temps réel, puis « Charger plus ») |
+| Fil éditorialisé | à la une, **pour vous**, ça se remplit vite, cette semaine, catalogue **paginé** (100 en temps réel, puis « Charger plus ») |
+| **Pour vous** | recommandations calculées sur l'appareil : organisateurs suivis (+4), catégories des billets (+3) et des favoris (+2), remplissage pour départager ; jamais un événement complet, commencé, déjà réservé ou déjà en favori |
 | Recherche et filtres | titre, lieu, organisateur, catégorie ; période, tri, masquer les complets |
 | **Favoris** | cœur sur les cartes et la fiche ; écran « Mes favoris » (y compris événements complets, passés ou supprimés) |
-| Fiche événement | 4 états, jauge temps réel, partage (lien, invitation) |
+| Fiche événement | 4 états, jauge temps réel, **« Soa, Hery R. et 40 autres y vont »** avec les visages des derniers inscrits, organisateur cliquable, signalement |
+| **Partage** | feuille de partage native, lien public `https://eventhub-d411f.web.app/e/{id}` (aperçu Open Graph pour qui n'a pas l'app, ouverture directe dans l'app sur Android), invitation prête à coller |
 | Réserver / annuler | transaction atomique ; re-réservation possible |
 | **Liste d'attente** | sur un événement complet : rejoindre / quitter ; push dès qu'une place se libère |
 | Billet | QR code + code `EH-XXXX-XXXX`, états annulé / passé |
@@ -108,7 +114,8 @@ d'émulateurs, qui exécute les vraies règles.
 |---|---|
 | Mes événements | KPI, à venir / passés ; suppression bloquée (avec explication) s'il y a des réservations |
 | Créer / modifier | bannière Storage, validation, email vérifié requis pour publier |
-| Participants | recherche, export CSV, **compteur d'entrées**, **personnes en liste d'attente**, marqueur « Entré · HH:mm » |
+| Participants | recherche, **export CSV en fichier** (feuille de partage : Drive, email, tableur ; UTF-8 avec BOM pour Excel, séparateur `;`) ou copie, **compteur d'entrées**, **personnes en liste d'attente**, marqueur « Entré · HH:mm » |
+| Profil public | présentation modifiable, abonnés, note moyenne sur les avis visibles ; chaque publication prévient les abonnés |
 | **Contrôle à l'entrée** | scanner caméra (lampe), verdict plein écran en couleur : entrée validée, déjà scanné (heure), billet annulé, autre événement, code invalide, introuvable ; saisie manuelle du code ; retour haptique distinct ; enregistrement anti-doublon même à plusieurs portes |
 | Stats · Alertes | remplissage, 14 jours de réservations (graphique + tableau), classement ; à surveiller + journal |
 | Push | réservation et annulation en temps réel |
@@ -159,13 +166,24 @@ généré par FlutterFire et ignoré par Git (`flutterfire configure --project=e
    N'activer l'**application** d'App Check (Firestore, Storage, Functions via
    `ENFORCE_APP_CHECK=true`) qu'une fois ces enregistrements faits.
 7. **Crashlytics** et **Analytics** : activer dans la console.
-8. **Firestore → TTL** : politique sur `notifications.expiresAt` (déclarée
-   dans `firestore.indexes.json`, déployée avec les index).
+8. **Firestore → TTL** : politiques sur `notifications.expiresAt` et
+   `audit.expiresAt` (déclarées dans `firestore.indexes.json`, déployées avec
+   les index).
+9. **Hosting** : le site `eventhub-d411f.web.app` sert `hosting/public` et
+   réécrit `/e/**` vers la fonction `publicEventPage`. Pour que Android ouvre
+   ces liens dans l'app, `hosting/public/.well-known/assetlinks.json` doit
+   contenir l'empreinte **SHA-256** de chaque clé de signature : celle de la
+   clé de debug de ce poste y est ; **ajouter celle de la clé release** avant
+   publication.
+10. **Modération** : un compte administrateur reçoit le claim `admin` depuis
+    le SDK Admin (`auth.setCustomUserClaims(uid, {admin: true})`) ; il traite
+    `moderationQueue` dans la console et décide via la fonction
+    `moderateContent`.
 
 ```sh
 firebase login
 firebase firestore:databases:get "(default)"    # doit afficher nam5
-make deploy                                     # règles, index, Storage, fonctions
+make deploy                                     # règles, index, Storage, fonctions, Hosting
 ```
 
 ### 3.2 Lancer
@@ -183,7 +201,7 @@ s'affiche.
 ### 3.3 Émulateurs (développement)
 
 ```sh
-make emulators              # Auth 9099, Firestore 8080, Storage 9199, Functions 5001, UI 4000
+make emulators              # Auth 9099, Firestore 8080, Storage 9199, Functions 5001, Hosting 5002, UI 4000
 make run-emu DEVICE=<id>    # --dart-define=USE_EMULATORS=true
 ```
 
@@ -206,7 +224,7 @@ pas être publié**.
 | Modèles | freezed 4 + json_serializable |
 | Firebase | `firebase_auth`, `cloud_firestore`, `firebase_storage`, `firebase_messaging`, `cloud_functions`, `firebase_app_check`, `firebase_crashlytics`, `firebase_analytics` |
 | Auth tierce | `google_sign_in` 7 (natif) / popup Firebase (web) |
-| Appareil | `flutter_local_notifications`, `mobile_scanner`, `connectivity_plus`, `image_picker`, `qr_flutter` |
+| Appareil | `flutter_local_notifications`, `mobile_scanner`, `connectivity_plus`, `image_picker`, `qr_flutter`, `share_plus` |
 | Serveur | Cloud Functions 2ᵉ génération, TypeScript, Node 22, `firebase-admin` |
 | UI | Material 3 clair/sombre, `google_fonts`, `cached_network_image` |
 | Qualité | `flutter_lints` strict, `riverpod_lint`, `mocktail`, `@firebase/rules-unit-testing`, `node:test`, GitHub Actions |
@@ -236,14 +254,20 @@ lib/
     ├── waitlist/             liste d'attente
     ├── reviews/              avis
     ├── checkin/              contrôle à l'entrée (policy pure, scanner)
-    ├── organizer/            dashboard, stats, alertes, participants
+    ├── organizer/            dashboard, stats, alertes, participants, export CSV
+    ├── organizers/           profil organisateur public, abonnements
+    ├── moderation/           signalements (policy pure, feuille de signalement)
     ├── notifications/        préférences, appareils, FCM, centre de notifications
-    ├── participant/ · onboarding/ · support/
+    ├── participant/          coque participant, recommandations « Pour vous »
+    ├── onboarding/ · support/
 
 functions/src/index.ts        setRoleClaim · notifyOrganizerOnReservation · notifyWaitlistOnSeatRelease
                               · sendEventReminders (runEventReminders) · deleteAccount
+                              · syncOrganizerProfile · onFollowWritten · onEventWritten · aggregateOrganizerRating
+                              · aggregateAttendance · onReportCreated · moderateContent · publicEventPage
 functions/test/               tests d'intégration sur émulateurs
 firebase/                     firestore.rules · storage.rules · firestore.indexes.json · tests/ (règles)
+hosting/public/               accueil web, 404, .well-known/assetlinks.json (App Links)
 ```
 
 Règle de dépendance : `presentation → application → domain ← data`. Seule
@@ -257,11 +281,21 @@ elle compose ses providers (ex. le contrôle d'entrée lit les réservations via
 ## 6. Modèle de données
 
 ```
-users/{uid}                       name, email, role, createdAt, updatedAt?
+users/{uid}                       name, email, role, bio?, createdAt, updatedAt?          (privé)
   ├── devices/{deviceId}          token, platform, locale, updatedAt
-  ├── private/notifications       eventReminders, bookingAlerts
+  ├── private/notifications       eventReminders, bookingAlerts, followedOrganizers
   ├── notifications/{id}          type, title, body, eventId, reservationId, createdAt, readAt, expiresAt (TTL)
-  └── favorites/{eventId}         eventId, createdAt
+  ├── favorites/{eventId}         eventId, createdAt
+  └── following/{organizerId}     organizerId, createdAt
+
+organizers/{uid}                  name, bio, photoUrl, memberSince, followerCount, eventCount,
+                                  ratingSum, ratingCount, updatedAt                        (public, serveur)
+  └── followers/{uid}             userId, createdAt                                        (serveur seul)
+
+aggregates/event_{eventId}        eventId, recentAttendees [{key: sha256(uid)[0..16], name: "Hery R."}]
+reports/{type}_{targetId}_{uid}   targetType, targetId, reason, details, reporterId, createdAt (écriture seule)
+moderationQueue/{type}_{targetId} reportCount, lastReason, status, autoHidden?, decision?   (admin)
+audit/{id}                        action, détails, at, expiresAt (TTL) — et fx_{triggerId} (idempotence)
 
 events/{id}                       title, description, imageUrl?, category, startsAt, location,
                                   capacity, availablePlaces, organizerId, organizerName, createdAt, updatedAt
@@ -271,11 +305,16 @@ events/{id}                       title, description, imageUrl?, category, start
 reservations/{eventId}_{userId}   eventId, userId, organizerId, userName, userEmail,
                                   eventTitle, eventStartsAt, eventLocation, status, reservedAt, cancelledAt?
 
-reviews/{eventId}_{userId}        eventId, authorId, authorName, rating (1–5), comment, createdAt, updatedAt?
+reviews/{eventId}_{userId}        eventId, authorId, authorName, rating (1–5), comment, createdAt, updatedAt?,
+                                  hidden?, hiddenAt?, moderatedAt?, moderatedBy?           (modération : serveur)
 ```
 
-Identifiants déterministes (réservation, avis, favori, entrée, liste
-d'attente) : l'unicité est une propriété du stockage. Dénormalisation sur la
+Identifiants déterministes (réservation, avis, favori, abonnement, entrée,
+liste d'attente, signalement) : l'unicité est une propriété du stockage.
+Compteurs publics (abonnés, événements, note) maintenus par des triggers
+idempotents : chaque mise à jour enregistre l'id du déclenchement dans la même
+transaction (`audit/fx_{id}`), car Firebase livre un trigger *au moins* une
+fois. Dénormalisation sur la
 réservation : portefeuille, invités, notifications et contrôle d'entrée sans
 lecture supplémentaire. Code billet dérivé de l'id, jamais stocké.
 
@@ -295,6 +334,10 @@ lecture supplémentaire. Code billet dérivé de l'id, jamais stocké.
 | Entrée | `CheckInPolicy` : existe, bon événement, code conforme, non annulé, non déjà scanné | règles : organisateur seul, append-only |
 | Suppression de compte | ré-authentification | fonction : refus si événement à venir avec participants ; places libérées ; anonymisation |
 | Rôle | inchangeable | règles + custom claim |
+| S'abonner | `FollowPolicy` : pas à soi-même | règles : id = organizerId, pas soi-même ; compteur par fonction |
+| Signaler | `ReportPolicy` : motif de la liste, précisions si « Autre », ≤ 2 000, pas son propre contenu | règles : id `type_cible_uid` (un par compte), motifs fermés, lecture admin seule |
+| Masquer un avis | automatique à 3 signalements distincts, ou décision admin | fonctions `onReportCreated` / `moderateContent` ; l'auteur ne peut pas modifier `hidden` |
+| Profil public | le client ne l'écrit jamais | règles : écriture refusée ; `syncOrganizerProfile` copie nom et présentation |
 
 ---
 
@@ -319,6 +362,7 @@ restreintes à l'appelant. Tout est détaillé et testé : [`docs/SECURITY.md`](
 | Nouvelle réservation / annulation | organisateur | `notifyOrganizerOnReservation` | liste des participants | `bookingAlerts` |
 | Demain : … | participant | `sendEventReminders` (horaire) | billet | `eventReminders` |
 | Une place s'est libérée | participant en attente | `notifyWaitlistOnSeatRelease` | fiche de l'événement | `eventReminders` |
+| « Mirindra publie un événement » | abonnés de l'organisateur | `onEventWritten` (création, événement à venir) | fiche de l'événement | `followedOrganizers` |
 
 Chaque envoi est aussi écrit dans `users/{uid}/notifications` (centre de
 notifications, TTL 30 jours). Côté app, `PushNotifications` suit la session :
@@ -333,7 +377,7 @@ déconnexion. Web : `web/firebase-messaging-sw.js` + clé VAPID.
 |---|---|
 | App Check | `bootstrap.dart` : Play Integrity / App Attest en release, fournisseurs debug sinon, reCAPTCHA v3 sur le web ; fonctions : `ENFORCE_APP_CHECK` |
 | Crashlytics | erreurs Flutter et plateforme (fatales) + `AppLogger.error` (non fatales), désactivé en debug, identifiant technique du compte |
-| Analytics | **opt-in** (collecte coupée par défaut dans le manifeste et l'`Info.plist`), feuille de consentement unique, interrupteur dans les Paramètres ; vues d'écran via l'observateur de routes ; événements : `login`, `sign_up`, `event_published`, `reservation_confirmed/cancelled`, `share`, `add_to_wishlist`, `waitlist_joined`, `review_published`, `ticket_scanned` |
+| Analytics | **opt-in** (collecte coupée par défaut dans le manifeste et l'`Info.plist`), feuille de consentement unique, interrupteur dans les Paramètres ; vues d'écran via l'observateur de routes ; événements : `login`, `sign_up`, `event_published`, `reservation_confirmed/cancelled`, `share` (lien, invitation, natif), `add_to_wishlist`, `waitlist_joined`, `review_published`, `ticket_scanned`, `organizer_followed/unfollowed`, `content_reported` (type et motif seulement) |
 | Hors ligne | cache Firestore persistant (100 Mo), bandeau global via `connectivity_plus` |
 | Pagination | première page temps réel, pages suivantes par curseur `startsAt` + id |
 | Signature | `android/key.properties` |
@@ -356,7 +400,9 @@ aplat plein écran. Détails : [`docs/DESIGN_SYSTEM.md`](docs/DESIGN_SYSTEM.md).
 | Splash · Onboarding · Connexion · Inscription · Bienvenue | `/splash` · `/onboarding` · `/login` · `/register` · `/welcome` |
 | Mot de passe oublié / changement · Profil incomplet | `/forgot-password` · `/change-password` · `/complete-profile` |
 | Explorer · Recherche · Billets · Profil | `/events` · `/search` · `/reservations` · `/profile` |
-| Fiche événement (favori, partage, liste d'attente, avis) | `/events/:eventId` |
+| Fiche événement (favori, partage, liste d'attente, avis, signalement) | `/events/:eventId` |
+| Lien partagé (App Links) → fiche | `/e/:eventId` |
+| Profil organisateur public · Organisateurs suivis | `/organizers/:organizerId` · `/following` |
 | Confirmation · Billet | `/reservations/:reservationId/confirmation` · `/reservations/:reservationId/ticket` |
 | Mes favoris | `/favorites` |
 | Paramètres · Modifier le profil | `/profile/settings`, `/organizer/profile/settings` · `/account/edit` |
@@ -391,16 +437,22 @@ aplat plein écran. Détails : [`docs/DESIGN_SYSTEM.md`](docs/DESIGN_SYSTEM.md).
 ## 14. Qualité : lint, tests, CI
 
 - **Analyse** : zéro issue (`flutter_lints` strict, `riverpod_lint`).
-- **Tests Dart** (`make test`, **113**) : policies (réservation,
-  événement dont suppression, liste d'attente, avis, entrée), code billet, CSV,
-  stats et alertes, catalogue paginé, préférences et routage des
-  notifications, mapping d'erreurs, logger, `RouteGuard` ; widgets et goldens
-  (connexion, écrans d'auth, démarrage, billet, stats, centre de notifications).
-- **Tests de règles** (`make test-rules`, **118**) contre les émulateurs.
-- **Tests des fonctions** (`make test-functions`, **10**) :
+- **Tests Dart** (`make test`, **149**) : policies (réservation,
+  événement dont suppression, liste d'attente, avis, entrée, abonnement,
+  signalement), code billet, CSV (fichier, BOM, nom), stats et alertes,
+  catalogue paginé, recommandations, phrase de preuve sociale, profil public,
+  préférences et routage des notifications, mapping d'erreurs, logger,
+  `RouteGuard` (dont liens profonds conservés à travers le splash et la
+  connexion) ; widgets et goldens (connexion, écrans d'auth, démarrage, billet,
+  stats, centre de notifications).
+- **Tests de règles** (`make test-rules`, **131**) contre les émulateurs.
+- **Tests des fonctions** (`make test-functions`, **21**) :
   claim de rôle, notifications organisateur et préférences, liste d'attente,
-  rappels J-1, suppression de compte (cascade, refus, appel anonyme) — contre
-  les émulateurs Auth, Firestore, Functions et Storage.
+  rappels J-1, suppression de compte, profil public (publication, compteur
+  d'abonnés, annonce aux abonnés, note moyenne hors avis masqués), preuve
+  sociale, modération (masquage au seuil, file, décision admin), page publique
+  (Open Graph, échappement, 404) — contre les émulateurs Auth, Firestore,
+  Functions et Storage.
 - **CI** : `quality`, `rules`, `functions` (compilation + intégration), `android`.
 
 ---
@@ -415,7 +467,7 @@ aplat plein écran. Détails : [`docs/DESIGN_SYSTEM.md`](docs/DESIGN_SYSTEM.md).
 | `make functions-setup` · `make functions-build` · `make test-functions` | fonctions |
 | `make run DEVICE=<id>` · `make run-emu DEVICE=<id>` | lancer |
 | `make emulators` | suite d'émulateurs |
-| `make firebase-deploy` · `make deploy` | règles + index + Storage · tout, fonctions comprises |
+| `make firebase-deploy` · `make deploy` | règles + index + Storage · tout, fonctions et Hosting compris |
 | `make build-apk FLAVOR=prod` | APK release |
 
 ---
@@ -437,6 +489,15 @@ Deux appareils Android, projet déployé.
    effacé, avis et historique anonymisés.
 8. Couper le réseau : le bandeau « Hors ligne » apparaît, les billets restent
    consultables.
+9. **Participant B** : fiche → nom de l'organisateur → **Suivre**. L'organisateur
+   publie un second événement → B reçoit « Mirindra publie un événement » ;
+   l'accueil de B affiche le rail **Pour vous**.
+10. **Partage** : fiche → Partager… → WhatsApp. Le lien s'ouvre dans l'app sur
+    un Android qui l'a installée, et en page web avec aperçu ailleurs.
+11. **Signalement** : trois comptes signalent un avis → il disparaît de la
+    fiche ; son auteur voit « Votre avis est masqué… ».
+12. **Organisateur** : Participants → **Exporter le CSV** → Drive ; le fichier
+    s'ouvre correctement dans Excel.
 
 ---
 
@@ -459,6 +520,13 @@ Deux appareils Android, projet déployé.
 | 13 | Analytics opt-in, jamais bloquant | CNIL ; une mesure ne doit pas casser une réservation ni les tests |
 | 14 | App Check activé tôt, appliqué plus tard (`ENFORCE_APP_CHECK`) | ne pas verrouiller les builds de dev avant l'enregistrement des jetons |
 | 15 | Stats et alertes calculées côté client | aucune lecture en plus ; limite de 200 réservations assumée |
+| 16 | Profil organisateur public dans une collection distincte, écrite par fonction | `users/{uid}` reste privé (email, rôle) ; un compteur écrit par le client ne vaudrait rien |
+| 17 | Triggers idempotents par marqueur transactionnel | livraison *au moins une fois* : sans marqueur, un compteur dérive |
+| 18 | Preuve sociale : compte exact depuis l'événement, noms courts depuis un agrégat | la jauge est transactionnelle ; les noms sont réduits à « Prénom I. », clés hachées |
+| 19 | Signalements écriture seule, un par compte, masquage automatique des avis seulement | anonymat du signaleur ; seuil de personnes distinctes ; un événement a des billets, un humain tranche |
+| 20 | Recommandations sur l'appareil, heuristique explicable | aucun profilage serveur ; chaque suggestion a une raison vraie |
+| 21 | Page publique rendue par fonction derrière Hosting, App Links vérifiés | aperçu dans les messageries sans exposer les règles Firestore ; lien unique pour app et web |
+| 22 | Lien profond conservé dans `?from=` à travers splash et connexion, liste blanche de destinations | un lien ouvre souvent l'app à froid ; `from` vient de l'extérieur |
 
 ---
 
@@ -468,8 +536,11 @@ Deux appareils Android, projet déployé.
 email + Google ; vérification d'email ; suppression de compte ; push (Android,
 web) et centre de notifications ; favoris, liste d'attente, avis, contrôle à
 l'entrée ; stats et alertes ; pagination ; App Check, Crashlytics, Analytics
-sur consentement ; hors ligne ; signature release ; tests Dart, règles et
-fonctions ; CI.
+sur consentement ; hors ligne ; signature release ; profils organisateurs
+publics et abonnements (F-10) ; preuve sociale (F-07) ; partage natif, page
+publique et App Links (F-08) ; export CSV en fichier (F-15) ; recommandations
+(F-18) ; signalement et modération (F-19) ; tests Dart, règles et fonctions ;
+CI.
 
 | Reste | Pourquoi / action |
 |---|---|
@@ -477,7 +548,9 @@ fonctions ; CI.
 | iOS | build sur Mac, clé APNs, capacités *Push* et *Background modes* dans Xcode, App Attest |
 | Clés à fournir | `GOOGLE_SERVER_CLIENT_ID`, `FIREBASE_WEB_VAPID_KEY`, `APP_CHECK_RECAPTCHA_SITE_KEY`, keystore release |
 | « Add to Cal » | plugin natif de calendrier |
-| Paiement, types de billets | hors MVP |
+| Empreinte release dans `assetlinks.json` | à ajouter avec la keystore release, sinon les liens s'ouvrent dans le navigateur |
+| Interface d'administration de la modération | la file `moderationQueue` se traite dans la console et via `moderateContent` ; un écran dédié reste à faire |
+| Paiement (F-11), types de billets (F-12), séries (F-13), carte (F-14), co-organisateurs (F-16), discussion (F-17), multilingue (F-20) | backlog P2 : Stripe et Maps exigent des comptes tiers ; les autres changent le modèle de données |
 | Revue juridique | notice de confidentialité et consentement à valider (DPO) |
 
 ---
@@ -496,7 +569,10 @@ fonctions ; CI.
 | Aucune notification | permission refusée, appareil sans Google Play, fonctions non déployées, préférence coupée ; `firebase functions:log` |
 | Suppression de compte refusée | événement à venir avec participants (message explicite) |
 | Scanner : caméra indisponible | autoriser la caméra ; ou saisir le code du billet |
-| `make test-functions` échoue | Java requis ; `make functions-setup` et `make rules-setup` une fois |
+| `make test-functions` échoue | Java requis ; `make functions-setup` et `make rules-setup` une fois ; si l'émulateur Functions expire au chargement : `FUNCTIONS_DISCOVERY_TIMEOUT=60` |
+| Un lien `/e/…` s'ouvre dans le navigateur au lieu de l'app | empreinte SHA-256 de la clé de signature absente de `assetlinks.json`, ou Hosting non déployé ; `adb shell pm get-app-links com.example.eventhub` |
+| « Vous avez déjà signalé ce contenu » | normal : un signalement par compte et par contenu |
+| Profil organisateur « indisponible » | fonctions non déployées (profil public jamais créé) ou compte supprimé |
 
 ---
 

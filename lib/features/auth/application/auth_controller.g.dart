@@ -39,7 +39,7 @@ final class AuthControllerProvider
   AuthController create() => AuthController();
 }
 
-String _$authControllerHash() => r'322beb63776e6fb65cd63e421da9dcb25c55e26a';
+String _$authControllerHash() => r'626c497a364f47e9f4b8c23e56ed8314f9d92952';
 
 /// Drives auth actions from the UI. `state` mirrors the in-flight action
 /// (loading / error) while the actual session comes from `authSessionProvider`.

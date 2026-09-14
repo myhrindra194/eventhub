@@ -50,19 +50,33 @@ class RouteGuardState {
 ///  5. **Signed in** — public locations bounce to the role's home, and each
 ///     role is confined to its own area (`/organizer/**` vs the rest).
 ///
+/// **Deep links.** A shared link usually cold-starts the app, i.e. arrives
+/// while booting or signed out. Its location travels as `?from=` through the
+/// splash and the login, and replaces the role home once signed in (rule 5).
+/// Only [AppRoutes.isDeepLinkTarget] locations are honoured: `from` comes
+/// from outside and must not be able to open an arbitrary screen.
+///
 /// Returning `null` means "the requested location is fine, let it through".
 abstract final class RouteGuard {
   static String? redirect({
     required RouteGuardState state,
     required String location,
+    String? from,
   }) {
+    final pending = from != null && AppRoutes.isDeepLinkTarget(from)
+        ? from
+        : null;
+
     // 1. Cold start: nothing is known yet.
     if (state.isBooting) {
-      return location == AppRoutes.splash ? null : AppRoutes.splash;
+      if (location == AppRoutes.splash) return null;
+      return AppRoutes.isDeepLinkTarget(location)
+          ? AppRoutes.withFrom(AppRoutes.splash, location)
+          : AppRoutes.splash;
     }
 
     return switch (state.session) {
-      null || SignedOut() => _signedOut(state, location),
+      null || SignedOut() => _signedOut(state, location, pending),
       ProfileMissing() =>
         location == AppRoutes.completeProfile
             ? null
@@ -71,11 +85,16 @@ abstract final class RouteGuard {
         location: location,
         home: user.role.homePath,
         isOrganizer: user.isOrganizer,
+        pending: pending,
       ),
     };
   }
 
-  static String? _signedOut(RouteGuardState state, String location) {
+  static String? _signedOut(
+    RouteGuardState state,
+    String location,
+    String? pending,
+  ) {
     // 2. First launch on this install.
     if (!(state.onboardingSeen ?? true)) {
       return location == AppRoutes.onboarding ? null : AppRoutes.onboarding;
@@ -86,16 +105,22 @@ abstract final class RouteGuard {
     // 3. Public locations stay reachable; the splash is transient.
     final isReachable =
         AppRoutes.isPublic(location) && location != AppRoutes.splash;
-    return isReachable ? null : AppRoutes.login;
+    if (isReachable) return null;
+
+    final resume = AppRoutes.isDeepLinkTarget(location) ? location : pending;
+    return resume == null
+        ? AppRoutes.login
+        : AppRoutes.withFrom(AppRoutes.login, resume);
   }
 
   static String? _signedIn({
     required String location,
     required String home,
     required bool isOrganizer,
+    required String? pending,
   }) {
     // Screens both roles share (the post-sign-up celebration, the password
-    // change) bypass the confinement rule below.
+    // change, public organizer profiles) bypass the confinement rule below.
     if (AppRoutes.isRoleAgnostic(location)) return null;
 
     // The account exists: the sign-up funnel is over.
@@ -104,8 +129,13 @@ abstract final class RouteGuard {
       return AppRoutes.welcome;
     }
 
-    // 5. No going back to the public funnel once authenticated.
-    if (AppRoutes.isPublic(location)) return home;
+    // 5. No going back to the public funnel once authenticated — resume the
+    // link that brought the user here, if any. Role confinement still
+    // applies to it on the next pass.
+    if (AppRoutes.isPublic(location)) return pending ?? home;
+
+    // A shared link: `/e/{id}` redirects to the event detail at route level.
+    if (location.startsWith('/e/')) return isOrganizer ? home : null;
 
     // Role confinement: an organizer never lands in the participant area
     // (and vice versa), whatever the deep link says.

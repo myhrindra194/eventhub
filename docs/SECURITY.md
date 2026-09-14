@@ -66,20 +66,11 @@ Le **custom claim est le chemin de production** : il ne consomme aucun des
 document de profil. Le repli documentaire garde l'émulateur et le client actuel
 fonctionnels tant que la Cloud Function n'est pas déployée.
 
-**À faire (F-03 de la feuille de route)** :
-
-```js
-exports.onUserCreated = functions.firestore
-  .document('users/{uid}')
-  .onCreate(async (snap, ctx) => {
-    await admin.auth().setCustomUserClaims(ctx.params.uid, {
-      role: snap.data().role,
-    });
-  });
-```
-
-Puis, côté client, forcer un rafraîchissement du jeton :
-`FirebaseAuth.instance.currentUser?.getIdToken(true)`.
+**Mis en œuvre (v1.2)** : la fonction `setRoleClaim` (déclenchée à la
+création de `users/{uid}`) copie le rôle dans le claim ; un profil sans compte
+Auth (import, console) est ignoré avec un avertissement. Côté client,
+`AuthRepositoryImpl` attend le claim puis force le rafraîchissement du jeton
+(`getIdToken(true)`).
 
 `isAdmin()` est **exclusivement** un claim : il n'existe aucun document qu'un
 utilisateur pourrait écrire pour se promouvoir administrateur.
@@ -184,6 +175,25 @@ permission.
 | Données personnelles dans les outils | Analytics et Crashlytics ne reçoivent que l'uid et le rôle ; Analytics seulement après consentement | `AppAnalytics`, `AnalyticsConsent` |
 
 Tests : règles `make test-rules` (118), fonctions `make test-functions`.
+
+### v1.4 : profils publics, preuve sociale, signalements, page publique
+
+| Surface | Garantie | Où |
+|---|---|---|
+| `users/{uid}/following/{organizerId}` | privé au suiveur ; id = organizerId ; pas soi-même ; immuable (désabonnement = suppression) | règles + `FollowPolicy` |
+| `organizers/{id}` | lecture pour tout compte connecté, **écriture refusée à tous les clients**, organisateur compris : nom et présentation copiés par `syncOrganizerProfile`, compteurs par triggers | règles |
+| `organizers/{id}/followers` | illisible et non inscriptible depuis un client : qui suit qui n'est public pour personne | règles |
+| Compteurs publics | triggers idempotents (`once()` : marqueur `audit/fx_{eventId}` écrit dans la même transaction) — un redéclenchement ne compte pas deux fois | `functions/src/index.ts` |
+| `aggregates/event_{id}` | lecture connectée, écriture serveur ; noms réduits à « Prénom I. », entrées indexées par `sha256(uid)` tronqué : aucun uid publié ; retiré à l'annulation et à la suppression de compte | `aggregateAttendance`, `deleteAccount` |
+| `reports/{type}_{cible}_{uid}` | écriture seule ; **un signalement par compte et par cible** (id déterministe vérifié) — sans cela, un seul compte masquerait n'importe quel avis ; motifs fermés ; pas son propre compte ni son propre avis | règles + `ReportPolicy` |
+| Second signalement du même compte | tombe sur un document existant = mise à jour, réservée aux admins → refus ; le client le traduit en « déjà signalé » sans rien lire | `ReportRepositoryImpl` |
+| Masquage d'un avis | automatique à 3 personnes distinctes ; une décision admin (`moderatedAt`) n'est jamais écrasée par le seuil ; l'auteur ne peut pas toucher `hidden` (`onlyChanged(['rating','comment','updatedAt'])`) | `onReportCreated`, règles `reviews` |
+| Événements et comptes signalés | jamais supprimés automatiquement (des billets existent) : file `moderationQueue`, lecture admin, écriture serveur | règles + fonction |
+| `moderateContent` | callable, **claim `admin` exigé**, arguments validés, App Check si `ENFORCE_APP_CHECK` ; chaque décision journalisée dans `audit` (TTL 1 an) | fonction |
+| `publicEventPage` | lecture Admin SDK des seuls champs publiés par l'organisateur ; **tout contenu échappé** (titre, lieu, description) ; aucune donnée d'inscrit ; id validé (longueur, pas de `/`) ; `GET`/`HEAD` seulement ; `nosniff` et `Referrer-Policy` sur Hosting | fonction + `firebase.json` |
+| App Links | `autoVerify` sur `/e/` ; `assetlinks.json` liste les empreintes autorisées — une app signée par une autre clé n'intercepte pas les liens | manifeste + Hosting |
+| `?from=` (lien profond conservé) | liste blanche de destinations (`/e/`, `/events/`, `/organizers/`) : un `from` forgé ne peut ouvrir ni une URL externe ni un écran arbitraire ; la confinement par rôle s'applique ensuite | `RouteGuard` (testé) |
+| Analytics de signalement | type de cible et motif seulement, jamais l'id ou le contenu signalé | `AppAnalytics.contentReported` |
 
 ### Notifications push : ce qui est privé, ce qui est serveur
 
@@ -338,12 +348,16 @@ Deux bugs réels au premier passage, ce qui est précisément leur raison d'êtr
    assertion de la suite qui échoue alors que la même plus loin passe. Une
    requête d'amorce dans le `before` rend la suite déterministe.
 
-### Reste à couvrir
+### Couverture
 
-Les sous-collections anticipées (`favorites`, `devices`, `notifications`,
-`waitlist`, `checkins`, `reports`) ont des règles mais pas encore de tests :
-elles n'ont pas de client. À écrire **en même temps** que la fonctionnalité qui
-les consomme, jamais après.
+Toutes les collections consommées par l'app ont leurs tests de règles
+(`firestore.rules.test.js`, `subcollections.rules.test.js`) : profils,
+événements, réservations, avis, appareils, favoris, abonnements, profils
+organisateurs et abonnés, notifications, liste d'attente, entrées, signalements,
+file de modération, agrégats. Les effets serveur (compteurs, masquage,
+cascade) sont couverts par les tests d'intégration des fonctions
+(`make test-functions`). Règle d'équipe inchangée : une règle s'écrit et se
+teste **en même temps** que la fonctionnalité qui la consomme.
 
 ---
 
@@ -352,10 +366,15 @@ les consomme, jamais après.
 - **Pas de rate limiting véritable.** `notTooFast()` est une protection
   grossière (une écriture par seconde et par document). Un vrai quota exige un
   document compteur ou App Check.
-- **App Check n'est pas activé.** C'est la contre-mesure standard contre les
-  clients non officiels ; à activer avant l'ouverture publique.
-- **Suppression de compte non implémentée.** `delete` sur `users/{uid}` est
-  refusé : réservations, événements et objets Storage doivent être réconciliés
-  d'abord, ce qui relève d'une Cloud Function.
+- **App Check est activé côté app mais pas encore *appliqué*.** L'application
+  (Firestore, Storage, et `ENFORCE_APP_CHECK` pour les callables) se fait dans
+  la console une fois les apps et les jetons de debug enregistrés ; d'ici là,
+  un client non officiel reste limité par les règles, pas bloqué.
+- **Suppression de compte : cascade côté serveur** (`deleteAccount`), refusée
+  tant qu'un événement à venir de l'organisateur a des participants.
+- **Pas d'interface d'administration.** La file `moderationQueue` se traite
+  dans la console Firebase, les décisions passent par `moderateContent`.
+- **La page publique est cachée 5 à 10 minutes** (CDN Hosting) : un événement
+  supprimé ou modifié peut y apparaître encore quelques minutes.
 - **La suppression d'un événement ne cascade pas.** Elle est simplement
   interdite tant que des places sont vendues.

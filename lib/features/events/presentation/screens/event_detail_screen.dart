@@ -12,7 +12,10 @@ import 'package:eventhub/features/events/application/event_providers.dart';
 import 'package:eventhub/features/events/domain/entities/event.dart';
 import 'package:eventhub/features/events/presentation/widgets/event_card.dart';
 import 'package:eventhub/features/events/presentation/widgets/share_event_sheet.dart';
+import 'package:eventhub/features/events/presentation/widgets/social_proof_row.dart';
 import 'package:eventhub/features/favorites/presentation/widgets/favorite_button.dart';
+import 'package:eventhub/features/moderation/domain/report.dart';
+import 'package:eventhub/features/moderation/presentation/widgets/report_sheet.dart';
 import 'package:eventhub/features/reservations/application/reservation_providers.dart';
 import 'package:eventhub/features/reservations/domain/entities/reservation.dart';
 import 'package:eventhub/features/reviews/presentation/widgets/reviews_section.dart';
@@ -110,6 +113,7 @@ class _Body extends ConsumerWidget {
     final t = context.tokens;
     final text = context.textTheme;
     final now = ref.watch(clockProvider)();
+    final user = ref.watch(currentUserProvider);
     final mine = ref.watch(myReservationForEventProvider(event.id)).value;
     final reservation = (mine != null && mine.isActive) ? mine : null;
     final availability = _Availability.of(event, now);
@@ -148,6 +152,7 @@ class _Body extends ConsumerWidget {
                       ),
                       const SizedBox(height: AppSpacing.lg),
                       _OrganizerRow(event: event),
+                      SocialProofRow(event: event),
                       const SizedBox(height: AppSpacing.xxl),
                       const SectionLabel(AppStrings.practicalInfo),
                       const SizedBox(height: AppSpacing.md),
@@ -223,6 +228,19 @@ class _Body extends ConsumerWidget {
                     : context.go(AppRoutes.events),
               ),
               const Spacer(),
+              if (user != null && !event.isOwnedBy(user.id)) ...[
+                OverlayIconButton(
+                  icon: Icons.flag_outlined,
+                  tooltip: AppStrings.reportAction,
+                  onPressed: () => showReportSheet(
+                    context,
+                    target: ReportTarget.event,
+                    targetId: event.id,
+                    subject: event.title,
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+              ],
               FavoriteButton(eventId: event.id),
               const SizedBox(width: AppSpacing.sm),
               OverlayIconButton(
@@ -358,23 +376,52 @@ class _OrganizerRow extends StatelessWidget {
     final t = context.tokens;
     final text = Theme.of(context).textTheme;
 
+    // The whole identity block opens the organizer's public profile (F-10);
+    // the chevron says so without a separate "voir le profil" link.
     return Row(
       children: [
-        AppAvatar(name: event.organizerName),
-        const SizedBox(width: AppSpacing.md),
         Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(AppStrings.organizer, style: text.labelSmall),
-              Text(
-                event.organizerName,
-                style: text.titleMedium,
-                overflow: TextOverflow.ellipsis,
+          child: Semantics(
+            button: true,
+            label: '${AppStrings.seeOrganizerProfile} ${event.organizerName}',
+            excludeSemantics: true,
+            child: InkWell(
+              borderRadius: AppRadius.brButton,
+              onTap: () => context.push(
+                AppRoutes.organizerPublicProfilePath(event.organizerId),
               ),
-            ],
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
+                child: Row(
+                  children: [
+                    AppAvatar(name: event.organizerName),
+                    const SizedBox(width: AppSpacing.md),
+                    Flexible(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(AppStrings.organizer, style: text.labelSmall),
+                          Text(
+                            event.organizerName,
+                            style: text.titleMedium,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.xs),
+                    Icon(
+                      Icons.chevron_right_rounded,
+                      size: 20,
+                      color: t.textTertiary,
+                    ),
+                  ],
+                ),
+              ),
+            ),
           ),
         ),
+        const SizedBox(width: AppSpacing.md),
         Container(
           padding: const EdgeInsets.symmetric(
             horizontal: AppSpacing.md,

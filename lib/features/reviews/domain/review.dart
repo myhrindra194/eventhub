@@ -13,6 +13,7 @@ class Review {
     required this.comment,
     required this.createdAt,
     this.updatedAt,
+    this.hidden = false,
   });
 
   static String composeId({required String eventId, required String userId}) =>
@@ -28,6 +29,11 @@ class Review {
   final String comment;
   final DateTime createdAt;
   final DateTime? updatedAt;
+
+  /// Set by moderation (automatic threshold or an admin), never by the
+  /// author. A hidden review is left out of lists and averages; its author
+  /// still sees it, with a notice.
+  final bool hidden;
 }
 
 /// Average and distribution of a set of reviews, for the event detail.

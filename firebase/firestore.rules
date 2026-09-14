@@ -258,6 +258,22 @@ service cloud.firestore {
         allow delete: if isSelf(userId);
       }
 
+      // ---- followed organizers (F-10) -------------------------------------
+      //  Doc id == organizerId, same trick as favourites. Private: nobody
+      //  learns who follows whom. The Cloud Function `onFollowWritten`
+      //  mirrors it into organizers/{id}/followers (server-only) for the
+      //  "new event" fan-out and maintains the public follower count.
+      match /following/{organizerId} {
+        allow read: if isSelf(userId);
+        allow create: if isSelf(userId)
+          && organizerId != userId
+          && incoming().keys().hasOnly(['organizerId', 'createdAt'])
+          && incoming().organizerId == organizerId
+          && isServerTime(incoming().createdAt);
+        allow update: if false;
+        allow delete: if isSelf(userId);
+      }
+
       // ---- in-app notifications -----------------------------------------
       //  Written by Cloud Functions only; the user may just mark them read.
       match /notifications/{notificationId} {
@@ -265,6 +281,30 @@ service cloud.firestore {
         allow create: if false;
         allow update: if isSelf(userId) && onlyChanged(['readAt']);
         allow delete: if isSelf(userId);
+      }
+    }
+
+    // ========================================================= organizers ===
+    //
+    //  organizers/{organizerId} — the public face of an organizer (F-10).
+    //    name, bio, photoUrl         copied from users/{uid} by a function
+    //    followerCount, eventCount   counters maintained by functions
+    //    ratingSum, ratingCount      over the visible reviews of their events
+    //    memberSince, updatedAt
+    //
+    //  `users/{uid}` stays private (email, role). Everything here is derived
+    //  server-side from data the organizer chose to publish, so the client
+    //  may read it and never write it — a follower count that a client could
+    //  set would be worthless as social proof.
+    //
+    match /organizers/{organizerId} {
+      allow read: if isSignedIn();
+      allow write: if false;
+
+      // Fan-out list for "new event" pushes. Who follows an organizer is
+      // not public information, not even to the organizer.
+      match /followers/{followerId} {
+        allow read, write: if false;
       }
     }
 
@@ -576,6 +616,13 @@ service cloud.firestore {
     //  able to read other reports, and a reported organizer must never learn
     //  who flagged them.
     //
+    //  The id is deterministic — `<targetType>_<targetId>_<reporterId>` — so
+    //  one account counts once per target. That is what makes the automatic
+    //  threshold of `onReportCreated` meaningful: without it, one angry user
+    //  could hide any review by filing three reports. A second report by the
+    //  same person lands on an existing document, i.e. an update, which only
+    //  an admin may perform.
+    //
     match /reports/{reportId} {
       allow read: if isAdmin();
       allow create: if isSignedIn()
@@ -583,9 +630,16 @@ service cloud.firestore {
              'targetType', 'targetId', 'reason', 'details', 'reporterId', 'createdAt'
            ])
         && incoming().reporterId == uid()
+        && reportId == incoming().targetType + '_' + incoming().targetId + '_' + uid()
         && incoming().targetType in ['event', 'user', 'review']
         && isString(incoming().targetId, 1, 200)
-        && isString(incoming().reason, 1, 60)
+        // Reporting oneself is noise; reporting one's own review is a delete.
+        && !(incoming().targetType == 'user' && incoming().targetId == uid())
+        && !(incoming().targetType == 'review'
+             && incoming().targetId.matches('.+_' + uid()))
+        && incoming().reason in [
+             'spam', 'misleading', 'inappropriate', 'fraud', 'harassment', 'other'
+           ]
         && isString(incoming().details, 0, 2000)
         && isServerTime(incoming().createdAt);
       allow update, delete: if isAdmin();
@@ -605,6 +659,13 @@ service cloud.firestore {
 
     match /aggregates/{docId} {
       allow read: if isSignedIn();
+      allow write: if false;
+    }
+
+    // One entry per reported target, maintained by `onReportCreated` and
+    // closed by `moderateContent`. Admins triage it from the console.
+    match /moderationQueue/{entryId} {
+      allow read: if isAdmin();
       allow write: if false;
     }
 

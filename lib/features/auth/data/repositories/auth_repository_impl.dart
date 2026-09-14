@@ -163,11 +163,11 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
-  AsyncResult<AppUser> updateProfile({required String name}) {
+  AsyncResult<AppUser> updateProfile({required String name, String? bio}) {
     return guard(() async {
       final user = _auth.currentUser;
       if (user == null) throw const FailureException(AuthFailure.notSignedIn());
-      await _users.updateName(user.uid, name.trim());
+      await _users.updateProfile(user.uid, name: name.trim(), bio: bio?.trim());
       // Read back rather than rebuilding locally: the document is the source
       // of truth, and the session stream will emit the same value anyway.
       final dto = await _users.get(user.uid);

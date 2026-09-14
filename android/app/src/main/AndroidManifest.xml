@@ -30,6 +30,19 @@
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
+            <!-- App Links: https://eventhub-d411f.web.app/e/{id} opens the
+                 event in the app (route /e/:eventId). Verified against
+                 hosting/public/.well-known/assetlinks.json — add the release
+                 signing fingerprint there before publishing. -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="https"/>
+                <data android:host="eventhub-d411f.web.app"/>
+                <data android:host="eventhub-d411f.firebaseapp.com"/>
+                <data android:pathPrefix="/e/"/>
+            </intent-filter>
         </activity>
 
         <!-- Channel used by pushes received while the app is in background.

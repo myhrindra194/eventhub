@@ -188,12 +188,34 @@ class _NotificationSwitches extends ConsumerWidget {
       ),
       elevation: SurfaceElevation.flat,
       radius: AppRadius.button,
-      child: SwitchListTile.adaptive(
-        contentPadding: EdgeInsets.zero,
-        value: value,
-        onChanged: enabled ? (v) => _save(context, ref, apply(v)) : null,
-        title: Text(title, style: context.textTheme.titleMedium),
-        subtitle: Text(hint, style: context.textTheme.bodySmall),
+      child: Column(
+        children: [
+          SwitchListTile.adaptive(
+            contentPadding: EdgeInsets.zero,
+            value: value,
+            onChanged: enabled ? (v) => _save(context, ref, apply(v)) : null,
+            title: Text(title, style: context.textTheme.titleMedium),
+            subtitle: Text(hint, style: context.textTheme.bodySmall),
+          ),
+          const AppDivider(height: 1),
+          // Both roles may follow organizers (F-10).
+          SwitchListTile.adaptive(
+            contentPadding: EdgeInsets.zero,
+            value: prefs?.followedOrganizers ?? true,
+            onChanged: enabled
+                ? (v) =>
+                      _save(context, ref, prefs.copyWith(followedOrganizers: v))
+                : null,
+            title: Text(
+              AppStrings.notificationsFollowed,
+              style: context.textTheme.titleMedium,
+            ),
+            subtitle: Text(
+              AppStrings.notificationsFollowedHint,
+              style: context.textTheme.bodySmall,
+            ),
+          ),
+        ],
       ),
     );
   }

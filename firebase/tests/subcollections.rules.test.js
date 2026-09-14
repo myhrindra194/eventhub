@@ -506,67 +506,225 @@ describe('reports (F-19 moderation)', () => {
   const report = (overrides = {}) => ({
     targetType: 'event',
     targetId: 'e1',
-    reason: 'contenu-trompeur',
+    reason: 'misleading',
     details: 'Les informations pratiques ne correspondent pas.',
     reporterId: 'p1',
     createdAt: serverTimestamp(),
     ...overrides,
   });
+  const idOf = (r) => `${r.targetType}_${r.targetId}_${r.reporterId}`;
+  const file = (db, r) => setDoc(doc(db, 'reports', idOf(r)), r);
 
   it('lets any signed-in user file a report', async () => {
     const db = asParticipant(env, 'p1').firestore();
-    await assertSucceeds(setDoc(doc(db, 'reports', 'r1'), report()));
+    await assertSucceeds(file(db, report()));
   });
 
   it('refuses a report filed under somebody else’s name', async () => {
     const db = asParticipant(env, 'p1').firestore();
+    const r = report({ reporterId: 'p2' });
+    await assertFails(file(db, r));
+  });
+
+  it('refuses a report whose id is not target + reporter (one vote per account)', async () => {
+    const db = asParticipant(env, 'p1').firestore();
+    await assertFails(setDoc(doc(db, 'reports', 'r1'), report()));
     await assertFails(
-      setDoc(doc(db, 'reports', 'r1'), report({ reporterId: 'p2' })),
+      setDoc(doc(db, 'reports', 'event_e1_p1_bis'), report()),
     );
   });
 
-  it('refuses an unknown target type', async () => {
+  it('refuses reporting the same target twice from one account', async () => {
+    await seed((db) => setDoc(doc(db, 'reports', 'event_e1_p1'), report()));
     const db = asParticipant(env, 'p1').firestore();
+    await assertFails(file(db, report({ reason: 'spam' })));
+  });
+
+  it('refuses an unknown target type or reason', async () => {
+    const db = asParticipant(env, 'p1').firestore();
+    await assertFails(file(db, report({ targetType: 'organisation' })));
+    await assertFails(file(db, report({ reason: 'je-n-aime-pas' })));
+  });
+
+  it('refuses reporting oneself or one’s own review', async () => {
+    const db = asParticipant(env, 'p1').firestore();
+    await assertFails(file(db, report({ targetType: 'user', targetId: 'p1' })));
     await assertFails(
-      setDoc(doc(db, 'reports', 'r1'), report({ targetType: 'organisation' })),
+      file(db, report({ targetType: 'review', targetId: 'e1_p1' })),
+    );
+    await assertSucceeds(
+      file(db, report({ targetType: 'review', targetId: 'e1_p2' })),
     );
   });
 
   it('refuses an oversized narrative', async () => {
     const db = asParticipant(env, 'p1').firestore();
-    await assertFails(
-      setDoc(doc(db, 'reports', 'r1'), report({ details: 'x'.repeat(2001) })),
-    );
+    await assertFails(file(db, report({ details: 'x'.repeat(2001) })));
   });
 
   it('is write-only for the client: a reporter cannot read reports back', async () => {
-    await seed((db) => setDoc(doc(db, 'reports', 'r1'), report()));
+    await seed((db) => setDoc(doc(db, 'reports', 'event_e1_p1'), report()));
 
     // Not even their own — otherwise a reported organizer could confirm who
     // flagged them by filing a report and probing the collection.
     await assertFails(
-      getDoc(doc(asParticipant(env, 'p1').firestore(), 'reports', 'r1')),
+      getDoc(doc(asParticipant(env, 'p1').firestore(), 'reports', 'event_e1_p1')),
     );
     await assertFails(
-      getDoc(doc(asOrganizer(env, 'o1').firestore(), 'reports', 'r1')),
+      getDoc(doc(asOrganizer(env, 'o1').firestore(), 'reports', 'event_e1_p1')),
     );
   });
 
   it('is readable and resolvable by an admin only', async () => {
-    await seed((db) => setDoc(doc(db, 'reports', 'r1'), report()));
+    await seed((db) => setDoc(doc(db, 'reports', 'event_e1_p1'), report()));
     const db = asAdmin(env).firestore();
 
-    await assertSucceeds(getDoc(doc(db, 'reports', 'r1')));
+    await assertSucceeds(getDoc(doc(db, 'reports', 'event_e1_p1')));
     await assertSucceeds(
-      updateDoc(doc(db, 'reports', 'r1'), { status: 'resolved' }),
+      updateDoc(doc(db, 'reports', 'event_e1_p1'), { status: 'resolved' }),
     );
   });
 
   it('refuses a non-admin resolving a report', async () => {
-    await seed((db) => setDoc(doc(db, 'reports', 'r1'), report()));
+    await seed((db) => setDoc(doc(db, 'reports', 'event_e1_p1'), report()));
     const db = asOrganizer(env, 'o1').firestore();
     await assertFails(
-      updateDoc(doc(db, 'reports', 'r1'), { status: 'resolved' }),
+      updateDoc(doc(db, 'reports', 'event_e1_p1'), { status: 'resolved' }),
+    );
+  });
+});
+
+// ===========================================================================
+//  users/{uid}/following + organizers/{id} — F-10 (public organizer profile)
+// ===========================================================================
+
+describe('following (F-10)', () => {
+  const follow = (organizerId = 'o1') => ({
+    organizerId,
+    createdAt: serverTimestamp(),
+  });
+
+  it('lets a user follow an organizer under their own account', async () => {
+    const db = asParticipant(env, 'p1').firestore();
+    await assertSucceeds(
+      setDoc(doc(db, 'users', 'p1', 'following', 'o1'), follow('o1')),
+    );
+  });
+
+  it('refuses following on behalf of someone else', async () => {
+    const db = asParticipant(env, 'p1').firestore();
+    await assertFails(
+      setDoc(doc(db, 'users', 'p2', 'following', 'o1'), follow('o1')),
+    );
+  });
+
+  it('refuses an id that contradicts the payload, and following oneself', async () => {
+    const db = asOrganizer(env, 'o1').firestore();
+    await assertFails(
+      setDoc(doc(db, 'users', 'o1', 'following', 'o2'), follow('o3')),
+    );
+    await assertFails(
+      setDoc(doc(db, 'users', 'o1', 'following', 'o1'), follow('o1')),
+    );
+  });
+
+  it('keeps the list private and immutable; unfollow is a delete', async () => {
+    await seed((db) =>
+      setDoc(doc(db, 'users', 'p1', 'following', 'o1'), {
+        organizerId: 'o1',
+        createdAt: serverTimestamp(),
+      }),
+    );
+    await assertFails(
+      getDoc(doc(asOrganizer(env, 'o1').firestore(), 'users', 'p1', 'following', 'o1')),
+    );
+    const db = asParticipant(env, 'p1').firestore();
+    await assertFails(
+      updateDoc(doc(db, 'users', 'p1', 'following', 'o1'), { organizerId: 'o2' }),
+    );
+    await assertSucceeds(deleteDoc(doc(db, 'users', 'p1', 'following', 'o1')));
+  });
+});
+
+describe('organizers (F-10 public profile)', () => {
+  beforeEach(async () => {
+    await seed(async (db) => {
+      await setDoc(doc(db, 'organizers', 'o1'), {
+        name: 'Hasina',
+        bio: 'Meetups Flutter à Tana.',
+        followerCount: 12,
+      });
+      await setDoc(doc(db, 'organizers', 'o1', 'followers', 'p1'), {
+        userId: 'p1',
+      });
+    });
+  });
+
+  it('is readable by any signed-in user', async () => {
+    await assertSucceeds(
+      getDoc(doc(asParticipant(env, 'p9').firestore(), 'organizers', 'o1')),
+    );
+  });
+
+  it('is never writable from a client, not even by the organizer', async () => {
+    const db = asOrganizer(env, 'o1').firestore();
+    await assertFails(updateDoc(doc(db, 'organizers', 'o1'), { followerCount: 9999 }));
+    await assertFails(setDoc(doc(db, 'organizers', 'o2'), { name: 'Faux' }));
+  });
+
+  it('hides who follows whom, from the organizer too', async () => {
+    await assertFails(
+      getDoc(doc(asOrganizer(env, 'o1').firestore(), 'organizers', 'o1', 'followers', 'p1')),
+    );
+  });
+});
+
+// ===========================================================================
+//  aggregates — F-07 (social proof)
+// ===========================================================================
+
+describe('moderationQueue (F-19)', () => {
+  beforeEach(async () => {
+    await seed((db) =>
+      setDoc(doc(db, 'moderationQueue', 'review_e1_p2'), {
+        targetType: 'review',
+        targetId: 'e1_p2',
+        reportCount: 3,
+        status: 'open',
+      }),
+    );
+  });
+
+  it('is readable by an admin only', async () => {
+    await assertSucceeds(
+      getDoc(doc(asAdmin(env).firestore(), 'moderationQueue', 'review_e1_p2')),
+    );
+    await assertFails(
+      getDoc(doc(asOrganizer(env, 'o1').firestore(), 'moderationQueue', 'review_e1_p2')),
+    );
+  });
+
+  it('is written by functions only, admins included', async () => {
+    await assertFails(
+      updateDoc(doc(asAdmin(env).firestore(), 'moderationQueue', 'review_e1_p2'), {
+        status: 'dismissed',
+      }),
+    );
+  });
+});
+
+describe('aggregates (F-07 social proof)', () => {
+  it('is readable when signed in, writable by nobody', async () => {
+    await seed((db) =>
+      setDoc(doc(db, 'aggregates', 'event_e1'), {
+        eventId: 'e1',
+        recentAttendees: [{ key: 'abc', name: 'Hery R.' }],
+      }),
+    );
+    const db = asParticipant(env, 'p1').firestore();
+    await assertSucceeds(getDoc(doc(db, 'aggregates', 'event_e1')));
+    await assertFails(
+      setDoc(doc(db, 'aggregates', 'event_e1'), { recentAttendees: [] }),
     );
   });
 });

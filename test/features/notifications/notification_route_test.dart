@@ -23,6 +23,24 @@ void main() {
     );
   });
 
+  test(
+    'a seat released or a new event from a followed organizer opens the event',
+    () {
+      for (final type in ['waitlist', 'newEvent']) {
+        expect(
+          NotificationRoute.locationFor({
+            'type': type,
+            'eventId': 'evt-1',
+            'reservationId': '',
+          }),
+          AppRoutes.eventDetailPath('evt-1'),
+          reason: type,
+        );
+      }
+      expect(NotificationRoute.locationFor({'type': 'newEvent'}), isNull);
+    },
+  );
+
   test('unknown or incomplete payloads open nothing', () {
     expect(NotificationRoute.locationFor({}), isNull);
     expect(NotificationRoute.locationFor({'type': 'promo'}), isNull);

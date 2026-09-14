@@ -30,13 +30,16 @@ lib/
     ├── waitlist/               events/{id}/waitlist
     ├── reviews/                reviews/{eventId_uid}
     ├── checkin/                door scanning: TicketPayload, CheckInPolicy, events/{id}/checkins
-    ├── organizer/              dashboard, stats, alerts, participants, CSV
+    ├── organizer/              dashboard, stats, alerts, participants, CSV (file + clipboard)
+    ├── organizers/             public organizer profile (organizers/{id}), follows
+    ├── moderation/             reports: ReportPolicy, repository, report sheet
     ├── notifications/          preferences, devices, FCM pipeline, notification centre
-    ├── participant/            participant shell
+    ├── participant/            participant shell, "Pour vous" recommendations
     └── support/                help, privacy, about
 
 functions/                      Cloud Functions (TypeScript, 2nd gen) + integration tests
 firebase/                       security rules, indexes, rules tests
+hosting/public/                 landing page, 404, .well-known/assetlinks.json
 ```
 
 ## Dependency rule
@@ -86,10 +89,15 @@ Repositories never throw; `guard()` maps exceptions through `ErrorMapper`:
 | Review: attendee, started, verified, 1–5, ≤ 2000 | `ReviewPolicy` + rules |
 | Door admission | `CheckInPolicy` (pure) + append-only rules |
 | Account deletion cascade | `deleteAccount` Cloud Function |
+| Follow: not oneself; counter server-side | `FollowPolicy` + rules + `onFollowWritten` |
+| Report: closed reasons, one per account, not one's own content | `ReportPolicy` + rules (deterministic id) |
+| Review hidden after 3 distinct reports, or by an admin | `onReportCreated`, `moderateContent`; filtered client-side |
 
 Pure calculators: `Reservation.ticketCode/ticketPayload`, `TicketPayload.parse`,
-`GuestListCsv`, `OrganizerStats`, `OrganizerAlerts`, `ReviewSummary`,
-`mergeCatalogue`, `NotificationRoute`, `NotificationPreferences`.
+`GuestListCsv` (+ `fileBytes`, `fileNameFor`), `OrganizerStats`,
+`OrganizerAlerts`, `ReviewSummary`, `mergeCatalogue`, `NotificationRoute`,
+`NotificationPreferences`, `Attendance.sentence`, `Recommender.rank`,
+`OrganizerProfile.averageRating`.
 
 ## Authentication
 
@@ -113,8 +121,27 @@ Two `StatefulShellRoute`s (participant 4 tabs, organizer 4 tabs). Leaf routes
 (detail, ticket, favorites, forms, participants, check-in, notification centre,
 support pages) sit on the root navigator. `RouteGuard.redirect` is a pure
 function; role-agnostic pages (`/welcome`, `/change-password`,
-`/account/edit`, `/notifications`, `/help`, `/privacy`, `/about`) are declared
-in `AppRoutes`. The router observer reports screen views to analytics.
+`/account/edit`, `/notifications`, `/help`, `/privacy`, `/about`,
+`/following`, and every `/organizers/{id}`) are declared in `AppRoutes`. The
+router observer reports screen views to analytics.
+
+### Deep links
+
+`https://eventhub-d411f.web.app/e/{id}` is one URL for everyone:
+
+* **App installed (Android)** — the manifest declares an auto-verified intent
+  filter on `/e/`; Android checks `hosting/public/.well-known/assetlinks.json`
+  and hands the URL to the app. Route `/e/:eventId` redirects to
+  `/events/:eventId`.
+* **No app / other platform** — Hosting rewrites `/e/**` to the
+  `publicEventPage` function: an HTML page with Open Graph and Twitter tags
+  (link previews), escaped user content, no attendee data, cached 5–10 min.
+
+A link usually cold-starts the app, i.e. arrives while booting or signed out.
+`RouteGuard` carries it as `?from=` through `/splash` and `/login` and
+resumes it once signed in, role confinement still applying. Only
+`AppRoutes.isDeepLinkTarget` locations (`/e/`, `/events/`, `/organizers/`)
+are honoured — `from` is external input.
 
 ## Catalogue pagination
 
@@ -141,6 +168,29 @@ session (permission, token, refresh, foreground display, taps, `deleteToken`
 on sign-out); web uses a VAPID key and `web/firebase-messaging-sw.js`.
 `NotificationRoute.locationFor(data)` is the single routing function for
 system notifications and the notification centre.
+
+## Server-maintained data
+
+| Data | Written by | Read by the app as |
+|---|---|---|
+| `organizers/{id}` (name, bio, counters) | `syncOrganizerProfile`, `onFollowWritten`, `onEventWritten`, `aggregateOrganizerRating` | `organizerProfileProvider(id)` |
+| `organizers/{id}/followers/{uid}` | `onFollowWritten` (mirror of `users/{uid}/following`) | never (fan-out only) |
+| `aggregates/event_{id}.recentAttendees` | `aggregateAttendance`, `deleteAccount` | `eventRecentAttendeesProvider(id)` |
+| `reviews/{id}.hidden` | `onReportCreated` (threshold), `moderateContent` | filtered out of `eventReviews` |
+| `moderationQueue/*`, `audit/*` | `onReportCreated`, `moderateContent`, `once()` markers | admins, console only |
+
+Triggers are delivered at least once. Counter updates go through `once()`,
+which reads `audit/fx_{eventId}` and writes it in the same transaction as the
+counter; the mirror and aggregate updates are idempotent by construction.
+
+## Discovery
+
+* **Social proof (F-07)** — head count from `Event.reservedCount` (exact,
+  transactional), short names from the aggregate; `Attendance.sentence` builds
+  the French sentence.
+* **Recommendations (F-18)** — `Recommender.rank` over the loaded catalogue,
+  favourites, active bookings and followed organizers; computed on device,
+  reason attached to each suggestion.
 
 ## Production concerns
 
@@ -181,9 +231,9 @@ without arguments regenerates `lib/firebase_options.dart` and
 
 | Layer | How |
 |---|---|
-| domain | pure unit tests (policies, calculators, parsers) |
+| domain | pure unit tests (policies, calculators, parsers, recommender, attendance sentence) |
 | core | Result/guard, ErrorMapper, AppLogger |
 | routes | RouteGuard as a pure function |
 | presentation | widget + golden tests with provider overrides (auth screens, startup, ticket, stats, notification centre) |
 | rules | `@firebase/rules-unit-testing` on emulators (`make test-rules`) |
-| functions | `node:test` integration tests on Auth/Firestore/Functions/Storage emulators (`make test-functions`) |
+| functions | `node:test` integration tests on Auth/Firestore/Functions/Storage emulators (`make test-functions`): triggers observed through their effects, callables and the public page over HTTP |

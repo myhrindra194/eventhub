@@ -16,6 +16,9 @@ abstract class AppUser with _$AppUser {
     required UserRole role,
     DateTime? createdAt,
 
+    /// Organizers only: the presentation published on their public profile.
+    String? bio,
+
     /// Read from Firebase Auth, never stored in Firestore: the token claim
     /// `email_verified` is what the security rules trust.
     @Default(false) bool emailVerified,

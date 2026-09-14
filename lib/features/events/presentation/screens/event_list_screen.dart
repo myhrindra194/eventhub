@@ -9,6 +9,7 @@ import 'package:eventhub/features/events/presentation/widgets/event_card.dart';
 import 'package:eventhub/features/events/presentation/widgets/event_filters.dart';
 import 'package:eventhub/features/events/presentation/widgets/load_more_events_button.dart';
 import 'package:eventhub/features/notifications/presentation/widgets/notification_bell_button.dart';
+import 'package:eventhub/features/participant/application/recommendation_providers.dart';
 import 'package:eventhub/routes/routes.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -111,6 +112,7 @@ class _CuratedFeed extends ConsumerWidget {
     final week = ref.watch(weekEventsProvider);
     final trending = ref.watch(trendingEventsProvider);
     final all = ref.watch(catalogueProvider);
+    final forYou = ref.watch(recommendedEventsProvider);
 
     // A single loading gate for the whole feed: showing three skeleton
     // rails that resolve at different times reads as a glitch.
@@ -150,6 +152,16 @@ class _CuratedFeed extends ConsumerWidget {
             subtitle: AppStrings.featuredSubtitle,
           ),
           _FeaturedCarousel(events: featuredList),
+          const SizedBox(height: AppSpacing.xxxl),
+        ],
+        // Personal rail second: the carousel sets the tone for everyone,
+        // this one answers "and for me?" (F-18).
+        if (forYou.isNotEmpty) ...[
+          const SectionHeader(
+            title: AppStrings.forYou,
+            subtitle: AppStrings.forYouSubtitle,
+          ),
+          _EventRail(events: [for (final r in forYou) r.event]),
           const SizedBox(height: AppSpacing.xxxl),
         ],
         if (trendingList.isNotEmpty) ...[

@@ -136,6 +136,14 @@
         { "fieldPath": "createdAt", "order": "ASCENDING" }
       ]
     },
+    {
+      "collectionGroup": "reports",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "targetType", "order": "ASCENDING" },
+        { "fieldPath": "targetId", "order": "ASCENDING" }
+      ]
+    },
 
     {
       "collectionGroup": "favorites",
@@ -205,6 +213,22 @@
     {
       "collectionGroup": "devices",
       "fieldPath": "token",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "audit",
+      "fieldPath": "expiresAt",
+      "ttl": true,
+      "indexes": []
+    },
+    {
+      "collectionGroup": "aggregates",
+      "fieldPath": "recentAttendees",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "organizers",
+      "fieldPath": "bio",
       "indexes": []
     },
     {

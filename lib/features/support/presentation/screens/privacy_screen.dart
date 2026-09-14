@@ -31,20 +31,25 @@ class PrivacyScreen extends StatelessWidget {
           body:
               'Votre nom, votre adresse email et votre rôle, donnés à '
               "l'inscription (ou par Google si vous vous connectez avec). Vos "
-              'réservations, favoris, inscriptions en liste d’attente et avis. '
-              'Pour les organisateurs, les événements publiés, leurs images et '
-              'les entrées scannées. Les appareils sur lesquels vous acceptez '
-              'les notifications.',
+              'réservations, favoris, organisateurs suivis, inscriptions en '
+              'liste d’attente, avis et signalements. Pour les organisateurs, '
+              'la présentation publique, les événements publiés, leurs images '
+              'et les entrées scannées. Les appareils sur lesquels vous '
+              'acceptez les notifications.',
         ),
         NumberedSection(
           number: '02',
           title: 'Qui peut le voir',
           body:
-              'Votre profil, vos favoris, vos appareils et vos préférences '
-              'sont privés. Quand vous réservez, votre nom et votre email '
-              "deviennent visibles par l'organisateur de cet événement, et par "
-              "lui seul — c'est la liste qu'il consulte à l'entrée. Un avis "
-              'est public, signé de votre nom.',
+              'Votre profil, vos favoris, vos abonnements, vos appareils et vos '
+              'préférences sont privés : personne, pas même un organisateur, '
+              'ne sait qui le suit. Quand vous réservez, votre nom et votre '
+              "email deviennent visibles par l'organisateur de cet événement, "
+              "et par lui seul — c'est la liste qu'il consulte à l'entrée. Les "
+              'autres utilisateurs voient seulement votre prénom et l’initiale '
+              'de votre nom parmi « qui y va ». Un avis est public, signé de '
+              'votre nom. Un signalement est anonyme. Pour un organisateur, le '
+              'nom et la présentation sont publics ; l’email ne l’est jamais.',
         ),
         NumberedSection(
           number: '03',
@@ -71,9 +76,11 @@ class PrivacyScreen extends StatelessWidget {
           title: 'Combien de temps',
           body:
               'Tant que votre compte existe. Les notifications sont effacées '
-              'au bout de 30 jours. Une réservation annulée reste dans '
-              "l'historique, pour que la jauge de l'organisateur reste "
-              'cohérente.',
+              'au bout de 30 jours, le journal de modération au bout d’un an. '
+              "Une réservation annulée reste dans l'historique, pour que la "
+              "jauge de l'organisateur reste cohérente. Un lien partagé "
+              "affiche publiquement le titre, la date, le lieu, l'organisateur "
+              'et les places restantes de l’événement — jamais ses inscrits.',
         ),
         NumberedSection(
           number: '06',

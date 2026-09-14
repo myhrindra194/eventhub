@@ -66,8 +66,12 @@ class AuthController extends _$AuthController {
     return result;
   }
 
-  Future<Result<AppUser>> updateProfile({required String name}) =>
-      _run(() => ref.read(authRepositoryProvider).updateProfile(name: name));
+  Future<Result<AppUser>> updateProfile({required String name, String? bio}) =>
+      _run(
+        () => ref
+            .read(authRepositoryProvider)
+            .updateProfile(name: name, bio: bio),
+      );
 
   Future<Result<void>> sendPasswordReset(String email) => _run(
     () => ref.read(authRepositoryProvider).sendPasswordReset(email: email),

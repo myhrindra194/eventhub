@@ -80,6 +80,15 @@ class AppAnalytics {
   void ticketScanned(String status) =>
       _event('ticket_scanned', {'status': status});
 
+  void follow(String organizerId, {required bool added}) => _event(
+    added ? 'organizer_followed' : 'organizer_unfollowed',
+    {'organizer_id': organizerId},
+  );
+
+  /// Target type and reason only — never the reported content or its id.
+  void contentReported(String targetType, String reason) =>
+      _event('content_reported', {'target_type': targetType, 'reason': reason});
+
   void _event(String name, Map<String, Object> parameters) =>
       _fire(() => _analytics.logEvent(name: name, parameters: parameters));
 

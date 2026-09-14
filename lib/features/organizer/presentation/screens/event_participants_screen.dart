@@ -14,6 +14,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:share_plus/share_plus.dart';
 
 /// Guest list for one event.
 ///
@@ -46,13 +47,44 @@ class _EventParticipantsScreenState
   /// The whole list, not the filtered view: an export that silently drops
   /// the people hidden by a search query would be a nasty surprise at the
   /// door.
-  Future<void> _export(List<Reservation> guests) async {
+  Future<void> _copy(List<Reservation> guests) async {
     await Clipboard.setData(ClipboardData(text: GuestListCsv.build(guests)));
     if (!mounted) return;
     final rows = guests.length;
     context.showSuccess(
       '${AppStrings.guestListCopied} · $rows ligne${rows > 1 ? 's' : ''}.',
     );
+  }
+
+  /// A real `.csv` file through the system share sheet (F-15): straight to
+  /// Drive, an email or a spreadsheet app. Where files cannot be shared (some
+  /// browsers, desktop), falls back to the clipboard rather than failing.
+  Future<void> _shareFile(List<Reservation> guests, String? title) async {
+    final name = GuestListCsv.fileNameFor(title ?? '');
+    final box = context.findRenderObject() as RenderBox?;
+    try {
+      final result = await SharePlus.instance.share(
+        ShareParams(
+          files: [
+            XFile.fromData(
+              Uint8List.fromList(GuestListCsv.fileBytes(guests)),
+              mimeType: 'text/csv',
+              name: name,
+            ),
+          ],
+          fileNameOverrides: [name],
+          subject: title == null
+              ? AppStrings.participants
+              : '$title — participants',
+          sharePositionOrigin: box == null
+              ? null
+              : box.localToGlobal(Offset.zero) & box.size,
+        ),
+      );
+      if (result.status == ShareResultStatus.unavailable) await _copy(guests);
+    } on Object {
+      await _copy(guests);
+    }
   }
 
   @override
@@ -78,12 +110,27 @@ class _EventParticipantsScreenState
           AppSpacing.gutter,
           MediaQuery.paddingOf(context).bottom + AppSpacing.md,
         ),
-        child: AppButton.secondary(
-          label: AppStrings.exportGuestList,
-          icon: Icons.file_download_outlined,
-          size: AppButtonSize.medium,
-          elevated: false,
-          onPressed: guests.isEmpty ? null : () => _export(guests),
+        child: Row(
+          children: [
+            Expanded(
+              child: AppButton.secondary(
+                label: AppStrings.exportCsvFile,
+                icon: Icons.ios_share_rounded,
+                size: AppButtonSize.medium,
+                elevated: false,
+                onPressed: guests.isEmpty
+                    ? null
+                    : () => _shareFile(guests, event?.title),
+              ),
+            ),
+            const SizedBox(width: AppSpacing.md),
+            IconActionButton(
+              icon: Icons.content_copy_rounded,
+              tooltip: AppStrings.copyCsv,
+              size: 48,
+              onPressed: guests.isEmpty ? null : () => _copy(guests),
+            ),
+          ],
         ),
       ),
       appBar: AppBar(

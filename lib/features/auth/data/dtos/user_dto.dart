@@ -16,6 +16,11 @@ abstract class UserDto with _$UserDto {
     required String email,
     @JsonKey(unknownEnumValue: UserRole.participant) required UserRole role,
     @NullableTimestampConverter() DateTime? createdAt,
+
+    /// Published on `organizers/{uid}` by the `syncOrganizerProfile` Cloud
+    /// Function. `includeIfNull: false`: a profile without a bio is created
+    /// without the field, which the rules accept either way.
+    @JsonKey(includeIfNull: false) String? bio,
   }) = _UserDto;
 
   factory UserDto.fromJson(Map<String, dynamic> json) =>
@@ -26,6 +31,7 @@ abstract class UserDto with _$UserDto {
     email: user.email,
     role: user.role,
     createdAt: user.createdAt,
+    bio: user.bio,
   );
 
   AppUser toDomain(String id) => AppUser(
@@ -34,5 +40,6 @@ abstract class UserDto with _$UserDto {
     email: email,
     role: role,
     createdAt: createdAt,
+    bio: bio,
   );
 }

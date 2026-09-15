@@ -16,7 +16,10 @@ T _$identity<T>(T value) => value;
 mixin _$EventDraft {
 
  String get title; String get description; EventCategory get category; DateTime get startsAt; String get location;/// Ignored when [tiers] is not empty: the capacity is then their sum.
- int get capacity; String? get imageUrl;/// Ticket types (F-12). Empty: one free pool of [capacity] seats.
+ int get capacity;/// Cover image, as an `https://` link to an image hosted elsewhere
+/// (there is no upload on the free plan). Blank means none: the event
+/// keeps its generated visual.
+ String? get imageUrl;/// Ticket types (F-12). Empty: one free pool of [capacity] seats.
  List<EventTierDraft> get tiers;/// Required as soon as one type is paid.
  String? get currency;
 /// Create a copy of EventDraft
@@ -233,6 +236,9 @@ class _EventDraft extends EventDraft {
 @override final  String location;
 /// Ignored when [tiers] is not empty: the capacity is then their sum.
 @override final  int capacity;
+/// Cover image, as an `https://` link to an image hosted elsewhere
+/// (there is no upload on the free plan). Blank means none: the event
+/// keeps its generated visual.
 @override final  String? imageUrl;
 /// Ticket types (F-12). Empty: one free pool of [capacity] seats.
  final  List<EventTierDraft> _tiers;

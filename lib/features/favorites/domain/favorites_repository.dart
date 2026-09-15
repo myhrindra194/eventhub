@@ -1,9 +1,9 @@
 import 'package:eventhub/core/result/result.dart';
 
-/// `favorites (user_id, event_id)` — the pair is the primary key, so a
-/// duplicate is structurally impossible and "is it a favourite?" is a set
-/// lookup on the ids already streamed. Deleting an event deletes its
-/// favorites with it (foreign-key cascade).
+/// `users/{uid}/favorites/{eventId}` — keyed by the event, so a duplicate is
+/// structurally impossible and "is it a favourite?" is a set lookup on the
+/// ids already streamed. Without a server nothing cascades when an event is
+/// deleted: a favorite pointing at a missing event is simply not shown.
 abstract interface class FavoritesRepository {
   /// Event ids, most recently starred first.
   Stream<List<String>> watchFavoriteIds(String userId);

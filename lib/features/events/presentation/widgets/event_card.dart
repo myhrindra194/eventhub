@@ -203,8 +203,8 @@ class _FavoriteSlot extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final user = ref.watch(currentUserProvider);
-    if (user == null || !user.isParticipant) return const SizedBox.shrink();
+    // Organizers keep every participant right, favorites included.
+    if (ref.watch(currentUserProvider) == null) return const SizedBox.shrink();
     return Padding(
       padding: const EdgeInsets.only(left: AppSpacing.sm),
       child: FavoriteButton(eventId: eventId, size: 34),

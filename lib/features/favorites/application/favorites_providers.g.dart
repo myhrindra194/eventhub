@@ -55,7 +55,7 @@ final class FavoritesRepositoryProvider
 }
 
 String _$favoritesRepositoryHash() =>
-    r'408a4dc6fed9fb82a856b8aace2d6e7344ff6295';
+    r'61645e075739c003dc02586b94437d5884bd70d3';
 
 @ProviderFor(favoriteIds)
 final favoriteIdsProvider = FavoriteIdsProvider._();
@@ -94,32 +94,35 @@ final class FavoriteIdsProvider
   }
 }
 
-String _$favoriteIdsHash() => r'7a89b3fd4c20654077c6b3483287c66514ae184c';
+String _$favoriteIdsHash() => r'359f1e8746aeb0570f14a468053378e3e5e5902c';
 
-/// Toggles sent but not yet echoed by Realtime: event id → starred.
+/// Toggles sent but not yet reflected by the listener: event id → starred.
 ///
-/// Unlike Firestore, Supabase has no local write cache, so the stream only
-/// reflects a toggle after the round trip. Overlaying the intent keeps the
-/// heart flipping at the tap; an entry is dropped once the stream agrees, or
-/// when the write fails.
+/// Firestore shows a local write at once, but starring first reads the
+/// document (the rules refuse a `set` over an existing favorite), so the
+/// write — and the listener — lag by that round trip. Overlaying the intent
+/// keeps the heart flipping at the tap; an entry is dropped once the stream
+/// agrees, or when the write fails.
 
 @ProviderFor(PendingFavorites)
 final pendingFavoritesProvider = PendingFavoritesProvider._();
 
-/// Toggles sent but not yet echoed by Realtime: event id → starred.
+/// Toggles sent but not yet reflected by the listener: event id → starred.
 ///
-/// Unlike Firestore, Supabase has no local write cache, so the stream only
-/// reflects a toggle after the round trip. Overlaying the intent keeps the
-/// heart flipping at the tap; an entry is dropped once the stream agrees, or
-/// when the write fails.
+/// Firestore shows a local write at once, but starring first reads the
+/// document (the rules refuse a `set` over an existing favorite), so the
+/// write — and the listener — lag by that round trip. Overlaying the intent
+/// keeps the heart flipping at the tap; an entry is dropped once the stream
+/// agrees, or when the write fails.
 final class PendingFavoritesProvider
     extends $NotifierProvider<PendingFavorites, Map<String, bool>> {
-  /// Toggles sent but not yet echoed by Realtime: event id → starred.
+  /// Toggles sent but not yet reflected by the listener: event id → starred.
   ///
-  /// Unlike Firestore, Supabase has no local write cache, so the stream only
-  /// reflects a toggle after the round trip. Overlaying the intent keeps the
-  /// heart flipping at the tap; an entry is dropped once the stream agrees, or
-  /// when the write fails.
+  /// Firestore shows a local write at once, but starring first reads the
+  /// document (the rules refuse a `set` over an existing favorite), so the
+  /// write — and the listener — lag by that round trip. Overlaying the intent
+  /// keeps the heart flipping at the tap; an entry is dropped once the stream
+  /// agrees, or when the write fails.
   PendingFavoritesProvider._()
     : super(
         from: null,
@@ -149,12 +152,13 @@ final class PendingFavoritesProvider
 
 String _$pendingFavoritesHash() => r'55040799600f6c397a9281ce36f05eeb2ad6a172';
 
-/// Toggles sent but not yet echoed by Realtime: event id → starred.
+/// Toggles sent but not yet reflected by the listener: event id → starred.
 ///
-/// Unlike Firestore, Supabase has no local write cache, so the stream only
-/// reflects a toggle after the round trip. Overlaying the intent keeps the
-/// heart flipping at the tap; an entry is dropped once the stream agrees, or
-/// when the write fails.
+/// Firestore shows a local write at once, but starring first reads the
+/// document (the rules refuse a `set` over an existing favorite), so the
+/// write — and the listener — lag by that round trip. Overlaying the intent
+/// keeps the heart flipping at the tap; an entry is dropped once the stream
+/// agrees, or when the write fails.
 
 abstract class _$PendingFavorites extends $Notifier<Map<String, bool>> {
   Map<String, bool> build();

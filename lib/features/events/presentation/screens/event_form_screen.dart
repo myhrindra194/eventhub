@@ -15,7 +15,7 @@ import 'package:eventhub/features/events/domain/entities/event_category.dart';
 import 'package:eventhub/features/events/domain/entities/event_draft.dart';
 import 'package:eventhub/features/events/domain/entities/event_tier.dart';
 import 'package:eventhub/features/events/presentation/widgets/event_card.dart';
-import 'package:eventhub/features/events/presentation/widgets/event_image_picker.dart';
+import 'package:eventhub/features/events/presentation/widgets/event_cover_field.dart';
 import 'package:eventhub/routes/routes.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -27,7 +27,7 @@ import 'package:go_router/go_router.dart';
 /// One long form rather than a wizard: an organizer publishing their second
 /// event knows every field, and a wizard would make them tap "suivant" four
 /// times. What makes it bearable is that constraints are stated *before*
-/// the mistake (image size, minimum title, capacity range), server-side
+/// the mistake (https cover link, minimum title, capacity range), server-side
 /// validation errors are mapped back onto the exact field that caused
 /// them, and the submit button never scrolls out of reach.
 class EventFormScreen extends ConsumerWidget {
@@ -73,6 +73,7 @@ class _EventFormState extends ConsumerState<_EventForm> {
   late final _capacity = TextEditingController(
     text: widget.initial?.capacity.toString() ?? '50',
   );
+  late final _imageUrl = TextEditingController(text: widget.initial?.imageUrl);
 
   // Ticket types (F-12).
   late bool _useTiers = widget.initial?.hasTiers ?? false;
@@ -99,7 +100,6 @@ class _EventFormState extends ConsumerState<_EventForm> {
       widget.initial?.startsAt ??
       ref.read(clockProvider)().add(const Duration(days: 7)).withTime(18, 0);
 
-  PendingImage? _pendingImage;
   Map<String, String> _serverErrors = const {};
 
   bool get _isEditing => widget.initial != null;
@@ -110,6 +110,7 @@ class _EventFormState extends ConsumerState<_EventForm> {
     _description.dispose();
     _location.dispose();
     _capacity.dispose();
+    _imageUrl.dispose();
     for (final tier in _tiers) {
       tier.dispose();
     }
@@ -154,7 +155,7 @@ class _EventFormState extends ConsumerState<_EventForm> {
       startsAt: _startsAt,
       location: _location.text,
       capacity: int.tryParse(_capacity.text.trim()) ?? 0,
-      imageUrl: widget.initial?.imageUrl,
+      imageUrl: _imageUrl.text,
       currency: _useTiers ? _currency : null,
       tiers: !_useTiers
           ? const []
@@ -173,11 +174,7 @@ class _EventFormState extends ConsumerState<_EventForm> {
 
     final result = await ref
         .read(eventFormControllerProvider.notifier)
-        .submit(
-          draft: draft,
-          existingEventId: widget.initial?.id,
-          image: _pendingImage,
-        );
+        .submit(draft: draft, existingEventId: widget.initial?.id);
     if (!mounted) return;
 
     switch (result) {
@@ -243,11 +240,11 @@ class _EventFormState extends ConsumerState<_EventForm> {
           children: [
             LabeledField(
               label: AppStrings.eventBanner,
-              hint: 'JPG ou PNG, 5 Mo maximum — format paysage recommandé',
-              child: EventImagePicker(
-                currentUrl: widget.initial?.imageUrl,
-                pending: _pendingImage,
-                onPicked: (image) => setState(() => _pendingImage = image),
+              hint: 'Lien https vers une image paysage (16:9), facultatif',
+              child: EventCoverField(
+                controller: _imageUrl,
+                seed: widget.initial?.id ?? 'new-event',
+                errorText: _fieldError('imageUrl'),
               ),
             ),
             const SizedBox(height: AppSpacing.xxl),

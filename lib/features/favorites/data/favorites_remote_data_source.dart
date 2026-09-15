@@ -1,46 +1,46 @@
-import 'package:eventhub/core/supabase/db.dart';
-import 'package:eventhub/core/supabase/supabase_providers.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:eventhub/core/firebase/firebase_providers.dart';
+import 'package:eventhub/core/firebase/firestore_paths.dart';
 
-/// `public.favorites` (RLS: owner only). `user_id` defaults to `auth.uid()`
-/// and is not even insertable, so a favourite can only ever be one's own.
+/// `users/{uid}/favorites/{eventId}` `{eventId, createdAt}` — owner only.
+///
+/// The rules allow `create` and `delete` but never `update`, so a `set` over
+/// an existing favorite is refused: [add] reads before writing.
 class FavoritesRemoteDataSource {
-  const FavoritesRemoteDataSource(this._client);
+  const FavoritesRemoteDataSource(this._db);
 
-  final SupabaseClient _client;
+  final FirebaseFirestore _db;
 
-  /// Generous but bounded: a Realtime subscription replays its whole result
-  /// on each change.
+  /// Generous but bounded: a listener re-reads its whole result after a
+  /// reconnection.
   static const maxFavorites = 500;
 
-  /// SQLSTATE `unique_violation`.
-  static const _alreadyStarred = '23505';
+  CollectionReference<Map<String, dynamic>> _favorites(String uid) => _db
+      .collection(Collections.users)
+      .doc(uid)
+      .collection(Collections.favorites);
 
-  Stream<List<String>> watchIds(String uid) => _client
-      .from(Tables.favorites)
-      .stream(primaryKey: ['user_id', 'event_id'])
-      .eq('user_id', uid)
-      .order('created_at')
+  /// Event ids, most recently starred first. The document id *is* the event
+  /// id.
+  Stream<List<String>> watchIds(String uid) => _favorites(uid)
+      .orderBy('createdAt', descending: true)
       .limit(maxFavorites)
-      .map((rows) => [for (final row in rows) row['event_id'] as String])
+      .snapshots()
+      .map((s) => List<String>.unmodifiable([for (final d in s.docs) d.id]))
       .resilient('favorites');
 
   /// Idempotent, like the toggle expects: starring twice (two taps racing,
-  /// another device) is not an error. The primary key `(user_id, event_id)`
-  /// makes the duplicate impossible; its violation is swallowed here.
-  Future<void> add(String eventId) async {
-    try {
-      await _client.from(Tables.favorites).insert({'event_id': eventId});
-    } on PostgrestException catch (e) {
-      if (e.code != _alreadyStarred) rethrow;
-    }
+  /// another device) is not an error — an existing favorite is left as is.
+  Future<void> add(String uid, String eventId) async {
+    final ref = _favorites(uid).doc(eventId);
+    if ((await ref.get()).exists) return;
+    await ref.set({
+      'eventId': eventId,
+      'createdAt': FieldValue.serverTimestamp(),
+    });
   }
 
-  Future<void> remove(String uid, String eventId) async {
-    await _client
-        .from(Tables.favorites)
-        .delete()
-        .eq('user_id', uid)
-        .eq('event_id', eventId);
-  }
+  /// Deleting a missing document succeeds: already idempotent.
+  Future<void> remove(String uid, String eventId) =>
+      _favorites(uid).doc(eventId).delete();
 }

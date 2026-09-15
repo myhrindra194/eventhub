@@ -22,6 +22,10 @@ abstract class EventDraft with _$EventDraft {
 
     /// Ignored when [tiers] is not empty: the capacity is then their sum.
     required int capacity,
+
+    /// Cover image, as an `https://` link to an image hosted elsewhere
+    /// (there is no upload on the free plan). Blank means none: the event
+    /// keeps its generated visual.
     String? imageUrl,
 
     /// Ticket types (F-12). Empty: one free pool of [capacity] seats.
@@ -33,6 +37,29 @@ abstract class EventDraft with _$EventDraft {
 
   static const titleMinLength = 3;
   static const maxCapacity = 100000;
+
+  /// Same ceiling as the rules (`isHttpsUrl`).
+  static const maxImageUrlLength = 2048;
+
+  /// `null` when [value] is blank or a usable cover link, else the sentence
+  /// to show under the field. Only `https` is accepted: the rules refuse
+  /// anything else, and a plain-http image would be blocked on the web and
+  /// on iOS anyway.
+  static String? imageUrlError(String? value) {
+    final url = value?.trim() ?? '';
+    if (url.isEmpty) return null;
+    if (url.length > maxImageUrlLength) {
+      return 'Le lien est trop long ($maxImageUrlLength caractères au plus).';
+    }
+    final uri = Uri.tryParse(url);
+    if (uri == null ||
+        uri.scheme != 'https' ||
+        uri.host.isEmpty ||
+        url.contains(RegExp(r'\s'))) {
+      return 'Collez un lien d’image commençant par https://';
+    }
+    return null;
+  }
 
   int get totalCapacity =>
       tiers.isEmpty ? capacity : tiers.fold(0, (sum, t) => sum + t.capacity);
@@ -67,6 +94,10 @@ abstract class EventDraft with _$EventDraft {
     if (!startsAt.isAfter(now)) {
       errors['startsAt'] = "La date de l'événement doit être dans le futur.";
     }
+    if (imageUrlError(imageUrl) case final error?) {
+      errors['imageUrl'] = error;
+    }
+    final cover = imageUrl?.trim() ?? '';
     if (errors.isNotEmpty) {
       return Err(
         ValidationFailure(
@@ -80,6 +111,7 @@ abstract class EventDraft with _$EventDraft {
         title: title.trim(),
         description: description.trim(),
         location: location.trim(),
+        imageUrl: cover.isEmpty ? null : cover,
         capacity: totalCapacity,
         currency: hasPaidTier ? currency : null,
         tiers: [

@@ -1,240 +1,205 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:eventhub/core/errors/failure.dart';
 import 'package:eventhub/core/errors/failure_exception.dart';
-import 'package:eventhub/core/supabase/db.dart';
-import 'package:eventhub/core/supabase/supabase_providers.dart';
-import 'package:eventhub/core/supabase/timestamp_converter.dart';
+import 'package:eventhub/core/firebase/firebase_providers.dart';
+import 'package:eventhub/core/firebase/firestore_paths.dart';
 import 'package:eventhub/features/events/data/dtos/event_dto.dart';
 import 'package:eventhub/features/events/domain/entities/event.dart';
 import 'package:eventhub/features/events/domain/entities/event_draft.dart';
-import 'package:flutter/foundation.dart';
-import 'package:rxdart/rxdart.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:eventhub/features/events/domain/entities/event_tier.dart';
 
-/// Supabase access for `events`, `event_tiers` and `event_staff`.
+/// What an edit writes, decided from the event as read inside the
+/// transaction.
+class EventEdit {
+  const EventEdit({
+    required this.draft,
+    required this.capacity,
+    required this.availablePlaces,
+    required this.tiers,
+  });
+
+  /// Validated draft.
+  final EventDraft draft;
+  final int capacity;
+  final int availablePlaces;
+  final List<EventTier> tiers;
+}
+
+/// Decides an edit from the fresh event: a [Failure] to refuse it, an
+/// [EventEdit] to write.
+typedef EventEditDecision =
+    ({Failure? failure, EventEdit? edit}) Function(Event current);
+
+/// Cloud Firestore access for `events/{eventId}`.
 ///
-/// Reads go straight to the tables (RLS: the catalogue is visible to every
-/// signed-in user); writes go through `save_event` / `delete_event`, which
-/// re-validate the draft and own the seat counters. SDK exceptions pass
+/// There is no server code on the Spark plan: every write here is shaped
+/// exactly as `firebase/firestore.rules` expects (see
+/// `firebase/tests/events.rules.test.js`) — the event and the organizer's
+/// public counter move in one batch, and an edit recomputes the seat counter
+/// from the document read in the same transaction. SDK exceptions pass
 /// through for `ErrorMapper`.
 class EventRemoteDataSource {
-  const EventRemoteDataSource(this._client);
+  const EventRemoteDataSource(this._db);
 
-  final SupabaseClient _client;
+  final FirebaseFirestore _db;
 
-  /// Every list is explicitly bounded: a Realtime subscription replays its
-  /// whole result on each change, and the `in` filter used to join the
-  /// related tables accepts at most 100 values.
+  /// Every list is explicitly bounded: the rules refuse an event query
+  /// without `limit` (≤ 200), and a listener re-reads its whole result after
+  /// a reconnection — on the free quota, reads are the budget.
   static const maxPageSize = 100;
 
-  /// Embeds what a one-shot read needs to build a complete [Event].
-  static const _withRelations = '*, event_tiers(*), event_staff(user_id)';
+  CollectionReference<Map<String, dynamic>> get _events =>
+      _db.collection(Collections.events);
 
-  /// First page of the catalogue, live.
-  ///
-  /// A Realtime stream orders by one column only, so ties on `starts_at`
-  /// are broken client-side by id. The page boundary itself is therefore
-  /// exact only up to events starting at the very same instant as the last
-  /// one; `mergeCatalogue` deduplicates whatever [fetchUpcomingAfter]
-  /// returns twice.
-  Stream<List<Event>> watchUpcoming({required DateTime from}) => _withRelated(
-    _client
-        .from(Tables.events)
-        .stream(primaryKey: ['id'])
-        .gte('starts_at', _iso(from))
-        .order('starts_at', ascending: true)
-        .limit(maxPageSize),
-    sort: _catalogueOrder,
-  ).resilient('events.upcoming');
+  DocumentReference<Map<String, dynamic>> _organizer(String uid) =>
+      _db.collection(Collections.organizers).doc(uid);
 
-  /// The page after [after] in catalogue order (`starts_at`, then id): a
-  /// keyset cursor, so two events at the same minute are neither skipped
+  /// First page of the catalogue, live, in catalogue order (`startsAt`, then
+  /// id — the document id breaks ties so the cursor of
+  /// [fetchUpcomingAfter] is exact).
+  Stream<List<Event>> watchUpcoming({required DateTime from}) => _upcoming(
+    from,
+  ).limit(maxPageSize).snapshots().map(_toEvents).resilient('events.upcoming');
+
+  /// The page after [after] in catalogue order: a keyset cursor on
+  /// (`startsAt`, id), so two events at the same minute are neither skipped
   /// nor repeated.
   Future<List<Event>> fetchUpcomingAfter({
     required DateTime from,
     required Event after,
     required int limit,
   }) async {
-    final at = _iso(after.startsAt);
-    // Quoted: an ISO timestamp contains `.` and `:`, reserved in a
-    // PostgREST logic tree.
-    final rows = await _client
-        .from(Tables.events)
-        .select(_withRelations)
-        .gte('starts_at', _iso(from))
-        .or('starts_at.gt."$at",and(starts_at.eq."$at",id.gt.${after.id})')
-        .order('starts_at', ascending: true)
-        .order('id', ascending: true)
-        .limit(limit.clamp(1, maxPageSize));
-    return [for (final row in rows) EventDto.fromJson(row).toDomain()];
+    final snapshot = await _upcoming(from)
+        .startAfter([Timestamp.fromDate(after.startsAt), after.id])
+        .limit(limit.clamp(1, maxPageSize))
+        .get();
+    return _toEvents(snapshot);
   }
 
-  /// All events of an organizer, most recent first.
-  Stream<List<Event>> watchByOrganizer(String organizerId) => _withRelated(
-    _client
-        .from(Tables.events)
-        .stream(primaryKey: ['id'])
-        .eq('organizer_id', organizerId)
-        .order('starts_at')
-        .limit(maxPageSize),
-    sort: _mostRecentFirst,
-  ).resilient('events.organizer');
+  Query<Map<String, dynamic>> _upcoming(DateTime from) => _events
+      .where('startsAt', isGreaterThanOrEqualTo: Timestamp.fromDate(from))
+      .orderBy('startsAt')
+      .orderBy(FieldPath.documentId);
 
-  /// Events the user co-organizes (F-16), most recent first: the team rows
-  /// give the ids, then the events are followed by id.
-  Stream<List<Event>> watchByStaff(String userId) => _client
-      .from(Tables.eventStaff)
-      .stream(primaryKey: ['event_id', 'user_id'])
-      .eq('user_id', userId)
+  /// All events of an organizer, most recent first (composite index
+  /// `organizerId ASC, startsAt DESC`).
+  Stream<List<Event>> watchByOrganizer(String organizerId) => _events
+      .where('organizerId', isEqualTo: organizerId)
+      .orderBy('startsAt', descending: true)
       .limit(maxPageSize)
-      .map(_eventIds)
-      .distinct(listEquals)
-      .switchMap(
-        (ids) => ids.isEmpty
-            ? Stream.value(const <Event>[])
-            : _withRelated(
-                _client
-                    .from(Tables.events)
-                    .stream(primaryKey: ['id'])
-                    .inFilter('id', ids)
-                    .order('starts_at')
-                    .limit(maxPageSize),
-                sort: _mostRecentFirst,
-              ),
-      )
+      .snapshots()
+      .map(_toEvents)
+      .resilient('events.organizer');
+
+  /// Events the user co-organizes (F-16), most recent first: `staffIds` is
+  /// on the event itself, so one `array-contains` query replaces a join
+  /// (composite index `staffIds CONTAINS, startsAt DESC`).
+  Stream<List<Event>> watchByStaff(String userId) => _events
+      .where('staffIds', arrayContains: userId)
+      .orderBy('startsAt', descending: true)
+      .limit(maxPageSize)
+      .snapshots()
+      .map(_toEvents)
       .resilient('events.staff');
 
   /// Emits `null` when the event does not exist or was deleted.
-  Stream<Event?> watchById(String eventId) => _withRelated(
-    _client.from(Tables.events).stream(primaryKey: ['id']).eq('id', eventId),
-  ).map((events) => events.isEmpty ? null : events.first).resilient('event');
+  Stream<Event?> watchById(String eventId) => _events
+      .doc(eventId)
+      .snapshots()
+      .map((s) => s.data() == null ? null : _event(s.id, s.data()!))
+      .resilient('event');
 
   Future<Event> getById(String eventId) async {
-    final row = await _client
-        .from(Tables.events)
-        .select(_withRelations)
-        .eq('id', eventId)
-        .maybeSingle();
-    if (row == null) {
-      throw FailureException(
-        NotFoundFailure(
-          resource: 'events/$eventId',
-          message: 'Événement introuvable.',
+    final snapshot = await _events.doc(eventId).get();
+    final data = snapshot.data();
+    if (data == null) throw FailureException(_notFound(eventId));
+    return _event(snapshot.id, data);
+  }
+
+  /// Publishes a new event and returns its id, in the one batch the rules
+  /// accept: the event (every seat free, `createdAt` from the server) and
+  /// `organizers/{uid}.eventCount + 1` proven by `lastEventId`.
+  Future<String> create({
+    required EventDraft draft,
+    required TierPlan? plan,
+    required String organizerId,
+    required String organizerName,
+  }) async {
+    final ref = _events.doc();
+    final batch = _db.batch()
+      ..set(
+        ref,
+        EventDto.createFields(
+          draft,
+          organizerId: organizerId,
+          organizerName: organizerName,
+          plan: plan,
         ),
-      );
-    }
-    return EventDto.fromJson(row).toDomain();
+      )
+      ..update(_organizer(organizerId), {
+        'eventCount': FieldValue.increment(1),
+        'lastEventId': ref.id,
+      });
+    await batch.commit();
+    return ref.id;
   }
 
-  /// Creates ([eventId] null) or updates an event; returns its id. The
-  /// database checks the team membership, the seats already sold per type
-  /// and the currency lock in the same transaction as the write.
-  Future<String> save(EventDraft draft, {String? eventId}) =>
-      _client.rpc<String>(
-        Rpc.saveEvent,
-        params: {'p_event': EventDto.saveEventPayload(draft, eventId: eventId)},
-      );
-
-  /// Owner only, and only while no seat is taken (checked server-side). Its
-  /// ticket types, team and favorites go with it (foreign-key cascade).
-  Future<void> delete(String eventId) async {
-    await _client.rpc<void>(Rpc.deleteEvent, params: {'p_event_id': eventId});
-  }
-
-  /// Joins a live `events` query with the live rows of its ticket types and
-  /// team.
+  /// Edits an event inside a transaction.
   ///
-  /// Realtime cannot embed relations, so the related tables are followed
-  /// with an `in` filter on the event ids. Those two subscriptions are
-  /// renewed only when the *set* of ids changes — not on every seat booked —
-  /// and a list is emitted only once the related rows cover every event, so
-  /// a paid event never flashes as free while its types load.
-  Stream<List<Event>> _withRelated(
-    Stream<List<Map<String, dynamic>>> eventRows, {
-    int Function(Event, Event)? sort,
-  }) {
-    final events = eventRows
-        .map((rows) => [for (final row in rows) EventDto.fromJson(row)])
-        .shareReplay(maxSize: 1);
-
-    final related = events
-        .map((dtos) => [for (final dto in dtos) dto.id]..sort())
-        .distinct(listEquals)
-        .switchMap(_relatedRows);
-
-    return Rx.combineLatest2(events, related, (
-      List<EventDto> dtos,
-      _Related rel,
-    ) {
-      if (!dtos.every((dto) => rel.eventIds.contains(dto.id))) return null;
-      final list = [
-        for (final dto in dtos)
-          dto.toDomain(
-            tiers: rel.tiers[dto.id] ?? const [],
-            staffIds: rel.staff[dto.id] ?? const [],
-          ),
-      ];
-      if (sort != null) list.sort(sort);
-      return List<Event>.unmodifiable(list);
-    }).whereType<List<Event>>();
-  }
-
-  Stream<_Related> _relatedRows(List<String> ids) {
-    if (ids.isEmpty) return Stream.value(const _Related.empty());
-    final tiers = _client
-        .from(Tables.eventTiers)
-        .stream(primaryKey: ['id'])
-        .inFilter('event_id', ids);
-    final staff = _client
-        .from(Tables.eventStaff)
-        .stream(primaryKey: ['event_id', 'user_id'])
-        .inFilter('event_id', ids);
-    return Rx.combineLatest2(tiers, staff, (
-      List<Map<String, dynamic>> tierRows,
-      List<Map<String, dynamic>> staffRows,
-    ) {
-      final byEvent = <String, List<EventTierDto>>{};
-      for (final row in tierRows) {
-        final tier = EventTierDto.fromJson(row);
-        (byEvent[tier.eventId] ??= []).add(tier);
-      }
-      final team = <String, List<String>>{};
-      for (final row in staffRows) {
-        (team[row['event_id'] as String] ??= []).add(row['user_id'] as String);
-      }
-      return _Related(eventIds: ids.toSet(), tiers: byEvent, staff: team);
+  /// The seats already taken are read from the document the write is
+  /// conditioned on: a booking landing in between makes Firestore retry the
+  /// transaction with the new counter, so `availablePlaces = capacity −
+  /// taken` always holds. [decide] runs on each attempt with the fresh event
+  /// and may refuse; the refusal is returned, not thrown, so it is never
+  /// confused with a transaction error.
+  Future<Failure?> update(String eventId, EventEditDecision decide) {
+    final ref = _events.doc(eventId);
+    return _db.runTransaction<Failure?>((tx) async {
+      final snapshot = await tx.get(ref);
+      final data = snapshot.data();
+      if (data == null) return _notFound(eventId);
+      final (:failure, :edit) = decide(_event(snapshot.id, data));
+      if (failure != null) return failure;
+      if (edit == null) return null;
+      tx.update(ref, {
+        ...EventDto.contentFields(
+          edit.draft,
+          capacity: edit.capacity,
+          availablePlaces: edit.availablePlaces,
+          tiers: edit.tiers,
+        ),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+      return null;
     });
   }
 
-  static List<String> _eventIds(List<Map<String, dynamic>> rows) =>
-      [for (final row in rows) row['event_id'] as String]..sort();
-
-  static String _iso(DateTime date) =>
-      const TimestampConverter().toJson(date) as String;
-
-  static int _catalogueOrder(Event a, Event b) {
-    final byDate = a.startsAt.compareTo(b.startsAt);
-    return byDate != 0 ? byDate : a.id.compareTo(b.id);
+  /// Owner only, and only while no seat is taken (the rules check both).
+  /// The public counter goes down in the same batch. Favorites pointing at
+  /// the event stay behind and are ignored by the lists that resolve them.
+  Future<void> delete({
+    required String eventId,
+    required String organizerId,
+  }) async {
+    final batch = _db.batch()
+      ..delete(_events.doc(eventId))
+      ..update(_organizer(organizerId), {
+        'eventCount': FieldValue.increment(-1),
+        'lastEventId': eventId,
+      });
+    await batch.commit();
   }
 
-  static int _mostRecentFirst(Event a, Event b) => _catalogueOrder(b, a);
-}
+  static List<Event> _toEvents(QuerySnapshot<Map<String, dynamic>> snapshot) =>
+      List.unmodifiable([
+        for (final doc in snapshot.docs) _event(doc.id, doc.data()),
+      ]);
 
-/// Ticket types and team members of a set of events, keyed by event id.
-class _Related {
-  const _Related({
-    required this.eventIds,
-    required this.tiers,
-    required this.staff,
-  });
+  static Event _event(String id, Map<String, dynamic> data) =>
+      EventDto.fromFirestore(id, data).toDomain();
 
-  const _Related.empty()
-    : eventIds = const {},
-      tiers = const {},
-      staff = const {};
-
-  /// The events these rows were fetched for: an event outside this set has
-  /// not loaded its relations yet.
-  final Set<String> eventIds;
-  final Map<String, List<EventTierDto>> tiers;
-  final Map<String, List<String>> staff;
+  static NotFoundFailure _notFound(String eventId) => NotFoundFailure(
+    resource: '${Collections.events}/$eventId',
+    message: 'Événement introuvable.',
+  );
 }

@@ -1,7 +1,7 @@
 import 'package:eventhub/core/analytics/app_analytics.dart';
 import 'package:eventhub/core/errors/failure.dart';
+import 'package:eventhub/core/firebase/firebase_providers.dart';
 import 'package:eventhub/core/result/result.dart';
-import 'package:eventhub/core/supabase/supabase_providers.dart';
 import 'package:eventhub/features/auth/application/auth_providers.dart';
 import 'package:eventhub/features/favorites/data/favorites_remote_data_source.dart';
 import 'package:eventhub/features/favorites/data/favorites_repository_impl.dart';
@@ -14,22 +14,25 @@ part 'favorites_providers.g.dart';
 
 @Riverpod(keepAlive: true)
 FavoritesRepository favoritesRepository(Ref ref) => FavoritesRepositoryImpl(
-  FavoritesRemoteDataSource(ref.watch(supabaseClientProvider)),
+  FavoritesRemoteDataSource(ref.watch(firestoreProvider)),
 );
 
 @riverpod
 Stream<List<String>> favoriteIds(Ref ref) {
   final user = ref.watch(currentUserProvider);
-  if (user == null || !user.isParticipant) return Stream.value(const []);
+  // Every account is a participant, organizers included (one account, two
+  // spaces): anyone signed in keeps favorites.
+  if (user == null) return Stream.value(const []);
   return ref.watch(favoritesRepositoryProvider).watchFavoriteIds(user.id);
 }
 
-/// Toggles sent but not yet echoed by Realtime: event id → starred.
+/// Toggles sent but not yet reflected by the listener: event id → starred.
 ///
-/// Unlike Firestore, Supabase has no local write cache, so the stream only
-/// reflects a toggle after the round trip. Overlaying the intent keeps the
-/// heart flipping at the tap; an entry is dropped once the stream agrees, or
-/// when the write fails.
+/// Firestore shows a local write at once, but starring first reads the
+/// document (the rules refuse a `set` over an existing favorite), so the
+/// write — and the listener — lag by that round trip. Overlaying the intent
+/// keeps the heart flipping at the tap; an entry is dropped once the stream
+/// agrees, or when the write fails.
 @Riverpod(keepAlive: true)
 class PendingFavorites extends _$PendingFavorites {
   @override

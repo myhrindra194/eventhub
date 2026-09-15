@@ -1,4 +1,5 @@
-import 'package:eventhub/core/supabase/timestamp_converter.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:eventhub/core/firebase/timestamp_converter.dart';
 import 'package:eventhub/features/events/domain/entities/event.dart';
 import 'package:eventhub/features/events/domain/entities/event_category.dart';
 import 'package:eventhub/features/events/domain/entities/event_draft.dart';
@@ -10,23 +11,28 @@ part 'event_dto.g.dart';
 
 /// Top-level rather than static: freezed copies the `@JsonKey` annotation
 /// into the generated part, where a bare static member name does not resolve.
+List<EventTierDto> _tiersFromJson(Object? json) => EventDto.tiersFromMap(json);
+
 List<String> _staffIdsFromJson(Object? json) => [
   if (json is List)
-    for (final row in json)
-      if (row is Map && row['user_id'] is String) row['user_id'] as String,
+    for (final id in json)
+      if (id is String && id.isNotEmpty) id,
 ];
 
-/// Row of `public.events`.
+/// Document `events/{eventId}`.
 ///
-/// Realtime rows carry the columns only; one-shot reads embed the ticket
-/// types and the team (`select('*, event_tiers(*), event_staff(user_id)')`),
-/// which land in [tiers] and [staffIds]. Streams join the three tables
-/// themselves and hand the related rows to [toDomain].
+/// One document holds the whole event — ticket types included, as a map
+/// `{tierId: {name, description, price, capacity, available, order}}` — so a
+/// single snapshot listener renders a card, and a booking moves the event
+/// counter and its type counter in the same write (the rules compare both).
+/// A map rather than a list because the rules address one type by its key
+/// (`tiers[tierId].available`) and a list cannot be diffed that way.
+///
+/// The document id is not a field: [EventDto.fromFirestore] injects it.
 @freezed
 abstract class EventDto with _$EventDto {
   const EventDto._();
 
-  @JsonSerializable(fieldRename: FieldRename.snake)
   const factory EventDto({
     required String id,
     required String title,
@@ -36,30 +42,24 @@ abstract class EventDto with _$EventDto {
     @TimestampConverter() required DateTime startsAt,
     required String location,
 
-    /// With ticket types, both counters are the sums of the types, kept by
-    /// a trigger: the client never computes them.
+    /// With ticket types, both counters are the sums of the types: the
+    /// client computes them in the write and the rules check the arithmetic.
     required int capacity,
     required int availablePlaces,
     required String organizerId,
     required String organizerName,
     String? imageUrl,
+
+    /// Written with `serverTimestamp()`: `null` in a pending local snapshot.
     @NullableTimestampConverter() DateTime? createdAt,
     @NullableTimestampConverter() DateTime? updatedAt,
 
     /// `EUR`, `USD` or `MGA`; null unless a type is paid.
     String? currency,
-
-    /// Embedded `event_tiers`, absent from Realtime rows.
-    @JsonKey(name: 'event_tiers', includeToJson: false)
+    @JsonKey(fromJson: _tiersFromJson)
     @Default(<EventTierDto>[])
     List<EventTierDto> tiers,
-
-    /// Embedded `event_staff(user_id)`, absent from Realtime rows.
-    @JsonKey(
-      name: 'event_staff',
-      fromJson: _staffIdsFromJson,
-      includeToJson: false,
-    )
+    @JsonKey(fromJson: _staffIdsFromJson)
     @Default(<String>[])
     List<String> staffIds,
   }) = _EventDto;
@@ -67,9 +67,11 @@ abstract class EventDto with _$EventDto {
   factory EventDto.fromJson(Map<String, dynamic> json) =>
       _$EventDtoFromJson(json);
 
-  /// [tiers] and [staffIds] replace the embedded lists when given: a stream
-  /// reads them from their own tables.
-  Event toDomain({List<EventTierDto>? tiers, List<String>? staffIds}) => Event(
+  /// The id wins over any `id` key a hand-written document might carry.
+  factory EventDto.fromFirestore(String id, Map<String, dynamic> data) =>
+      EventDto.fromJson({...data, 'id': id});
+
+  Event toDomain() => Event(
     id: id,
     title: title,
     description: description,
@@ -83,74 +85,97 @@ abstract class EventDto with _$EventDto {
     imageUrl: imageUrl,
     createdAt: createdAt,
     updatedAt: updatedAt,
-    staffIds: staffIds ?? this.staffIds,
-    tiers: sortedTiers(tiers ?? this.tiers),
+    staffIds: staffIds,
+    tiers: [for (final tier in tiers) tier.toDomain()],
     currency: currency,
   );
 
-  /// Display order: `position`, then id so that equal positions (never
-  /// written by `save_event`, but possible mid-edit on a stream) stay stable.
-  static List<EventTier> sortedTiers(List<EventTierDto> rows) {
-    final sorted = [...rows]
-      ..sort((a, b) {
-        final byPosition = a.position.compareTo(b.position);
-        return byPosition != 0 ? byPosition : a.id.compareTo(b.id);
-      });
-    return [for (final row in sorted) row.toDomain()];
+  /// `{tierId: {...}}` → types in display order: `order`, then id so that
+  /// equal orders (a hand-edited document) stay stable. A malformed entry is
+  /// skipped rather than failing the whole event.
+  static List<EventTierDto> tiersFromMap(Object? json) {
+    if (json is! Map) return const [];
+    final tiers =
+        <EventTierDto>[
+          for (final MapEntry(:key, :value) in json.entries)
+            if (key is String && value is Map)
+              if (EventTierDto.tryParse(key, Map<String, dynamic>.from(value))
+                  case final tier?)
+                tier,
+        ]..sort((a, b) {
+          final byOrder = a.order.compareTo(b.order);
+          return byOrder != 0 ? byOrder : a.id.compareTo(b.id);
+        });
+    return tiers;
   }
 
-  /// `[{user_id: ...}]` → user ids; a malformed entry is skipped.
-  static List<String> staffIdsFromJson(Object? json) => _staffIdsFromJson(json);
+  /// Types → the map stored on the event. `order` is rewritten from the list
+  /// position so the display order is exactly the one of the form.
+  static Map<String, Map<String, Object>> tiersToMap(List<EventTier> tiers) => {
+    for (var i = 0; i < tiers.length; i++)
+      tiers[i].id: {
+        'name': tiers[i].name,
+        'description': tiers[i].description,
+        'price': tiers[i].price,
+        'capacity': tiers[i].capacity,
+        'available': tiers[i].available,
+        'order': i,
+      },
+  };
 
-  /// `p_event` of `save_event`: the draft as typed, nothing computed.
+  /// The content fields an organizer controls, shared by creation and edit.
   ///
-  /// The database owns the seat counters, the organizer name and the tier
-  /// ids. A tier keeps its row (and what it sold) only when its `id` is the
-  /// uuid of an existing tier; any other value creates a new one, so a
-  /// client-side placeholder id is simply left out. `capacity` travels only
-  /// without types: with types it is their sum.
-  static Map<String, Object?> saveEventPayload(
+  /// [draft] must be validated (trimmed, capacity summed). Counters and types
+  /// come from the plan computed against the current document, never from
+  /// the draft: the rules require `availablePlaces == capacity − taken`.
+  /// `imageUrl` and `currency` are written even when null, so clearing them in
+  /// the form clears them in the document.
+  static Map<String, Object?> contentFields(
     EventDraft draft, {
-    String? eventId,
+    required int capacity,
+    required int availablePlaces,
+    required List<EventTier> tiers,
   }) => {
-    'id': ?eventId,
     'title': draft.title,
     'description': draft.description,
     'category': draft.category.name,
-    'starts_at': const TimestampConverter().toJson(draft.startsAt),
+    'startsAt': Timestamp.fromDate(draft.startsAt),
     'location': draft.location,
-    'image_url': draft.imageUrl,
-    if (draft.tiers.isEmpty) 'capacity': draft.capacity,
-    'currency': ?draft.currency,
-    'tiers': [
-      for (final tier in draft.tiers)
-        {
-          if (tier.id != null && isUuid(tier.id!)) 'id': tier.id,
-          'name': tier.name,
-          'description': tier.description,
-          'price': tier.price,
-          'capacity': tier.capacity,
-        },
-    ],
+    'capacity': capacity,
+    'availablePlaces': availablePlaces,
+    'imageUrl': draft.imageUrl,
+    'currency': draft.currency,
+    'tiers': tiersToMap(tiers),
   };
 
-  static final _uuid = RegExp(
-    r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
-    caseSensitive: false,
-  );
-
-  static bool isUuid(String value) => _uuid.hasMatch(value);
+  /// A new document: the only shape `allow create` accepts — every seat
+  /// free, no team yet, the organizer name copied from `users/{uid}.name`.
+  static Map<String, Object?> createFields(
+    EventDraft draft, {
+    required String organizerId,
+    required String organizerName,
+    required TierPlan? plan,
+  }) => {
+    ...contentFields(
+      draft,
+      capacity: plan?.capacity ?? draft.capacity,
+      availablePlaces: plan?.available ?? draft.capacity,
+      tiers: plan?.tiers ?? const [],
+    ),
+    'organizerId': organizerId,
+    'organizerName': organizerName,
+    'staffIds': const <String>[],
+    'createdAt': FieldValue.serverTimestamp(),
+  };
 }
 
-/// Row of `public.event_tiers`, read-only for clients.
+/// One entry of `events/{id}.tiers`, keyed by [id].
 @freezed
 abstract class EventTierDto with _$EventTierDto {
   const EventTierDto._();
 
-  @JsonSerializable(fieldRename: FieldRename.snake)
   const factory EventTierDto({
     required String id,
-    required String eventId,
     required String name,
     required int capacity,
     required int available,
@@ -162,11 +187,20 @@ abstract class EventTierDto with _$EventTierDto {
     @Default(0) int price,
 
     /// 0..5, the display order chosen in the form.
-    @Default(0) int position,
+    @Default(0) int order,
   }) = _EventTierDto;
 
   factory EventTierDto.fromJson(Map<String, dynamic> json) =>
       _$EventTierDtoFromJson(json);
+
+  /// `null` when the entry lacks a required field or has the wrong type.
+  static EventTierDto? tryParse(String id, Map<String, dynamic> data) {
+    try {
+      return EventTierDto.fromJson({...data, 'id': id});
+    } on Object {
+      return null;
+    }
+  }
 
   EventTier toDomain() => EventTier(
     id: id,
@@ -175,6 +209,6 @@ abstract class EventTierDto with _$EventTierDto {
     capacity: capacity,
     available: available,
     price: price,
-    order: position,
+    order: order,
   );
 }

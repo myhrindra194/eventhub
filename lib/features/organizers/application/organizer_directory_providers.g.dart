@@ -56,7 +56,7 @@ final class OrganizerDirectoryRepositoryProvider
 }
 
 String _$organizerDirectoryRepositoryHash() =>
-    r'f44d2745d8c884184924c2b870b4446808ef94d5';
+    r'262c2f2d0a4e8b7c88d74fecf518d9dd7ac486ab';
 
 @ProviderFor(organizerProfile)
 final organizerProfileProvider = OrganizerProfileFamily._();

@@ -43,7 +43,8 @@ class FavoriteButton extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(currentUserProvider);
-    if (user == null || !user.isParticipant) return const SizedBox.shrink();
+    // Organizers keep every participant right, favorites included.
+    if (user == null) return const SizedBox.shrink();
 
     final active = ref.watch(isFavoriteProvider(eventId));
     final t = context.tokens;

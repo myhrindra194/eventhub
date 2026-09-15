@@ -49,55 +49,7 @@ final class EventRepositoryProvider
   }
 }
 
-String _$eventRepositoryHash() => r'5b86b33aaf84ca6d926bcd9f5425788019b350fe';
-
-@ProviderFor(imageStorageRepository)
-final imageStorageRepositoryProvider = ImageStorageRepositoryProvider._();
-
-final class ImageStorageRepositoryProvider
-    extends
-        $FunctionalProvider<
-          ImageStorageRepository,
-          ImageStorageRepository,
-          ImageStorageRepository
-        >
-    with $Provider<ImageStorageRepository> {
-  ImageStorageRepositoryProvider._()
-    : super(
-        from: null,
-        argument: null,
-        retry: null,
-        name: r'imageStorageRepositoryProvider',
-        isAutoDispose: false,
-        dependencies: null,
-        $allTransitiveDependencies: null,
-      );
-
-  @override
-  String debugGetCreateSourceHash() => _$imageStorageRepositoryHash();
-
-  @$internal
-  @override
-  $ProviderElement<ImageStorageRepository> $createElement(
-    $ProviderPointer pointer,
-  ) => $ProviderElement(pointer);
-
-  @override
-  ImageStorageRepository create(Ref ref) {
-    return imageStorageRepository(ref);
-  }
-
-  /// {@macro riverpod.override_with_value}
-  Override overrideWithValue(ImageStorageRepository value) {
-    return $ProviderOverride(
-      origin: this,
-      providerOverride: $SyncValueProvider<ImageStorageRepository>(value),
-    );
-  }
-}
-
-String _$imageStorageRepositoryHash() =>
-    r'b1dbd90e949a11870b81bb0eea27e6871a2904af';
+String _$eventRepositoryHash() => r'e2fe9819abf84eaf0a027fecbbe49a3419790d8c';
 
 /// First page of upcoming events, live (today's events stay visible until
 /// midnight).

@@ -6,12 +6,16 @@ import 'package:eventhub/features/auth/domain/entities/app_user.dart';
 import 'package:eventhub/features/events/data/datasources/event_remote_data_source.dart';
 import 'package:eventhub/features/events/domain/entities/event.dart';
 import 'package:eventhub/features/events/domain/entities/event_draft.dart';
+import 'package:eventhub/features/events/domain/entities/event_tier.dart';
 import 'package:eventhub/features/events/domain/policies/event_policy.dart';
 import 'package:eventhub/features/events/domain/repositories/event_repository.dart';
 
-/// The domain checks run first for an instant, precise message; `save_event`
-/// and `delete_event` enforce the same rules again, atomically, and are the
-/// authority (a concurrent booking, a stale screen).
+/// Firestore answers a refused write with a bare `permission-denied`: it
+/// never says *which* rule failed. So every domain rule the security rules
+/// enforce is checked here first, on the freshest data available, and turned
+/// into its precise French sentence before anything is written. The rules
+/// remain the authority for what slips through (a concurrent booking, a
+/// tampered client).
 class EventRepositoryImpl implements EventRepository {
   const EventRepositoryImpl({
     required EventRemoteDataSource remote,
@@ -50,14 +54,21 @@ class EventRepositoryImpl implements EventRepository {
       if (!organizer.isOrganizer) {
         throw const FailureException(_notOrganizer);
       }
-      // The organizer name is copied from the profile by the database.
-      return _remote.save(_validated(draft));
+      if (!organizer.emailVerified) {
+        throw const FailureException(_emailNotVerified);
+      }
+      final valid = _validated(draft);
+      return _remote.create(
+        draft: valid,
+        plan: valid.tiers.isEmpty ? null : TierPlanner.initial(valid.tiers),
+        organizerId: organizer.id,
+        // The rules compare it with `users/{uid}.name`, which the session
+        // mirrors.
+        organizerName: organizer.name,
+      );
     });
   }
 
-  /// Seats already sold, per type or in the single pool, are kept by the
-  /// database while the row is locked: no read-then-write race with a
-  /// booking.
   @override
   AsyncResult<void> update({
     required String eventId,
@@ -65,8 +76,66 @@ class EventRepositoryImpl implements EventRepository {
     required AppUser organizer,
   }) {
     return guard(() async {
-      await _remote.save(_validated(draft), eventId: eventId);
+      final valid = _validated(draft);
+      final failure = await _remote.update(
+        eventId,
+        (current) => planEdit(current: current, draft: valid, user: organizer),
+      );
+      if (failure != null) throw FailureException(failure);
     });
+  }
+
+  /// The edit of [current] by [user], or the rule it breaks. Pure: it runs
+  /// inside the transaction, possibly several times.
+  ///
+  /// * the team (owner or co-organizer) edits, nobody else;
+  /// * with types, [TierPlanner.apply] keeps what each type sold;
+  /// * without, the capacity cannot drop below the seats taken.
+  static ({Failure? failure, EventEdit? edit}) planEdit({
+    required Event current,
+    required EventDraft draft,
+    required AppUser user,
+  }) {
+    if (EventPolicy.canManage(event: current, user: user) case Err(
+      :final failure,
+    )) {
+      return (failure: failure, edit: null);
+    }
+    final tiers = TierPlanner.apply(
+      soldWithoutTiers: current.hasTiers ? 0 : current.reservedCount,
+      current: current.tiers,
+      drafts: draft.tiers,
+    );
+    switch (tiers) {
+      case Err(:final failure):
+        return (failure: failure, edit: null);
+      case Ok(value: final plan?):
+        return (
+          failure: null,
+          edit: EventEdit(
+            draft: draft,
+            capacity: plan.capacity,
+            availablePlaces: plan.available,
+            tiers: plan.tiers,
+          ),
+        );
+      case Ok():
+        return switch (EventPolicy.availablePlacesAfterCapacityChange(
+          event: current,
+          newCapacity: draft.capacity,
+        )) {
+          Err(:final failure) => (failure: failure, edit: null),
+          Ok(:final value) => (
+            failure: null,
+            edit: EventEdit(
+              draft: draft,
+              capacity: draft.capacity,
+              availablePlaces: value,
+              tiers: const [],
+            ),
+          ),
+        };
+    }
   }
 
   @override
@@ -90,7 +159,7 @@ class EventRepositoryImpl implements EventRepository {
       )) {
         throw FailureException(failure);
       }
-      await _remote.delete(eventId);
+      await _remote.delete(eventId: eventId, organizerId: organizer.id);
     });
   }
 
@@ -102,5 +171,10 @@ class EventRepositoryImpl implements EventRepository {
 
   static const _notOrganizer = PermissionFailure(
     message: 'Seul un organisateur peut créer un événement.',
+  );
+
+  static const _emailNotVerified = BusinessRuleFailure(
+    rule: BusinessRule.emailNotVerified,
+    message: 'Confirmez votre adresse email pour publier un événement.',
   );
 }

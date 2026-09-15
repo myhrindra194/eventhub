@@ -4,7 +4,6 @@ import 'package:eventhub/core/result/result.dart';
 import 'package:eventhub/features/organizers/data/organizer_directory_remote_data_source.dart';
 import 'package:eventhub/features/organizers/domain/organizer_directory_repository.dart';
 import 'package:eventhub/features/organizers/domain/organizer_profile.dart';
-import 'package:supabase_flutter/supabase_flutter.dart' show PostgrestException;
 
 class OrganizerDirectoryRepositoryImpl implements OrganizerDirectoryRepository {
   const OrganizerDirectoryRepositoryImpl(this._remote);
@@ -19,32 +18,21 @@ class OrganizerDirectoryRepositoryImpl implements OrganizerDirectoryRepository {
   Stream<List<String>> watchFollowingIds(String userId) =>
       _remote.watchFollowingIds(userId);
 
+  /// The rules refuse following oneself with a bare `permission-denied`;
+  /// the same rule is checked here first so the sentence is precise even if
+  /// a caller skipped [FollowPolicy].
   @override
   AsyncResult<void> follow({
     required String userId,
     required String organizerId,
   }) => guard(() async {
-    try {
-      await _remote.follow(organizerId);
-    } on PostgrestException catch (e) {
-      switch (e.code) {
-        // Already following (a double tap, a stale button): the wanted state
-        // holds, which is all the user asked for.
-        case '23505':
-          return;
-        // `follows_not_self`: FollowPolicy stops it first; this keeps the
-        // same sentence if the check is ever bypassed.
-        case '23514':
-          throw FailureException(
-            BusinessRuleFailure(
-              rule: BusinessRule.cannotFollowSelf,
-              message: 'Vous ne pouvez pas vous abonner à votre propre profil.',
-              cause: e,
-            ),
-          );
-      }
-      rethrow;
+    if (organizerId.isEmpty) {
+      throw const FailureException(
+        ValidationFailure(message: 'Organisateur inconnu.'),
+      );
     }
+    if (organizerId == userId) throw const FailureException(_followSelf);
+    await _remote.follow(userId, organizerId);
   });
 
   @override
@@ -52,4 +40,9 @@ class OrganizerDirectoryRepositoryImpl implements OrganizerDirectoryRepository {
     required String userId,
     required String organizerId,
   }) => guard(() => _remote.unfollow(userId, organizerId));
+
+  static const _followSelf = BusinessRuleFailure(
+    rule: BusinessRule.cannotFollowSelf,
+    message: 'Vous ne pouvez pas vous abonner à votre propre profil.',
+  );
 }

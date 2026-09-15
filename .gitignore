@@ -23,6 +23,7 @@ macos/Runner/GoogleService-Info.plist
 firebase-debug.log
 *.env
 .env.*
+!supabase/functions/.env.example
 
 # OS
 .DS_Store

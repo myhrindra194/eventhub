@@ -15,7 +15,7 @@ abstract interface class ReservationRepository {
   /// first. Feeds the organizer's statistics and activity feed.
   Stream<List<Reservation>> watchByOrganizer(String organizerId);
 
-  /// The participant's reservation for an event, `null` if none.
+  /// The person's reservation for an event, `null` if none.
   Stream<Reservation?> watchForEvent({
     required String eventId,
     required String userId,
@@ -23,27 +23,30 @@ abstract interface class ReservationRepository {
 
   Stream<Reservation?> watchById(String reservationId);
 
-  /// Books a free seat. The database re-checks `ReservationPolicy` and
-  /// takes the seat from the event (and the ticket type) atomically.
+  /// Books a free seat. `ReservationPolicy` is evaluated inside the
+  /// transaction, on the event and seat it reads, and the seat is taken
+  /// from the event (and the ticket type) atomically.
   AsyncResult<Reservation> reserve({
     required String eventId,
     required AppUser participant,
     String? tierId,
   });
 
-  /// Cancels a free seat and releases it atomically; returns the cancelled
-  /// reservation.
-  AsyncResult<Reservation> cancel({required String reservationId});
+  /// Cancels [userId]'s free seat and releases it atomically; returns the
+  /// cancelled reservation.
+  AsyncResult<Reservation> cancel({
+    required String reservationId,
+    required String userId,
+  });
 
-  /// Holds a paid seat and opens a Stripe Checkout session for it.
+  /// Paid seats (F-11) need a payment server: on the Spark plan these three
+  /// answer `ReservationPolicy.paymentUnavailable`.
   AsyncResult<CheckoutStart> startCheckout({
     required String eventId,
     required String tierId,
   });
 
-  /// Gives up a held seat before paying.
   AsyncResult<void> cancelPendingCheckout({required String eventId});
 
-  /// Refunds a paid ticket and releases the seat.
   AsyncResult<void> refund({required String eventId});
 }

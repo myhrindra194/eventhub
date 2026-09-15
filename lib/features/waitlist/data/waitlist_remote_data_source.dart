@@ -1,41 +1,52 @@
-import 'package:eventhub/core/supabase/db.dart';
-import 'package:eventhub/core/supabase/supabase_providers.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:eventhub/core/firebase/firebase_providers.dart';
+import 'package:eventhub/core/firebase/firestore_paths.dart';
+import 'package:eventhub/features/waitlist/domain/waitlist_repository.dart';
 
-/// `public.waitlist_entries` — one row per `(event_id, user_id)`, FIFO by
-/// `created_at`. Read by the person queued and by the event team; written
-/// only by `join_waitlist` / `leave_waitlist`, which take the name from the
-/// profile and the position from the server clock.
+/// `events/{eventId}/waitlist/{userId}` {userId, createdAt, notifiedAt?}.
+///
+/// The document id is the uid: one entry per person without a query, and
+/// the rules find "is this person waiting" with a single `exists()`. The
+/// position is the server clock (`createdAt`), never a client value.
 class WaitlistRemoteDataSource {
-  const WaitlistRemoteDataSource(this._client);
+  const WaitlistRemoteDataSource(this._db);
 
-  final SupabaseClient _client;
+  final FirebaseFirestore _db;
 
-  static const _primaryKey = ['event_id', 'user_id'];
+  CollectionReference<Map<String, dynamic>> _queue(String eventId) => _db
+      .collection(Collections.events)
+      .doc(eventId)
+      .collection(Collections.waitlist);
 
-  /// Filtered on the user, not the event: the channel then carries the
-  /// person's own entries only, whatever the size of the queue.
-  Stream<bool> watchIsWaiting(String eventId, String userId) => _client
-      .from(Tables.waitlistEntries)
-      .stream(primaryKey: _primaryKey)
-      .eq('user_id', userId)
-      .map((rows) => rows.any((row) => row['event_id'] == eventId))
+  Stream<bool> watchIsWaiting(String eventId, String userId) => _queue(eventId)
+      .doc(userId)
+      .snapshots()
+      .map((s) => s.exists)
       .distinct()
       .resilient('waitlist:mine:$eventId');
 
-  Stream<int> watchLength(String eventId) => _client
-      .from(Tables.waitlistEntries)
-      .stream(primaryKey: _primaryKey)
-      .eq('event_id', eventId)
-      .map((rows) => rows.length)
+  /// A count aggregate would be exact, but the rules bound every list of a
+  /// queue to 20 documents (the queue must not be scraped for uids), and
+  /// that bound applies to aggregates too. The team's badge therefore reads
+  /// the first 20 entries live and shows "20+" at the cap.
+  Stream<int> watchLength(String eventId) => _queue(eventId)
+      .limit(WaitlistRepository.queueLengthCap)
+      .snapshots()
+      .map((q) => q.size)
       .distinct()
       .resilient('waitlist:$eventId');
 
-  Future<void> join(String eventId) async {
-    await _client.rpc<void>(Rpc.joinWaitlist, params: {'p_event_id': eventId});
+  /// Idempotent: a second tap must not turn into an update the rules refuse
+  /// (and would reset nothing anyway — the position is kept).
+  Future<void> join(String eventId, String userId) async {
+    final entry = _queue(eventId).doc(userId);
+    if ((await entry.get()).exists) return;
+    await entry.set({
+      'userId': userId,
+      'createdAt': FieldValue.serverTimestamp(),
+    });
   }
 
-  Future<void> leave(String eventId) async {
-    await _client.rpc<void>(Rpc.leaveWaitlist, params: {'p_event_id': eventId});
-  }
+  Future<void> leave(String eventId, String userId) =>
+      _queue(eventId).doc(userId).delete();
 }

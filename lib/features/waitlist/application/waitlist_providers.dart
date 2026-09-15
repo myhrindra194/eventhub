@@ -1,8 +1,8 @@
 import 'package:eventhub/core/analytics/app_analytics.dart';
 import 'package:eventhub/core/config/app_config.dart';
 import 'package:eventhub/core/errors/failure.dart';
+import 'package:eventhub/core/firebase/firebase_providers.dart';
 import 'package:eventhub/core/result/result.dart';
-import 'package:eventhub/core/supabase/supabase_providers.dart';
 import 'package:eventhub/features/auth/application/auth_providers.dart';
 import 'package:eventhub/features/auth/domain/entities/app_user.dart';
 import 'package:eventhub/features/events/domain/entities/event.dart';
@@ -16,19 +16,21 @@ part 'waitlist_providers.g.dart';
 
 @Riverpod(keepAlive: true)
 WaitlistRepository waitlistRepository(Ref ref) => WaitlistRepositoryImpl(
-  WaitlistRemoteDataSource(ref.watch(supabaseClientProvider)),
+  WaitlistRemoteDataSource(ref.watch(firestoreProvider)),
 );
 
+/// Any signed-in account may wait (one account, two spaces); the event's
+/// team is excluded by `WaitlistPolicy`, not here.
 @riverpod
 Stream<bool> isOnWaitlist(Ref ref, String eventId) {
   final user = ref.watch(currentUserProvider);
-  if (user == null || !user.isParticipant) return Stream.value(false);
+  if (user == null) return Stream.value(false);
   return ref
       .watch(waitlistRepositoryProvider)
       .watchIsWaiting(eventId: eventId, userId: user.id);
 }
 
-/// Organizer view.
+/// Organizer view, capped at [WaitlistRepository.queueLengthCap].
 @riverpod
 Stream<int> waitlistLength(Ref ref, String eventId) =>
     ref.watch(waitlistRepositoryProvider).watchQueueLength(eventId);
@@ -57,8 +59,11 @@ class WaitlistController extends _$WaitlistController {
     return result;
   }
 
-  Future<Result<void>> leave(String eventId) =>
-      _run((_) => ref.read(waitlistRepositoryProvider).leave(eventId: eventId));
+  Future<Result<void>> leave(String eventId) => _run(
+    (user) => ref
+        .read(waitlistRepositoryProvider)
+        .leave(eventId: eventId, userId: user.id),
+  );
 
   Future<Result<void>> _run(
     AsyncResult<void> Function(AppUser user) action,

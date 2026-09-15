@@ -53,8 +53,8 @@ abstract final class Fixtures {
     String userId = 'user-1',
     ReservationStatus status = ReservationStatus.confirmed,
   }) => Reservation(
-    // Reservation ids are opaque database uuids; any stable string will do.
-    id: 'res-$eventId-$userId',
+    // Deterministic, as `DocIds.reservation` composes it.
+    id: '${eventId}_$userId',
     eventId: eventId,
     userId: userId,
     organizerId: 'org-1',

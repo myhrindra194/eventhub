@@ -17,7 +17,11 @@ void main() {
     role: UserRole.participant,
   );
 
-  Event event({int available = 0, DateTime? startsAt}) => Event(
+  Event event({
+    int available = 0,
+    DateTime? startsAt,
+    List<String> staffIds = const [],
+  }) => Event(
     id: 'e1',
     title: 'Pulse Festival',
     description: 'd',
@@ -28,6 +32,7 @@ void main() {
     availablePlaces: available,
     organizerId: 'o1',
     organizerName: 'Elie',
+    staffIds: staffIds,
   );
 
   Result<void> canJoin({
@@ -50,6 +55,30 @@ void main() {
     expect(canJoin(), isA<Ok<void>>());
   });
 
+  test('an organizer account waits for someone else\'s event', () {
+    expect(
+      canJoin(user: participant.copyWith(role: UserRole.organizer)),
+      isA<Ok<void>>(),
+    );
+  });
+
+  test('the event team does not queue for its own event', () {
+    const owner = AppUser(
+      id: 'o1',
+      name: 'Elie',
+      email: 'elie@example.com',
+      role: UserRole.organizer,
+    );
+    expect(canJoin(user: owner).failureOrNull, isA<PermissionFailure>());
+    expect(
+      canJoin(
+        e: event(staffIds: ['u1']),
+        user: participant.copyWith(role: UserRole.organizer),
+      ).failureOrNull,
+      isA<PermissionFailure>(),
+    );
+  });
+
   test('refuses when seats are available', () {
     expect(
       rule(canJoin(e: event(available: 3))),
@@ -66,9 +95,9 @@ void main() {
     );
   });
 
-  test('refuses someone who already holds a seat, and organizers', () {
+  test('refuses someone who already holds a seat', () {
     final seat = Reservation(
-      id: '5a1c9e2b-7d3f-4b8a-9e6c-2f4d8a1b3c5e',
+      id: 'e1_u1',
       eventId: 'e1',
       userId: 'u1',
       organizerId: 'o1',
@@ -81,9 +110,5 @@ void main() {
       reservedAt: now,
     );
     expect(rule(canJoin(reservation: seat)), BusinessRule.alreadyReserved);
-    expect(
-      canJoin(user: participant.copyWith(role: UserRole.organizer)),
-      isA<Err<void>>(),
-    );
   });
 }

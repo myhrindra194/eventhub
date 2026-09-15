@@ -108,9 +108,10 @@ class TicketTypesSection extends StatelessWidget {
   }
 }
 
-/// Picks one ticket type before booking or paying. Sold-out types stay
-/// listed (the price list must not change under the user's eyes) but cannot
-/// be selected.
+/// Picks one ticket type before booking. Sold-out and paid types stay listed
+/// (the price list must not change under the user's eyes) but cannot be
+/// selected: without a payment server, only a free seat can be booked, and a
+/// paid type says so instead of opening a payment flow that cannot finish.
 Future<EventTier?> showTicketTypePicker(BuildContext context, Event event) {
   return showAppSheet<EventTier>(
     context: context,
@@ -129,7 +130,7 @@ class _TicketTypePicker extends StatefulWidget {
 
 class _TicketTypePickerState extends State<_TicketTypePicker> {
   late EventTier? _selected = widget.event.tiers
-      .where((t) => !t.isSoldOut)
+      .where((t) => !t.isSoldOut && t.isFree)
       .firstOrNull;
 
   @override
@@ -146,9 +147,7 @@ class _TicketTypePickerState extends State<_TicketTypePicker> {
         AppButton.primary(
           label: selected == null
               ? AppStrings.chooseTicket
-              : selected.isFree
-              ? AppStrings.bookFree
-              : AppStrings.payAmount(Money.format(selected.price, currency)),
+              : AppStrings.bookFree,
           elevated: false,
           onPressed: selected == null
               ? null
@@ -178,7 +177,9 @@ class _TicketTypePickerState extends State<_TicketTypePicker> {
                       tier: widget.event.tiers[i],
                       currency: currency,
                       selected: widget.event.tiers[i].id == selected?.id,
-                      onTap: widget.event.tiers[i].isSoldOut
+                      onTap:
+                          widget.event.tiers[i].isSoldOut ||
+                              !widget.event.tiers[i].isFree
                           ? null
                           : () => setState(
                               () => _selected = widget.event.tiers[i],
@@ -252,6 +253,8 @@ class _TierOption extends StatelessWidget {
                       Text(
                         tier.isSoldOut
                             ? AppStrings.tierSoldOut
+                            : !tier.isFree
+                            ? AppStrings.paidTicketUnavailable
                             : AppStrings.seatsLeftShort(tier.available),
                         style: text.labelSmall?.copyWith(
                           letterSpacing: 0,

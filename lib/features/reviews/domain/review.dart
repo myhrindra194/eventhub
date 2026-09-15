@@ -1,8 +1,10 @@
-/// A post-event review: a row of `public.reviews`.
+/// A post-event review: `reviews/{eventId}_{authorId}`.
 ///
-/// One review per person per event is a UNIQUE constraint on
-/// (event, author); the id itself is an opaque uuid, so the review of a
-/// given person is looked up by that pair, never by composing an id.
+/// One review per person per event holds because the id is deterministic
+/// (`DocIds.review`): there is only one document to write, and the rules
+/// rebuild the same id to prove the author attended. Writing, editing or
+/// removing a review moves the organizer's public rating in the same
+/// transaction.
 class Review {
   const Review({
     required this.id,
@@ -12,12 +14,17 @@ class Review {
     required this.rating,
     required this.comment,
     required this.createdAt,
+    this.organizerId = '',
     this.updatedAt,
     this.hidden = false,
   });
 
   final String id;
   final String eventId;
+
+  /// The organizer whose rating this review counts in, copied from the
+  /// event at creation.
+  final String organizerId;
 
   /// Empty once the author's account is deleted (the review stays).
   final String authorId;
@@ -29,9 +36,9 @@ class Review {
   final DateTime createdAt;
   final DateTime? updatedAt;
 
-  /// Set by moderation (automatic threshold or an admin), never by the
-  /// author. A hidden review is left out of lists and averages; its author
-  /// still sees it, with a notice.
+  /// Set by moderation, never by the author. A hidden review is left out of
+  /// lists and of the organizer's rating; its author still sees it, with a
+  /// notice.
   final bool hidden;
 }
 

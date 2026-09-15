@@ -1,6 +1,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- Firebase (Auth, Firestore, Storage, FCM). The debug manifest adds it
-         implicitly; a release build without it never reaches the backend. -->
+    <!-- Supabase (data, auth, storage, functions) and FCM. The debug manifest
+         adds it implicitly; a release build without it never reaches the
+         backend. -->
     <uses-permission android:name="android.permission.INTERNET"/>
     <!-- Android 13+: push notifications are opt-in, asked after sign-in. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
@@ -45,11 +46,21 @@
                 <!-- Return from Stripe Checkout (F-11). -->
                 <data android:pathPrefix="/pay/"/>
             </intent-filter>
+            <!-- Supabase Auth returns here: email confirmation and password
+                 reset links (PKCE code exchanged by supabase_flutter). Must
+                 match AppConfig.authRedirectUrl and
+                 supabase/config.toml additional_redirect_urls. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="eventhub" android:host="auth-callback"/>
+            </intent-filter>
         </activity>
 
         <!-- Channel used by pushes received while the app is in background.
              Created by the app at startup (LocalNotificationDataSource) and
-             targeted by the Cloud Functions (ANDROID_CHANNEL). -->
+             targeted by the `worker` Edge Function (ANDROID_CHANNEL). -->
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_channel_id"
             android:value="eventhub_default" />

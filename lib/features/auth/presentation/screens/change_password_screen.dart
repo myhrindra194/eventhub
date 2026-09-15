@@ -6,6 +6,7 @@ import 'package:eventhub/core/utils/validators.dart';
 import 'package:eventhub/core/widgets/design_system.dart';
 import 'package:eventhub/features/auth/application/auth_controller.dart';
 import 'package:eventhub/features/auth/presentation/widgets/auth_scaffold.dart';
+import 'package:eventhub/routes/app_routes.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -17,8 +18,13 @@ import 'package:go_router/go_router.dart';
 /// re-authenticating with it is what turns the provider's unactionable
 /// "requires-recent-login" into a plain "wrong password", and it is the only
 /// thing between an unlocked phone and a stolen account.
+///
+/// In [recovery] mode — opened by a password-reset link — the link already
+/// proved ownership of the address: the current password is not asked for.
 class ChangePasswordScreen extends ConsumerStatefulWidget {
-  const ChangePasswordScreen({super.key});
+  const ChangePasswordScreen({super.key, this.recovery = false});
+
+  final bool recovery;
 
   @override
   ConsumerState<ChangePasswordScreen> createState() =>
@@ -42,7 +48,9 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
   String? _validateNew(String? value) {
     final base = Validators.password(value);
     if (base != null) return base;
-    if (value == _current.text) return AppStrings.passwordSameAsOld;
+    if (!widget.recovery && value == _current.text) {
+      return AppStrings.passwordSameAsOld;
+    }
     return null;
   }
 
@@ -55,18 +63,23 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
     if (!_formKey.currentState!.validate()) return;
     FocusScope.of(context).unfocus();
 
-    final result = await ref
-        .read(authControllerProvider.notifier)
-        .changePassword(
-          currentPassword: _current.text,
-          newPassword: _next.text,
-        );
+    final controller = ref.read(authControllerProvider.notifier);
+    final result = widget.recovery
+        ? await controller.setNewPassword(_next.text)
+        : await controller.changePassword(
+            currentPassword: _current.text,
+            newPassword: _next.text,
+          );
 
     if (!mounted) return;
     switch (result) {
       case Ok():
         context.showSuccess(AppStrings.passwordChanged);
-        context.pop();
+        if (widget.recovery || !context.canPop()) {
+          context.go(AppRoutes.splash);
+        } else {
+          context.pop();
+        }
       case Err(:final failure):
         context.showFailure(failure);
     }
@@ -77,10 +90,16 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
     final isLoading = ref.watch(authControllerProvider).isLoading;
 
     return AuthShell(
-      title: AppStrings.changePasswordTitle,
-      lead: AppStrings.changePasswordLead,
+      title: widget.recovery
+          ? AppStrings.recoveryPasswordTitle
+          : AppStrings.changePasswordTitle,
+      lead: widget.recovery
+          ? AppStrings.recoveryPasswordLead
+          : AppStrings.changePasswordLead,
       hero: const AuthHeroIcon(icon: Icons.lock_outline_rounded),
-      onBack: () => context.pop(),
+      onBack: widget.recovery
+          ? () => context.go(AppRoutes.splash)
+          : () => context.pop(),
       children: [
         Form(
           key: _formKey,
@@ -90,20 +109,23 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
               // Two groups, not one: "prove it is you" and "choose the new
               // one" are separate intentions, and the gap between the cards
               // says so without a heading.
-              FieldGroup(
-                children: [
-                  PasswordFieldRow(
-                    controller: _current,
-                    label: 'Actuel',
-                    hint: AppStrings.currentPassword,
-                    textInputAction: TextInputAction.next,
-                    autofillHints: const [AutofillHints.password],
-                    validator: (v) =>
-                        (v == null || v.isEmpty) ? 'Champ obligatoire.' : null,
-                  ),
-                ],
-              ),
-              const SizedBox(height: AppSpacing.xl),
+              if (!widget.recovery) ...[
+                FieldGroup(
+                  children: [
+                    PasswordFieldRow(
+                      controller: _current,
+                      label: 'Actuel',
+                      hint: AppStrings.currentPassword,
+                      textInputAction: TextInputAction.next,
+                      autofillHints: const [AutofillHints.password],
+                      validator: (v) => (v == null || v.isEmpty)
+                          ? 'Champ obligatoire.'
+                          : null,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.xl),
+              ],
               FieldGroup(
                 children: [
                   PasswordFieldRow(

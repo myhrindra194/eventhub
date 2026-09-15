@@ -21,6 +21,20 @@ describe('accounts', () => {
     assert.equal(meta.raw_app_meta_data.role, 'organizer');
   });
 
+  it('creates the profile with the account from sign-up metadata, validated', async () => {
+    const insert = (email, metadata) => one(db,
+      'insert into auth.users (email, raw_user_meta_data) values ($1, $2) returning id', [email, JSON.stringify(metadata)]);
+    const organizer = await insert('signup-org@eventhub.test', { name: '  Rova  Andria ', role: 'organizer' });
+    const profile = await one(db, 'select name, role from public.profiles where id = $1', [organizer.id]);
+    assert.deepEqual(profile, { name: 'Rova  Andria', role: 'organizer' });
+    assert.ok(await one(db, 'select 1 from public.organizers where id = $1', [organizer.id]));
+
+    for (const metadata of [{ name: 'Admin', role: 'admin' }, { name: 'X', role: 'participant' }, {}]) {
+      const { id } = await insert(`signup-${Math.random()}@eventhub.test`, metadata);
+      assert.equal(await one(db, 'select 1 from public.profiles where id = $1', [id]), undefined);
+    }
+  });
+
   it('never lets a client change its role, email or suspension', async () => {
     const uid = await createUser(db, { name: 'Soa Rakoto', role: 'participant' });
     await rejects(asUser(db, uid, (tx) => tx.query("update public.profiles set role = 'organizer' where id = $1", [uid])), { code: '42501' });

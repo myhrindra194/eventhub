@@ -3,98 +3,91 @@ import 'dart:async';
 import 'package:eventhub/core/errors/failure.dart';
 import 'package:eventhub/core/errors/failure_exception.dart';
 import 'package:eventhub/core/result/result.dart';
-import 'package:eventhub/core/utils/app_logger.dart';
-import 'package:eventhub/features/auth/data/datasources/account_functions_data_source.dart';
-import 'package:eventhub/features/auth/data/datasources/firebase_auth_data_source.dart';
+import 'package:eventhub/features/auth/data/datasources/account_remote_data_source.dart';
+import 'package:eventhub/features/auth/data/datasources/supabase_auth_data_source.dart';
 import 'package:eventhub/features/auth/data/datasources/user_remote_data_source.dart';
 import 'package:eventhub/features/auth/data/dtos/user_dto.dart';
 import 'package:eventhub/features/auth/domain/entities/app_user.dart';
 import 'package:eventhub/features/auth/domain/entities/auth_session.dart';
 import 'package:eventhub/features/auth/domain/entities/user_role.dart';
 import 'package:eventhub/features/auth/domain/repositories/auth_repository.dart';
-import 'package:firebase_auth/firebase_auth.dart' show User;
 import 'package:rxdart/rxdart.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' show User;
 
 class AuthRepositoryImpl implements AuthRepository {
   AuthRepositoryImpl({
-    required FirebaseAuthDataSource authDataSource,
+    required SupabaseAuthDataSource authDataSource,
     required UserRemoteDataSource userDataSource,
-    required AccountFunctionsDataSource accountFunctions,
+    required AccountRemoteDataSource accountDataSource,
     required Duration profileGracePeriod,
     required String googleServerClientId,
   }) : _auth = authDataSource,
        _users = userDataSource,
-       _account = accountFunctions,
+       _account = accountDataSource,
        _profileGracePeriod = profileGracePeriod,
        _googleServerClientId = googleServerClientId;
 
-  final FirebaseAuthDataSource _auth;
+  final SupabaseAuthDataSource _auth;
   final UserRemoteDataSource _users;
-  final AccountFunctionsDataSource _account;
+  final AccountRemoteDataSource _account;
   final Duration _profileGracePeriod;
   final String _googleServerClientId;
 
-  /// Users whose role claim has already been checked this process.
-  final _claimChecked = <String>{};
-
   @override
   Stream<AuthSession> watchSession() {
-    // `userChanges` (not `authStateChanges`) so a reload after email
-    // verification reaches the UI. It also fires on token refreshes, which
-    // change nothing the session exposes: filtered out by `distinct`.
-    // switchMap: a Firestore snapshot stream never completes, so the previous
-    // profile subscription must be cancelled when the user changes.
+    // Auth emits on every token refresh; only a change of account, of email
+    // confirmation or of the admin role changes the session. switchMap: the
+    // profile stream never completes, so the previous one must be cancelled
+    // when the account changes.
     return _auth
         .userChanges()
-        .distinct(
-          (a, b) => a?.uid == b?.uid && a?.emailVerified == b?.emailVerified,
-        )
+        .distinct((a, b) => _sessionKey(a) == _sessionKey(b))
         .switchMap<AuthSession>((user) {
           if (user == null) return Stream.value(const SignedOut());
-          return _sessionFor(user);
+          return _profileSession(user);
         });
   }
 
-  Stream<AuthSession> _sessionFor(User user) {
-    return Stream.fromFuture(
-      _auth.hasAdminClaim(user),
-    ).switchMap((isAdmin) => _profileSession(user, isAdmin: isAdmin));
-  }
+  static String? _sessionKey(User? user) => user == null
+      ? null
+      : '${user.id}|${user.emailConfirmedAt}|'
+            '${SupabaseAuthDataSource.isAdmin(user)}';
 
-  Stream<AuthSession> _profileSession(User user, {required bool isAdmin}) {
-    return _users.watch(user.uid).switchMap<AuthSession>((dto) {
+  Stream<AuthSession> _profileSession(User user) {
+    final verified = SupabaseAuthDataSource.isEmailVerified(user);
+    final admin = SupabaseAuthDataSource.isAdmin(user);
+    return _users.watch(user.id).switchMap<AuthSession>((dto) {
       if (dto != null) {
-        _ensureRoleClaimOnce(user.uid, dto.role);
         return Stream.value(
           SignedIn(
             dto
-                .toDomain(user.uid)
-                .copyWith(emailVerified: user.emailVerified, isAdmin: isAdmin),
+                .toDomain(user.id)
+                .copyWith(emailVerified: verified, isAdmin: admin),
           ),
         );
       }
-      // Right after sign-up the auth user exists before the profile document
-      // is written. Tolerate that window; if the profile still has not shown
-      // up after the grace period, surface `ProfileMissing`.
+      // A password sign-up has its profile created with the account; a
+      // first Google sign-in has none yet. Give the row a moment to show up,
+      // then ask for the role.
       return TimerStream(
         ProfileMissing(
-          uid: user.uid,
+          uid: user.id,
           email: user.email ?? '',
-          displayName: user.displayName,
+          displayName: _displayName(user),
         ),
         _profileGracePeriod,
       );
     });
   }
 
-  void _ensureRoleClaimOnce(String uid, UserRole role) {
-    if (!_claimChecked.add(uid)) return;
-    unawaited(
-      _auth.ensureRoleClaim(role.name).catchError((Object error) {
-        AppLogger.warning('Role claim check failed', error: error);
-      }),
-    );
+  static String? _displayName(User user) {
+    final metadata = user.userMetadata ?? const <String, dynamic>{};
+    final name = metadata['full_name'] ?? metadata['name'];
+    return name is String && name.trim().isNotEmpty ? name.trim() : null;
   }
+
+  @override
+  Stream<void> get passwordRecoveries => _auth.passwordRecoveries;
 
   @override
   AsyncResult<AppUser> signIn({
@@ -103,18 +96,21 @@ class AuthRepositoryImpl implements AuthRepository {
   }) {
     return guard(() async {
       final user = await _auth.signIn(email: email, password: password);
-      final dto = await _users.get(user.uid);
-      if (dto == null) {
-        throw const FailureException(
-          AuthFailure(
-            code: AuthFailureCode.profileMissing,
-            message: 'Profil introuvable. Veuillez compléter votre profil.',
-          ),
-        );
-      }
-      return dto.toDomain(user.uid).copyWith(emailVerified: user.emailVerified);
+      final dto = await _users.get(user.id);
+      if (dto == null) throw const FailureException(_profileMissing);
+      return dto
+          .toDomain(user.id)
+          .copyWith(
+            emailVerified: SupabaseAuthDataSource.isEmailVerified(user),
+            isAdmin: SupabaseAuthDataSource.isAdmin(user),
+          );
     });
   }
+
+  static const _profileMissing = AuthFailure(
+    code: AuthFailureCode.profileMissing,
+    message: 'Profil introuvable. Veuillez compléter votre profil.',
+  );
 
   @override
   AsyncResult<void> signInWithGoogle() => guard(
@@ -129,16 +125,21 @@ class AuthRepositoryImpl implements AuthRepository {
     required UserRole role,
   }) {
     return guard(() async {
-      final user = await _auth.signUp(email: email, password: password);
-      final profile = await _createProfile(user, name: name, role: role);
-      try {
-        await _auth.sendEmailVerification();
-      } on Object catch (error) {
-        // The account exists: a mail hiccup must not turn a successful
-        // sign-up into an error. The banner offers to resend.
-        AppLogger.warning('Verification email not sent', error: error);
-      }
-      return profile;
+      final user = await _auth.signUp(
+        email: email,
+        password: password,
+        name: name.trim(),
+        role: role.name,
+      );
+      // No session until the address is confirmed: the returned user tells
+      // the form to send the person to their inbox.
+      return AppUser(
+        id: user.id,
+        name: name.trim(),
+        email: user.email ?? email.trim(),
+        role: role,
+        emailVerified: SupabaseAuthDataSource.isEmailVerified(user),
+      );
     });
   }
 
@@ -150,24 +151,16 @@ class AuthRepositoryImpl implements AuthRepository {
     return guard(() async {
       final user = _auth.currentUser;
       if (user == null) throw const FailureException(AuthFailure.notSignedIn());
-      return _createProfile(user, name: name, role: role);
+      final profile = AppUser(
+        id: user.id,
+        name: name.trim(),
+        email: user.email ?? '',
+        role: role,
+        emailVerified: SupabaseAuthDataSource.isEmailVerified(user),
+      );
+      await _users.create(user.id, UserDto.fromDomain(profile));
+      return profile;
     });
-  }
-
-  Future<AppUser> _createProfile(
-    User user, {
-    required String name,
-    required UserRole role,
-  }) async {
-    final profile = AppUser(
-      id: user.uid,
-      name: name.trim(),
-      email: user.email ?? '',
-      role: role,
-      emailVerified: user.emailVerified,
-    );
-    await _users.create(user.uid, UserDto.fromDomain(profile));
-    return profile;
   }
 
   @override
@@ -175,19 +168,16 @@ class AuthRepositoryImpl implements AuthRepository {
     return guard(() async {
       final user = _auth.currentUser;
       if (user == null) throw const FailureException(AuthFailure.notSignedIn());
-      await _users.updateProfile(user.uid, name: name.trim(), bio: bio?.trim());
-      // Read back rather than rebuilding locally: the document is the source
-      // of truth, and the session stream will emit the same value anyway.
-      final dto = await _users.get(user.uid);
-      if (dto == null) {
-        throw const FailureException(
-          AuthFailure(
-            code: AuthFailureCode.profileMissing,
-            message: 'Profil introuvable. Veuillez compléter votre profil.',
-          ),
-        );
-      }
-      return dto.toDomain(user.uid).copyWith(emailVerified: user.emailVerified);
+      await _users.updateProfile(user.id, name: name.trim(), bio: bio?.trim());
+      // Read back: triggers normalise the row (trimmed name, empty bio).
+      final dto = await _users.get(user.id);
+      if (dto == null) throw const FailureException(_profileMissing);
+      return dto
+          .toDomain(user.id)
+          .copyWith(
+            emailVerified: SupabaseAuthDataSource.isEmailVerified(user),
+            isAdmin: SupabaseAuthDataSource.isAdmin(user),
+          );
     });
   }
 
@@ -215,6 +205,10 @@ class AuthRepositoryImpl implements AuthRepository {
       ),
     );
   }
+
+  @override
+  AsyncResult<void> setNewPassword(String newPassword) =>
+      guard(() => _auth.setNewPassword(newPassword));
 
   @override
   bool get usesPasswordSignIn => _auth.usesPasswordSignIn;

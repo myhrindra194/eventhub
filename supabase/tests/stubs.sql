@@ -27,6 +27,7 @@ create table auth.users (
   email text,
   email_confirmed_at timestamptz,
   raw_app_meta_data jsonb default '{}'::jsonb,
+  raw_user_meta_data jsonb default '{}'::jsonb,
   banned_until timestamptz
 );
 create table auth.sessions (

@@ -152,8 +152,12 @@ final _commonRoutes = <RouteBase>[
     path: AppRoutes.changePassword,
     name: AppRoutes.changePasswordName,
     parentNavigatorKey: rootNavigatorKey,
-    pageBuilder: (_, state) =>
-        AppPage.screen(state, const ChangePasswordScreen()),
+    pageBuilder: (_, state) => AppPage.screen(
+      state,
+      ChangePasswordScreen(
+        recovery: state.uri.queryParameters['recovery'] == '1',
+      ),
+    ),
   ),
   // Account and support pages, opened from the profile of either role.
   GoRoute(

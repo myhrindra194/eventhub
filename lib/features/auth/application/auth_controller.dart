@@ -97,6 +97,10 @@ class AuthController extends _$AuthController {
         ),
   );
 
+  /// After a password-recovery link: no current password to ask for.
+  Future<Result<void>> setNewPassword(String newPassword) =>
+      _run(() => ref.read(authRepositoryProvider).setNewPassword(newPassword));
+
   Future<Result<void>> deleteAccount({String? password}) => _run(
     () => ref.read(authRepositoryProvider).deleteAccount(password: password),
   );

@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart' show FirebaseException;
 import 'package:eventhub/core/errors/failure.dart';
 import 'package:eventhub/core/result/result.dart';
 import 'package:eventhub/features/auth/domain/entities/app_user.dart';
@@ -6,42 +7,13 @@ import 'package:eventhub/features/reservations/domain/entities/reservation.dart'
 import 'package:eventhub/features/reviews/data/review_remote_data_source.dart';
 import 'package:eventhub/features/reviews/data/review_repository_impl.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:mocktail/mocktail.dart';
 
-/// Records the writes and throws what `public.reviews` would answer.
-class _FakeReviews implements ReviewRemoteDataSource {
-  _FakeReviews({this.createError});
-
-  final PostgrestException? createError;
-  final calls = <String>[];
-
-  @override
-  Future<void> create({
-    required String eventId,
-    required int rating,
-    required String comment,
-  }) async {
-    calls.add('create $eventId $rating "$comment"');
-    if (createError case final e?) throw e;
-  }
-
-  @override
-  Future<void> update({
-    required String eventId,
-    required String authorId,
-    required int rating,
-    required String comment,
-  }) async {
-    calls.add('update $eventId $authorId $rating "$comment"');
-  }
-
-  @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
-}
+class _MockRemote extends Mock implements ReviewRemoteDataSource {}
 
 void main() {
-  const eventId = '0b6f7c1e-8d2a-4f3b-9e5c-1a2b3c4d5e6f';
-  const userId = '9c8b7a6d-5e4f-4a3b-8c2d-1e0f9a8b7c6d';
+  const eventId = 'Xk3Pq9LmZr2Tb7Wc4Yd1';
+  const userId = 'aB3dE5fG7hJ9kL1mN3pQ5rS7tU9';
   final now = DateTime(2026, 9, 14, 12);
   const user = AppUser(
     id: userId,
@@ -51,7 +23,7 @@ void main() {
     emailVerified: true,
   );
   final reservation = Reservation(
-    id: '1d2c3b4a-5f6e-4d7c-8b9a-0f1e2d3c4b5a',
+    id: '${eventId}_$userId',
     eventId: eventId,
     userId: userId,
     organizerId: 'org',
@@ -64,56 +36,105 @@ void main() {
     reservedAt: now.subtract(const Duration(days: 10)),
   );
 
-  Future<Result<void>> save(_FakeReviews remote, {bool exists = false}) =>
+  late _MockRemote remote;
+
+  setUpAll(() => registerFallbackValue(user));
+
+  setUp(() {
+    remote = _MockRemote();
+  });
+
+  void stubSave({Object? error}) =>
+      when(
+        () => remote.save(
+          eventId: any(named: 'eventId'),
+          organizerId: any(named: 'organizerId'),
+          author: any(named: 'author'),
+          rating: any(named: 'rating'),
+          comment: any(named: 'comment'),
+        ),
+      ).thenAnswer((_) async {
+        if (error != null) throw error;
+      });
+
+  Future<Result<void>> save({Reservation? seat, int rating = 4}) =>
       ReviewRepositoryImpl(remote).save(
         user: user,
-        reservation: reservation,
+        reservation: seat ?? reservation,
         eventId: eventId,
-        rating: 4,
+        rating: rating,
         comment: '  Très bien  ',
-        exists: exists,
         now: now,
       );
 
-  test('inserts only event, rating and trimmed comment', () async {
-    final remote = _FakeReviews();
-    expect(await save(remote), isA<Ok<void>>());
-    expect(remote.calls, ['create $eventId 4 "Très bien"']);
+  test('writes a trimmed review counted for the event\'s organizer', () async {
+    stubSave();
+    expect(await save(), isA<Ok<void>>());
+    verify(
+      () => remote.save(
+        eventId: eventId,
+        organizerId: 'org',
+        author: user,
+        rating: 4,
+        comment: 'Très bien',
+      ),
+    ).called(1);
   });
 
-  test('edits by (event, author) when the review exists', () async {
-    final remote = _FakeReviews();
-    expect(await save(remote, exists: true), isA<Ok<void>>());
-    expect(remote.calls, ['update $eventId $userId 4 "Très bien"']);
-  });
-
-  test('falls back to an edit when the review was created meanwhile', () async {
-    final remote = _FakeReviews(
-      createError: const PostgrestException(message: 'dup', code: '23505'),
+  test('nothing is written when the policy refuses', () async {
+    stubSave();
+    final notStarted = reservation.copyWith(
+      eventStartsAt: now.add(const Duration(hours: 2)),
     );
-    expect(await save(remote), isA<Ok<void>>());
-    expect(remote.calls.last, 'update $eventId $userId 4 "Très bien"');
+    final result = await save(seat: notStarted);
+    expect(
+      (result.failureOrNull! as BusinessRuleFailure).rule,
+      BusinessRule.eventNotStarted,
+    );
+    expect(await save(rating: 6), isA<Err<void>>());
+    verifyNever(
+      () => remote.save(
+        eventId: any(named: 'eventId'),
+        organizerId: any(named: 'organizerId'),
+        author: any(named: 'author'),
+        rating: any(named: 'rating'),
+        comment: any(named: 'comment'),
+      ),
+    );
   });
 
   test(
-    'an insert refused by RLS means the person is not an attendee',
+    'a write refused by the rules means the person did not attend',
     () async {
-      final result = await save(
-        _FakeReviews(
-          createError: const PostgrestException(
-            message: 'new row violates row-level security policy',
-            code: '42501',
-          ),
+      stubSave(
+        error: FirebaseException(
+          plugin: 'cloud_firestore',
+          code: 'permission-denied',
         ),
       );
+      final result = await save();
       expect(
-        result,
-        isA<Err<void>>().having(
-          (e) => (e.failure as BusinessRuleFailure).rule,
-          'rule',
-          BusinessRule.notAttendee,
-        ),
+        (result.failureOrNull! as BusinessRuleFailure).rule,
+        BusinessRule.notAttendee,
       );
     },
   );
+
+  test('other Firestore errors keep their own meaning', () async {
+    stubSave(
+      error: FirebaseException(plugin: 'cloud_firestore', code: 'unavailable'),
+    );
+    expect((await save()).failureOrNull, isA<NetworkFailure>());
+  });
+
+  test('deletes the author\'s own review', () async {
+    when(
+      () => remote.delete(eventId: eventId, authorId: userId),
+    ).thenAnswer((_) async {});
+    final result = await ReviewRepositoryImpl(
+      remote,
+    ).delete(eventId: eventId, userId: userId);
+    expect(result, isA<Ok<void>>());
+    verify(() => remote.delete(eventId: eventId, authorId: userId)).called(1);
+  });
 }

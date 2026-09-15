@@ -1,57 +1,57 @@
-import 'package:eventhub/core/supabase/timestamp_converter.dart';
+import 'package:eventhub/core/firebase/timestamp_converter.dart';
 import 'package:eventhub/features/reservations/domain/entities/reservation.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 
 part 'reservation_dto.freezed.dart';
 part 'reservation_dto.g.dart';
 
-/// Row of `public.reservations`, as returned by PostgREST, Realtime and the
-/// `reserve_seat` / `cancel_reservation` functions.
+/// Document `reservations/{eventId}_{userId}`. The id is read from the
+/// snapshot, not from the fields.
 ///
-/// Read-only: every write goes through a database function or a payment
-/// Edge Function, so there is no `toJson` path back to the table. Internal
-/// payment columns (`checkout_session_id`, `payment_intent_id`, `refund_id`,
-/// `reminder_sent_at`) are ignored — the app never acts on them.
+/// Read-only: the only writes are the booking and cancellation transactions
+/// of `ReservationRemoteDataSource`, whose field lists mirror the
+/// `hasOnly([...])` of `firebase/firestore.rules` exactly, so there is no
+/// generic `toJson` path back to the collection.
 @Freezed(toJson: false)
 abstract class ReservationDto with _$ReservationDto {
   const ReservationDto._();
 
-  @JsonSerializable(fieldRename: FieldRename.snake, createToJson: false)
+  @JsonSerializable(createToJson: false)
   const factory ReservationDto({
-    required String id,
+    @Default('') String eventId,
 
-    /// The three references become null when the event or an account is
-    /// deleted; the snapshot columns stay.
-    String? eventId,
-    String? userId,
-    String? organizerId,
+    /// `''` once the holder deleted their account: the ticket stays,
+    /// anonymised, in the organizer's history.
+    @Default('') String userId,
+    @Default('') String organizerId,
     required String userName,
     required String userEmail,
     required String eventTitle,
     @TimestampConverter() required DateTime eventStartsAt,
     required String eventLocation,
+
+    /// A status this build does not know never reads as a valid seat.
     @JsonKey(unknownEnumValue: ReservationStatus.cancelled)
     required ReservationStatus status,
+
+    /// Client time (the rules bound it to the server clock): it is part of
+    /// the booking notification id, so it is never a pending server value.
     @TimestampConverter() required DateTime reservedAt,
     @NullableTimestampConverter() DateTime? cancelledAt,
+    String? cancelledBy,
     String? tierId,
     String? tierName,
     @Default(0) int pricePaid,
-    int? amountDue,
-    String? currency,
-    String? paymentStatus,
-    String? checkoutUrl,
-    @NullableTimestampConverter() DateTime? holdExpiresAt,
   }) = _ReservationDto;
 
   factory ReservationDto.fromJson(Map<String, dynamic> json) =>
       _$ReservationDtoFromJson(json);
 
-  Reservation toDomain() => Reservation(
+  Reservation toDomain(String id) => Reservation(
     id: id,
-    eventId: eventId ?? '',
-    userId: userId ?? '',
-    organizerId: organizerId ?? '',
+    eventId: eventId,
+    userId: userId,
+    organizerId: organizerId,
     userName: userName,
     userEmail: userEmail,
     eventTitle: eventTitle,
@@ -60,13 +60,9 @@ abstract class ReservationDto with _$ReservationDto {
     status: status,
     reservedAt: reservedAt,
     cancelledAt: cancelledAt,
+    cancelledBy: cancelledBy,
     tierId: tierId,
     tierName: tierName,
     pricePaid: pricePaid,
-    amountDue: amountDue,
-    currency: currency,
-    paymentStatus: paymentStatus,
-    checkoutUrl: checkoutUrl,
-    holdExpiresAt: holdExpiresAt,
   );
 }

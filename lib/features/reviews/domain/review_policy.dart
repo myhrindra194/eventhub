@@ -3,10 +3,13 @@ import 'package:eventhub/core/result/result.dart';
 import 'package:eventhub/features/auth/domain/entities/app_user.dart';
 import 'package:eventhub/features/reservations/domain/entities/reservation.dart';
 
-/// Who may review, and what a valid review is. Mirrors the `reviews` insert
-/// policy (`private.can_review`) and the table constraints: participant,
-/// confirmed seat, event started, verified email, rating 1..5, comment ≤
-/// 2 000 characters.
+/// Who may review, and what a valid review is. Mirrors the `reviews` create
+/// rule (`attended()`): a confirmed seat, the event started, a verified
+/// email, rating 1..5, comment ≤ 2 000 characters.
+///
+/// No role condition: one account holds both spaces, and an organizer who
+/// attended someone else's event reviews it like anyone. The event's own
+/// team cannot hold a seat on it, so it can never review itself.
 abstract final class ReviewPolicy {
   static const maxCommentLength = 2000;
 
@@ -15,7 +18,9 @@ abstract final class ReviewPolicy {
     required Reservation? reservation,
     required DateTime now,
   }) {
-    if (!user.isParticipant || reservation == null || !reservation.isActive) {
+    if (reservation == null ||
+        !reservation.isActive ||
+        reservation.userId != user.id) {
       return const Err(
         BusinessRuleFailure(
           rule: BusinessRule.notAttendee,

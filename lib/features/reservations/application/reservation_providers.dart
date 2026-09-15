@@ -1,12 +1,11 @@
 import 'package:eventhub/core/analytics/app_analytics.dart';
 import 'package:eventhub/core/config/app_config.dart';
 import 'package:eventhub/core/errors/failure.dart';
+import 'package:eventhub/core/firebase/firebase_providers.dart';
 import 'package:eventhub/core/result/result.dart';
-import 'package:eventhub/core/supabase/supabase_providers.dart';
 import 'package:eventhub/features/auth/application/auth_providers.dart';
 import 'package:eventhub/features/auth/domain/entities/app_user.dart';
 import 'package:eventhub/features/events/application/event_providers.dart';
-import 'package:eventhub/features/reservations/data/datasources/payment_functions_data_source.dart';
 import 'package:eventhub/features/reservations/data/datasources/reservation_remote_data_source.dart';
 import 'package:eventhub/features/reservations/data/repositories/reservation_repository_impl.dart';
 import 'package:eventhub/features/reservations/domain/entities/checkout.dart';
@@ -18,15 +17,16 @@ import 'package:riverpod_annotation/riverpod_annotation.dart' hide AsyncResult;
 part 'reservation_providers.g.dart';
 
 @Riverpod(keepAlive: true)
-ReservationRepository reservationRepository(Ref ref) {
-  final client = ref.watch(supabaseClientProvider);
-  return ReservationRepositoryImpl(
-    ReservationRemoteDataSource(client),
-    PaymentFunctionsDataSource(client.functions),
-  );
-}
+ReservationRepository reservationRepository(Ref ref) =>
+    ReservationRepositoryImpl(
+      ReservationRemoteDataSource(
+        ref.watch(firestoreProvider),
+        ref.watch(firebaseAuthProvider),
+      ),
+      clock: ref.watch(clockProvider),
+    );
 
-/// Reservations of the signed-in participant.
+/// Reservations of the signed-in account (its participant space).
 @riverpod
 Stream<List<Reservation>> myReservations(Ref ref) {
   final user = ref.watch(currentUserProvider);
@@ -34,7 +34,7 @@ Stream<List<Reservation>> myReservations(Ref ref) {
   return ref.watch(reservationRepositoryProvider).watchByUser(user.id);
 }
 
-/// The signed-in participant's reservation for [eventId], if any.
+/// The signed-in account's reservation for [eventId], if any.
 @riverpod
 Stream<Reservation?> myReservationForEvent(Ref ref, String eventId) {
   final user = ref.watch(currentUserProvider);
@@ -45,7 +45,7 @@ Stream<Reservation?> myReservationForEvent(Ref ref, String eventId) {
 }
 
 /// Confirmed reservations of an event the signed-in organizer owns or
-/// co-organizes. RLS returns nothing to anyone outside the team.
+/// co-organizes. The rules refuse the query to anyone outside the team.
 @riverpod
 Stream<List<Reservation>> eventParticipants(Ref ref, String eventId) {
   final user = ref.watch(currentUserProvider);
@@ -63,8 +63,8 @@ class ReservationController extends _$ReservationController {
   FutureOr<void> build() {}
 
   /// [ReservationPolicy] runs first on what the screen already shows (the
-  /// event and the participant's seat), for an answer without a round trip;
-  /// the database decides either way.
+  /// event and the seat), for an answer without a round trip; the
+  /// transaction evaluates it again on fresh reads, and the rules decide.
   Future<Result<Reservation>> reserve(String eventId, {String? tierId}) async {
     final result = await _run<Reservation>((user) async {
       final event = ref.read(eventByIdProvider(eventId)).value;
@@ -74,6 +74,7 @@ class ReservationController extends _$ReservationController {
           existing: ref.read(myReservationForEventProvider(eventId)).value,
           now: ref.read(clockProvider)(),
           tierId: tierId,
+          userId: user.id,
         );
         if (check case Err(:final failure)) return Err<Reservation>(failure);
       }
@@ -87,23 +88,16 @@ class ReservationController extends _$ReservationController {
     return result;
   }
 
-  /// Holds a paid seat and returns the Stripe page to open (F-11).
+  /// A paid seat (F-11): not available without a payment server, the
+  /// repository says so.
   Future<Result<CheckoutStart>> startCheckout({
     required String eventId,
     required String tierId,
   }) async {
     final result = await _run(
-      (user) => user.isParticipant
-          ? ref
-                .read(reservationRepositoryProvider)
-                .startCheckout(eventId: eventId, tierId: tierId)
-          : Future.value(
-              const Err<CheckoutStart>(
-                PermissionFailure(
-                  message: 'Seul un participant peut acheter un billet.',
-                ),
-              ),
-            ),
+      (_) => ref
+          .read(reservationRepositoryProvider)
+          .startCheckout(eventId: eventId, tierId: tierId),
     );
     if (result is Ok<CheckoutStart>) {
       ref.read(appAnalyticsProvider).checkoutStarted(eventId, tierId);
@@ -117,7 +111,7 @@ class ReservationController extends _$ReservationController {
         .cancelPendingCheckout(eventId: eventId),
   );
 
-  /// Refund of a paid ticket; the seat goes back on sale.
+  /// Refund of a paid ticket (F-11), waiting for a payment server.
   Future<Result<void>> refund(String eventId) async {
     final result = await _run(
       (_) => ref.read(reservationRepositoryProvider).refund(eventId: eventId),
@@ -128,8 +122,6 @@ class ReservationController extends _$ReservationController {
     return result;
   }
 
-  /// The event id for analytics comes from the cancelled row the database
-  /// returns: the reservation id no longer contains it.
   Future<Result<void>> cancel(String reservationId) async {
     final result = await _run((user) async {
       final known = ref
@@ -146,7 +138,7 @@ class ReservationController extends _$ReservationController {
       }
       return ref
           .read(reservationRepositoryProvider)
-          .cancel(reservationId: reservationId);
+          .cancel(reservationId: reservationId, userId: user.id);
     });
     if (result case Ok(:final value)) {
       ref.read(appAnalyticsProvider).reservationCancelled(value.eventId);

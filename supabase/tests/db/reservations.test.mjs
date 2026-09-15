@@ -36,10 +36,24 @@ describe('reservations, waiting list, door', () => {
 
     await rejects(reserve(soa, eventId), { status: 409, rule: 'alreadyReserved' });
     await rejects(reserve(hery, eventId), { status: 409, rule: 'eventFull' });
-    await rejects(reserve(organizer, eventId), { status: 403 });
+    await rejects(reserve(organizer, eventId), { status: 409, rule: 'actionRefused' });
+    await rejects(reserve(staff, eventId), { status: 409, rule: 'actionRefused' });
 
     const alerts = await all(db, "select user_id from public.notifications where type = 'booking' and event_id = $1 order by user_id", [eventId]);
     assert.deepEqual(alerts.map((a) => a.user_id).sort(), [organizer, staff].sort());
+  });
+
+  it('lets an organizer book, queue and review at other people\'s events, like any account', async () => {
+    const eventId = await publish(db, organizer, { capacity: 1 });
+    const ticket = await reserve(outsider, eventId);
+    assert.equal(ticket.status, 'confirmed');
+    assert.equal(ticket.user_name, 'Other Org');
+    await asUser(db, soa, (tx) => call(tx, 'join_waitlist', { p_event_id: eventId }));
+    await rejects(asUser(db, organizer, (tx) => call(tx, 'join_waitlist', { p_event_id: eventId })), { status: 409, rule: 'actionRefused' });
+
+    await db.query("update public.events set starts_at = now() - interval '1 hour' where id = $1", [eventId]);
+    await asUser(db, outsider, (tx) => tx.query('insert into public.reviews (event_id, rating, comment) values ($1, 5, $2)', [eventId, 'Très bien organisé']));
+    assert.equal((await one(db, 'select count(*)::int as n from public.reviews where event_id = $1', [eventId])).n, 1);
   });
 
   it('shows a guest list to the team only', async () => {

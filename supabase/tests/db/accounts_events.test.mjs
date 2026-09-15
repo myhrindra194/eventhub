@@ -21,18 +21,41 @@ describe('accounts', () => {
     assert.equal(meta.raw_app_meta_data.role, 'organizer');
   });
 
-  it('creates the profile with the account from sign-up metadata, validated', async () => {
+  it('creates a participant profile with the account, whatever the sign-up metadata claim', async () => {
     const insert = (email, metadata) => one(db,
       'insert into auth.users (email, raw_user_meta_data) values ($1, $2) returning id', [email, JSON.stringify(metadata)]);
-    const organizer = await insert('signup-org@eventhub.test', { name: '  Rova  Andria ', role: 'organizer' });
-    const profile = await one(db, 'select name, role from public.profiles where id = $1', [organizer.id]);
-    assert.deepEqual(profile, { name: 'Rova  Andria', role: 'organizer' });
-    assert.ok(await one(db, 'select 1 from public.organizers where id = $1', [organizer.id]));
+    const claimed = await insert('signup-org@eventhub.test', { name: '  Rova  Andria ', role: 'organizer' });
+    assert.deepEqual(
+      await one(db, 'select name, role from public.profiles where id = $1', [claimed.id]),
+      { name: 'Rova  Andria', role: 'participant' },
+    );
+    assert.equal(await one(db, 'select 1 from public.organizers where id = $1', [claimed.id]), undefined);
 
-    for (const metadata of [{ name: 'Admin', role: 'admin' }, { name: 'X', role: 'participant' }, {}]) {
+    const google = await insert('signup-google@eventhub.test', { full_name: 'Hery Randria' });
+    assert.equal((await one(db, 'select role from public.profiles where id = $1', [google.id])).role, 'participant');
+
+    for (const metadata of [{ name: 'X' }, {}]) {
       const { id } = await insert(`signup-${Math.random()}@eventhub.test`, metadata);
       assert.equal(await one(db, 'select 1 from public.profiles where id = $1', [id]), undefined);
     }
+  });
+
+  it('turns the organizer space on for a verified account, once, and never back', async () => {
+    const fresh = (await one(db, "insert into auth.users (email, email_confirmed_at) values ('forced-role@eventhub.test', now()) returning id")).id;
+    await asUser(db, fresh, (tx) => tx.query(
+      "insert into public.profiles (id, name, email, role) values ($1, 'Forced Role', 'x@elsewhere.test', 'organizer')", [fresh]));
+    assert.equal((await one(db, 'select role from public.profiles where id = $1', [fresh])).role, 'participant', 'a client cannot insert an organizer');
+
+    const unverified = await createUser(db, { name: 'Pas Confirmé', role: 'participant', verified: false });
+    await rejects(asUser(db, unverified, (tx) => rpc(tx, 'become_organizer')), { status: 403, rule: 'emailNotVerified' });
+
+    assert.deepEqual(await asUser(db, fresh, (tx) => rpc(tx, 'become_organizer')), { organizer: true, changed: true });
+    assert.deepEqual(await asUser(db, fresh, (tx) => rpc(tx, 'become_organizer')), { organizer: true, changed: false });
+    assert.equal((await one(db, 'select name from public.organizers where id = $1', [fresh])).name, 'Forced Role');
+    assert.equal((await one(db, 'select raw_app_meta_data from auth.users where id = $1', [fresh])).raw_app_meta_data.role, 'organizer');
+
+    await rejects(db.query("update public.profiles set role = 'participant' where id = $1", [fresh]), { rule: 'actionRefused' });
+    await rejects(asAnon(db, (tx) => rpc(tx, 'become_organizer')), { code: '42501' });
   });
 
   it('never lets a client change its role, email or suspension', async () => {

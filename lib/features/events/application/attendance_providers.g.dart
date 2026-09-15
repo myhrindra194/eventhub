@@ -57,24 +57,36 @@ final class EventAttendanceDataSourceProvider
 }
 
 String _$eventAttendanceDataSourceHash() =>
-    r'e54c0fcebf5dded8181b607735f4bfb0782cfd8a';
+    r'96f36e8ae97c5af85d621f3825e9696a77252507';
 
 /// Recent attendees' short names for the "who's going" strip (F-07).
+///
+/// `event_attendance` is a function, not a table, so there is nothing to
+/// subscribe to: the names are fetched again whenever the live seat counter
+/// of the event moves, which is exactly when they can have changed.
 
 @ProviderFor(eventRecentAttendees)
 final eventRecentAttendeesProvider = EventRecentAttendeesFamily._();
 
 /// Recent attendees' short names for the "who's going" strip (F-07).
+///
+/// `event_attendance` is a function, not a table, so there is nothing to
+/// subscribe to: the names are fetched again whenever the live seat counter
+/// of the event moves, which is exactly when they can have changed.
 
 final class EventRecentAttendeesProvider
     extends
         $FunctionalProvider<
           AsyncValue<List<String>>,
           List<String>,
-          Stream<List<String>>
+          FutureOr<List<String>>
         >
-    with $FutureModifier<List<String>>, $StreamProvider<List<String>> {
+    with $FutureModifier<List<String>>, $FutureProvider<List<String>> {
   /// Recent attendees' short names for the "who's going" strip (F-07).
+  ///
+  /// `event_attendance` is a function, not a table, so there is nothing to
+  /// subscribe to: the names are fetched again whenever the live seat counter
+  /// of the event moves, which is exactly when they can have changed.
   EventRecentAttendeesProvider._({
     required EventRecentAttendeesFamily super.from,
     required String super.argument,
@@ -98,12 +110,12 @@ final class EventRecentAttendeesProvider
 
   @$internal
   @override
-  $StreamProviderElement<List<String>> $createElement(
+  $FutureProviderElement<List<String>> $createElement(
     $ProviderPointer pointer,
-  ) => $StreamProviderElement(pointer);
+  ) => $FutureProviderElement(pointer);
 
   @override
-  Stream<List<String>> create(Ref ref) {
+  FutureOr<List<String>> create(Ref ref) {
     final argument = this.argument as String;
     return eventRecentAttendees(ref, argument);
   }
@@ -120,12 +132,16 @@ final class EventRecentAttendeesProvider
 }
 
 String _$eventRecentAttendeesHash() =>
-    r'e0a5bd8975ed751e0305aa97c91ce99a50378ab7';
+    r'3ab8957799c923ed3742a830ef7f2f8597b65a57';
 
 /// Recent attendees' short names for the "who's going" strip (F-07).
+///
+/// `event_attendance` is a function, not a table, so there is nothing to
+/// subscribe to: the names are fetched again whenever the live seat counter
+/// of the event moves, which is exactly when they can have changed.
 
 final class EventRecentAttendeesFamily extends $Family
-    with $FunctionalFamilyOverride<Stream<List<String>>, String> {
+    with $FunctionalFamilyOverride<FutureOr<List<String>>, String> {
   EventRecentAttendeesFamily._()
     : super(
         retry: null,
@@ -136,6 +152,10 @@ final class EventRecentAttendeesFamily extends $Family
       );
 
   /// Recent attendees' short names for the "who's going" strip (F-07).
+  ///
+  /// `event_attendance` is a function, not a table, so there is nothing to
+  /// subscribe to: the names are fetched again whenever the live seat counter
+  /// of the event moves, which is exactly when they can have changed.
 
   EventRecentAttendeesProvider call(String eventId) =>
       EventRecentAttendeesProvider._(argument: eventId, from: this);

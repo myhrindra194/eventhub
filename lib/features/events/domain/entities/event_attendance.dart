@@ -3,10 +3,8 @@ import 'dart:math' as math;
 /// "Who's going" — the social-proof sentence on the event detail (F-07).
 ///
 /// The head count comes from the event itself (`capacity - availablePlaces`,
-/// transactional and exact); the names come from
-/// `aggregates/event_{id}.recentAttendees`, maintained by the
-/// `aggregateAttendance` Cloud Function as "Prénom I." — never a full name,
-/// never an email.
+/// transactional and exact); the names come from the `event_attendance`
+/// database function as "Prénom I." — never a full name, never an email.
 abstract final class Attendance {
   /// Names spelled out in the sentence; the avatars may show a few more.
   static const namesInSentence = 2;

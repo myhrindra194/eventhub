@@ -15,8 +15,9 @@ import 'package:go_router/go_router.dart';
 ///
 /// Each row watches its event by id rather than filtering the catalogue: a
 /// favourite may be sold out, past or far in the future, none of which the
-/// upcoming-events feed is guaranteed to contain. A favourite whose event was
-/// deleted stays visible, labelled, with the way to remove it.
+/// upcoming-events feed is guaranteed to contain. Deleting an event deletes
+/// its favorites in the database; the "deleted" row only covers the moment
+/// between the event stream and the favorites stream catching up.
 class FavoritesScreen extends ConsumerWidget {
   const FavoritesScreen({super.key});
 

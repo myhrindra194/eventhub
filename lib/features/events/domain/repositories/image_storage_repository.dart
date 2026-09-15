@@ -2,8 +2,8 @@ import 'dart:typed_data';
 
 import 'package:eventhub/core/result/result.dart';
 
-/// Binary upload abstraction. The current implementation targets Firebase
-/// Storage; swapping to Supabase Storage only requires a new data source.
+/// Binary upload abstraction, implemented over Supabase Storage (public
+/// `event-covers` bucket).
 abstract interface class ImageStorageRepository {
   /// Uploads [bytes] under the organizer's folder and returns a public URL.
   AsyncResult<String> uploadEventImage({

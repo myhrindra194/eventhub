@@ -1,29 +1,46 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:eventhub/core/firebase/firestore_paths.dart';
+import 'package:eventhub/core/supabase/db.dart';
+import 'package:eventhub/core/supabase/supabase_providers.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
+/// `public.favorites` (RLS: owner only). `user_id` defaults to `auth.uid()`
+/// and is not even insertable, so a favourite can only ever be one's own.
 class FavoritesRemoteDataSource {
-  FavoritesRemoteDataSource(FirebaseFirestore firestore)
-    : _users = firestore.collection(FirestorePaths.users);
+  const FavoritesRemoteDataSource(this._client);
 
-  final CollectionReference<Map<String, dynamic>> _users;
+  final SupabaseClient _client;
 
-  /// Generous but bounded: a listener bills one read per document.
+  /// Generous but bounded: a Realtime subscription replays its whole result
+  /// on each change.
   static const maxFavorites = 500;
 
-  CollectionReference<Map<String, dynamic>> _favorites(String uid) =>
-      _users.doc(uid).collection(FirestorePaths.favorites);
+  /// SQLSTATE `unique_violation`.
+  static const _alreadyStarred = '23505';
 
-  Stream<List<String>> watchIds(String uid) => _favorites(uid)
-      .orderBy('createdAt', descending: true)
+  Stream<List<String>> watchIds(String uid) => _client
+      .from(Tables.favorites)
+      .stream(primaryKey: ['user_id', 'event_id'])
+      .eq('user_id', uid)
+      .order('created_at')
       .limit(maxFavorites)
-      .snapshots()
-      .map((s) => s.docs.map((d) => d.id).toList(growable: false));
+      .map((rows) => [for (final row in rows) row['event_id'] as String])
+      .resilient('favorites');
 
-  /// Exactly the field set the rules accept (`eventId`, server `createdAt`).
-  Future<void> add(String uid, String eventId) => _favorites(uid)
-      .doc(eventId)
-      .set({'eventId': eventId, 'createdAt': FieldValue.serverTimestamp()});
+  /// Idempotent, like the toggle expects: starring twice (two taps racing,
+  /// another device) is not an error. The primary key `(user_id, event_id)`
+  /// makes the duplicate impossible; its violation is swallowed here.
+  Future<void> add(String eventId) async {
+    try {
+      await _client.from(Tables.favorites).insert({'event_id': eventId});
+    } on PostgrestException catch (e) {
+      if (e.code != _alreadyStarred) rethrow;
+    }
+  }
 
-  Future<void> remove(String uid, String eventId) =>
-      _favorites(uid).doc(eventId).delete();
+  Future<void> remove(String uid, String eventId) async {
+    await _client
+        .from(Tables.favorites)
+        .delete()
+        .eq('user_id', uid)
+        .eq('event_id', eventId);
+  }
 }

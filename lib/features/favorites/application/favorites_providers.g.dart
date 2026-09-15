@@ -55,7 +55,7 @@ final class FavoritesRepositoryProvider
 }
 
 String _$favoritesRepositoryHash() =>
-    r'61645e075739c003dc02586b94437d5884bd70d3';
+    r'408a4dc6fed9fb82a856b8aace2d6e7344ff6295';
 
 @ProviderFor(favoriteIds)
 final favoriteIdsProvider = FavoriteIdsProvider._();
@@ -95,6 +95,84 @@ final class FavoriteIdsProvider
 }
 
 String _$favoriteIdsHash() => r'7a89b3fd4c20654077c6b3483287c66514ae184c';
+
+/// Toggles sent but not yet echoed by Realtime: event id → starred.
+///
+/// Unlike Firestore, Supabase has no local write cache, so the stream only
+/// reflects a toggle after the round trip. Overlaying the intent keeps the
+/// heart flipping at the tap; an entry is dropped once the stream agrees, or
+/// when the write fails.
+
+@ProviderFor(PendingFavorites)
+final pendingFavoritesProvider = PendingFavoritesProvider._();
+
+/// Toggles sent but not yet echoed by Realtime: event id → starred.
+///
+/// Unlike Firestore, Supabase has no local write cache, so the stream only
+/// reflects a toggle after the round trip. Overlaying the intent keeps the
+/// heart flipping at the tap; an entry is dropped once the stream agrees, or
+/// when the write fails.
+final class PendingFavoritesProvider
+    extends $NotifierProvider<PendingFavorites, Map<String, bool>> {
+  /// Toggles sent but not yet echoed by Realtime: event id → starred.
+  ///
+  /// Unlike Firestore, Supabase has no local write cache, so the stream only
+  /// reflects a toggle after the round trip. Overlaying the intent keeps the
+  /// heart flipping at the tap; an entry is dropped once the stream agrees, or
+  /// when the write fails.
+  PendingFavoritesProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'pendingFavoritesProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$pendingFavoritesHash();
+
+  @$internal
+  @override
+  PendingFavorites create() => PendingFavorites();
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(Map<String, bool> value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<Map<String, bool>>(value),
+    );
+  }
+}
+
+String _$pendingFavoritesHash() => r'55040799600f6c397a9281ce36f05eeb2ad6a172';
+
+/// Toggles sent but not yet echoed by Realtime: event id → starred.
+///
+/// Unlike Firestore, Supabase has no local write cache, so the stream only
+/// reflects a toggle after the round trip. Overlaying the intent keeps the
+/// heart flipping at the tap; an entry is dropped once the stream agrees, or
+/// when the write fails.
+
+abstract class _$PendingFavorites extends $Notifier<Map<String, bool>> {
+  Map<String, bool> build();
+  @$mustCallSuper
+  @override
+  WhenComplete runBuild() {
+    final ref = this.ref as $Ref<Map<String, bool>, Map<String, bool>>;
+    final element =
+        ref.element
+            as $ClassProviderElement<
+              AnyNotifier<Map<String, bool>, Map<String, bool>>,
+              Map<String, bool>,
+              Object?,
+              Object?
+            >;
+    return element.handleCreate(ref, build);
+  }
+}
 
 @ProviderFor(isFavorite)
 final isFavoriteProvider = IsFavoriteFamily._();
@@ -152,7 +230,7 @@ final class IsFavoriteProvider extends $FunctionalProvider<bool, bool, bool>
   }
 }
 
-String _$isFavoriteHash() => r'71e7601113aa9c068170ca5d6a2510db081a4423';
+String _$isFavoriteHash() => r'838801f665ba2daa8a97ed647cb625246bd3fd13';
 
 final class IsFavoriteFamily extends $Family
     with $FunctionalFamilyOverride<bool, String> {
@@ -197,7 +275,7 @@ final class FavoriteControllerProvider
 }
 
 String _$favoriteControllerHash() =>
-    r'277de7018e70858ae2c600841b4326c74fe67dfe';
+    r'4ed12d2452d7ad4a0eba9333cbbeeb3c5bda76e9';
 
 abstract class _$FavoriteController extends $AsyncNotifier<void> {
   FutureOr<void> build();

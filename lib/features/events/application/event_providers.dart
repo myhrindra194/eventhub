@@ -1,10 +1,10 @@
 import 'package:eventhub/core/config/app_config.dart';
-import 'package:eventhub/core/firebase/firebase_providers.dart';
 import 'package:eventhub/core/result/result.dart';
+import 'package:eventhub/core/supabase/supabase_providers.dart';
 import 'package:eventhub/core/utils/date_formats.dart';
 import 'package:eventhub/features/events/application/catalogue.dart';
 import 'package:eventhub/features/events/data/datasources/event_remote_data_source.dart';
-import 'package:eventhub/features/events/data/datasources/firebase_storage_data_source.dart';
+import 'package:eventhub/features/events/data/datasources/supabase_storage_data_source.dart';
 import 'package:eventhub/features/events/data/repositories/event_repository_impl.dart';
 import 'package:eventhub/features/events/data/repositories/image_storage_repository_impl.dart';
 import 'package:eventhub/features/events/domain/entities/event.dart';
@@ -15,13 +15,14 @@ import 'package:riverpod_annotation/riverpod_annotation.dart' hide AsyncResult;
 
 part 'event_providers.g.dart';
 
-/// Page size of the catalogue; the security rules cap a `list` at 100.
+/// Page size of the catalogue; the Realtime `in` filter that joins ticket
+/// types and teams caps a page at 100 events.
 const cataloguePageSize = EventRemoteDataSource.maxPageSize;
 
 @Riverpod(keepAlive: true)
 EventRepository eventRepository(Ref ref) {
   return EventRepositoryImpl(
-    remote: EventRemoteDataSource(ref.watch(firestoreProvider)),
+    remote: EventRemoteDataSource(ref.watch(supabaseClientProvider)),
     clock: ref.watch(clockProvider),
   );
 }
@@ -29,7 +30,7 @@ EventRepository eventRepository(Ref ref) {
 @Riverpod(keepAlive: true)
 ImageStorageRepository imageStorageRepository(Ref ref) {
   return ImageStorageRepositoryImpl(
-    FirebaseStorageDataSource(ref.watch(firebaseStorageProvider)),
+    SupabaseStorageDataSource(ref.watch(supabaseClientProvider)),
   );
 }
 

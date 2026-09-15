@@ -46,7 +46,7 @@ void main() {
       expect(plan.tiers.every((t) => EventTier.isValidId(t.id)), isTrue);
     });
 
-    test('generates ids fit for field paths', () {
+    test('generates placeholder ids of the expected shape', () {
       expect(EventTier.isValidId(TierPlanner.newId()), isTrue);
       expect(EventTier.isValidId('bad id'), isFalse);
     });
@@ -149,48 +149,123 @@ void main() {
     });
   });
 
-  group('EventDto tiers', () {
-    test('round-trips, sorted by order, skipping malformed entries', () {
-      final map = EventDto.tiersToMap([
-        tier('vip', price: 2500, order: 1),
-        tier('std'),
-      ]);
-      final read = EventDto.tiersFromMap({
-        ...map,
-        'bad id': {'name': 'x'},
-        'broken': 'nope',
-      });
-      expect(read.map((t) => t.id), ['std', 'vip']);
-      expect(read.last.price, 2500);
-    });
+  group('EventDto', () {
+    const vipId = '0b8e3f5c-9d1a-4c2e-8f7a-1234567890ab';
+    const stdId = '7c1d2e3f-4a5b-4c6d-8e9f-abcdefabcdef';
 
-    test('a draft with types becomes an event whose totals are their sums', () {
-      final dto = EventDto.fromDraft(
-        EventDraft(
-          title: 'Concert',
-          description: 'd',
-          category: EventCategory.concert,
-          startsAt: Fixtures.now.add(const Duration(days: 3)),
-          location: 'Tana',
-          capacity: 999,
-          currency: 'MGA',
-          tiers: const [
-            EventTierDraft(name: 'Fosse', capacity: 100, price: 20000),
-            EventTierDraft(name: 'Invités', capacity: 20),
+    Map<String, dynamic> row({
+      List<Map<String, dynamic>>? tiers,
+      List<Map<String, dynamic>>? staff,
+    }) => {
+      'id': 'e1',
+      'organizer_id': 'o1',
+      'organizer_name': 'Mirindra',
+      'title': 'Concert',
+      'description': 'd',
+      'category': 'concert',
+      'starts_at': '2026-09-20T18:00:00+00:00',
+      'location': 'Tana',
+      'image_url': null,
+      'capacity': 120,
+      'available_places': 118,
+      'currency': 'MGA',
+      'created_at': '2026-09-01T08:00:00+00:00',
+      'updated_at': '2026-09-01T08:00:00+00:00',
+      'event_tiers': ?tiers,
+      'event_staff': ?staff,
+    };
+
+    Map<String, dynamic> tierRow(String id, int position, {int price = 0}) => {
+      'id': id,
+      'event_id': 'e1',
+      'name': id == vipId ? 'VIP' : 'Standard',
+      'price': price,
+      'capacity': 60,
+      'available': 59,
+      'position': position,
+    };
+
+    test('reads a row with embedded types (sorted by position) and team', () {
+      final event = EventDto.fromJson(
+        row(
+          tiers: [tierRow(vipId, 1, price: 20000), tierRow(stdId, 0)],
+          staff: [
+            {'user_id': 'u2'},
+            {'bad': 1},
           ],
         ),
-        organizerId: 'o1',
-        organizerName: 'Mirindra',
-        tierIds: ids,
+      ).toDomain();
+      expect(
+        event.startsAt.isAtSameMomentAs(DateTime.utc(2026, 9, 20, 18)),
+        isTrue,
       );
-      expect(dto.capacity, 120);
-      expect(dto.availablePlaces, 120);
-      expect(dto.currency, 'MGA');
-      expect(dto.tiers, hasLength(2));
-      final event = dto.toDomain('e1');
+      expect(event.reservedCount, 2);
+      expect(event.tiers.map((t) => t.id), [stdId, vipId]);
+      expect(event.tiers.map((t) => t.order), [0, 1]);
+      expect(event.staffIds, ['u2']);
       expect(event.minPrice, 20000);
       expect(event.hasFreeTier, isTrue);
-      expect(event.isFree, isFalse);
+    });
+
+    test('a Realtime row has no relations; the stream supplies them', () {
+      final dto = EventDto.fromJson(row());
+      expect(dto.toDomain().tiers, isEmpty);
+      final event = dto.toDomain(
+        tiers: [EventTierDto.fromJson(tierRow(vipId, 0, price: 100))],
+        staffIds: const ['u3'],
+      );
+      expect(event.tiers.single.price, 100);
+      expect(event.staffIds, ['u3']);
+    });
+
+    test('an unknown category falls back to other', () {
+      final json = row()..['category'] = 'rave';
+      expect(EventDto.fromJson(json).category, EventCategory.other);
+    });
+
+    EventDraft draft({List<EventTierDraft> tiers = const []}) => EventDraft(
+      title: 'Concert',
+      description: 'd',
+      category: EventCategory.concert,
+      startsAt: DateTime.utc(2026, 9, 20, 18),
+      location: 'Tana',
+      capacity: 999,
+      currency: tiers.any((t) => t.price > 0) ? 'MGA' : null,
+      tiers: tiers,
+    );
+
+    test('save_event payload without types sends the capacity', () {
+      final payload = EventDto.saveEventPayload(draft());
+      expect(payload.containsKey('id'), isFalse);
+      expect(payload['capacity'], 999);
+      expect(payload['starts_at'], '2026-09-20T18:00:00.000Z');
+      expect(payload['category'], 'concert');
+      expect(payload['tiers'], isEmpty);
+      expect(payload.containsKey('currency'), isFalse);
+    });
+
+    test('save_event payload with types sends the draft, no seat counts', () {
+      final payload = EventDto.saveEventPayload(
+        draft(
+          tiers: const [
+            EventTierDraft(
+              id: vipId,
+              name: 'Fosse',
+              capacity: 100,
+              price: 20000,
+            ),
+            EventTierDraft(id: 'tplaceho', name: 'Invités', capacity: 20),
+          ],
+        ),
+        eventId: 'e1',
+      );
+      expect(payload['id'], 'e1');
+      expect(payload.containsKey('capacity'), isFalse);
+      expect(payload['currency'], 'MGA');
+      expect(payload['tiers'], [
+        {'id': vipId, 'name': 'Fosse', 'price': 20000, 'capacity': 100},
+        {'name': 'Invités', 'price': 0, 'capacity': 20},
+      ]);
     });
   });
 

@@ -1,13 +1,13 @@
 import 'dart:typed_data';
 
 import 'package:eventhub/core/result/result.dart';
-import 'package:eventhub/features/events/data/datasources/firebase_storage_data_source.dart';
+import 'package:eventhub/features/events/data/datasources/supabase_storage_data_source.dart';
 import 'package:eventhub/features/events/domain/repositories/image_storage_repository.dart';
 
 class ImageStorageRepositoryImpl implements ImageStorageRepository {
   const ImageStorageRepositoryImpl(this._storage);
 
-  final FirebaseStorageDataSource _storage;
+  final SupabaseStorageDataSource _storage;
 
   @override
   AsyncResult<String> uploadEventImage({

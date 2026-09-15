@@ -8,8 +8,8 @@ part 'event_tier.freezed.dart';
 
 /// A ticket type of an event (F-12): "Standard", "Étudiant", "VIP"…
 ///
-/// Stored in the event document as `tiers.{id}`, so a booking decrements the
-/// type and the event in the same write, which the security rules check.
+/// A row of `event_tiers`; a booking decrements the type and the event in
+/// the same database transaction. [id] is the row's uuid once saved.
 /// [price] is in the currency's minor unit (see `Money`); 0 means free.
 @freezed
 abstract class EventTier with _$EventTier {
@@ -33,8 +33,8 @@ abstract class EventTier with _$EventTier {
   bool get isSoldOut => available <= 0;
   int get sold => capacity - available;
 
-  /// Ids are short lowercase tokens: they appear in field paths
-  /// (`tiers.{id}.available`) and in the Stripe metadata.
+  /// Shape of the placeholder ids [TierPlanner] gives a type before it is
+  /// saved. The database ignores them and assigns a uuid.
   static bool isValidId(String id) => RegExp(r'^[a-z0-9]{1,20}$').hasMatch(id);
 }
 
@@ -74,7 +74,8 @@ class TierPlan {
 }
 
 /// Turns form input into ticket types, keeping every seat already sold.
-/// Pure: the Firestore transaction calls it with the event it just read.
+/// Pure, for instant feedback in the form: `save_event` applies the same
+/// rules to the locked row and is the authority.
 abstract final class TierPlanner {
   static String newId([math.Random? random]) {
     final r = random ?? math.Random.secure();

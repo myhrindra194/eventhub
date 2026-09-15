@@ -19,7 +19,7 @@ class PendingImage {
   final String contentType;
 }
 
-/// Create / update flow: optional image upload then Firestore write.
+/// Create / update flow: optional cover upload, then `save_event`.
 /// [existingEventId] == null means "create".
 @riverpod
 class EventFormController extends _$EventFormController {
@@ -54,7 +54,7 @@ class EventFormController extends _$EventFormController {
   ) async {
     final user = ref.read(currentUserProvider);
     if (user == null) return const Err(AuthFailure.notSignedIn());
-    // Same rule as `allow create` on events: checked before the image upload
+    // Same rule as `save_event` on creation: checked before the image upload
     // so an unverified organizer does not wait for a doomed write.
     if (existingEventId == null && !user.emailVerified) {
       return const Err(

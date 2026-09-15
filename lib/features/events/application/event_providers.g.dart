@@ -49,7 +49,7 @@ final class EventRepositoryProvider
   }
 }
 
-String _$eventRepositoryHash() => r'e2fe9819abf84eaf0a027fecbbe49a3419790d8c';
+String _$eventRepositoryHash() => r'5b86b33aaf84ca6d926bcd9f5425788019b350fe';
 
 @ProviderFor(imageStorageRepository)
 final imageStorageRepositoryProvider = ImageStorageRepositoryProvider._();
@@ -97,7 +97,7 @@ final class ImageStorageRepositoryProvider
 }
 
 String _$imageStorageRepositoryHash() =>
-    r'515de9df7b3e03f314e84e8c2a5ab04276690e0c';
+    r'b1dbd90e949a11870b81bb0eea27e6871a2904af';
 
 /// First page of upcoming events, live (today's events stay visible until
 /// midnight).

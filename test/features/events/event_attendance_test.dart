@@ -49,7 +49,8 @@ void main() {
     test('reads names in order and tolerates malformed entries', () {
       expect(
         EventAttendanceRemoteDataSource.namesFrom({
-          'recentAttendees': [
+          'count': 5,
+          'recent': [
             {'key': 'a', 'name': 'Soa'},
             {'key': 'b'},
             'garbage',
@@ -61,10 +62,10 @@ void main() {
       );
     });
 
-    test('returns nothing for a missing or malformed document', () {
+    test('returns nothing for a missing or malformed payload', () {
       expect(EventAttendanceRemoteDataSource.namesFrom(null), isEmpty);
       expect(
-        EventAttendanceRemoteDataSource.namesFrom({'recentAttendees': 'x'}),
+        EventAttendanceRemoteDataSource.namesFrom({'recent': 'x'}),
         isEmpty,
       );
     });

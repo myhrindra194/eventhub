@@ -7,6 +7,7 @@ part of 'event_dto.dart';
 // **************************************************************************
 
 _EventDto _$EventDtoFromJson(Map<String, dynamic> json) => _EventDto(
+  id: json['id'] as String,
   title: json['title'] as String,
   description: json['description'] as String,
   category: $enumDecode(
@@ -14,38 +15,41 @@ _EventDto _$EventDtoFromJson(Map<String, dynamic> json) => _EventDto(
     json['category'],
     unknownValue: EventCategory.other,
   ),
-  startsAt: const TimestampConverter().fromJson(json['startsAt'] as Object),
+  startsAt: const TimestampConverter().fromJson(json['starts_at'] as Object),
   location: json['location'] as String,
   capacity: (json['capacity'] as num).toInt(),
-  availablePlaces: (json['availablePlaces'] as num).toInt(),
-  organizerId: json['organizerId'] as String,
-  organizerName: json['organizerName'] as String,
-  imageUrl: json['imageUrl'] as String?,
-  createdAt: const NullableTimestampConverter().fromJson(json['createdAt']),
-  updatedAt: const NullableTimestampConverter().fromJson(json['updatedAt']),
-  staffIds:
-      (json['staffIds'] as List<dynamic>?)?.map((e) => e as String).toList() ??
-      const <String>[],
-  tiers: json['tiers'] as Map<String, dynamic>? ?? const <String, dynamic>{},
+  availablePlaces: (json['available_places'] as num).toInt(),
+  organizerId: json['organizer_id'] as String,
+  organizerName: json['organizer_name'] as String,
+  imageUrl: json['image_url'] as String?,
+  createdAt: const NullableTimestampConverter().fromJson(json['created_at']),
+  updatedAt: const NullableTimestampConverter().fromJson(json['updated_at']),
   currency: json['currency'] as String?,
+  tiers:
+      (json['event_tiers'] as List<dynamic>?)
+          ?.map((e) => EventTierDto.fromJson(e as Map<String, dynamic>))
+          .toList() ??
+      const <EventTierDto>[],
+  staffIds: json['event_staff'] == null
+      ? const <String>[]
+      : _staffIdsFromJson(json['event_staff']),
 );
 
 Map<String, dynamic> _$EventDtoToJson(_EventDto instance) => <String, dynamic>{
+  'id': instance.id,
   'title': instance.title,
   'description': instance.description,
   'category': _$EventCategoryEnumMap[instance.category]!,
-  'startsAt': const TimestampConverter().toJson(instance.startsAt),
+  'starts_at': const TimestampConverter().toJson(instance.startsAt),
   'location': instance.location,
   'capacity': instance.capacity,
-  'availablePlaces': instance.availablePlaces,
-  'organizerId': instance.organizerId,
-  'organizerName': instance.organizerName,
-  'imageUrl': instance.imageUrl,
-  'createdAt': const NullableTimestampConverter().toJson(instance.createdAt),
-  'updatedAt': const NullableTimestampConverter().toJson(instance.updatedAt),
-  'staffIds': instance.staffIds,
-  'tiers': instance.tiers,
-  'currency': ?instance.currency,
+  'available_places': instance.availablePlaces,
+  'organizer_id': instance.organizerId,
+  'organizer_name': instance.organizerName,
+  'image_url': instance.imageUrl,
+  'created_at': const NullableTimestampConverter().toJson(instance.createdAt),
+  'updated_at': const NullableTimestampConverter().toJson(instance.updatedAt),
+  'currency': instance.currency,
 };
 
 const _$EventCategoryEnumMap = {
@@ -57,3 +61,25 @@ const _$EventCategoryEnumMap = {
   EventCategory.culture: 'culture',
   EventCategory.other: 'other',
 };
+
+_EventTierDto _$EventTierDtoFromJson(Map<String, dynamic> json) =>
+    _EventTierDto(
+      id: json['id'] as String,
+      eventId: json['event_id'] as String,
+      name: json['name'] as String,
+      capacity: (json['capacity'] as num).toInt(),
+      available: (json['available'] as num).toInt(),
+      price: (json['price'] as num?)?.toInt() ?? 0,
+      position: (json['position'] as num?)?.toInt() ?? 0,
+    );
+
+Map<String, dynamic> _$EventTierDtoToJson(_EventTierDto instance) =>
+    <String, dynamic>{
+      'id': instance.id,
+      'event_id': instance.eventId,
+      'name': instance.name,
+      'capacity': instance.capacity,
+      'available': instance.available,
+      'price': instance.price,
+      'position': instance.position,
+    };

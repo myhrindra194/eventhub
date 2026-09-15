@@ -1,178 +1,240 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:eventhub/core/errors/failure.dart';
 import 'package:eventhub/core/errors/failure_exception.dart';
-import 'package:eventhub/core/firebase/firestore_paths.dart';
-import 'package:eventhub/core/result/result.dart';
+import 'package:eventhub/core/supabase/db.dart';
+import 'package:eventhub/core/supabase/supabase_providers.dart';
+import 'package:eventhub/core/supabase/timestamp_converter.dart';
 import 'package:eventhub/features/events/data/dtos/event_dto.dart';
 import 'package:eventhub/features/events/domain/entities/event.dart';
 import 'package:eventhub/features/events/domain/entities/event_draft.dart';
-import 'package:eventhub/features/events/domain/entities/event_tier.dart';
-import 'package:eventhub/features/events/domain/policies/event_policy.dart';
+import 'package:flutter/foundation.dart';
+import 'package:rxdart/rxdart.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
-/// Firestore access for `events/{id}`. Throws; the repository maps errors.
+/// Supabase access for `events`, `event_tiers` and `event_staff`.
+///
+/// Reads go straight to the tables (RLS: the catalogue is visible to every
+/// signed-in user); writes go through `save_event` / `delete_event`, which
+/// re-validate the draft and own the seat counters. SDK exceptions pass
+/// through for `ErrorMapper`.
 class EventRemoteDataSource {
-  EventRemoteDataSource(FirebaseFirestore firestore)
-    : _firestore = firestore,
-      _events = firestore.collection(FirestorePaths.events);
+  const EventRemoteDataSource(this._client);
 
-  final FirebaseFirestore _firestore;
-  final CollectionReference<Map<String, dynamic>> _events;
+  final SupabaseClient _client;
 
-  /// Every list query is explicitly bounded.
-  ///
-  /// Two reasons, both non-negotiable at scale: an unbounded listener bills
-  /// one read per document on every snapshot, and the security rules refuse a
-  /// `list` without a limit (`request.query.limit <= 100`), so an unlimited
-  /// query would be rejected outright in production.
+  /// Every list is explicitly bounded: a Realtime subscription replays its
+  /// whole result on each change, and the `in` filter used to join the
+  /// related tables accepts at most 100 values.
   static const maxPageSize = 100;
 
-  /// First page of the catalogue, live. Ordered by start date then document
-  /// id, so a page boundary is a total order and [fetchUpcomingAfter] can
-  /// resume exactly after the last event (two events at the same minute
-  /// would otherwise be skipped or repeated).
-  Stream<List<Event>> watchUpcoming({required DateTime from}) {
-    return _upcoming(from).limit(maxPageSize).snapshots().map(_toDomainList);
-  }
+  /// Embeds what a one-shot read needs to build a complete [Event].
+  static const _withRelations = '*, event_tiers(*), event_staff(user_id)';
 
+  /// First page of the catalogue, live.
+  ///
+  /// A Realtime stream orders by one column only, so ties on `starts_at`
+  /// are broken client-side by id. The page boundary itself is therefore
+  /// exact only up to events starting at the very same instant as the last
+  /// one; `mergeCatalogue` deduplicates whatever [fetchUpcomingAfter]
+  /// returns twice.
+  Stream<List<Event>> watchUpcoming({required DateTime from}) => _withRelated(
+    _client
+        .from(Tables.events)
+        .stream(primaryKey: ['id'])
+        .gte('starts_at', _iso(from))
+        .order('starts_at', ascending: true)
+        .limit(maxPageSize),
+    sort: _catalogueOrder,
+  ).resilient('events.upcoming');
+
+  /// The page after [after] in catalogue order (`starts_at`, then id): a
+  /// keyset cursor, so two events at the same minute are neither skipped
+  /// nor repeated.
   Future<List<Event>> fetchUpcomingAfter({
     required DateTime from,
     required Event after,
     required int limit,
   }) async {
-    final snapshot = await _upcoming(from)
-        .startAfter([Timestamp.fromDate(after.startsAt), after.id])
-        .limit(limit.clamp(1, maxPageSize))
-        .get();
-    return _toDomainList(snapshot);
+    final at = _iso(after.startsAt);
+    // Quoted: an ISO timestamp contains `.` and `:`, reserved in a
+    // PostgREST logic tree.
+    final rows = await _client
+        .from(Tables.events)
+        .select(_withRelations)
+        .gte('starts_at', _iso(from))
+        .or('starts_at.gt."$at",and(starts_at.eq."$at",id.gt.${after.id})')
+        .order('starts_at', ascending: true)
+        .order('id', ascending: true)
+        .limit(limit.clamp(1, maxPageSize));
+    return [for (final row in rows) EventDto.fromJson(row).toDomain()];
   }
 
-  Query<Map<String, dynamic>> _upcoming(DateTime from) => _events
-      .where(
-        EventFields.startsAt,
-        isGreaterThanOrEqualTo: Timestamp.fromDate(from),
+  /// All events of an organizer, most recent first.
+  Stream<List<Event>> watchByOrganizer(String organizerId) => _withRelated(
+    _client
+        .from(Tables.events)
+        .stream(primaryKey: ['id'])
+        .eq('organizer_id', organizerId)
+        .order('starts_at')
+        .limit(maxPageSize),
+    sort: _mostRecentFirst,
+  ).resilient('events.organizer');
+
+  /// Events the user co-organizes (F-16), most recent first: the team rows
+  /// give the ids, then the events are followed by id.
+  Stream<List<Event>> watchByStaff(String userId) => _client
+      .from(Tables.eventStaff)
+      .stream(primaryKey: ['event_id', 'user_id'])
+      .eq('user_id', userId)
+      .limit(maxPageSize)
+      .map(_eventIds)
+      .distinct(listEquals)
+      .switchMap(
+        (ids) => ids.isEmpty
+            ? Stream.value(const <Event>[])
+            : _withRelated(
+                _client
+                    .from(Tables.events)
+                    .stream(primaryKey: ['id'])
+                    .inFilter('id', ids)
+                    .order('starts_at')
+                    .limit(maxPageSize),
+                sort: _mostRecentFirst,
+              ),
       )
-      .orderBy(EventFields.startsAt)
-      .orderBy(FieldPath.documentId);
+      .resilient('events.staff');
 
-  Stream<List<Event>> watchByOrganizer(String organizerId) {
-    return _events
-        .where(EventFields.organizerId, isEqualTo: organizerId)
-        .orderBy(EventFields.startsAt, descending: true)
-        .limit(maxPageSize)
-        .snapshots()
-        .map(_toDomainList);
-  }
-
-  /// Events the user co-organizes (F-16), most recent first.
-  Stream<List<Event>> watchByStaff(String userId) {
-    return _events
-        .where('staffIds', arrayContains: userId)
-        .orderBy(EventFields.startsAt, descending: true)
-        .limit(maxPageSize)
-        .snapshots()
-        .map(_toDomainList);
-  }
-
-  Stream<Event?> watchById(String eventId) =>
-      _events.doc(eventId).snapshots().map(_toDomainOrNull);
+  /// Emits `null` when the event does not exist or was deleted.
+  Stream<Event?> watchById(String eventId) => _withRelated(
+    _client.from(Tables.events).stream(primaryKey: ['id']).eq('id', eventId),
+  ).map((events) => events.isEmpty ? null : events.first).resilient('event');
 
   Future<Event> getById(String eventId) async {
-    final event = _toDomainOrNull(await _events.doc(eventId).get());
-    if (event == null) throw FailureException(_notFound(eventId));
-    return event;
+    final row = await _client
+        .from(Tables.events)
+        .select(_withRelations)
+        .eq('id', eventId)
+        .maybeSingle();
+    if (row == null) {
+      throw FailureException(
+        NotFoundFailure(
+          resource: 'events/$eventId',
+          message: 'Événement introuvable.',
+        ),
+      );
+    }
+    return EventDto.fromJson(row).toDomain();
   }
 
-  Future<String> create(EventDto dto) async {
-    final ref = await _events.add({
-      ...dto.toJson(),
-      EventFields.createdAt: FieldValue.serverTimestamp(),
-      EventFields.updatedAt: FieldValue.serverTimestamp(),
-    });
-    return ref.id;
+  /// Creates ([eventId] null) or updates an event; returns its id. The
+  /// database checks the team membership, the seats already sold per type
+  /// and the currency lock in the same transaction as the write.
+  Future<String> save(EventDraft draft, {String? eventId}) =>
+      _client.rpc<String>(
+        Rpc.saveEvent,
+        params: {'p_event': EventDto.saveEventPayload(draft, eventId: eventId)},
+      );
+
+  /// Owner only, and only while no seat is taken (checked server-side). Its
+  /// ticket types, team and favorites go with it (foreign-key cascade).
+  Future<void> delete(String eventId) async {
+    await _client.rpc<void>(Rpc.deleteEvent, params: {'p_event_id': eventId});
   }
 
-  /// Ownership + capacity consistency are checked inside a transaction so a
-  /// concurrent reservation cannot be lost when the organizer edits capacity.
-  Future<void> update({
-    required String eventId,
-    required EventDraft draft,
-    required String organizerId,
+  /// Joins a live `events` query with the live rows of its ticket types and
+  /// team.
+  ///
+  /// Realtime cannot embed relations, so the related tables are followed
+  /// with an `in` filter on the event ids. Those two subscriptions are
+  /// renewed only when the *set* of ids changes — not on every seat booked —
+  /// and a list is emitted only once the related rows cover every event, so
+  /// a paid event never flashes as free while its types load.
+  Stream<List<Event>> _withRelated(
+    Stream<List<Map<String, dynamic>>> eventRows, {
+    int Function(Event, Event)? sort,
   }) {
-    final ref = _events.doc(eventId);
-    return _firestore.runTransaction((tx) async {
-      final current = _toDomainOrNull(await tx.get(ref));
-      if (current == null) throw FailureException(_notFound(eventId));
-      if (!current.isManagedBy(organizerId)) {
-        throw const FailureException(
-          BusinessRuleFailure(
-            rule: BusinessRule.notEventOwner,
-            message:
-                'Vous ne pouvez modifier que vos événements ou ceux que vous '
-                'co-organisez.',
+    final events = eventRows
+        .map((rows) => [for (final row in rows) EventDto.fromJson(row)])
+        .shareReplay(maxSize: 1);
+
+    final related = events
+        .map((dtos) => [for (final dto in dtos) dto.id]..sort())
+        .distinct(listEquals)
+        .switchMap(_relatedRows);
+
+    return Rx.combineLatest2(events, related, (
+      List<EventDto> dtos,
+      _Related rel,
+    ) {
+      if (!dtos.every((dto) => rel.eventIds.contains(dto.id))) return null;
+      final list = [
+        for (final dto in dtos)
+          dto.toDomain(
+            tiers: rel.tiers[dto.id] ?? const [],
+            staffIds: rel.staff[dto.id] ?? const [],
           ),
-        );
-      }
-      // Ticket types (F-12): every seat already sold stays sold, in its type.
-      final plan = switch (TierPlanner.apply(
-        soldWithoutTiers: current.hasTiers ? 0 : current.reservedCount,
-        current: current.tiers,
-        drafts: draft.tiers,
-      )) {
-        Ok(:final value) => value,
-        Err(:final failure) => throw FailureException(failure),
-      };
+      ];
+      if (sort != null) list.sort(sort);
+      return List<Event>.unmodifiable(list);
+    }).whereType<List<Event>>();
+  }
 
-      final int capacity;
-      final int availablePlaces;
-      if (plan == null) {
-        capacity = draft.capacity;
-        availablePlaces =
-            switch (EventPolicy.availablePlacesAfterCapacityChange(
-              event: current,
-              newCapacity: draft.capacity,
-            )) {
-              Ok(:final value) => value,
-              Err(:final failure) => throw FailureException(failure),
-            };
-      } else {
-        capacity = plan.capacity;
-        availablePlaces = plan.available;
+  Stream<_Related> _relatedRows(List<String> ids) {
+    if (ids.isEmpty) return Stream.value(const _Related.empty());
+    final tiers = _client
+        .from(Tables.eventTiers)
+        .stream(primaryKey: ['id'])
+        .inFilter('event_id', ids);
+    final staff = _client
+        .from(Tables.eventStaff)
+        .stream(primaryKey: ['event_id', 'user_id'])
+        .inFilter('event_id', ids);
+    return Rx.combineLatest2(tiers, staff, (
+      List<Map<String, dynamic>> tierRows,
+      List<Map<String, dynamic>> staffRows,
+    ) {
+      final byEvent = <String, List<EventTierDto>>{};
+      for (final row in tierRows) {
+        final tier = EventTierDto.fromJson(row);
+        (byEvent[tier.eventId] ??= []).add(tier);
       }
-
-      tx.update(ref, {
-        EventFields.title: draft.title,
-        EventFields.description: draft.description,
-        EventFields.category: draft.category.name,
-        EventFields.startsAt: Timestamp.fromDate(draft.startsAt),
-        EventFields.location: draft.location,
-        EventFields.capacity: capacity,
-        EventFields.availablePlaces: availablePlaces,
-        EventFields.imageUrl: draft.imageUrl,
-        EventFields.tiers: plan == null
-            ? const <String, Object?>{}
-            : EventDto.tiersToMap(plan.tiers),
-        EventFields.currency: (plan?.hasPaid ?? false)
-            ? draft.currency
-            : FieldValue.delete(),
-        EventFields.updatedAt: FieldValue.serverTimestamp(),
-      });
+      final team = <String, List<String>>{};
+      for (final row in staffRows) {
+        (team[row['event_id'] as String] ??= []).add(row['user_id'] as String);
+      }
+      return _Related(eventIds: ids.toSet(), tiers: byEvent, staff: team);
     });
   }
 
-  Future<void> delete(String eventId) => _events.doc(eventId).delete();
+  static List<String> _eventIds(List<Map<String, dynamic>> rows) =>
+      [for (final row in rows) row['event_id'] as String]..sort();
 
-  List<Event> _toDomainList(QuerySnapshot<Map<String, dynamic>> snapshot) =>
-      snapshot.docs
-          .map((doc) => EventDto.fromJson(doc.data()).toDomain(doc.id))
-          .toList(growable: false);
+  static String _iso(DateTime date) =>
+      const TimestampConverter().toJson(date) as String;
 
-  Event? _toDomainOrNull(DocumentSnapshot<Map<String, dynamic>> snapshot) {
-    final data = snapshot.data();
-    return data == null ? null : EventDto.fromJson(data).toDomain(snapshot.id);
+  static int _catalogueOrder(Event a, Event b) {
+    final byDate = a.startsAt.compareTo(b.startsAt);
+    return byDate != 0 ? byDate : a.id.compareTo(b.id);
   }
 
-  NotFoundFailure _notFound(String eventId) => NotFoundFailure(
-    resource: 'events/$eventId',
-    message: 'Événement introuvable.',
-  );
+  static int _mostRecentFirst(Event a, Event b) => _catalogueOrder(b, a);
+}
+
+/// Ticket types and team members of a set of events, keyed by event id.
+class _Related {
+  const _Related({
+    required this.eventIds,
+    required this.tiers,
+    required this.staff,
+  });
+
+  const _Related.empty()
+    : eventIds = const {},
+      tiers = const {},
+      staff = const {};
+
+  /// The events these rows were fetched for: an event outside this set has
+  /// not loaded its relations yet.
+  final Set<String> eventIds;
+  final Map<String, List<EventTierDto>> tiers;
+  final Map<String, List<String>> staff;
 }

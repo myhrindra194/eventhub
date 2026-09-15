@@ -169,7 +169,7 @@ class _TargetPreview extends ConsumerWidget {
       ),
     ]);
 
-    Widget loading() => const Skeleton(height: 96, radius: AppRadius.button);
+    Widget loading() => const Skeleton(height: 96);
 
     switch (entry.target) {
       case ReportTarget.event:
@@ -199,12 +199,11 @@ class _TargetPreview extends ConsumerWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: AppSpacing.sm),
-                  TextButton.icon(
+                  TextButton(
                     onPressed: () => context.push(
                       AppRoutes.organizerPublicProfilePath(e.organizerId),
                     ),
-                    icon: const Icon(Icons.storefront_outlined, size: 18),
-                    label: const Text(AppStrings.openOrganizerProfile),
+                    child: const Text(AppStrings.openOrganizerProfile),
                   ),
                 ]),
         );
@@ -312,12 +311,11 @@ class _TargetPreview extends ConsumerWidget {
                   ],
                   if (profile != null) ...[
                     const SizedBox(height: AppSpacing.sm),
-                    TextButton.icon(
+                    TextButton(
                       onPressed: () => context.push(
                         AppRoutes.organizerPublicProfilePath(a.id),
                       ),
-                      icon: const Icon(Icons.storefront_outlined, size: 18),
-                      label: const Text(AppStrings.openOrganizerProfile),
+                      child: const Text(AppStrings.openOrganizerProfile),
                     ),
                   ],
                 ]),

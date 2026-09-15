@@ -55,7 +55,6 @@ class _GoogleSignInButtonState extends ConsumerState<GoogleSignInButton> {
         AppButton.secondary(
           label: AppStrings.continueWithGoogle,
           loadingLabel: AppStrings.googleSigningIn,
-          icon: Icons.g_mobiledata_rounded,
           isLoading: _busy,
           elevated: false,
           onPressed: _signIn,

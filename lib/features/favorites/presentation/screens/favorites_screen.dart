@@ -38,7 +38,6 @@ class FavoritesScreen extends ConsumerWidget {
           message: AppStrings.noFavorites,
           action: AppButton.primary(
             label: AppStrings.exploreEvents,
-            icon: Icons.explore_rounded,
             expand: false,
             elevated: false,
             onPressed: () => context.go(AppRoutes.events),
@@ -72,13 +71,12 @@ class _FavoriteRow extends ConsumerWidget {
     final t = context.tokens;
 
     return event.when(
-      loading: () => const Skeleton(height: 110, radius: AppRadius.button),
+      loading: () => const Skeleton(height: 110),
       error: (_, __) => const SizedBox.shrink(),
       data: (e) {
         if (e == null) {
           return AppSurface(
             elevation: SurfaceElevation.flat,
-            radius: AppRadius.button,
             child: Row(
               children: [
                 Icon(Icons.link_off_rounded, color: t.textTertiary),

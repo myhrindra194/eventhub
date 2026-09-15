@@ -72,24 +72,26 @@ Plus une constante `gutter = 20` : la marge horizontale de **tous** les
 
 ### 2.3 Rayons
 
-**`button = input = 6 px`** — la valeur de référence du produit.
+**Une seule valeur : 6 px, partout.**
 
-Tout ce que l'utilisateur **touche ou remplit** a le même bord net de 6 px :
-boutons, champs, puces de filtre, bouton de fermeture. Les **feuilles modales**
-aussi (`AppRadius.brModalSheet`, coins supérieurs à 6 px), ainsi que tout ce
-qu'elles contiennent, et les nouveaux blocs (billet, statistiques, alertes).
-Un grand rayon sur un bouton est le signe le plus sûr d'un gabarit par
-défaut ; l'identité du produit tient à sa photographie et à sa typographie, pas
-à des coins mous.
+Tout rectangle arrondi a le même bord net de 6 px : boutons, champs, puces de
+filtre, badges, cartes, images, conteneurs, jauges, feuilles modales et leur
+contenu, dialogues, bandeaux, et le bloc qui chevauche l'image de la fiche
+événement. Les crans nommés (`xs` … `xxxl`, `button`, `input`, `brSheet`,
+`brModalSheet`) existent toujours — un appel dit encore *quel rôle* joue un
+coin — mais ils valent tous 6 px.
 
-Échelle secondaire, pour les surfaces héritées et les imbrications :
-`xs 8 · sm 12 · md 16 · lg 20 · xl 24 · xxl 28 · xxxl 34 · pill 999`.
-`brSheet` (34 px) reste réservé au bloc de contenu qui chevauche l'image de la
-fiche événement — ce n'est pas une modale.
+Pourquoi une échelle plate : un bord net répété partout se lit comme une
+décision ; une échelle de rayons voisins (8, 12, 16, 20…) se lit comme un
+gabarit par défaut. Un grand rayon est le signe le plus sûr d'une interface
+générée ; l'identité du produit tient à sa photographie et à sa typographie,
+pas à des coins mous.
 
-L'échelle est **consciente de l'imbrication** : un enfant dans un conteneur de
-rayon `r` prend le cran juste en dessous, ce qui garde les angles concentriques
-visuellement parallèles.
+**Les cercles ne sont pas un grand rayon, c'est une autre forme.** Ils restent
+réservés à ce qui est rond par nature : avatars et piles d'avatars, points de
+statut, indicateurs de pagination (`pill`, dont la hauteur est le diamètre),
+progression circulaire, boutons ronds ne contenant qu'une icône. Une forme qui
+contient du texte est un conteneur : 6 px.
 
 ### 2.4 Élévation
 
@@ -176,7 +178,7 @@ tout le vocabulaire.
 ### Interaction
 | Composant | Rôle |
 |---|---|
-| `AppButton` | 5 variantes (`primary`, `secondary`, `tonal`, `ghost`, `danger`), 3 tailles, état de chargement qui bloque le double-envoi |
+| `AppButton` | 5 variantes (`primary`, `secondary`, `tonal`, `ghost`, `danger`), 3 tailles, état de chargement qui bloque le double-envoi ; **texte seul, jamais d'icône** : un libellé avec un verbe (« Réserver », « Publier ») dit ce qui va se passer, une icône ne fait que le décorer et donne l'air d'un gabarit. Les commandes qui ne sont qu'une icône (✕, retour, favori, actions de barre) ne sont pas des boutons à libellé et gardent leur icône |
 | `IconActionButton` / `OverlayIconButton` / `GradientFab` | Actions iconiques |
 | `LabeledField` / `AppSearchField` / `PickerField` | Formulaires |
 | `showAppSheet` / `AppSheet` / `showConfirmSheet` | Feuilles modales : coins à 6 px, **sans poignée**, en-tête / contenu / actions séparés par des filets |
@@ -259,8 +261,9 @@ dégradé : ce qui fait confiance, ce sont les chiffres et les dates.
 
 **Suivre et Abonné ne sont pas le même bouton.**
 L'état « à faire » est un aplat de marque, l'état « fait » un bouton
-secondaire avec une coche. Changer seulement le libellé d'un bouton plein
-ferait croire qu'il reste une action à accomplir.
+secondaire au libellé « Abonné ». Changer seulement le libellé d'un bouton
+plein ferait croire qu'il reste une action à accomplir : c'est le passage de
+l'aplat au contour qui dit « c'est fait », sans icône.
 
 **La preuve sociale est une phrase, pas un badge.**
 « Soa, Hery R. et 40 autres y vont » : deux prénoms puis un nombre, les

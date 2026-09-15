@@ -312,7 +312,7 @@ class PasswordStrengthMeter extends StatelessWidget {
               height: 4,
               decoration: BoxDecoration(
                 color: i <= score ? colors.solid : t.borderStrong,
-                borderRadius: AppRadius.brPill,
+                borderRadius: AppRadius.brButton,
               ),
             ),
           ),

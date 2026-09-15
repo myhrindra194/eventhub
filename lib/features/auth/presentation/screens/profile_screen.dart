@@ -144,7 +144,6 @@ class ProfileScreen extends ConsumerWidget {
             const SizedBox(height: AppSpacing.xxl),
             AppButton.secondary(
               label: AppStrings.logout,
-              icon: Icons.logout_rounded,
               onPressed: () => _signOut(context, ref),
             ),
           ],
@@ -218,7 +217,7 @@ class _IdentityCard extends StatelessWidget {
                       ),
                       decoration: BoxDecoration(
                         color: Colors.white.withValues(alpha: 0.2),
-                        borderRadius: AppRadius.brPill,
+                        borderRadius: AppRadius.brButton,
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,

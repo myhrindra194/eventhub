@@ -218,7 +218,6 @@ class _BodyState extends ConsumerState<_Body> {
         if (r.isPending) ...[
           AppButton.primary(
             label: AppStrings.resumePayment,
-            icon: Icons.open_in_new_rounded,
             elevated: false,
             onPressed: busy || r.checkoutUrl == null ? null : _resume,
           ),
@@ -232,7 +231,6 @@ class _BodyState extends ConsumerState<_Body> {
         ] else if (r.isActive)
           AppButton.primary(
             label: AppStrings.viewTicket,
-            icon: Icons.confirmation_number_rounded,
             elevated: false,
             onPressed: () =>
                 context.pushReplacement(AppRoutes.ticketPath(r.id)),

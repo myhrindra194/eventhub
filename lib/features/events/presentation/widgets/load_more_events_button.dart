@@ -25,7 +25,6 @@ class LoadMoreEventsButton extends ConsumerWidget {
       ),
       child: AppButton.secondary(
         label: AppStrings.loadMoreEvents,
-        icon: Icons.expand_more_rounded,
         isLoading: loading,
         elevated: false,
         onPressed: () =>

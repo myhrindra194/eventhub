@@ -126,7 +126,6 @@ class _Body extends ConsumerWidget {
           const Spacer(flex: 2),
           AppButton.primary(
             label: AppStrings.viewMyTickets,
-            icon: Icons.confirmation_number_rounded,
             onPressed: () => context.go(AppRoutes.reservations),
           ),
           const SizedBox(height: AppSpacing.md),

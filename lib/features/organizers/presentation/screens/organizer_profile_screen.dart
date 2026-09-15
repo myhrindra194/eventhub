@@ -132,7 +132,6 @@ class _Body extends ConsumerWidget {
         if (isSelf)
           AppButton.secondary(
             label: AppStrings.editPublicProfile,
-            icon: Icons.edit_outlined,
             size: AppButtonSize.medium,
             elevated: false,
             onPressed: () => context.push(AppRoutes.editProfile),
@@ -156,7 +155,7 @@ class _Body extends ConsumerWidget {
         ),
         const SizedBox(height: AppSpacing.md),
         if (events.isLoading && !events.hasValue)
-          const Skeleton(height: 96, radius: AppRadius.button)
+          const Skeleton(height: 96)
         else if (upcoming.isEmpty)
           Container(
             padding: const EdgeInsets.all(AppSpacing.lg),

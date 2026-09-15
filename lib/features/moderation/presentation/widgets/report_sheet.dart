@@ -105,7 +105,6 @@ class _ReportSheetState extends ConsumerState<_ReportSheet> {
         AppButton(
           label: AppStrings.reportSend,
           variant: AppButtonVariant.danger,
-          icon: Icons.flag_outlined,
           elevated: false,
           isLoading: busy,
           loadingLabel: AppStrings.reportSending,

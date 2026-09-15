@@ -101,9 +101,6 @@ class ReviewsSection extends ConsumerWidget {
               label: mine == null
                   ? AppStrings.leaveReview
                   : AppStrings.editReview,
-              icon: mine == null
-                  ? Icons.rate_review_outlined
-                  : Icons.edit_outlined,
               elevated: false,
               onPressed: () =>
                   showReviewSheet(context, eventId: event.id, existing: mine),
@@ -213,7 +210,7 @@ class _Summary extends StatelessWidget {
                               decoration: BoxDecoration(
                                 color: t.warning.solid,
                                 borderRadius: const BorderRadius.horizontal(
-                                  right: Radius.circular(3),
+                                  right: Radius.circular(AppRadius.button),
                                 ),
                               ),
                             ),

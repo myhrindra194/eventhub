@@ -115,7 +115,6 @@ class _TicketBody extends ConsumerWidget {
               Expanded(
                 child: AppButton.secondary(
                   label: AppStrings.copyCode,
-                  icon: Icons.content_copy_rounded,
                   size: AppButtonSize.medium,
                   elevated: false,
                   onPressed: () => _copyCode(context),
@@ -125,7 +124,6 @@ class _TicketBody extends ConsumerWidget {
               Expanded(
                 child: AppButton.primary(
                   label: AppStrings.viewEvent,
-                  trailingIcon: Icons.arrow_forward_rounded,
                   size: AppButtonSize.medium,
                   elevated: false,
                   onPressed: () => context.push(

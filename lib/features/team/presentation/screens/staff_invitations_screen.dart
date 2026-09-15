@@ -117,7 +117,6 @@ class StaffInvitationsScreen extends ConsumerWidget {
                       Expanded(
                         child: AppButton.primary(
                           label: AppStrings.accept,
-                          icon: Icons.check_rounded,
                           size: AppButtonSize.medium,
                           elevated: false,
                           onPressed: busy

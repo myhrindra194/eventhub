@@ -263,7 +263,6 @@ class SupportContactCard extends StatelessWidget {
 
     return AppSurface(
       elevation: SurfaceElevation.flat,
-      radius: AppRadius.sm,
       child: Row(
         children: [
           const IconTile(icon: Icons.mail_outline_rounded, size: 40),

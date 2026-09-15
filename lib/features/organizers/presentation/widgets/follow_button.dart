@@ -49,7 +49,6 @@ class FollowButton extends ConsumerWidget {
       child: following
           ? AppButton.secondary(
               label: AppStrings.followingState,
-              icon: Icons.check_rounded,
               size: AppButtonSize.medium,
               expand: expand,
               elevated: false,
@@ -57,7 +56,6 @@ class FollowButton extends ConsumerWidget {
             )
           : AppButton.primary(
               label: AppStrings.followAction,
-              icon: Icons.add_rounded,
               size: AppButtonSize.medium,
               expand: expand,
               elevated: false,

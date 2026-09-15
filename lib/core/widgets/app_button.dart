@@ -39,8 +39,6 @@ class AppButton extends StatefulWidget {
     super.key,
     this.variant = AppButtonVariant.primary,
     this.size = AppButtonSize.large,
-    this.icon,
-    this.trailingIcon,
     this.isLoading = false,
     this.loadingLabel,
     this.expand = true,
@@ -52,8 +50,6 @@ class AppButton extends StatefulWidget {
     required this.onPressed,
     super.key,
     this.size = AppButtonSize.large,
-    this.icon,
-    this.trailingIcon,
     this.isLoading = false,
     this.loadingLabel,
     this.expand = true,
@@ -65,8 +61,6 @@ class AppButton extends StatefulWidget {
     required this.onPressed,
     super.key,
     this.size = AppButtonSize.large,
-    this.icon,
-    this.trailingIcon,
     this.isLoading = false,
     this.loadingLabel,
     this.expand = true,
@@ -78,8 +72,6 @@ class AppButton extends StatefulWidget {
     required this.onPressed,
     super.key,
     this.size = AppButtonSize.medium,
-    this.icon,
-    this.trailingIcon,
     this.isLoading = false,
     this.loadingLabel,
     this.expand = false,
@@ -91,8 +83,6 @@ class AppButton extends StatefulWidget {
     required this.onPressed,
     super.key,
     this.size = AppButtonSize.medium,
-    this.icon,
-    this.trailingIcon,
     this.isLoading = false,
     this.loadingLabel,
     this.expand = false,
@@ -104,8 +94,6 @@ class AppButton extends StatefulWidget {
     required this.onPressed,
     super.key,
     this.size = AppButtonSize.large,
-    this.icon,
-    this.trailingIcon,
     this.isLoading = false,
     this.loadingLabel,
     this.expand = true,
@@ -116,8 +104,6 @@ class AppButton extends StatefulWidget {
   final VoidCallback? onPressed;
   final AppButtonVariant variant;
   final AppButtonSize size;
-  final IconData? icon;
-  final IconData? trailingIcon;
   final bool isLoading;
   final String? loadingLabel;
 
@@ -187,15 +173,8 @@ class _AppButtonState extends State<AppButton> {
             ),
           ),
           const SizedBox(width: AppSpacing.sm),
-        ] else if (widget.icon != null) ...[
-          Icon(widget.icon, size: _iconSize, color: style.foreground),
-          const SizedBox(width: AppSpacing.sm),
         ],
         Flexible(child: label),
-        if (!widget.isLoading && widget.trailingIcon != null) ...[
-          const SizedBox(width: AppSpacing.sm),
-          Icon(widget.trailingIcon, size: _iconSize, color: style.foreground),
-        ],
       ],
     );
 

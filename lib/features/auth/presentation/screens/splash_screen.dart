@@ -156,7 +156,7 @@ class _BootBar extends StatelessWidget {
     return Column(
       children: [
         ClipRRect(
-          borderRadius: AppRadius.brPill,
+          borderRadius: AppRadius.brButton,
           child: AnimatedBuilder(
             animation: progress,
             builder: (context, _) => LinearProgressIndicator(

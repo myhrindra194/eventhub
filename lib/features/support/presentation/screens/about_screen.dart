@@ -95,7 +95,6 @@ class _Rows extends StatelessWidget {
   Widget build(BuildContext context) => AppSurface(
     padding: EdgeInsets.zero,
     elevation: SurfaceElevation.flat,
-    radius: AppRadius.sm,
     child: Column(
       children: [
         for (var i = 0; i < children.length; i++) ...[

@@ -126,8 +126,7 @@ class _OrganizerDashboardScreenState
                     itemCount: 2,
                     separatorBuilder: (_, __) =>
                         const SizedBox(height: AppSpacing.lg),
-                    itemBuilder: (_, __) =>
-                        const Skeleton(height: 260, radius: AppRadius.xl),
+                    itemBuilder: (_, __) => const Skeleton(height: 260),
                   ),
                 ),
                 empty: SliverFillRemaining(
@@ -138,7 +137,6 @@ class _OrganizerDashboardScreenState
                     message: AppStrings.noOrganizerEvents,
                     action: AppButton.primary(
                       label: AppStrings.createFirstEvent,
-                      icon: Icons.add_rounded,
                       expand: false,
                       onPressed: () =>
                           context.push(AppRoutes.organizerEventNew),
@@ -377,7 +375,7 @@ class _Toggle extends StatelessWidget {
     final t = context.tokens;
     return Material(
       color: selected ? t.brand : t.surface,
-      borderRadius: AppRadius.brPill,
+      borderRadius: AppRadius.brButton,
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onTap,
@@ -387,7 +385,7 @@ class _Toggle extends StatelessWidget {
             vertical: AppSpacing.sm,
           ),
           decoration: BoxDecoration(
-            borderRadius: AppRadius.brPill,
+            borderRadius: AppRadius.brButton,
             border: Border.all(color: selected ? t.brand : t.border),
           ),
           child: Text(

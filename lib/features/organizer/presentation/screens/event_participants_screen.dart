@@ -115,7 +115,6 @@ class _EventParticipantsScreenState
             Expanded(
               child: AppButton.secondary(
                 label: AppStrings.exportCsvFile,
-                icon: Icons.ios_share_rounded,
                 size: AppButtonSize.medium,
                 elevated: false,
                 onPressed: guests.isEmpty
@@ -337,7 +336,6 @@ class _ParticipantRow extends StatelessWidget {
     return AppSurface(
       padding: const EdgeInsets.all(AppSpacing.md),
       elevation: SurfaceElevation.flat,
-      radius: AppRadius.button,
       borderColor: scanned ? t.success.border : null,
       child: Row(
         children: [

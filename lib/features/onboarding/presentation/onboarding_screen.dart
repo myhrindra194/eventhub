@@ -168,7 +168,6 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                       label: isLast
                           ? AppStrings.getStarted
                           : AppStrings.continueLabel,
-                      trailingIcon: Icons.arrow_forward_rounded,
                       elevated: false,
                       onPressed: _next,
                     ),

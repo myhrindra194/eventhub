@@ -48,7 +48,6 @@ class SettingsScreen extends ConsumerWidget {
           AppSurface(
             padding: EdgeInsets.zero,
             elevation: SurfaceElevation.flat,
-            radius: AppRadius.button,
             child: InkWell(
               onTap: () => context.push(AppRoutes.changePassword),
               child: Padding(
@@ -88,7 +87,6 @@ class SettingsScreen extends ConsumerWidget {
           AppSurface(
             padding: EdgeInsets.zero,
             elevation: SurfaceElevation.flat,
-            radius: AppRadius.button,
             borderColor: context.tokens.danger.border,
             child: InkWell(
               onTap: () => showDeleteAccountSheet(context),
@@ -124,7 +122,6 @@ class SettingsScreen extends ConsumerWidget {
           const SizedBox(height: AppSpacing.md),
           AppSurface(
             elevation: SurfaceElevation.flat,
-            radius: AppRadius.button,
             child: Column(
               children: [
                 _InfoRow(
@@ -187,7 +184,6 @@ class _NotificationSwitches extends ConsumerWidget {
         vertical: AppSpacing.xs,
       ),
       elevation: SurfaceElevation.flat,
-      radius: AppRadius.button,
       child: Column(
         children: [
           SwitchListTile.adaptive(
@@ -235,7 +231,6 @@ class _AnalyticsSwitch extends ConsumerWidget {
         vertical: AppSpacing.xs,
       ),
       elevation: SurfaceElevation.flat,
-      radius: AppRadius.button,
       child: SwitchListTile.adaptive(
         contentPadding: EdgeInsets.zero,
         value: consent.value ?? false,
@@ -270,7 +265,6 @@ class _ThemeSelector extends ConsumerWidget {
     return AppSurface(
       padding: const EdgeInsets.all(AppSpacing.md),
       elevation: SurfaceElevation.flat,
-      radius: AppRadius.button,
       child: Row(
         children: [
           for (final mode in ThemeMode.values)

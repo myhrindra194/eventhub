@@ -170,7 +170,6 @@ class _EventTeamScreenState extends ConsumerState<EventTeamScreen> {
           const SizedBox(height: AppSpacing.md),
           AppButton.primary(
             label: AppStrings.sendInvitation,
-            icon: Icons.person_add_alt_1_rounded,
             elevated: false,
             isLoading: busy,
             loadingLabel: AppStrings.decisionSending,
@@ -276,7 +275,6 @@ class _EventTeamScreenState extends ConsumerState<EventTeamScreen> {
           const SizedBox(height: AppSpacing.xxl),
           AppButton.secondary(
             label: AppStrings.leaveTeam,
-            icon: Icons.logout_rounded,
             elevated: false,
             onPressed: busy
                 ? null

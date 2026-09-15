@@ -55,6 +55,10 @@ functions/node_modules/
 functions/lib/
 functions/.secret.local
 
+# Supabase: database test suite dependencies, local function secrets
+supabase/tests/node_modules/
+supabase/functions/.env
+
 # Security-rules test suite (Node)
 firebase/tests/node_modules/
 firebase-debug.log

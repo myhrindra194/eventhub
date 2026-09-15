@@ -4,8 +4,8 @@ import 'package:eventhub/features/auth/domain/entities/app_user.dart';
 import 'package:eventhub/features/events/domain/entities/event.dart';
 
 /// Ownership, team and capacity rules for organizers. Pure, synchronous,
-/// unit-tested. Mirrored server-side by the database functions (`save_event`,
-/// `delete_event`, the team RPCs).
+/// unit-tested. Mirrored server-side by `firebase/firestore.rules`, which
+/// only ever answer `permission-denied`: these give the sentence.
 ///
 /// | action                      | owner | co-organizer |
 /// |-----------------------------|:-----:|:------------:|
@@ -40,8 +40,8 @@ abstract final class EventPolicy {
   }
 
   /// An event with seats taken cannot be deleted: people hold tickets for it.
-  /// Mirrors `delete_event`, so the organizer gets a sentence before the
-  /// round trip.
+  /// Mirrors the delete rule (`takenSeats() == 0`), so the organizer gets a
+  /// sentence before the round trip.
   static Result<void> canDelete({required Event event, required AppUser user}) {
     if (_owner(
           event,

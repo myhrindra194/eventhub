@@ -1,5 +1,3 @@
-import 'dart:typed_data';
-
 import 'package:eventhub/core/analytics/app_analytics.dart';
 import 'package:eventhub/core/errors/failure.dart';
 import 'package:eventhub/core/l10n/app_strings.dart';
@@ -11,16 +9,11 @@ import 'package:riverpod_annotation/riverpod_annotation.dart' hide AsyncResult;
 
 part 'event_form_controller.g.dart';
 
-/// Image picked by the user, decoupled from `image_picker`'s `XFile`.
-class PendingImage {
-  const PendingImage({required this.bytes, required this.contentType});
-
-  final Uint8List bytes;
-  final String contentType;
-}
-
-/// Create / update flow: optional cover upload, then `save_event`.
-/// [existingEventId] == null means "create".
+/// Create / update flow. [existingEventId] == null means "create".
+///
+/// The cover is an https URL typed in the form (see [EventDraft.imageUrl]):
+/// on the Spark plan there is no Cloud Storage to upload to, and an event
+/// without a cover keeps its generated visual.
 @riverpod
 class EventFormController extends _$EventFormController {
   @override
@@ -30,10 +23,9 @@ class EventFormController extends _$EventFormController {
   Future<Result<String>> submit({
     required EventDraft draft,
     String? existingEventId,
-    PendingImage? image,
   }) async {
     state = const AsyncLoading();
-    final result = await _submit(draft, existingEventId, image);
+    final result = await _submit(draft, existingEventId);
     state = switch (result) {
       Ok() => const AsyncData(null),
       Err(:final failure) => AsyncError(
@@ -50,12 +42,11 @@ class EventFormController extends _$EventFormController {
   Future<Result<String>> _submit(
     EventDraft draft,
     String? existingEventId,
-    PendingImage? image,
   ) async {
     final user = ref.read(currentUserProvider);
     if (user == null) return const Err(AuthFailure.notSignedIn());
-    // Same rule as `save_event` on creation: checked before the image upload
-    // so an unverified organizer does not wait for a doomed write.
+    // The rules read `email_verified` from the token on creation: say so
+    // instead of letting the write come back as a bare refusal.
     if (existingEventId == null && !user.emailVerified) {
       return const Err(
         BusinessRuleFailure(
@@ -65,30 +56,12 @@ class EventFormController extends _$EventFormController {
       );
     }
 
-    var imageUrl = draft.imageUrl;
-    if (image != null) {
-      final upload = await ref
-          .read(imageStorageRepositoryProvider)
-          .uploadEventImage(
-            organizerId: user.id,
-            bytes: image.bytes,
-            contentType: image.contentType,
-          );
-      switch (upload) {
-        case Ok(:final value):
-          imageUrl = value;
-        case Err(:final failure):
-          return Err(failure);
-      }
-    }
-
-    final finalDraft = draft.copyWith(imageUrl: imageUrl);
     final repo = ref.read(eventRepositoryProvider);
     if (existingEventId == null) {
-      return repo.create(draft: finalDraft, organizer: user);
+      return repo.create(draft: draft, organizer: user);
     }
     return repo
-        .update(eventId: existingEventId, draft: finalDraft, organizer: user)
+        .update(eventId: existingEventId, draft: draft, organizer: user)
         .mapAsync((_) => existingEventId);
   }
 }

@@ -57,36 +57,30 @@ final class EventAttendanceDataSourceProvider
 }
 
 String _$eventAttendanceDataSourceHash() =>
-    r'96f36e8ae97c5af85d621f3825e9696a77252507';
+    r'e54c0fcebf5dded8181b607735f4bfb0782cfd8a';
 
-/// Recent attendees' short names for the "who's going" strip (F-07).
-///
-/// `event_attendance` is a function, not a table, so there is nothing to
-/// subscribe to: the names are fetched again whenever the live seat counter
-/// of the event moves, which is exactly when they can have changed.
+/// Recent attendees' short names for the "who's going" strip (F-07), live:
+/// a booking adds its entry to `events/{id}/attendees` in the same batch as
+/// the seat, so the names move with the counter.
 
 @ProviderFor(eventRecentAttendees)
 final eventRecentAttendeesProvider = EventRecentAttendeesFamily._();
 
-/// Recent attendees' short names for the "who's going" strip (F-07).
-///
-/// `event_attendance` is a function, not a table, so there is nothing to
-/// subscribe to: the names are fetched again whenever the live seat counter
-/// of the event moves, which is exactly when they can have changed.
+/// Recent attendees' short names for the "who's going" strip (F-07), live:
+/// a booking adds its entry to `events/{id}/attendees` in the same batch as
+/// the seat, so the names move with the counter.
 
 final class EventRecentAttendeesProvider
     extends
         $FunctionalProvider<
           AsyncValue<List<String>>,
           List<String>,
-          FutureOr<List<String>>
+          Stream<List<String>>
         >
-    with $FutureModifier<List<String>>, $FutureProvider<List<String>> {
-  /// Recent attendees' short names for the "who's going" strip (F-07).
-  ///
-  /// `event_attendance` is a function, not a table, so there is nothing to
-  /// subscribe to: the names are fetched again whenever the live seat counter
-  /// of the event moves, which is exactly when they can have changed.
+    with $FutureModifier<List<String>>, $StreamProvider<List<String>> {
+  /// Recent attendees' short names for the "who's going" strip (F-07), live:
+  /// a booking adds its entry to `events/{id}/attendees` in the same batch as
+  /// the seat, so the names move with the counter.
   EventRecentAttendeesProvider._({
     required EventRecentAttendeesFamily super.from,
     required String super.argument,
@@ -110,12 +104,12 @@ final class EventRecentAttendeesProvider
 
   @$internal
   @override
-  $FutureProviderElement<List<String>> $createElement(
+  $StreamProviderElement<List<String>> $createElement(
     $ProviderPointer pointer,
-  ) => $FutureProviderElement(pointer);
+  ) => $StreamProviderElement(pointer);
 
   @override
-  FutureOr<List<String>> create(Ref ref) {
+  Stream<List<String>> create(Ref ref) {
     final argument = this.argument as String;
     return eventRecentAttendees(ref, argument);
   }
@@ -132,16 +126,14 @@ final class EventRecentAttendeesProvider
 }
 
 String _$eventRecentAttendeesHash() =>
-    r'3ab8957799c923ed3742a830ef7f2f8597b65a57';
+    r'e0a5bd8975ed751e0305aa97c91ce99a50378ab7';
 
-/// Recent attendees' short names for the "who's going" strip (F-07).
-///
-/// `event_attendance` is a function, not a table, so there is nothing to
-/// subscribe to: the names are fetched again whenever the live seat counter
-/// of the event moves, which is exactly when they can have changed.
+/// Recent attendees' short names for the "who's going" strip (F-07), live:
+/// a booking adds its entry to `events/{id}/attendees` in the same batch as
+/// the seat, so the names move with the counter.
 
 final class EventRecentAttendeesFamily extends $Family
-    with $FunctionalFamilyOverride<FutureOr<List<String>>, String> {
+    with $FunctionalFamilyOverride<Stream<List<String>>, String> {
   EventRecentAttendeesFamily._()
     : super(
         retry: null,
@@ -151,11 +143,9 @@ final class EventRecentAttendeesFamily extends $Family
         isAutoDispose: true,
       );
 
-  /// Recent attendees' short names for the "who's going" strip (F-07).
-  ///
-  /// `event_attendance` is a function, not a table, so there is nothing to
-  /// subscribe to: the names are fetched again whenever the live seat counter
-  /// of the event moves, which is exactly when they can have changed.
+  /// Recent attendees' short names for the "who's going" strip (F-07), live:
+  /// a booking adds its entry to `events/{id}/attendees` in the same batch as
+  /// the seat, so the names move with the counter.
 
   EventRecentAttendeesProvider call(String eventId) =>
       EventRecentAttendeesProvider._(argument: eventId, from: this);

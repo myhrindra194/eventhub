@@ -1,36 +1,27 @@
 import 'package:eventhub/core/config/app_config.dart';
+import 'package:eventhub/core/firebase/firebase_providers.dart';
 import 'package:eventhub/core/result/result.dart';
-import 'package:eventhub/core/supabase/supabase_providers.dart';
 import 'package:eventhub/core/utils/date_formats.dart';
 import 'package:eventhub/features/events/application/catalogue.dart';
 import 'package:eventhub/features/events/data/datasources/event_remote_data_source.dart';
-import 'package:eventhub/features/events/data/datasources/supabase_storage_data_source.dart';
 import 'package:eventhub/features/events/data/repositories/event_repository_impl.dart';
-import 'package:eventhub/features/events/data/repositories/image_storage_repository_impl.dart';
 import 'package:eventhub/features/events/domain/entities/event.dart';
 import 'package:eventhub/features/events/domain/entities/event_category.dart';
 import 'package:eventhub/features/events/domain/repositories/event_repository.dart';
-import 'package:eventhub/features/events/domain/repositories/image_storage_repository.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart' hide AsyncResult;
 
 part 'event_providers.g.dart';
 
-/// Page size of the catalogue; the Realtime `in` filter that joins ticket
-/// types and teams caps a page at 100 events.
+/// Page size of the catalogue, well under the 200 the rules allow per query:
+/// a listener re-reads its whole page after a reconnection, and reads are
+/// the free quota's budget.
 const cataloguePageSize = EventRemoteDataSource.maxPageSize;
 
 @Riverpod(keepAlive: true)
 EventRepository eventRepository(Ref ref) {
   return EventRepositoryImpl(
-    remote: EventRemoteDataSource(ref.watch(supabaseClientProvider)),
+    remote: EventRemoteDataSource(ref.watch(firestoreProvider)),
     clock: ref.watch(clockProvider),
-  );
-}
-
-@Riverpod(keepAlive: true)
-ImageStorageRepository imageStorageRepository(Ref ref) {
-  return ImageStorageRepositoryImpl(
-    SupabaseStorageDataSource(ref.watch(supabaseClientProvider)),
   );
 }
 

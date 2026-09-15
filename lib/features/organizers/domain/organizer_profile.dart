@@ -2,12 +2,12 @@ import 'package:eventhub/core/errors/failure.dart';
 import 'package:eventhub/core/result/result.dart';
 import 'package:eventhub/features/auth/domain/entities/app_user.dart';
 
-/// `public.organizers` — the public face of an organizer (F-10).
+/// `organizers/{uid}` — the public face of an organizer (F-10).
 ///
-/// Every field is derived server-side: name and bio are copied from the
-/// private profile by a trigger, the counters are maintained by triggers on
-/// follows, events and reviews. The client only reads it, which is what
-/// makes a follower count or a rating worth showing.
+/// Name and bio are kept in step with the private profile in the same batch;
+/// each counter moves only in the batch that proves it (a follow, a published
+/// or deleted event, a review), as the security rules require. That is what
+/// makes a follower count or a rating worth showing without a server.
 class OrganizerProfile {
   const OrganizerProfile({
     required this.id,
@@ -41,8 +41,8 @@ class OrganizerProfile {
   bool get hasBio => bio.trim().isNotEmpty;
 }
 
-/// Mirrors the `follows_not_self` constraint, so the button explains itself
-/// instead of waiting for the database to refuse.
+/// Mirrors the `organizerId != userId` rule on `following`, so the button
+/// explains itself instead of waiting for a bare refusal.
 abstract final class FollowPolicy {
   static Result<void> canFollow({
     required AppUser user,

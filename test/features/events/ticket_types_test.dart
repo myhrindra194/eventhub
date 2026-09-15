@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:eventhub/core/errors/failure.dart';
 import 'package:eventhub/core/result/result.dart';
 import 'package:eventhub/features/events/data/dtos/event_dto.dart';
@@ -150,77 +151,97 @@ void main() {
   });
 
   group('EventDto', () {
-    const vipId = '0b8e3f5c-9d1a-4c2e-8f7a-1234567890ab';
-    const stdId = '7c1d2e3f-4a5b-4c6d-8e9f-abcdefabcdef';
-
-    Map<String, dynamic> row({
-      List<Map<String, dynamic>>? tiers,
-      List<Map<String, dynamic>>? staff,
-    }) => {
-      'id': 'e1',
-      'organizer_id': 'o1',
-      'organizer_name': 'Mirindra',
+    Map<String, dynamic> doc({Object? tiers, Object? staffIds}) => {
+      'organizerId': 'o1',
+      'organizerName': 'Mirindra',
       'title': 'Concert',
       'description': 'd',
       'category': 'concert',
-      'starts_at': '2026-09-20T18:00:00+00:00',
+      'startsAt': Timestamp.fromDate(DateTime.utc(2026, 9, 20, 18)),
       'location': 'Tana',
-      'image_url': null,
+      'imageUrl': null,
       'capacity': 120,
-      'available_places': 118,
+      'availablePlaces': 118,
       'currency': 'MGA',
-      'created_at': '2026-09-01T08:00:00+00:00',
-      'updated_at': '2026-09-01T08:00:00+00:00',
-      'event_tiers': ?tiers,
-      'event_staff': ?staff,
+      // A pending serverTimestamp reads as null in the local snapshot.
+      'createdAt': null,
+      'tiers': ?tiers,
+      'staffIds': ?staffIds,
     };
 
-    Map<String, dynamic> tierRow(String id, int position, {int price = 0}) => {
-      'id': id,
-      'event_id': 'e1',
-      'name': id == vipId ? 'VIP' : 'Standard',
+    Map<String, Object> entry(String name, int order, {int price = 0}) => {
+      'name': name,
+      'description': '',
       'price': price,
       'capacity': 60,
       'available': 59,
-      'position': position,
+      'order': order,
     };
 
-    test('reads a row with embedded types (sorted by position) and team', () {
-      final event = EventDto.fromJson(
-        row(
-          tiers: [tierRow(vipId, 1, price: 20000), tierRow(stdId, 0)],
-          staff: [
-            {'user_id': 'u2'},
-            {'bad': 1},
-          ],
+    test('reads a document: id injected, types sorted by order, team', () {
+      final event = EventDto.fromFirestore(
+        'e1',
+        doc(
+          tiers: {
+            'tvip0001': entry('VIP', 1, price: 20000),
+            'tstd0001': entry('Standard', 0),
+            'broken': {'name': 'x'},
+            'notamap': 3,
+          },
+          staffIds: ['u2', 42, ''],
         ),
       ).toDomain();
+      expect(event.id, 'e1');
       expect(
         event.startsAt.isAtSameMomentAs(DateTime.utc(2026, 9, 20, 18)),
         isTrue,
       );
+      expect(event.createdAt, isNull);
       expect(event.reservedCount, 2);
-      expect(event.tiers.map((t) => t.id), [stdId, vipId]);
+      expect(event.tiers.map((t) => t.id), ['tstd0001', 'tvip0001']);
       expect(event.tiers.map((t) => t.order), [0, 1]);
       expect(event.staffIds, ['u2']);
       expect(event.minPrice, 20000);
       expect(event.hasFreeTier, isTrue);
     });
 
-    test('a Realtime row has no relations; the stream supplies them', () {
-      final dto = EventDto.fromJson(row());
-      expect(dto.toDomain().tiers, isEmpty);
-      final event = dto.toDomain(
-        tiers: [EventTierDto.fromJson(tierRow(vipId, 0, price: 100))],
-        staffIds: const ['u3'],
-      );
-      expect(event.tiers.single.price, 100);
-      expect(event.staffIds, ['u3']);
+    test('equal orders fall back to the id, so the list is stable', () {
+      final tiers = EventDto.tiersFromMap({
+        'b': entry('B', 0),
+        'a': entry('A', 0),
+      });
+      expect(tiers.map((t) => t.id), ['a', 'b']);
+    });
+
+    test('a simple event has no types and no team', () {
+      final event = EventDto.fromFirestore('e1', doc()).toDomain();
+      expect(event.tiers, isEmpty);
+      expect(event.staffIds, isEmpty);
     });
 
     test('an unknown category falls back to other', () {
-      final json = row()..['category'] = 'rave';
-      expect(EventDto.fromJson(json).category, EventCategory.other);
+      final json = doc()..['category'] = 'rave';
+      expect(EventDto.fromFirestore('e1', json).category, EventCategory.other);
+    });
+
+    test('types round-trip through the stored map in form order', () {
+      final written = EventDto.tiersToMap([
+        tier('tb', capacity: 5, available: 4, order: 7),
+        tier('ta', price: 100),
+      ]);
+      expect(written['tb']!['order'], 0);
+      expect(written['ta']!['order'], 1);
+      expect(written['tb']!.keys.toSet(), {
+        'name',
+        'description',
+        'price',
+        'capacity',
+        'available',
+        'order',
+      });
+      final read = EventDto.tiersFromMap(written);
+      expect(read.map((t) => t.id), ['tb', 'ta']);
+      expect(read.first.available, 4);
     });
 
     EventDraft draft({List<EventTierDraft> tiers = const []}) => EventDraft(
@@ -234,43 +255,64 @@ void main() {
       tiers: tiers,
     );
 
-    test('save_event payload without types sends the capacity', () {
-      final payload = EventDto.saveEventPayload(draft());
-      expect(payload.containsKey('id'), isFalse);
-      expect(payload['capacity'], 999);
-      expect(payload['starts_at'], '2026-09-20T18:00:00.000Z');
-      expect(payload['category'], 'concert');
-      expect(payload['tiers'], isEmpty);
-      expect(payload.containsKey('currency'), isFalse);
+    // The exact key set of `allow create` in firestore.rules.
+    const allowedKeys = {
+      'title',
+      'description',
+      'category',
+      'startsAt',
+      'location',
+      'capacity',
+      'availablePlaces',
+      'organizerId',
+      'organizerName',
+      'imageUrl',
+      'createdAt',
+      'updatedAt',
+      'staffIds',
+      'tiers',
+      'currency',
+    };
+
+    test('a new simple event opens every seat, empty team, server time', () {
+      final fields = EventDto.createFields(
+        draft(),
+        organizerId: 'o1',
+        organizerName: 'Mirindra',
+        plan: null,
+      );
+      expect(allowedKeys.containsAll(fields.keys), isTrue);
+      expect(fields['capacity'], 999);
+      expect(fields['availablePlaces'], 999);
+      expect(fields['staffIds'], isEmpty);
+      expect(fields['tiers'], isEmpty);
+      expect(fields['category'], 'concert');
+      expect(
+        fields['startsAt'],
+        Timestamp.fromDate(DateTime.utc(2026, 9, 20, 18)),
+      );
+      expect(fields['createdAt'], isA<FieldValue>());
+      expect(fields.containsKey('updatedAt'), isFalse);
     });
 
-    test('save_event payload with types sends the draft, no seat counts', () {
-      final payload = EventDto.saveEventPayload(
-        draft(
-          tiers: const [
-            EventTierDraft(
-              id: vipId,
-              name: 'Fosse',
-              capacity: 100,
-              price: 20000,
-            ),
-            EventTierDraft(id: 'tplaceho', name: 'Invités', capacity: 20),
-          ],
-        ),
-        eventId: 'e1',
+    test('a new event with types takes its counters from the plan', () {
+      final plan = TierPlanner.initial(const [
+        EventTierDraft(name: 'Fosse', capacity: 100, price: 20000),
+        EventTierDraft(name: 'Invités', capacity: 20),
+      ], ids: ids);
+      final fields = EventDto.createFields(
+        draft(),
+        organizerId: 'o1',
+        organizerName: 'Mirindra',
+        plan: plan,
       );
-      expect(payload['id'], 'e1');
-      expect(payload.containsKey('capacity'), isFalse);
-      expect(payload['currency'], 'MGA');
-      expect(payload['tiers'], [
-        {
-          'id': vipId,
-          'name': 'Fosse',
-          'description': '',
-          'price': 20000,
-          'capacity': 100,
-        },
-        {'name': 'Invités', 'description': '', 'price': 0, 'capacity': 20},
+      expect(fields['capacity'], 120);
+      expect(fields['availablePlaces'], 120);
+      final stored = fields['tiers']! as Map<String, Map<String, Object>>;
+      expect(stored, hasLength(2));
+      expect(EventDto.tiersFromMap(stored).map((t) => t.name), [
+        'Fosse',
+        'Invités',
       ]);
     });
   });

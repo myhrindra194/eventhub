@@ -93,15 +93,15 @@ class _Body extends ConsumerWidget {
       ..sort((a, b) => a.startsAt.compareTo(b.startsAt));
     final past = all.where((e) => e.hasStarted(now)).take(10).toList();
 
-    // A participant opens the event; the organizer opens their guest list;
-    // another organizer has no screen for someone else's event.
+    // The organizer opens their guest list; anyone else — participants and
+    // other organizers alike, one account two spaces — opens the event.
     VoidCallback? openerFor(Event e) {
-      if (user?.isParticipant ?? false) {
-        return () => context.push(AppRoutes.eventDetailPath(e.id));
-      }
       if (isSelf) {
         return () =>
             context.push(AppRoutes.organizerEventParticipantsPath(e.id));
+      }
+      if (user != null) {
+        return () => context.push(AppRoutes.eventDetailPath(e.id));
       }
       return null;
     }

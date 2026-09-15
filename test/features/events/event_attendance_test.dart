@@ -48,26 +48,19 @@ void main() {
   group('EventAttendanceRemoteDataSource.namesFrom', () {
     test('reads names in order and tolerates malformed entries', () {
       expect(
-        EventAttendanceRemoteDataSource.namesFrom({
-          'count': 5,
-          'recent': [
-            {'key': 'a', 'name': 'Soa'},
-            {'key': 'b'},
-            'garbage',
-            {'key': 'c', 'name': ''},
-            {'key': 'd', 'name': 'Hery R.'},
-          ],
-        }),
+        EventAttendanceRemoteDataSource.namesFrom([
+          {'name': 'Soa', 'createdAt': null},
+          {'createdAt': null},
+          {'name': 42},
+          {'name': '   '},
+          {'name': ' Hery R. '},
+        ]),
         ['Soa', 'Hery R.'],
       );
     });
 
-    test('returns nothing for a missing or malformed payload', () {
-      expect(EventAttendanceRemoteDataSource.namesFrom(null), isEmpty);
-      expect(
-        EventAttendanceRemoteDataSource.namesFrom({'recent': 'x'}),
-        isEmpty,
-      );
+    test('returns nothing for an empty collection', () {
+      expect(EventAttendanceRemoteDataSource.namesFrom(const []), isEmpty);
     });
   });
 }

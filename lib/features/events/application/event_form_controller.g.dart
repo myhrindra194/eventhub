@@ -8,18 +8,27 @@ part of 'event_form_controller.dart';
 
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // ignore_for_file: type=lint, type=warning
-/// Create / update flow: optional cover upload, then `save_event`.
-/// [existingEventId] == null means "create".
+/// Create / update flow. [existingEventId] == null means "create".
+///
+/// The cover is an https URL typed in the form (see [EventDraft.imageUrl]):
+/// on the Spark plan there is no Cloud Storage to upload to, and an event
+/// without a cover keeps its generated visual.
 
 @ProviderFor(EventFormController)
 final eventFormControllerProvider = EventFormControllerProvider._();
 
-/// Create / update flow: optional cover upload, then `save_event`.
-/// [existingEventId] == null means "create".
+/// Create / update flow. [existingEventId] == null means "create".
+///
+/// The cover is an https URL typed in the form (see [EventDraft.imageUrl]):
+/// on the Spark plan there is no Cloud Storage to upload to, and an event
+/// without a cover keeps its generated visual.
 final class EventFormControllerProvider
     extends $AsyncNotifierProvider<EventFormController, void> {
-  /// Create / update flow: optional cover upload, then `save_event`.
-  /// [existingEventId] == null means "create".
+  /// Create / update flow. [existingEventId] == null means "create".
+  ///
+  /// The cover is an https URL typed in the form (see [EventDraft.imageUrl]):
+  /// on the Spark plan there is no Cloud Storage to upload to, and an event
+  /// without a cover keeps its generated visual.
   EventFormControllerProvider._()
     : super(
         from: null,
@@ -40,10 +49,13 @@ final class EventFormControllerProvider
 }
 
 String _$eventFormControllerHash() =>
-    r'1d983657e9980231bc80bad35af22146c2cf734c';
+    r'c03a0b5256c5f546ad6a8ca02a689e9b23ffdd38';
 
-/// Create / update flow: optional cover upload, then `save_event`.
-/// [existingEventId] == null means "create".
+/// Create / update flow. [existingEventId] == null means "create".
+///
+/// The cover is an https URL typed in the form (see [EventDraft.imageUrl]):
+/// on the Spark plan there is no Cloud Storage to upload to, and an event
+/// without a cover keeps its generated visual.
 
 abstract class _$EventFormController extends $AsyncNotifier<void> {
   FutureOr<void> build();

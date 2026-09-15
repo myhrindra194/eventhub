@@ -1,7 +1,7 @@
 import 'package:eventhub/core/analytics/app_analytics.dart';
 import 'package:eventhub/core/errors/failure.dart';
+import 'package:eventhub/core/firebase/firebase_providers.dart';
 import 'package:eventhub/core/result/result.dart';
-import 'package:eventhub/core/supabase/supabase_providers.dart';
 import 'package:eventhub/features/auth/application/auth_providers.dart';
 import 'package:eventhub/features/organizers/data/organizer_directory_remote_data_source.dart';
 import 'package:eventhub/features/organizers/data/organizer_directory_repository_impl.dart';
@@ -14,7 +14,7 @@ part 'organizer_directory_providers.g.dart';
 @Riverpod(keepAlive: true)
 OrganizerDirectoryRepository organizerDirectoryRepository(Ref ref) =>
     OrganizerDirectoryRepositoryImpl(
-      OrganizerDirectoryRemoteDataSource(ref.watch(supabaseClientProvider)),
+      OrganizerDirectoryRemoteDataSource(ref.watch(firestoreProvider)),
     );
 
 @riverpod
@@ -40,8 +40,8 @@ class FollowController extends _$FollowController {
   @override
   FutureOr<void> build() {}
 
-  /// The button flips when Realtime echoes the row back (a fraction of a
-  /// second); the public counter follows, maintained by a trigger.
+  /// The button flips when the transaction commits and the `following`
+  /// listener sees the document; the public counter moves in the same commit.
   Future<Result<void>> toggle(String organizerId) async {
     final user = ref.read(currentUserProvider);
     if (user == null) return const Err(AuthFailure.notSignedIn());

@@ -4,6 +4,7 @@ import 'package:eventhub/core/config/app_config.dart';
 import 'package:eventhub/core/errors/failure.dart';
 import 'package:eventhub/core/firebase/firebase_providers.dart';
 import 'package:eventhub/core/result/result.dart';
+import 'package:eventhub/core/supabase/supabase_providers.dart';
 import 'package:eventhub/core/utils/app_logger.dart';
 import 'package:eventhub/features/auth/application/auth_providers.dart';
 import 'package:eventhub/features/auth/domain/entities/app_user.dart';
@@ -25,7 +26,7 @@ part 'notification_providers.g.dart';
 @Riverpod(keepAlive: true)
 NotificationRepository notificationRepository(Ref ref) =>
     NotificationRepositoryImpl(
-      NotificationRemoteDataSource(ref.watch(firestoreProvider)),
+      NotificationRemoteDataSource(ref.watch(supabaseClientProvider)),
     );
 
 @Riverpod(keepAlive: true)
@@ -99,15 +100,13 @@ class NotificationFeedController extends _$NotificationFeedController {
   Future<Result<void>> markAllRead() async {
     final user = ref.read(currentUserProvider);
     if (user == null) return const Err(AuthFailure.notSignedIn());
-    final unread = [
-      for (final n
-          in ref.read(notificationFeedProvider).value ??
-              const <AppNotification>[])
-        if (!n.isRead) n.id,
-    ];
+    // Nothing unread in the feed: skip the round trip. The server statement
+    // itself does not depend on the ids shown (see the repository).
+    final feed = ref.read(notificationFeedProvider).value;
+    if (feed != null && feed.every((n) => n.isRead)) return const Ok(null);
     return ref
         .read(notificationRepositoryProvider)
-        .markAllRead(userId: user.id, notificationIds: unread);
+        .markAllRead(userId: user.id);
   }
 
   Future<Result<void>> delete(AppNotification notification) async {
@@ -121,12 +120,22 @@ class NotificationFeedController extends _$NotificationFeedController {
 
 /// The push pipeline on the device, driven by the session.
 ///
-/// * signed in → ask permission, register the FCM token under the user,
-///   keep it registered on refresh;
+/// * signed in → ask permission, register the FCM token under the user
+///   (`public.register_device`), keep it registered on refresh;
 /// * signed out → invalidate the token (see
 ///   [PushMessagingDataSource.deleteToken]);
 /// * foreground message → shown as a local notification;
 /// * tap (foreground, background or cold start) → [NotificationRoute].
+///
+/// Why sign-out does not delete the `devices` row: this provider learns of
+/// the sign-out from [currentUserProvider], i.e. once the session is already
+/// gone, and RLS refuses an anonymous delete. Invalidating the token needs no
+/// session and is enough on its own: FCM answers `UNREGISTERED` to the next
+/// send and the worker forgets the row (`devices_forget_tokens`). If the
+/// device is offline and the invalidation fails, the next account signing in
+/// on the phone gets the same token, and `register_device` moves it away from
+/// the previous account. The row is keyed by installation, so the same
+/// person signing in again replaces the dead token in place.
 ///
 /// Watched once by `EventHubApp`; kept alive for the app's lifetime. Web is
 /// excluded on purpose: web push needs a VAPID key and a service worker.
@@ -207,7 +216,10 @@ class PushNotifications extends _$PushNotifications {
         .registerDevice(
           userId: userId,
           token: token,
-          platform: defaultTargetPlatform == TargetPlatform.iOS
+          // Values of the Postgres enum `device_platform`.
+          platform: kIsWeb
+              ? 'web'
+              : defaultTargetPlatform == TargetPlatform.iOS
               ? 'ios'
               : 'android',
         );

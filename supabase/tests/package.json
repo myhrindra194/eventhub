@@ -1,0 +1,12 @@
+{
+  "name": "eventhub-database-tests",
+  "private": true,
+  "type": "module",
+  "description": "Integration tests of the Supabase migrations: RLS, grants, RPCs, triggers, payments, jobs. Runs on PGlite (Postgres 17 in WebAssembly) — no Docker.",
+  "scripts": {
+    "test": "node --test --test-concurrency=1 \"db/*.test.mjs\""
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.3.0"
+  }
+}

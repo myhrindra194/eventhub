@@ -18,14 +18,14 @@ abstract interface class ReviewRepository {
   /// too.
   Stream<Review?> watchReviewById(String reviewId);
 
-  /// Creates or edits the user's review after checking `ReviewPolicy`.
+  /// Creates or edits the user's review after checking `ReviewPolicy`; the
+  /// organizer's rating moves in the same transaction.
   AsyncResult<void> save({
     required AppUser user,
     required Reservation? reservation,
     required String eventId,
     required int rating,
     required String comment,
-    required bool exists,
     required DateTime now,
   });
 

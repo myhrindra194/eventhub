@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart' show FirebaseException;
 import 'package:eventhub/core/errors/failure.dart';
 import 'package:eventhub/core/errors/failure_exception.dart';
 import 'package:eventhub/core/result/result.dart';
@@ -7,7 +8,6 @@ import 'package:eventhub/features/reviews/data/review_remote_data_source.dart';
 import 'package:eventhub/features/reviews/domain/review.dart';
 import 'package:eventhub/features/reviews/domain/review_policy.dart';
 import 'package:eventhub/features/reviews/domain/review_repository.dart';
-import 'package:supabase_flutter/supabase_flutter.dart' show PostgrestException;
 
 class ReviewRepositoryImpl implements ReviewRepository {
   const ReviewRepositoryImpl(this._remote);
@@ -22,7 +22,7 @@ class ReviewRepositoryImpl implements ReviewRepository {
   Stream<Review?> watchReview({
     required String eventId,
     required String userId,
-  }) => _remote.watchAuthorReview(eventId: eventId, authorId: userId);
+  }) => _remote.watchReview(eventId: eventId, authorId: userId);
 
   @override
   Stream<Review?> watchReviewById(String reviewId) =>
@@ -35,7 +35,6 @@ class ReviewRepositoryImpl implements ReviewRepository {
     required String eventId,
     required int rating,
     required String comment,
-    required bool exists,
     required DateTime now,
   }) {
     return guard(() async {
@@ -48,40 +47,29 @@ class ReviewRepositoryImpl implements ReviewRepository {
       )) {
         throw FailureException(failure);
       }
-      final text = comment.trim();
-      Future<void> update() => _remote.update(
-        eventId: eventId,
-        authorId: user.id,
-        rating: rating,
-        comment: text,
-      );
-
-      if (exists) return update();
       try {
-        await _remote.create(eventId: eventId, rating: rating, comment: text);
-      } on PostgrestException catch (e) {
-        switch (e.code) {
-          // `reviews_one_per_author`: the review was created meanwhile (a
-          // second device, a stream not caught up yet) — editing it is what
-          // the person meant.
-          case '23505':
-            return update();
-          // The insert policy refused: `private.can_review` found no
-          // confirmed seat on a started event with a verified email.
-          // ReviewPolicy checks the same locally, so this is a reservation
-          // cancelled or an event moved after the screen loaded.
-          case '42501':
-            throw FailureException(
-              BusinessRuleFailure(
-                rule: BusinessRule.notAttendee,
-                message:
-                    'Seules les personnes inscrites peuvent laisser un avis, '
-                    'une fois l’événement commencé.',
-                cause: e,
-              ),
-            );
-        }
-        rethrow;
+        await _remote.save(
+          eventId: eventId,
+          // canReview proved the reservation exists; it carries the event's
+          // organizer exactly as the rules expect it.
+          organizerId: reservation!.organizerId,
+          author: user,
+          rating: rating,
+          comment: comment.trim(),
+        );
+      } on FirebaseException catch (e) {
+        // ReviewPolicy checks attendance locally, so a refusal here is a
+        // seat cancelled or an event moved after the screen loaded.
+        if (e.code != 'permission-denied') rethrow;
+        throw FailureException(
+          BusinessRuleFailure(
+            rule: BusinessRule.notAttendee,
+            message:
+                'Seules les personnes inscrites peuvent laisser un avis, une '
+                'fois l’événement commencé.',
+            cause: e,
+          ),
+        );
       }
     });
   }

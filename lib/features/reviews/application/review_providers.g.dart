@@ -53,7 +53,7 @@ final class ReviewRepositoryProvider
   }
 }
 
-String _$reviewRepositoryHash() => r'e6a2a9329fd49d1948d5e86847b03c601cf1e3e0';
+String _$reviewRepositoryHash() => r'de983f103b00483b075fc83454fe8e9ab07e9227';
 
 @ProviderFor(eventReviews)
 final eventReviewsProvider = EventReviewsFamily._();
@@ -308,7 +308,7 @@ final class ReviewControllerProvider
   ReviewController create() => ReviewController();
 }
 
-String _$reviewControllerHash() => r'd2f310f20fc30cd644a16ce6b3c37e5a3ce39f0d';
+String _$reviewControllerHash() => r'ef793cd76d29be80b47e64aedfef234e786bd3ea';
 
 abstract class _$ReviewController extends $AsyncNotifier<void> {
   FutureOr<void> build();

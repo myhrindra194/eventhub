@@ -56,6 +56,31 @@ void main() {
       expect(_rule(result), BusinessRule.eventAlreadyStarted);
     });
 
+    test("an organizer account books someone else's event", () {
+      final result = ReservationPolicy.canReserve(
+        event: Fixtures.event(organizerId: 'another-organizer'),
+        existing: null,
+        now: Fixtures.now,
+        userId: Fixtures.organizer.id,
+      );
+      expect(result, isA<Ok<void>>());
+    });
+
+    test('the event team does not book its own event', () {
+      for (final event in [
+        Fixtures.event(),
+        Fixtures.event(organizerId: 'owner', staffIds: [Fixtures.organizer.id]),
+      ]) {
+        final result = ReservationPolicy.canReserve(
+          event: event,
+          existing: null,
+          now: Fixtures.now,
+          userId: Fixtures.organizer.id,
+        );
+        expect((result as Err<void>).failure, isA<PermissionFailure>());
+      }
+    });
+
     test('checks "already reserved" before "full"', () {
       // A participant holding the last seat must get the precise message.
       final result = ReservationPolicy.canReserve(
@@ -130,15 +155,18 @@ void main() {
       expect(reserve(tierId: 'std'), isA<Ok<void>>());
     });
 
-    test(
-      'asks for a type, refuses a sold-out one, sends a paid one to checkout',
-      () {
-        expect(_rule(reserve()), BusinessRule.tierRequired);
-        expect(_rule(reserve(tierId: 'nope')), BusinessRule.tierRequired);
-        expect(_rule(reserve(tierId: 'full')), BusinessRule.tierSoldOut);
-        expect(_rule(reserve(tierId: 'vip')), BusinessRule.paymentRequired);
-      },
-    );
+    test('asks for a type, refuses a sold-out one and a paid one', () {
+      expect(_rule(reserve()), BusinessRule.tierRequired);
+      expect(_rule(reserve(tierId: 'nope')), BusinessRule.tierRequired);
+      expect(_rule(reserve(tierId: 'full')), BusinessRule.tierSoldOut);
+      final paid = reserve(tierId: 'vip');
+      expect(_rule(paid), BusinessRule.paymentRequired);
+      // Without a payment server the sentence says it plainly.
+      expect(
+        (paid as Err<void>).failure.message,
+        ReservationPolicy.paymentUnavailable.message,
+      );
+    });
 
     test('refuses a second purchase while one is being paid', () {
       final pending = Fixtures.reservation(status: ReservationStatus.pending);

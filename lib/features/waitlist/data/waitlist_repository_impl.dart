@@ -21,6 +21,8 @@ class WaitlistRepositoryImpl implements WaitlistRepository {
   @override
   Stream<int> watchQueueLength(String eventId) => _remote.watchLength(eventId);
 
+  /// The policy first: the rules would refuse the same cases with a bare
+  /// `permission-denied`, not with a sentence.
   @override
   AsyncResult<void> join({
     required Event event,
@@ -38,11 +40,11 @@ class WaitlistRepositoryImpl implements WaitlistRepository {
           case Err(:final failure)) {
         throw FailureException(failure);
       }
-      await _remote.join(event.id);
+      await _remote.join(event.id, user.id);
     });
   }
 
   @override
-  AsyncResult<void> leave({required String eventId}) =>
-      guard(() => _remote.leave(eventId));
+  AsyncResult<void> leave({required String eventId, required String userId}) =>
+      guard(() => _remote.leave(eventId, userId));
 }

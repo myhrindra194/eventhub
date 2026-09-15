@@ -53,11 +53,22 @@ void main() {
       );
     });
 
-    test('refuses non-attendees, cancelled seats and organizers', () {
+    test('an organizer account who attended reviews like anyone', () {
+      expect(
+        ReviewPolicy.canReview(
+          user: user(role: UserRole.organizer),
+          reservation: reservation(),
+          now: now,
+        ),
+        isA<Ok<void>>(),
+      );
+    });
+
+    test("refuses non-attendees, cancelled seats and someone else's", () {
       for (final (u, r) in [
         (user(), null),
         (user(), reservation(status: ReservationStatus.cancelled)),
-        (user(role: UserRole.organizer), reservation()),
+        (user().copyWith(id: 'u2'), reservation()),
       ]) {
         expect(
           rule(ReviewPolicy.canReview(user: u, reservation: r, now: now)),

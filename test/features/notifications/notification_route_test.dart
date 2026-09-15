@@ -108,6 +108,18 @@ void main() {
     );
   });
 
+  test('the welcome sent at the first sign-in opens the welcome screen', () {
+    expect(
+      NotificationRoute.locationFor({
+        'type': NotificationRoute.welcome,
+        'notificationId': '4f0c2a8e-1b7d-4a3e-9c55-2f9d8b1e6a01',
+        'eventId': '',
+        'reservationId': '',
+      }),
+      AppRoutes.welcome,
+    );
+  });
+
   test('unknown or incomplete payloads open nothing', () {
     expect(NotificationRoute.locationFor({}), isNull);
     expect(NotificationRoute.locationFor({'type': 'promo'}), isNull);

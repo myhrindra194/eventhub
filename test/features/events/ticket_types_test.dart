@@ -263,8 +263,14 @@ void main() {
       expect(payload.containsKey('capacity'), isFalse);
       expect(payload['currency'], 'MGA');
       expect(payload['tiers'], [
-        {'id': vipId, 'name': 'Fosse', 'price': 20000, 'capacity': 100},
-        {'name': 'Invités', 'price': 0, 'capacity': 20},
+        {
+          'id': vipId,
+          'name': 'Fosse',
+          'description': '',
+          'price': 20000,
+          'capacity': 100,
+        },
+        {'name': 'Invités', 'description': '', 'price': 0, 'capacity': 20},
       ]);
     });
   });

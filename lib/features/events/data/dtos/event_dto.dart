@@ -127,6 +127,7 @@ abstract class EventDto with _$EventDto {
         {
           if (tier.id != null && isUuid(tier.id!)) 'id': tier.id,
           'name': tier.name,
+          'description': tier.description,
           'price': tier.price,
           'capacity': tier.capacity,
         },
@@ -154,6 +155,9 @@ abstract class EventTierDto with _$EventTierDto {
     required int capacity,
     required int available,
 
+    /// What the type includes ("Accès backstage"), possibly empty.
+    @Default('') String description,
+
     /// Integer minor units (cents; ariary for MGA).
     @Default(0) int price,
 
@@ -164,11 +168,10 @@ abstract class EventTierDto with _$EventTierDto {
   factory EventTierDto.fromJson(Map<String, dynamic> json) =>
       _$EventTierDtoFromJson(json);
 
-  /// The database has no per-type description: the domain field stays
-  /// empty until it does.
   EventTier toDomain() => EventTier(
     id: id,
     name: name,
+    description: description,
     capacity: capacity,
     available: available,
     price: price,

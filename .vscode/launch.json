@@ -13,7 +13,7 @@
       "request": "launch",
       "type": "dart",
       "program": "lib/main_dev.dart",
-      "args": ["--dart-define=FLAVOR=dev", "--dart-define=USE_EMULATORS=true"]
+      "args": ["--dart-define=FLAVOR=dev", "--dart-define=USE_FIREBASE_EMULATOR=true", "--dart-define=FIREBASE_EMULATOR_HOST=localhost"]
     },
     {
       "name": "EventHub (staging)",

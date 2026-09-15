@@ -3,8 +3,10 @@
 > Ce document répond à une question précise : **que construire ensuite, et
 > pourquoi**. Chaque fonctionnalité est justifiée par ce que font les grandes
 > plateformes du secteur, puis traduite en impact produit, coût technique et
-> dépendances (tables, RLS, fonctions SQL, écrans). Rien n'est listé « parce que
-> ça se fait » : si une ligne n'a pas de raison d'être, elle n'est pas ici.
+> dépendances (collections, règles, écrans). Depuis septembre 2026, une
+> contrainte s'ajoute à chaque ligne : **le plan Spark** (Firebase Auth +
+> Firestore, aucun code serveur). Ce qui ne tient pas dans ce cadre est
+> explicitement rangé dans ce que le **plan Blaze** débloquerait (§6).
 
 ---
 
@@ -12,274 +14,154 @@
 
 | Plateforme | Positionnement | Ce qu'on en retient |
 |---|---|---|
-| **Eventbrite** | Marketplace généraliste, billetterie payante | Découverte par ville + catégorie, pages organisateur, billets PDF/QR, gestion des remboursements |
+| **Eventbrite** | Marketplace généraliste, billetterie payante | Découverte par ville + catégorie, pages organisateur, billets QR, un compte pour acheter **et** organiser |
 | **Luma (lu.ma)** | Événements communautaires, tech | Création ultra-rapide (< 60 s), page publique élégante, invitations par lien, calendrier d'organisateur suivi par ses fans |
-| **Meetup** | Communautés récurrentes | Groupes, adhésion, événements récurrents, discussions, « qui vient ? » (preuve sociale forte) |
-| **Dice** | Concerts, culture jeune | File d'attente automatique (waitlist), billets non transférables, notifications de dernière minute, esthétique éditoriale |
+| **Meetup** | Communautés récurrentes | Groupes, événements récurrents, discussions, « qui vient ? » (preuve sociale forte) |
+| **Dice** | Concerts, culture jeune | Liste d'attente automatique, billets non transférables, notifications de dernière minute |
 | **Shotgun** | Clubbing, festivals | Rareté explicite (« il reste 8 places »), vagues de prix, partage social natif |
-| **Airbnb** | Réservation d'expériences | Filtres riches, favoris, calendrier, notes et avis, photographie plein cadre |
-| **Partiful** | Événements privés | RSVP sans compte, rappels automatiques, ton chaleureux |
-| **Ticketmaster** | Billetterie à grande échelle | Contrôle d'accès (scan), sièges numérotés, anti-fraude |
+| **Airbnb** | Réservation d'expériences | Filtres riches, favoris, notes et avis, un compte voyageur qui devient hôte |
+| **Partiful** | Événements privés | RSVP simple, rappels automatiques, ton chaleureux |
+| **Ticketmaster** | Billetterie à grande échelle | Contrôle d'accès (scan), anti-fraude |
 
-**Les quatre constantes** que ces produits partagent et qu'EventHub doit tenir :
+**Les quatre constantes** qu'EventHub doit tenir :
 
-1. **La rareté est visible.** Le nombre de places restantes est affiché
-   partout, avec une couleur qui change quand ça devient urgent. *(déjà
-   implémenté : `CapacityMeter`)*
-2. **La preuve sociale précède la décision.** Qui vient, combien de personnes,
-   quelle note. *(à faire : `AvatarStack` existe, les données non)*
-3. **Le rappel appartient à la plateforme.** Un billet réservé mais oublié est
-   un échec produit, pas un échec utilisateur.
-4. **L'entrée est un moment technique.** Scanner un billet doit fonctionner
-   hors ligne, en 300 ms, avec les mains qui tremblent.
+1. **La rareté est visible** — places restantes partout (`CapacityMeter`).
+2. **La preuve sociale précède la décision** — qui vient, combien, quelle note.
+3. **Le rappel appartient à la plateforme** — un billet oublié est un échec
+   produit.
+4. **L'entrée est un moment technique** — le scan doit marcher vite, et hors
+   ligne pour le billet.
 
 ---
 
-## 2. Ce qui est déjà livré (v1.0)
+## 2. Historique des livraisons
 
-| Domaine | Fonctionnalité | État |
-|---|---|---|
-| Auth | Inscription 2 étapes, connexion, rôle immuable, récupération de profil incomplet | ✅ |
-| Auth | **Mot de passe oublié** (écran dédié + confirmation) | ✅ nouveau |
-| Découverte | Fil éditorialisé : carrousel « À la une », rails « Ça se remplit vite » / « Cette semaine », catalogue complet | ✅ nouveau |
-| Découverte | Recherche multi-champs (titre, lieu, organisateur, catégorie) | ✅ nouveau |
-| Découverte | Filtres avancés : période, tri, masquer les complets, compteur de filtres actifs | ✅ nouveau |
-| Découverte | Grille de catégories avec compteurs à l'état vide | ✅ nouveau |
-| Réservation | Transaction atomique place + réservation, annulation, re-réservation | ✅ |
-| Billets | Portefeuille segmenté À venir / Passés / Annulés, carte-billet perforée | ✅ nouveau |
-| Organisateur | Dashboard avec KPI (à venir, participants, taux de remplissage) | ✅ nouveau |
-| Organisateur | Création / édition, publication, liste des participants avec recherche | ✅ |
-| Système | **Thème clair + sombre + automatique**, persisté | ✅ nouveau |
-| Système | Écran Paramètres, préférences de notification (UI) | ✅ nouveau |
-| Billets | **Écran billet** : QR code (`qr_flutter`), code court `EH-XXXX-XXXX`, états annulé / passé | ✅ v1.1 — QR non signé, voir F-01 |
-| Partage | Feuille de partage : lien public + invitation prête à coller (presse-papiers) | ✅ v1.1 — partiel, voir F-08 |
-| Organisateur | **Export CSV** de la liste des participants (presse-papiers) | ✅ v1.1 — partiel, voir F-15 |
-| Organisateur | **Onglet Stats** : remplissage global, 14 jours de réservations, annulations, classement | ✅ v1.1 |
-| Organisateur | **Onglet Alertes** : « à surveiller » (J-1, dernières places, complet) + journal d'activité | ✅ v1.1 |
-| Compte | Modifier son nom ; centre d'aide, confidentialité, à propos | ✅ v1.1 |
-| Sécurité | Règle `list` des réservations : la requête doit prouver l'appartenance | ✅ v1.1 — correctif |
-| Backend | **Branchement réel sur Firebase** (`eventhub-d411f`), suppression du backend simulé | ✅ v1.2 |
-| Push | **Notifications push Android** : réservation / annulation (organisateur), rappel J-1 (participant), préférences, routage au tap | ✅ v1.2 — F-02 |
-| Sécurité | **Rôle en custom claim** posé par Cloud Function | ✅ v1.2 — F-03 partiel |
-| Auth | **Connexion Google**, **vérification d'email** (requise pour publier et pour les avis), **suppression de compte** en cascade | ✅ v1.3 — F-03 |
-| Push | **Centre de notifications** (historique 30 j), push **web** (service worker + VAPID), config iOS | ✅ v1.3 — F-02 |
-| Découverte | **Favoris** | ✅ v1.3 — F-05 |
-| Réservation | **Liste d'attente** avec notification à la libération d'une place | ✅ v1.3 — F-06 |
-| Avis | **Avis** après l'événement, moyenne et répartition | ✅ v1.3 — F-09 |
-| Organisateur | **Contrôle à l'entrée** : scanner, saisie manuelle, anti-doublon multi-portes | ✅ v1.3 — F-01 (sans signature, voir ADR) |
-| Catalogue | **Pagination** : page live + pages par curseur | ✅ v1.3 — F-04 |
-| Production | App Check, Crashlytics, Analytics sur consentement, cache hors ligne et bandeau, signature release | ✅ v1.3 |
-| Tests | Tests d'intégration des Cloud Functions sur émulateurs | ✅ v1.3 |
-| Social | **Profil organisateur public** (présentation, événements, abonnés, note), **abonnements** et push « nouvel événement » | ✅ v1.4 — F-10 |
-| Social | **Preuve sociale** : « Soa, Hery R. et 40 autres y vont » + visages | ✅ v1.4 — F-07 |
-| Partage | **Feuille de partage native**, **page publique** `/e/{id}` avec Open Graph (Hosting + fonction), **App Links** Android, lien conservé à travers la connexion | ✅ v1.4 — F-08 |
-| Organisateur | **Export CSV en fichier** via la feuille de partage (UTF-8 + BOM) | ✅ v1.4 — F-15 |
-| Découverte | Rail **« Pour vous »** (heuristique locale explicable) | ✅ v1.4 — F-18 |
-| Confiance | **Signalement** (événement, organisateur, avis), masquage automatique des avis, file de modération, décision admin | ✅ v1.4 — F-19 |
-| Backend | **Migration vers Supabase** : Postgres (RLS et droits par colonne, fonctions SQL, triggers, `pg_cron`), Auth avec confirmation d'email obligatoire, Storage, Realtime, Edge Functions (Stripe, worker FCM, page publique), file de jobs ; Firebase ne garde que FCM, Crashlytics, Analytics et Hosting. Les jalons v1.x ci-dessus décrivent leur première livraison sur Firebase ; leur mise en œuvre actuelle est dans `docs/ARCHITECTURE.md` | ✅ v2.0 |
-| Tests | Suite d'intégration de la base sur PGlite (migrations réelles, vrais rôles, sans Docker), `deno check` des Edge Functions | ✅ v2.0 |
+| Version | Livraison |
+|---|---|
+| v1.0 | Inscription, catalogue éditorialisé, recherche et filtres, réservation atomique, portefeuille, tableau de bord organisateur, thème clair/sombre |
+| v1.1 | Billet QR + code court, partage par lien, export CSV (presse-papiers), stats et alertes organisateur |
+| v1.2 | Branchement réel sur Firebase (`eventhub-d411f`), push Android par Cloud Functions |
+| v1.3 | Google, vérification d'email, suppression de compte, centre de notifications, favoris (F-05), liste d'attente (F-06), avis (F-09), contrôle à l'entrée (F-01), pagination (F-04) |
+| v1.4 | Profils organisateurs et abonnements (F-10), preuve sociale (F-07), page publique et App Links (F-08), export CSV fichier (F-15), « Pour vous » (F-18), signalement et modération (F-19) |
+| v1.5 – v1.6 | Co-organisateurs (F-16), types de billets (F-12), billetterie Stripe (F-11) |
+| v2.0 | Migration vers Supabase (Postgres, RLS, fonctions SQL, Edge Functions) |
+| **v2.1** | **Retour à Firebase Auth + Cloud Firestore sur le plan Spark** : Supabase retiré ; règles Firestore comme unique backend (preuves `getAfter`/`existsAfter`, identifiants déterministes), notifications écrites par l'acteur, rappels J-1 locaux, suppression de compte côté client, images par URL, TTL des notifications, page `/e/{id}` par l'API REST, « un compte, deux espaces » (bouton « Devenir organisateur »), layout responsive multiplateforme (Android, iOS, web, Windows, macOS), suite de règles sur émulateur en CI. **Désactivés faute de serveur** : paiements (F-11), push app fermée (F-02 partiel), uploads d'images |
+
+**Pourquoi ce retour.** Le critère décisif est le coût : aucun service payant.
+Sur Firebase, ce sont Cloud Functions, Cloud Storage et Cloud Scheduler qui
+exigent Blaze ; Auth et Firestore tiennent sur Spark. Les fonctionnalités qui
+dépendent d'un secret ou d'une exécution planifiée sont donc suspendues, pas
+supprimées : le modèle de données les anticipe (§7).
 
 ---
 
-## 3. Backlog priorisé
+## 3. État des fonctionnalités (F-01 à F-20)
 
-Légende — **P0** : bloquant pour une mise en production crédible · **P1** :
-différenciant à court terme · **P2** : valeur à moyen terme · **P3** : pari.
+Légende — ✅ livré sur Spark · 🟡 livré avec une limite Spark · ⏸ suspendu
+(exige Blaze) · ⬜ à faire.
 
-### 3.1 P0 — Crédibilité produit
-
-#### F-01 · Billet QR + contrôle d'accès
-*Inspiré de : Ticketmaster, Dice*
-
-Un billet sans preuve vérifiable n'est pas un billet. Générer un QR signé
-(HMAC du `reservationId` + secret serveur), l'afficher plein écran avec
-luminosité forcée, et donner à l'organisateur un scanner qui écrit dans
-`events/{id}/checkins/{reservationId}`.
-
-- **Impact** : ferme la boucle métier. C'est ce qui sépare une maquette d'un produit.
-- **Technique** : `mobile_scanner`, Cloud Function de signature, règles
-  `checkins` (déjà écrites : append-only, organisateur uniquement).
-- **Point d'attention** : le scan doit marcher hors ligne — mettre la liste
-  des participants en cache local et réconcilier au retour du réseau.
-- **État (v1.1)** : l'affichage est livré (écran billet, QR + code court). Le
-  QR encode `eventhub://ticket/<id>?code=…` **sans signature** : il identifie,
-  il ne prouve pas. Restent la signature HMAC et le scanner organisateur.
-
-#### F-02 · Notifications push et rappels
-*Inspiré de : Dice, Partiful*
-
-Rappel J-1 et H-2, alerte d'annulation, place libérée sur liste d'attente.
-
-- **Impact** : c'est **le** levier de rétention. Un utilisateur qui n'est pas
-  rappelé ne revient pas ; les toggles de l'écran Paramètres attendent déjà ce backend.
-- **Technique** : FCM, collection `users/{uid}/devices` (règles écrites),
-  `users/{uid}/notifications` avec **TTL sur `expiresAt`** (déjà déclaré dans
-  `firestore.indexes.json`), Cloud Function planifiée qui interroge l'index
-  `reservations(status, eventStartsAt)` — également déjà déclaré.
-- **État (v1.2)** : livré sur Android — `functions/src/index.ts`
-  (`notifyOrganizerOnReservation`, `sendEventReminders`) et
-  `lib/features/notifications/`. Restent iOS (clé APNs), le web (VAPID +
-  service worker), l'alerte « place libérée » qui dépend de F-06, et
-  l'affichage dans l'app de l'historique `users/{uid}/notifications`.
-
-#### F-03 · Vérification d'email et rôles par custom claims
-*Inspiré de : toutes les plateformes*
-
-Aujourd'hui le rôle est lu dans le document `users/{uid}`, ce qui coûte un
-`get()` par requête. Une Cloud Function `onUserCreate` doit poser
-`role` en custom claim.
-
-- **Impact** : sécurité et coût. Les règles gèrent déjà les deux chemins
-  (claim prioritaire, document en secours) — il ne reste que la fonction.
-- **Technique** : Cloud Function + `auth.currentUser.getIdToken(true)` côté client.
-- **État (v1.2)** : `setRoleClaim` pose le claim à la création du profil. Restent
-  le rafraîchissement forcé du jeton côté client juste après l'inscription
-  (les règles utilisent le repli document d'ici là) et la vérification d'email.
-
-#### F-04 · Pagination réelle du catalogue
-Les requêtes sont bornées à 100 documents (`maxPageSize`), imposé par les
-règles. Au-delà, il faut un `startAfterDocument` et un scroll infini.
-
-- **Impact** : sans cela, le 101ᵉ événement est invisible.
-- **Technique** : `EventRemoteDataSource.watchUpcoming` → `Notifier` paginé.
-
----
-
-### 3.2 P1 — Différenciation
-
-#### F-05 · Favoris et « ça m'intéresse »
-*Inspiré de : Airbnb, Luma*
-
-Un cœur sur chaque carte, un onglet dédié. Les favoris alimentent ensuite les
-recommandations et les notifications (« l'événement que vous suiviez ouvre ses
-réservations »).
-
-- **Technique** : `users/{uid}/favorites/{eventId}` — **règles et index déjà
-  écrits**. Le `doc id == eventId` rend le doublon impossible et le test
-  « est-ce favori ? » gratuit.
-
-#### F-06 · Liste d'attente automatique
-*Inspiré de : Dice*
-
-Quand un événement est complet, on s'inscrit sur liste d'attente ; à la
-première annulation, la première personne de la file reçoit une notification
-avec 30 minutes d'exclusivité.
-
-- **Impact** : transforme un « Complet » (cul-de-sac) en engagement.
-- **Technique** : `events/{id}/waitlist/{userId}` (règles + index FIFO écrits),
-  Cloud Function déclenchée sur la mise à jour de `availablePlaces`.
-
-#### F-07 · Preuve sociale sur la fiche
-*Inspiré de : Meetup, Partiful*
-
-« 42 personnes y vont », avec les avatars des premiers inscrits.
-
-- **Technique** : compteur dénormalisé maintenu par Cloud Function
-  (`aggregates/` est déjà déclaré en lecture seule côté client). Le composant
-  `AvatarStack` existe et attend ses données.
-- **État (v1.4)** : livré. Le nombre vient de la jauge de l'événement (exacte),
-  les noms courts de `aggregates/event_{id}` (`aggregateAttendance`).
-
-#### F-08 · Partage et lien public
-*Inspiré de : Luma, Shotgun*
-
-Deep link `eventhub.app/e/{id}`, aperçu Open Graph, bouton natif de partage.
-
-- **Impact** : premier canal d'acquisition gratuit d'une plateforme d'événements.
-- **Technique** : `share_plus`, Firebase Hosting + Dynamic Links, route
-  `/events/:eventId` déjà compatible deep link (GoRouter).
-- **État (v1.1)** : le lien `eventhub.app/e/{id}` (`AppLinks.event`) et une
-  invitation texte se copient depuis la fiche et l'écran « Événement publié ».
-  Restent la feuille de partage native, l'hébergement de la page publique et
-  l'aperçu Open Graph.
-- **État (v1.4)** : livré sans Dynamic Links (service arrêté par Google) :
-  `share_plus`, Hosting + fonction `publicEventPage`, App Links vérifiés par
-  `assetlinks.json`. Reste : empreinte de la clé release, Universal Links iOS.
-
-#### F-09 · Avis après l'événement
-*Inspiré de : Airbnb, Eventbrite*
-
-Note 1–5 + commentaire, réservés à ceux qui détenaient un billet confirmé.
-
-- **Technique** : collection `reviews` — **règles écrites**, y compris la
-  vérification de présence et l'email vérifié contre le spam. Index prêts.
-
-#### F-10 · Profil organisateur public
-*Inspiré de : Luma, Eventbrite*
-
-Une page par organisateur : bio, événements passés et à venir, note moyenne,
-bouton « suivre ».
-
-- **Impact** : fidélise autour d'un organisateur plutôt que d'un événement isolé.
-- **État (v1.4)** : livré. `organizers/{id}` public en lecture seule,
-  `users/{uid}/following` privé, compteurs et annonce aux abonnés par
-  fonctions ; photo de profil non encore proposée (initiales).
-
----
-
-### 3.3 P2 — Montée en gamme
-
-| Réf | Fonctionnalité | Inspiration | Note |
+| Réf | Fonctionnalité | Inspiration | État v2.1 |
 |---|---|---|---|
-| F-11 | Billetterie payante (Stripe Connect, remboursements) | Eventbrite | ✅ **v1.6** : Stripe Checkout hébergé, place tenue 30 min, confirmation par webhook signé, remboursement par le participant avant le début, remboursements automatiques (retrait, suppression de compte, paiement tardif sans place), recettes dans les stats ; reste **Stripe Connect** (reversement aux organisateurs) |
-| F-12 | Types de billets multiples (early bird, VIP, gratuit) | Shotgun | ✅ **v1.6** : jusqu'à 6 types en map `tiers` sur l'événement (choix documenté : une seule lecture transactionnelle), prix en unités mineures, EUR/USD/MGA, ventes protégées à l'édition, totaux normalisés par `normalizeEventTiers` ; reste les dates de vente (early bird) |
-| F-13 | Événements récurrents et séries | Meetup | Modèle `series` + génération d'occurrences |
-| F-14 | Carte et géolocalisation (« près de moi ») | Airbnb | Geohash + `geoflutterfire`; l'index `location + startsAt` est déjà là |
-| F-15 | Export CSV de la liste des participants | Eventbrite | ✅ **v1.4 : fichier via la feuille de partage**, généré sur l'appareil (aucune donnée personnelle déposée dans Storage, pas d'URL signée à gérer) ; copie conservée |
-| F-16 | Co-organisateurs / équipe | Eventbrite | ✅ **v1.5** : `staffIds` (≤ 10) écrit par fonctions, invitations par email avec acceptation, équipe (modifier, participants, entrée, alertes) sans suppression ni composition d'équipe ; règles `isEventTeam()` |
-| F-17 | Chat ou fil de discussion par événement | Meetup | Coût de modération élevé : à ne lancer qu'avec F-19 |
-| F-18 | Recommandations personnalisées | Luma, Airbnb | ✅ **v1.4 : heuristique locale** (abonnements, catégories des billets et favoris) ; reste un modèle serveur quand le volume le justifiera |
-| F-19 | Signalement et modération | Toutes | ✅ **v1.4** : signalement, masquage automatique des avis ; ✅ **v1.5** : écran d'administration (file, dossier, décisions : masquer, retirer un événement, suspendre un compte), gestion des administrateurs, `make grant-admin` |
-| F-20 | Multilingue (fr / en / mg) | Toutes | `AppStrings` est déjà centralisé : migration ARB mécanique |
+| F-01 | Billet QR + contrôle d'accès | Ticketmaster, Dice | 🟡 scan et anti-doublon multi-portes (`checkins` en création seule) ; QR **non signé** (signature HMAC = secret serveur) |
+| F-02 | Notifications et rappels | Dice, Partiful | 🟡 centre de notifications temps réel, rappels J-1 **locaux** ; **pas de push app fermée** |
+| F-03 | Vérification d'email et rôles | toutes | ✅ email vérifié exigé (organisateur, publication, avis) ; rôle dans `users/{uid}` relu par les règles |
+| F-04 | Pagination du catalogue | — | ✅ page temps réel + curseurs, `limit ≤ 200` imposé |
+| F-05 | Favoris | Airbnb, Luma | ✅ `users/{uid}/favorites/{eventId}` |
+| F-06 | Liste d'attente | Dice | ✅ FIFO, notification in-app par la personne qui libère la place |
+| F-07 | Preuve sociale | Meetup, Partiful | ✅ `events/{id}/attendees/{sha256(uid)}` |
+| F-08 | Partage et lien public | Luma, Shotgun | 🟡 page `/e/{id}` par l'API REST, App Links Android ; pas d'aperçu Open Graph dynamique, pas d'Universal Links iOS |
+| F-09 | Avis après l'événement | Airbnb, Eventbrite | ✅ note prouvée dans le batch |
+| F-10 | Profil organisateur public | Luma, Eventbrite | ✅ compteurs prouvés ; photo : URL https |
+| F-11 | Billetterie payante | Eventbrite | ⏸ **suspendue** : secret Stripe et webhook signé impossibles sans serveur ; les types payants s'affichent mais ne se réservent pas |
+| F-12 | Types de billets | Shotgun | ✅ map `tiers` (≤ 6), types gratuits réservables ; dates de vente à faire |
+| F-13 | Événements récurrents et séries | Meetup | ⬜ modèle `series` + génération d'occurrences côté client (batch) |
+| F-14 | Carte et « près de moi » | Airbnb | ⬜ geohash dans l'événement + requêtes par plage (faisable sur Spark) |
+| F-15 | Export CSV | Eventbrite | ✅ fichier généré sur l'appareil |
+| F-16 | Co-organisateurs | Eventbrite | ✅ `staffIds` ≤ 10, invitation acceptée prouvée |
+| F-17 | Discussion par événement | Meetup | ⬜ faisable sur Spark (sous-collection bornée), mais coût de modération : seulement avec F-19 mûr |
+| F-18 | Recommandations | Luma, Airbnb | ✅ heuristique locale explicable |
+| F-19 | Signalement et modération | toutes | 🟡 file, dossier, décisions ; la suspension bloque les écritures mais ne désactive pas le compte Auth |
+| F-20 | Multilingue (fr / en / mg) | toutes | ⬜ `AppStrings` centralisé : migration ARB mécanique |
 
 ---
 
-### 3.4 P3 — Paris
+## 4. Backlog priorisé (réalisable sur Spark)
 
-- **Mode hors ligne complet** — depuis la migration vers Supabase, plus aucun
-  cache local de la base : stocker au moins les billets à venir sur l'appareil
-  (ouverture à froid sans réseau), puis une file d'attente d'écritures.
-  Pertinent à Madagascar où la connectivité est intermittente.
-- **Widget d'accueil / Live Activity** — le prochain billet sur l'écran de
-  verrouillage (Dice le fait, c'est spectaculaire).
-- **Apple / Google Wallet** — le billet dans le portefeuille système.
-- **Analytique organisateur** — la base est livrée en v1.1 (onglet Stats :
-  14 jours de réservations, annulations, classement des événements). Restent
-  le taux de no-show (dépend de F-01), les sources de trafic, et un agrégat
-  serveur quand 200 réservations ne suffiront plus.
+**P0 — crédibilité**
+* **App Check** en mode observation puis enforcement (`SECURITY.md` §8) :
+  première protection contre l'épuisement des quotas.
+* **Clés API restreintes** (applications et API autorisées).
+* **Empreinte release** dans `assetlinks.json`, Universal Links iOS.
 
----
+**P1 — différenciation**
+* F-14 carte et « près de moi » (geohash).
+* F-12 dates de vente par type (early bird) : champs `salesStart`/`salesEnd`
+  dans `tiers`, vérifiés par `tierBookable()`.
+* « Ajouter au calendrier » (fichier `.ics` généré sur l'appareil).
 
-## 4. Séquencement proposé
+**P2 — montée en gamme**
+* F-13 séries, F-20 multilingue, F-17 discussion (après modération outillée).
 
-```
-v1.1  ── F-03 claims  ── F-02 push  ── F-01 QR + scan          « le billet devient réel »
-v1.2  ── F-05 favoris ── F-06 waitlist ── F-08 partage          « le produit devient viral »
-v1.3  ── F-04 pagination ── F-07 preuve sociale ── F-09 avis    « le produit devient crédible »
-v2.0  ── F-10 profils ── F-11 paiement ── F-12 types de billets « le produit devient un business »
-```
-
-**Justification de l'ordre.** F-03 vient en premier parce que tout le reste en
-dépend côté sécurité et coût. F-02 avant F-01 parce qu'une notification sans
-QR reste utile, alors qu'un QR sans rappel sert rarement. F-04 est classée
-après les fonctionnalités virales : tant que le catalogue tient sous 100
-événements, la pagination est un travail invisible — mais elle devient
-bloquante juste après, et c'est exactement le moment où le trafic arrive.
+**P3 — paris**
+* Widget d'accueil / Live Activity avec le prochain billet.
+* Apple / Google Wallet (exige une signature de pass : serveur, voir §6).
 
 ---
 
-## 5. Ce que l'infrastructure anticipe déjà
+## 5. Limites assumées du plan Spark
 
-Le schéma Supabase couvre **plus** que ce que l'application utilise
-aujourd'hui. C'est délibéré : écrire une politique RLS après avoir livré la
-fonctionnalité, c'est livrer une faille pendant l'intervalle.
-
-| Prêt côté serveur | Utilisé par le client | Fonctionnalité cible |
+| Sujet | Ce qui se passe aujourd'hui | Pourquoi c'est acceptable pour le MVP |
 |---|---|---|
-| `favorites`, `follows`, `devices`, `notification_preferences`, `notifications` | ✅ | F-05, F-10, F-02 |
-| `waitlist_entries`, `checkins`, `reviews`, `reports`, `moderation_*`, `administrators` | ✅ | F-06, F-01, F-09, F-19 |
-| `event_tiers`, `event_staff`, `staff_invitations`, fonctions `payments_*` | ✅ | F-12, F-16, F-11 |
-| `profiles.photo_url`, `organizers.photo_url`, bucket `avatars` (2 Mo, chemin propriétaire) | ❌ | photo de profil |
-| `organizers.suspended` | ❌ (non affiché) | badge « compte suspendu » sur le profil public |
-| `private.audit_log` (fermé à l'API, 1 an) | ✅ (décisions, paiements, échecs de jobs) | conformité |
-| file `private.jobs` (`push`, `refund`, `storage.delete`) | ✅ | toute action externe future (emails, webhooks sortants) |
+| Push app fermée | aucune notification système ; le centre in-app et les rappels locaux prennent le relais | le parcours critique (billet, entrée) ne dépend pas du push |
+| Rappels | planifiés sur l'appareil qui a réservé | couvre le cas nominal ; pas de coût serveur |
+| Paiements | événements gratuits seulement | le cahier des charges MVP est centré sur la réservation gratuite |
+| Images | URL https saisie | pas de stockage à payer ni à modérer en amont |
+| Compteurs | dénormalisés et prouvés dans les batchs | exacts sans trigger ; coûtent une écriture de plus par action |
+| Notifications à autrui | best-effort après le commit | l'action principale ne dépend jamais de l'effet secondaire |
+| Quotas | 50 k lectures, 20 k écritures, 20 k suppressions / jour ; 1 Gio | largement suffisant pour une démonstration et un pilote ; au-delà, l'app s'arrête jusqu'au lendemain |
+| Limitation de débit | aucune par compte | App Check + identifiants déterministes limitent l'abus |
+| Aperçus de liens | titre générique | un rendu serveur n'apporte que du confort |
+
+---
+
+## 6. Ce que le plan Blaze débloquerait
+
+Blaze est un plan **à l'usage** : mêmes quotas gratuits que Spark, facturation
+au-delà, compte de facturation obligatoire. Avant tout passage : **alertes
+budgétaires** dans Google Cloud et plafonds de dépense surveillés.
+
+| Capacité | Brique Blaze | Fonctionnalité | Ce que ça change dans le code |
+|---|---|---|---|
+| **Paiements Stripe** | Cloud Functions (Checkout, webhook signé, remboursements) + Secret Manager | **F-11** | la fonction tient la place (`pending`) et seul le webhook confirme ; les règles gardent `pricePaid` en lecture seule côté client |
+| **Push app fermée** | Cloud Functions + FCM HTTP v1 (déclencheurs `onDocumentCreated` sur `notifications`) | **F-02** | les jetons de `users/{uid}/devices` sont déjà stockés ; les notifications in-app deviennent la source du push |
+| **Rappels serveur** | Cloud Scheduler + fonction planifiée | **F-02** | rappels J-1 garantis même sans l'appareil qui a réservé ; index `reservations(status, eventStartsAt)` |
+| **Upload d'images** | Cloud Storage + règles Storage | F-10, création d'événement | taille, type et chemin propriétaire imposés ; redimensionnement par extension |
+| **Compteurs agrégés** | triggers Firestore | F-07, F-10, stats | les preuves `lastEventId`/`lastReviewId` deviennent inutiles ; écritures client plus simples |
+| **Notifications atomiques** | triggers | toutes | plus de best-effort : l'effet suit le commit |
+| **Suppression de compte serveur** | trigger `onUserDeleted` / fonction appelable | RGPD | nettoyage garanti même si l'app est interrompue |
+| **Suspension complète** | Admin SDK | F-19 | compte Auth désactivé, jetons révoqués |
+| **Limitation de débit** | fonction appelable + compteur serveur | anti-abus | quotas par compte |
+| **QR signé** | fonction de signature HMAC | F-01 | billet infalsifiable hors ligne |
+| **Aperçus Open Graph** | fonction ou rendu Hosting dynamique | F-08 | titre, image et date dans WhatsApp/Slack |
+| **Emails transactionnels** | extension *Trigger Email* | F-02, F-16 | confirmation de réservation, invitation par email |
+
+**Séquencement proposé en cas de passage Blaze** : alertes budgétaires → push
+serveur (rétention, coût faible) → rappels planifiés → paiements Stripe
+(revenu, coût de conformité plus élevé) → uploads.
+
+---
+
+## 7. Ce que le modèle de données anticipe déjà
+
+Écrire une règle après avoir livré la fonctionnalité, c'est livrer une faille
+pendant l'intervalle. Le modèle couvre donc plus que ce que Spark permet
+d'utiliser.
+
+| Prêt dans les règles / le modèle | Utilisé aujourd'hui | Fonctionnalité cible |
+|---|---|---|
+| `users/{uid}/devices` (jeton, plateforme) | ✅ enregistrement | push serveur (F-02, Blaze) |
+| `reservations.pricePaid`, `tiers[].price`, `events.currency` | affichage seul | F-11 (Blaze) |
+| `notifications.expiresAt` + TTL | ✅ | rétention 30 jours |
+| `organizers.suspended` | écrit par la modération | badge « compte suspendu » |
+| `moderationQueue/{id}/decisions` | ✅ | audit des décisions |
+| index `reservations(eventId, status, reservedAt)` | ✅ | rappels serveur, statistiques |

@@ -5,20 +5,18 @@ import 'package:eventhub/core/result/result.dart';
 import 'package:eventhub/core/utils/validators.dart';
 import 'package:eventhub/core/widgets/design_system.dart';
 import 'package:eventhub/features/auth/application/auth_controller.dart';
-import 'package:eventhub/features/auth/domain/entities/user_role.dart';
 import 'package:eventhub/features/auth/presentation/widgets/auth_scaffold.dart';
 import 'package:eventhub/features/auth/presentation/widgets/google_sign_in_button.dart';
-import 'package:eventhub/features/auth/presentation/widgets/role_selector.dart';
-import 'package:eventhub/routes/app_routes.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-/// Sign-up, in two steps.
+/// Sign-up, in one card.
 ///
-/// Identity first, role second. The role is a permanent, permission-bearing
-/// choice: giving it its own step raises the odds it is made deliberately,
-/// and it keeps the first screen down to four familiar fields in one card.
+/// No role to pick: like Eventbrite or Airbnb, every account starts as a
+/// participant and opens its organizer space later, from the profile, once
+/// it has something to publish. Four familiar fields, then the app — the
+/// router lands the new account on the welcome screen.
 class RegisterScreen extends ConsumerStatefulWidget {
   const RegisterScreen({super.key});
 
@@ -32,9 +30,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _lastName = TextEditingController();
   final _email = TextEditingController();
   final _password = TextEditingController();
-  UserRole _role = UserRole.participant;
   bool _terms = false;
-  int _step = 0;
 
   @override
   void dispose() {
@@ -45,7 +41,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     super.dispose();
   }
 
-  void _next() {
+  Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
     if (!_terms) {
       context.showToast(
@@ -56,31 +52,25 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       return;
     }
     FocusScope.of(context).unfocus();
-    setState(() => _step = 1);
-  }
-
-  Future<void> _submit() async {
     final result = await ref
         .read(authControllerProvider.notifier)
         .signUp(
           name: '${_firstName.text.trim()} ${_lastName.text.trim()}',
           email: _email.text.trim(),
           password: _password.text,
-          role: _role,
         );
     if (!mounted) return;
     switch (result) {
       case Err(:final failure):
         context.showFailure(failure);
-      // Email confirmation is required: there is no session yet, so the
-      // person goes to their inbox, then back to the sign-in screen.
+      // Signed in already; the verification banner follows the person
+      // until they open the link.
       case Ok(:final value) when !value.emailVerified:
         context.showToast(
           AppStrings.confirmEmailSent(value.email),
           tone: AppTone.success,
           icon: Icons.mark_email_read_outlined,
         );
-        context.go(AppRoutes.login);
       case Ok():
         break;
     }
@@ -88,90 +78,21 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isLoading = ref.watch(authControllerProvider).isLoading;
-
-    return PopScope(
-      // Step 2 returns to step 1 rather than leaving the flow: losing a
-      // filled-in form to a back gesture is the fastest way to lose a sign-up.
-      canPop: _step == 0,
-      onPopInvokedWithResult: (didPop, _) {
-        if (!didPop) setState(() => _step = 0);
-      },
-      child: AnimatedSwitcher(
-        duration: AppMotion.medium,
-        switchInCurve: AppMotion.emphasized,
-        child: _step == 0
-            ? _IdentityStep(
-                key: const ValueKey('identity'),
-                formKey: _formKey,
-                firstName: _firstName,
-                lastName: _lastName,
-                email: _email,
-                password: _password,
-                terms: _terms,
-                onTermsChanged: (v) => setState(() => _terms = v),
-                onContinue: _next,
-                onSignIn: () => context.pop(),
-              )
-            : _RoleStep(
-                key: const ValueKey('role'),
-                role: _role,
-                isLoading: isLoading,
-                onRoleChanged: (r) => setState(() => _role = r),
-                onSubmit: _submit,
-                onBack: () => setState(() => _step = 0),
-              ),
-      ),
-    );
-  }
-}
-
-class _IdentityStep extends StatefulWidget {
-  const _IdentityStep({
-    required this.formKey,
-    required this.firstName,
-    required this.lastName,
-    required this.email,
-    required this.password,
-    required this.terms,
-    required this.onTermsChanged,
-    required this.onContinue,
-    required this.onSignIn,
-    super.key,
-  });
-
-  final GlobalKey<FormState> formKey;
-  final TextEditingController firstName;
-  final TextEditingController lastName;
-  final TextEditingController email;
-  final TextEditingController password;
-  final bool terms;
-  final ValueChanged<bool> onTermsChanged;
-  final VoidCallback onContinue;
-  final VoidCallback onSignIn;
-
-  @override
-  State<_IdentityStep> createState() => _IdentityStepState();
-}
-
-class _IdentityStepState extends State<_IdentityStep> {
-  @override
-  Widget build(BuildContext context) {
     final t = context.tokens;
     final text = context.textTheme;
+    final isLoading = ref.watch(authControllerProvider).isLoading;
 
     return AuthShell(
       title: AppStrings.registerTitle,
       lead: AppStrings.registerLead,
-      step: (1, 2),
       footer: AuthFooterLink(
         prompt: AppStrings.haveAccount,
         action: AppStrings.login,
-        onTap: widget.onSignIn,
+        onTap: () => context.pop(),
       ),
       children: [
         Form(
-          key: widget.formKey,
+          key: _formKey,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -179,7 +100,7 @@ class _IdentityStepState extends State<_IdentityStep> {
                 children: [
                   FieldRow(
                     icon: Icons.badge_outlined,
-                    controller: widget.lastName,
+                    controller: _lastName,
                     label: AppStrings.lastName,
                     hint: 'Entrez votre nom',
                     textCapitalization: TextCapitalization.words,
@@ -189,7 +110,7 @@ class _IdentityStepState extends State<_IdentityStep> {
                   ),
                   FieldRow(
                     icon: Icons.person_outline_rounded,
-                    controller: widget.firstName,
+                    controller: _firstName,
                     label: AppStrings.firstName,
                     hint: 'Entrez votre prénom',
                     textCapitalization: TextCapitalization.words,
@@ -199,7 +120,7 @@ class _IdentityStepState extends State<_IdentityStep> {
                   ),
                   FieldRow(
                     icon: Icons.mail_outline_rounded,
-                    controller: widget.email,
+                    controller: _email,
                     label: 'Email',
                     hint: 'Entrez votre adresse email',
                     keyboardType: TextInputType.emailAddress,
@@ -207,10 +128,9 @@ class _IdentityStepState extends State<_IdentityStep> {
                     validator: Validators.email,
                   ),
                   PasswordFieldRow(
-                    controller: widget.password,
+                    controller: _password,
                     label: AppStrings.password,
                     hint: AppStrings.passwordHint,
-                    textInputAction: TextInputAction.next,
                     autofillHints: const [AutofillHints.newPassword],
                     validator: Validators.password,
                     onChanged: (_) => setState(() {}),
@@ -218,11 +138,11 @@ class _IdentityStepState extends State<_IdentityStep> {
                 ],
               ),
               const SizedBox(height: AppSpacing.lg),
-              PasswordStrengthMeter(password: widget.password.text),
+              PasswordStrengthMeter(password: _password.text),
               const SizedBox(height: AppSpacing.xl),
               AppCheckbox(
-                value: widget.terms,
-                onChanged: widget.onTermsChanged,
+                value: _terms,
+                onChanged: (v) => setState(() => _terms = v),
                 label: Text(
                   AppStrings.acceptTerms,
                   style: text.bodySmall?.copyWith(
@@ -233,51 +153,15 @@ class _IdentityStepState extends State<_IdentityStep> {
               ),
               const SizedBox(height: AppSpacing.xl),
               AppButton.primary(
-                label: AppStrings.continueLabel,
+                label: AppStrings.createAccount,
+                loadingLabel: 'Création du compte',
+                isLoading: isLoading,
                 elevated: false,
-                onPressed: widget.onContinue,
+                onPressed: _submit,
               ),
               const GoogleSignInButton(),
             ],
           ),
-        ),
-      ],
-    );
-  }
-}
-
-class _RoleStep extends StatelessWidget {
-  const _RoleStep({
-    required this.role,
-    required this.isLoading,
-    required this.onRoleChanged,
-    required this.onSubmit,
-    required this.onBack,
-    super.key,
-  });
-
-  final UserRole role;
-  final bool isLoading;
-  final ValueChanged<UserRole> onRoleChanged;
-  final VoidCallback onSubmit;
-  final VoidCallback onBack;
-
-  @override
-  Widget build(BuildContext context) {
-    return AuthShell(
-      title: AppStrings.roleStepTitle,
-      lead: AppStrings.roleStepLead,
-      step: (2, 2),
-      onBack: onBack,
-      children: [
-        RoleSelector(value: role, onChanged: onRoleChanged),
-        const SizedBox(height: AppSpacing.xxl),
-        AppButton.primary(
-          label: AppStrings.createAccount,
-          loadingLabel: 'Création du compte',
-          isLoading: isLoading,
-          elevated: false,
-          onPressed: onSubmit,
         ),
       ],
     );

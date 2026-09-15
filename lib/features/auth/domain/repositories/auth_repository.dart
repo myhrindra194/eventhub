@@ -1,10 +1,13 @@
 import 'package:eventhub/core/result/result.dart';
 import 'package:eventhub/features/auth/domain/entities/app_user.dart';
 import 'package:eventhub/features/auth/domain/entities/auth_session.dart';
-import 'package:eventhub/features/auth/domain/entities/user_role.dart';
 
 /// Contract for authentication + profile persistence.
 /// Implementations must never throw; every failure is a `Result.err`.
+///
+/// One account, two spaces (the Eventbrite / Airbnb model): every account
+/// starts as a participant, and turns the organizer space on later with
+/// [becomeOrganizer]. Nobody picks a role at sign-up.
 abstract interface class AuthRepository {
   /// Emits on every auth or profile change (including email verification).
   /// Never completes.
@@ -16,29 +19,29 @@ abstract interface class AuthRepository {
   });
 
   /// Google account. A first sign-in has no profile yet: the session then
-  /// becomes [ProfileMissing] and the router asks for the role.
+  /// becomes [ProfileMissing] and the router asks for a name.
   AsyncResult<void> signInWithGoogle();
 
-  /// Creates the account and sends the verification email (a failure to send
-  /// never fails the sign-up; the user can resend).
+  /// Creates the account and its participant profile, signs in and sends
+  /// the verification email (a failure to send never fails the sign-up; the
+  /// user can resend).
   AsyncResult<AppUser> signUp({
     required String name,
     required String email,
     required String password,
-    required UserRole role,
   });
 
-  /// Creates the profile for an already-authenticated account
+  /// Creates the participant profile of an already-authenticated account
   /// (recovery path for [ProfileMissing], and first Google sign-in).
-  AsyncResult<AppUser> completeProfile({
-    required String name,
-    required UserRole role,
-  });
+  AsyncResult<AppUser> completeProfile({required String name});
 
-  /// Updates the presentation fields of the signed-in user's profile.
+  /// Turns the organizer space on: verified email required, one way. Creates
+  /// the public organizer page in the same batch.
+  AsyncResult<AppUser> becomeOrganizer({String bio = ''});
+
+  /// Updates the presentation fields of the signed-in user's profile (and of
+  /// their public organizer page).
   ///
-  /// Only the display name moves: `email` and `role` are frozen by the
-  /// security rules, so the contract does not even offer to change them.
   /// Names already denormalised on past reservations are left untouched —
   /// a ticket keeps the name it was issued under.
   /// [bio] is left untouched when `null`; an empty string clears it.
@@ -66,12 +69,12 @@ abstract interface class AuthRepository {
     required String newPassword,
   });
 
-  /// Fires when a password-reset link opens the app. The session is then a
-  /// recovery session, and the app asks for a new password.
+  /// Fires when a password-reset link opens the app. Firebase completes the
+  /// reset on its own hosted page, so this stream stays silent; it is kept
+  /// for providers that hand the reset back to the app.
   Stream<void> get passwordRecoveries;
 
-  /// Sets a new password without the current one — only meaningful right
-  /// after a recovery link, which proved ownership of the address.
+  /// Sets a new password on the signed-in account without the current one.
   AsyncResult<void> setNewPassword(String newPassword);
 
   /// Whether the signed-in account has a password credential (otherwise it
@@ -79,8 +82,9 @@ abstract interface class AuthRepository {
   bool get usesPasswordSignIn;
 
   /// Re-authenticates ([password] for a password account, Google otherwise),
-  /// then deletes the account server-side (`delete_my_account`) and signs
-  /// out.
+  /// then deletes the account: upcoming seats released, history anonymised,
+  /// personal data removed, the Authentication user deleted, signed out.
+  /// Refused while an upcoming event of the account has participants.
   AsyncResult<void> deleteAccount({String? password});
 
   AsyncResult<void> signOut();

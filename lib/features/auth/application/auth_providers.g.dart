@@ -48,7 +48,7 @@ final class AuthRepositoryProvider
   }
 }
 
-String _$authRepositoryHash() => r'97c0cb6f06011049ff5c1695bbb77b496cbeff5c';
+String _$authRepositoryHash() => r'9b1df2d80c1dbbaab2a766ca7070de8954557fa1';
 
 /// Single source of truth for "who is logged in". Kept alive for the whole
 /// app lifetime: the router and every feature derive from it.

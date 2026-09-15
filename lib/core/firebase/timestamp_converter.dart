@@ -1,16 +1,21 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:json_annotation/json_annotation.dart';
 
-/// `timestamptz` <-> [DateTime] for Supabase DTOs.
+/// Firestore [Timestamp] <-> [DateTime] for DTOs.
 ///
-/// PostgREST and Realtime send ISO-8601 strings with an offset; they are
-/// returned in local time, because every formatter in the app reads the
-/// fields of the DateTime as they are. Epoch millis and DateTime values are
-/// accepted too, for fixtures. Written back as UTC ISO-8601.
+/// Read in local time, because every formatter in the app reads the fields
+/// of the DateTime as they are. [DateTime], ISO-8601 strings and epoch millis
+/// are accepted too, for fixtures and the local cache.
+///
+/// A field written with `FieldValue.serverTimestamp()` is `null` in the
+/// pending local snapshot, until the server acknowledges the write: DTOs
+/// declare such fields with [NullableTimestampConverter].
 class TimestampConverter implements JsonConverter<DateTime, Object> {
   const TimestampConverter();
 
   @override
   DateTime fromJson(Object json) => switch (json) {
+    Timestamp() => json.toDate(),
     DateTime() => json,
     String() => DateTime.parse(json).toLocal(),
     int() => DateTime.fromMillisecondsSinceEpoch(json),
@@ -18,7 +23,7 @@ class TimestampConverter implements JsonConverter<DateTime, Object> {
   };
 
   @override
-  Object toJson(DateTime date) => date.toUtc().toIso8601String();
+  Object toJson(DateTime date) => Timestamp.fromDate(date);
 }
 
 class NullableTimestampConverter implements JsonConverter<DateTime?, Object?> {

@@ -4,41 +4,51 @@ import 'package:eventhub/core/errors/failure.dart';
 import 'package:eventhub/core/errors/failure_exception.dart';
 import 'package:eventhub/core/result/result.dart';
 import 'package:eventhub/features/auth/data/datasources/account_remote_data_source.dart';
-import 'package:eventhub/features/auth/data/datasources/supabase_auth_data_source.dart';
+import 'package:eventhub/features/auth/data/datasources/firebase_auth_data_source.dart';
 import 'package:eventhub/features/auth/data/datasources/user_remote_data_source.dart';
 import 'package:eventhub/features/auth/data/dtos/user_dto.dart';
 import 'package:eventhub/features/auth/domain/entities/app_user.dart';
 import 'package:eventhub/features/auth/domain/entities/auth_session.dart';
 import 'package:eventhub/features/auth/domain/entities/user_role.dart';
 import 'package:eventhub/features/auth/domain/repositories/auth_repository.dart';
+import 'package:firebase_auth/firebase_auth.dart' show User;
 import 'package:rxdart/rxdart.dart';
-import 'package:supabase_flutter/supabase_flutter.dart' show User;
 
 class AuthRepositoryImpl implements AuthRepository {
   AuthRepositoryImpl({
-    required SupabaseAuthDataSource authDataSource,
+    required FirebaseAuthDataSource authDataSource,
     required UserRemoteDataSource userDataSource,
     required AccountRemoteDataSource accountDataSource,
     required Duration profileGracePeriod,
-    required String googleServerClientId,
+    required DateTime Function() clock,
   }) : _auth = authDataSource,
        _users = userDataSource,
        _account = accountDataSource,
        _profileGracePeriod = profileGracePeriod,
-       _googleServerClientId = googleServerClientId;
+       _clock = clock;
 
-  final SupabaseAuthDataSource _auth;
+  final FirebaseAuthDataSource _auth;
   final UserRemoteDataSource _users;
   final AccountRemoteDataSource _account;
   final Duration _profileGracePeriod;
-  final String _googleServerClientId;
+  final DateTime Function() _clock;
+
+  static const _suspended = AuthFailure(
+    code: AuthFailureCode.userDisabled,
+    message: 'Ce compte est suspendu par la modération.',
+  );
+
+  static const _profileMissing = AuthFailure(
+    code: AuthFailureCode.profileMissing,
+    message: 'Profil introuvable. Veuillez compléter votre profil.',
+  );
 
   @override
   Stream<AuthSession> watchSession() {
-    // Auth emits on every token refresh; only a change of account, of email
-    // confirmation or of the admin role changes the session. switchMap: the
-    // profile stream never completes, so the previous one must be cancelled
-    // when the account changes.
+    // Auth emits on every token refresh; only a change of account or of
+    // email verification changes the session. switchMap: the profile stream
+    // never completes, so the previous one must be cancelled when the
+    // account changes (and before its listener is refused on sign-out).
     return _auth
         .userChanges()
         .distinct((a, b) => _sessionKey(a) == _sessionKey(b))
@@ -48,30 +58,30 @@ class AuthRepositoryImpl implements AuthRepository {
         });
   }
 
-  static String? _sessionKey(User? user) => user == null
-      ? null
-      : '${user.id}|${user.emailConfirmedAt}|'
-            '${SupabaseAuthDataSource.isAdmin(user)}';
+  static String? _sessionKey(User? user) =>
+      user == null ? null : '${user.uid}|${user.emailVerified}';
 
   Stream<AuthSession> _profileSession(User user) {
-    final verified = SupabaseAuthDataSource.isEmailVerified(user);
-    final admin = SupabaseAuthDataSource.isAdmin(user);
-    return _users.watch(user.id).switchMap<AuthSession>((dto) {
-      if (dto != null) {
-        return Stream.value(
-          SignedIn(
-            dto
-                .toDomain(user.id)
-                .copyWith(emailVerified: verified, isAdmin: admin),
-          ),
-        );
+    return Rx.combineLatest2(
+      _users.watch(user.uid),
+      _users.watchIsAdmin(user.uid).startWith(false),
+      (UserDto? dto, bool admin) => (dto, admin),
+    ).switchMap<AuthSession>((pair) {
+      final (dto, admin) = pair;
+      if (dto != null && dto.suspended) {
+        // Moderation suspended the account while it was signed in.
+        unawaited(_auth.signOut());
+        return Stream.value(const SignedOut());
       }
-      // A password sign-up has its profile created with the account; a
-      // first Google sign-in has none yet. Give the row a moment to show up,
-      // then ask for the role.
+      if (dto != null) {
+        return Stream.value(SignedIn(_toUser(user, dto, isAdmin: admin)));
+      }
+      // A password sign-up writes its profile right after the account; a
+      // first Google sign-in has none yet. Give the document a moment to
+      // show up, then ask for a name.
       return TimerStream(
         ProfileMissing(
-          uid: user.id,
+          uid: user.uid,
           email: user.email ?? '',
           displayName: _displayName(user),
         ),
@@ -80,14 +90,17 @@ class AuthRepositoryImpl implements AuthRepository {
     });
   }
 
+  static AppUser _toUser(User user, UserDto dto, {bool isAdmin = false}) => dto
+      .toDomain(user.uid)
+      .copyWith(emailVerified: user.emailVerified, isAdmin: isAdmin);
+
   static String? _displayName(User user) {
-    final metadata = user.userMetadata ?? const <String, dynamic>{};
-    final name = metadata['full_name'] ?? metadata['name'];
-    return name is String && name.trim().isNotEmpty ? name.trim() : null;
+    final name = user.displayName?.trim();
+    return (name == null || name.isEmpty) ? null : name;
   }
 
   @override
-  Stream<void> get passwordRecoveries => _auth.passwordRecoveries;
+  Stream<void> get passwordRecoveries => const Stream.empty();
 
   @override
   AsyncResult<AppUser> signIn({
@@ -96,70 +109,93 @@ class AuthRepositoryImpl implements AuthRepository {
   }) {
     return guard(() async {
       final user = await _auth.signIn(email: email, password: password);
-      final dto = await _users.get(user.id);
+      final dto = await _users.get(user.uid);
       if (dto == null) throw const FailureException(_profileMissing);
-      return dto
-          .toDomain(user.id)
-          .copyWith(
-            emailVerified: SupabaseAuthDataSource.isEmailVerified(user),
-            isAdmin: SupabaseAuthDataSource.isAdmin(user),
-          );
+      if (dto.suspended) {
+        await _auth.signOut();
+        throw const FailureException(_suspended);
+      }
+      return _toUser(user, dto);
     });
   }
 
-  static const _profileMissing = AuthFailure(
-    code: AuthFailureCode.profileMissing,
-    message: 'Profil introuvable. Veuillez compléter votre profil.',
-  );
-
   @override
-  AsyncResult<void> signInWithGoogle() => guard(
-    () => _auth.signInWithGoogle(serverClientId: _googleServerClientId),
-  );
+  AsyncResult<void> signInWithGoogle() => guard(_auth.signInWithGoogle);
 
   @override
   AsyncResult<AppUser> signUp({
     required String name,
     required String email,
     required String password,
-    required UserRole role,
   }) {
     return guard(() async {
+      final trimmed = name.trim();
       final user = await _auth.signUp(
         email: email,
         password: password,
-        name: name.trim(),
-        role: role.name,
+        name: trimmed,
       );
-      // No session until the address is confirmed: the returned user tells
-      // the form to send the person to their inbox.
+      final address = user.email ?? email.trim();
+      await _users.create(user.uid, name: trimmed, email: address);
+      // Never fails the sign-up: the banner offers to resend.
+      await _auth.sendEmailVerification().catchError((_) {});
       return AppUser(
-        id: user.id,
-        name: name.trim(),
-        email: user.email ?? email.trim(),
-        role: role,
-        emailVerified: SupabaseAuthDataSource.isEmailVerified(user),
+        id: user.uid,
+        name: trimmed,
+        email: address,
+        role: UserRole.participant,
+        emailVerified: user.emailVerified,
       );
     });
   }
 
   @override
-  AsyncResult<AppUser> completeProfile({
-    required String name,
-    required UserRole role,
-  }) {
+  AsyncResult<AppUser> completeProfile({required String name}) {
     return guard(() async {
       final user = _auth.currentUser;
       if (user == null) throw const FailureException(AuthFailure.notSignedIn());
-      final profile = AppUser(
-        id: user.id,
-        name: name.trim(),
-        email: user.email ?? '',
-        role: role,
-        emailVerified: SupabaseAuthDataSource.isEmailVerified(user),
+      final trimmed = name.trim();
+      final email = user.email ?? '';
+      await _users.create(user.uid, name: trimmed, email: email);
+      return AppUser(
+        id: user.uid,
+        name: trimmed,
+        email: email,
+        role: UserRole.participant,
+        emailVerified: user.emailVerified,
       );
-      await _users.create(user.id, UserDto.fromDomain(profile));
-      return profile;
+    });
+  }
+
+  @override
+  AsyncResult<AppUser> becomeOrganizer({String bio = ''}) {
+    return guard(() async {
+      final user = _auth.currentUser;
+      if (user == null) throw const FailureException(AuthFailure.notSignedIn());
+      // The rules read `email_verified` from the token: make it current.
+      if (!await _auth.refreshEmailVerification()) {
+        throw const FailureException(
+          BusinessRuleFailure(
+            rule: BusinessRule.emailNotVerified,
+            message:
+                'Confirmez votre adresse email pour ouvrir votre espace '
+                'organisateur.',
+          ),
+        );
+      }
+      final dto = await _users.get(user.uid);
+      if (dto == null) throw const FailureException(_profileMissing);
+      if (dto.role == UserRole.organizer) return _toUser(user, dto);
+      await _users.becomeOrganizer(
+        user.uid,
+        name: dto.name,
+        email: user.email ?? dto.email,
+        bio: bio.trim(),
+      );
+      return _toUser(
+        user,
+        dto.copyWith(role: UserRole.organizer, bio: bio.trim()),
+      ).copyWith(emailVerified: true);
     });
   }
 
@@ -168,16 +204,24 @@ class AuthRepositoryImpl implements AuthRepository {
     return guard(() async {
       final user = _auth.currentUser;
       if (user == null) throw const FailureException(AuthFailure.notSignedIn());
-      await _users.updateProfile(user.id, name: name.trim(), bio: bio?.trim());
-      // Read back: triggers normalise the row (trimmed name, empty bio).
-      final dto = await _users.get(user.id);
-      if (dto == null) throw const FailureException(_profileMissing);
-      return dto
-          .toDomain(user.id)
-          .copyWith(
-            emailVerified: SupabaseAuthDataSource.isEmailVerified(user),
-            isAdmin: SupabaseAuthDataSource.isAdmin(user),
-          );
+      final current = await _users.get(user.uid);
+      if (current == null) throw const FailureException(_profileMissing);
+      final trimmedBio = bio?.trim();
+      await _users.updateProfile(
+        user.uid,
+        name: name.trim(),
+        bio: trimmedBio,
+        isOrganizer: current.role == UserRole.organizer,
+      );
+      return _toUser(
+        user,
+        current.copyWith(
+          name: name.trim(),
+          bio: trimmedBio == null
+              ? current.bio
+              : (trimmedBio.isEmpty ? null : trimmedBio),
+        ),
+      );
     });
   }
 
@@ -216,12 +260,20 @@ class AuthRepositoryImpl implements AuthRepository {
   @override
   AsyncResult<void> deleteAccount({String? password}) {
     return guard(() async {
-      await _auth.reauthenticate(
-        password: password,
-        serverClientId: _googleServerClientId,
-      );
-      await _account.deleteAccount();
-      // The Auth user no longer exists server-side; drop the local session.
+      final user = _auth.currentUser;
+      if (user == null) throw const FailureException(AuthFailure.notSignedIn());
+      // First: a wrong password must stop everything before any data moves.
+      await _auth.reauthenticate(password: password);
+      final dto = await _users.get(user.uid);
+      if (dto != null) {
+        await _account.deleteAccountData(
+          user.uid,
+          email: user.email ?? dto.email,
+          isOrganizer: dto.role == UserRole.organizer,
+          now: _clock(),
+        );
+      }
+      await _auth.deleteUser();
       await _auth.signOut();
     });
   }

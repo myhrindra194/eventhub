@@ -84,3 +84,6 @@ firebase-debug.log
 /screenshots/
 /.thumbnail
 /support.js
+
+# Node tooling (Firestore rules tests)
+node_modules/

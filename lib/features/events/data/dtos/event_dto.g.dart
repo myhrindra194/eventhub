@@ -69,6 +69,7 @@ _EventTierDto _$EventTierDtoFromJson(Map<String, dynamic> json) =>
       name: json['name'] as String,
       capacity: (json['capacity'] as num).toInt(),
       available: (json['available'] as num).toInt(),
+      description: json['description'] as String? ?? '',
       price: (json['price'] as num?)?.toInt() ?? 0,
       position: (json['position'] as num?)?.toInt() ?? 0,
     );
@@ -80,6 +81,7 @@ Map<String, dynamic> _$EventTierDtoToJson(_EventTierDto instance) =>
       'name': instance.name,
       'capacity': instance.capacity,
       'available': instance.available,
+      'description': instance.description,
       'price': instance.price,
       'position': instance.position,
     };

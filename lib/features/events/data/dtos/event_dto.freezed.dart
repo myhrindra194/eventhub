@@ -355,7 +355,8 @@ as List<String>,
 /// @nodoc
 mixin _$EventTierDto {
 
- String get id; String get eventId; String get name; int get capacity; int get available;/// Integer minor units (cents; ariary for MGA).
+ String get id; String get eventId; String get name; int get capacity; int get available;/// What the type includes ("Accès backstage"), possibly empty.
+ String get description;/// Integer minor units (cents; ariary for MGA).
  int get price;/// 0..5, the display order chosen in the form.
  int get position;
 /// Create a copy of EventTierDto
@@ -371,20 +372,20 @@ $EventTierDtoCopyWith<EventTierDto> get copyWith => _$EventTierDtoCopyWithImpl<E
 @override
 bool operator ==(Object other) {
   final _this = this as EventTierDto;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is EventTierDto&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.eventId, _this.eventId) || other.eventId == _this.eventId)&&(identical(other.name, _this.name) || other.name == _this.name)&&(identical(other.capacity, _this.capacity) || other.capacity == _this.capacity)&&(identical(other.available, _this.available) || other.available == _this.available)&&(identical(other.price, _this.price) || other.price == _this.price)&&(identical(other.position, _this.position) || other.position == _this.position));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is EventTierDto&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.eventId, _this.eventId) || other.eventId == _this.eventId)&&(identical(other.name, _this.name) || other.name == _this.name)&&(identical(other.capacity, _this.capacity) || other.capacity == _this.capacity)&&(identical(other.available, _this.available) || other.available == _this.available)&&(identical(other.description, _this.description) || other.description == _this.description)&&(identical(other.price, _this.price) || other.price == _this.price)&&(identical(other.position, _this.position) || other.position == _this.position));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
   final _this = this as EventTierDto;
-  return Object.hash(runtimeType,_this.id,_this.eventId,_this.name,_this.capacity,_this.available,_this.price,_this.position);
+  return Object.hash(runtimeType,_this.id,_this.eventId,_this.name,_this.capacity,_this.available,_this.description,_this.price,_this.position);
 }
 
 @override
 String toString() {
   final _this = this as EventTierDto;
-  return 'EventTierDto(id: ${_this.id}, eventId: ${_this.eventId}, name: ${_this.name}, capacity: ${_this.capacity}, available: ${_this.available}, price: ${_this.price}, position: ${_this.position})';
+  return 'EventTierDto(id: ${_this.id}, eventId: ${_this.eventId}, name: ${_this.name}, capacity: ${_this.capacity}, available: ${_this.available}, description: ${_this.description}, price: ${_this.price}, position: ${_this.position})';
 }
 
 
@@ -395,7 +396,7 @@ abstract mixin class $EventTierDtoCopyWith<$Res>  {
   factory $EventTierDtoCopyWith(EventTierDto value, $Res Function(EventTierDto) _then) = _$EventTierDtoCopyWithImpl;
 @useResult
 $Res call({
- String id, String eventId, String name, int capacity, int available, int price, int position
+ String id, String eventId, String name, int capacity, int available, String description, int price, int position
 });
 
 
@@ -412,14 +413,15 @@ class _$EventTierDtoCopyWithImpl<$Res>
 
 /// Create a copy of EventTierDto
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? eventId = null,Object? name = null,Object? capacity = null,Object? available = null,Object? price = null,Object? position = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? eventId = null,Object? name = null,Object? capacity = null,Object? available = null,Object? description = null,Object? price = null,Object? position = null,}) {
   return _then(EventTierDto(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,eventId: null == eventId ? _self.eventId : eventId // ignore: cast_nullable_to_non_nullable
 as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String,capacity: null == capacity ? _self.capacity : capacity // ignore: cast_nullable_to_non_nullable
 as int,available: null == available ? _self.available : available // ignore: cast_nullable_to_non_nullable
-as int,price: null == price ? _self.price : price // ignore: cast_nullable_to_non_nullable
+as int,description: null == description ? _self.description : description // ignore: cast_nullable_to_non_nullable
+as String,price: null == price ? _self.price : price // ignore: cast_nullable_to_non_nullable
 as int,position: null == position ? _self.position : position // ignore: cast_nullable_to_non_nullable
 as int,
   ));
@@ -506,10 +508,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String eventId,  String name,  int capacity,  int available,  int price,  int position)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String eventId,  String name,  int capacity,  int available,  String description,  int price,  int position)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _EventTierDto() when $default != null:
-return $default(_that.id,_that.eventId,_that.name,_that.capacity,_that.available,_that.price,_that.position);case _:
+return $default(_that.id,_that.eventId,_that.name,_that.capacity,_that.available,_that.description,_that.price,_that.position);case _:
   return orElse();
 
 }
@@ -527,10 +529,10 @@ return $default(_that.id,_that.eventId,_that.name,_that.capacity,_that.available
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String eventId,  String name,  int capacity,  int available,  int price,  int position)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String eventId,  String name,  int capacity,  int available,  String description,  int price,  int position)  $default,) {final _that = this;
 switch (_that) {
 case _EventTierDto():
-return $default(_that.id,_that.eventId,_that.name,_that.capacity,_that.available,_that.price,_that.position);case _:
+return $default(_that.id,_that.eventId,_that.name,_that.capacity,_that.available,_that.description,_that.price,_that.position);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -547,10 +549,10 @@ return $default(_that.id,_that.eventId,_that.name,_that.capacity,_that.available
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String eventId,  String name,  int capacity,  int available,  int price,  int position)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String eventId,  String name,  int capacity,  int available,  String description,  int price,  int position)?  $default,) {final _that = this;
 switch (_that) {
 case _EventTierDto() when $default != null:
-return $default(_that.id,_that.eventId,_that.name,_that.capacity,_that.available,_that.price,_that.position);case _:
+return $default(_that.id,_that.eventId,_that.name,_that.capacity,_that.available,_that.description,_that.price,_that.position);case _:
   return null;
 
 }
@@ -562,7 +564,7 @@ return $default(_that.id,_that.eventId,_that.name,_that.capacity,_that.available
 
 @JsonSerializable(fieldRename: FieldRename.snake)
 class _EventTierDto extends EventTierDto {
-  const _EventTierDto({required this.id, required this.eventId, required this.name, required this.capacity, required this.available, this.price = 0, this.position = 0}): super._();
+  const _EventTierDto({required this.id, required this.eventId, required this.name, required this.capacity, required this.available, this.description = '', this.price = 0, this.position = 0}): super._();
   factory _EventTierDto.fromJson(Map<String, dynamic> json) => _$EventTierDtoFromJson(json);
 
 @override final  String id;
@@ -570,6 +572,8 @@ class _EventTierDto extends EventTierDto {
 @override final  String name;
 @override final  int capacity;
 @override final  int available;
+/// What the type includes ("Accès backstage"), possibly empty.
+@override@JsonKey() final  String description;
 /// Integer minor units (cents; ariary for MGA).
 @override@JsonKey() final  int price;
 /// 0..5, the display order chosen in the form.
@@ -588,18 +592,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is _EventTierDto&&(identical(other.id, id) || other.id == id)&&(identical(other.eventId, eventId) || other.eventId == eventId)&&(identical(other.name, name) || other.name == name)&&(identical(other.capacity, capacity) || other.capacity == capacity)&&(identical(other.available, available) || other.available == available)&&(identical(other.price, price) || other.price == price)&&(identical(other.position, position) || other.position == position));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _EventTierDto&&(identical(other.id, id) || other.id == id)&&(identical(other.eventId, eventId) || other.eventId == eventId)&&(identical(other.name, name) || other.name == name)&&(identical(other.capacity, capacity) || other.capacity == capacity)&&(identical(other.available, available) || other.available == available)&&(identical(other.description, description) || other.description == description)&&(identical(other.price, price) || other.price == price)&&(identical(other.position, position) || other.position == position));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
-    return Object.hash(runtimeType,id,eventId,name,capacity,available,price,position);
+    return Object.hash(runtimeType,id,eventId,name,capacity,available,description,price,position);
 }
 
 @override
 String toString() {
-    return 'EventTierDto(id: $id, eventId: $eventId, name: $name, capacity: $capacity, available: $available, price: $price, position: $position)';
+    return 'EventTierDto(id: $id, eventId: $eventId, name: $name, capacity: $capacity, available: $available, description: $description, price: $price, position: $position)';
 }
 
 
@@ -610,7 +614,7 @@ abstract mixin class _$EventTierDtoCopyWith<$Res> implements $EventTierDtoCopyWi
   factory _$EventTierDtoCopyWith(_EventTierDto value, $Res Function(_EventTierDto) _then) = __$EventTierDtoCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String eventId, String name, int capacity, int available, int price, int position
+ String id, String eventId, String name, int capacity, int available, String description, int price, int position
 });
 
 
@@ -627,14 +631,15 @@ class __$EventTierDtoCopyWithImpl<$Res>
 
 /// Create a copy of EventTierDto
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? eventId = null,Object? name = null,Object? capacity = null,Object? available = null,Object? price = null,Object? position = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? eventId = null,Object? name = null,Object? capacity = null,Object? available = null,Object? description = null,Object? price = null,Object? position = null,}) {
   return _then(_EventTierDto(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,eventId: null == eventId ? _self.eventId : eventId // ignore: cast_nullable_to_non_nullable
 as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String,capacity: null == capacity ? _self.capacity : capacity // ignore: cast_nullable_to_non_nullable
 as int,available: null == available ? _self.available : available // ignore: cast_nullable_to_non_nullable
-as int,price: null == price ? _self.price : price // ignore: cast_nullable_to_non_nullable
+as int,description: null == description ? _self.description : description // ignore: cast_nullable_to_non_nullable
+as String,price: null == price ? _self.price : price // ignore: cast_nullable_to_non_nullable
 as int,position: null == position ? _self.position : position // ignore: cast_nullable_to_non_nullable
 as int,
   ));

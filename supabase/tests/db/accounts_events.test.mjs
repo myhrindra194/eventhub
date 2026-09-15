@@ -161,6 +161,27 @@ describe('events and ticket types', () => {
     assert.equal((await one(db, 'select capacity from public.events where id = $1', [eventId])).capacity, 5);
   });
 
+  it('stores what each ticket type includes, within the app\'s limits', async () => {
+    const eventId = await publish(db, organizer, {
+      currency: 'EUR',
+      tiers: [{ name: 'VIP', description: '  Accès backstage ', capacity: 5, price: 3000 }, { name: 'Standard', capacity: 20 }],
+    });
+    const rows = await all(db, 'select name, description from public.event_tiers where event_id = $1 order by position', [eventId]);
+    assert.deepEqual(rows, [{ name: 'VIP', description: 'Accès backstage' }, { name: 'Standard', description: '' }]);
+
+    const [vip] = await all(db, 'select id from public.event_tiers where event_id = $1 order by position', [eventId]);
+    await asUser(db, organizer, (tx) => rpc(tx, 'save_event', {
+      p_event: {
+        id: eventId, title: 'Flutter Meetup', description: 'Talks.', category: 'meetup', starts_at: inDays(3),
+        location: 'Tana', currency: 'EUR', tiers: [{ id: vip.id, name: 'VIP', description: 'Backstage et boisson', capacity: 5, price: 3000 }],
+      },
+    }));
+    assert.equal((await one(db, 'select description from public.event_tiers where id = $1', [vip.id])).description, 'Backstage et boisson');
+
+    await rejects(publish(db, organizer, { tiers: [{ name: 'x'.repeat(41), capacity: 5 }] }), { status: 422 });
+    await rejects(publish(db, organizer, { tiers: [{ name: 'VIP', description: 'x'.repeat(161), capacity: 5 }] }), { status: 422 });
+  });
+
   it('locks the single capacity once seats are sold, and never below them', async () => {
     const eventId = await publish(db, organizer, { capacity: 3 });
     await asUser(db, participant, (tx) => rpc(tx, 'reserve_seat', { p_event_id: eventId }));

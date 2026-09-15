@@ -9,6 +9,9 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# No job needs a secret: the backend is Firebase Auth + Firestore, whose client
+# configuration (lib/firebase_options.dart, env/dev.json) is public and
+# versioned, and the rules suite runs on the emulator with a `demo-` project.
 jobs:
   quality:
     name: Analyze & test
@@ -40,42 +43,44 @@ jobs:
           name: coverage
           path: coverage/lcov.info
 
-  database:
-    name: Database (migrations, RLS, RPCs)
+  # The security rules are the whole backend on the Spark plan: every
+  # invariant (seat counters, proofs in batches, moderation) is exercised
+  # against the real Firestore emulator. No credentials, runs on forks too.
+  firestore-rules:
+    name: Firestore rules (emulator)
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: supabase/tests/package-lock.json
-      # Every migration applied in order on PGlite (Postgres 17), then the
-      # integration suite under the real roles: no Docker, no secret, runs on
-      # forks too.
-      - run: npm --prefix supabase/tests ci
-      - run: npm --prefix supabase/tests test
+          cache-dependency-path: firebase/tests/package-lock.json
 
-  edge-functions:
-    name: Edge Functions (type-check)
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v4
-      - uses: denoland/setup-deno@v2
+      - run: npm ci --prefix firebase/tests
+
+      # The emulator jar is downloaded by the CLI on first use.
+      - uses: actions/cache@v4
         with:
-          deno-version: v2.x
-      - name: deno check
-        working-directory: supabase/functions
-        run: deno check */index.ts
+          path: ~/.cache/firebase/emulators
+          key: firebase-emulators-${{ runner.os }}-${{ hashFiles('firebase/tests/package-lock.json') }}
+
+      - name: Rules suite
+        run: npx --prefix firebase/tests firebase --project demo-eventhub emulators:exec --only firestore "npm --prefix firebase/tests test"
 
   # Runs on pull requests too: the Firebase options and env/dev.json are
   # versioned, so every PR produces an installable APK wired to the dev
-  # Supabase project (downloadable from the run's artifacts).
+  # Firebase project (downloadable from the run's artifacts).
   android:
     name: Build APK (dev)
-    needs: [quality, database, edge-functions]
+    needs: [quality, firestore-rules]
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -90,34 +95,54 @@ jobs:
           flutter-version: 3.47.0
           cache: true
 
-      # Firebase (push, Crashlytics, Analytics) and Supabase come from
-      # secrets; without them the APK builds and shows the configuration
-      # error screen.
-      - name: Write backend config
+      - name: Firebase options
         env:
           FIREBASE_OPTIONS_DART: ${{ secrets.FIREBASE_OPTIONS_DART }}
           GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
         run: |
-          # Versioned lib/firebase_options.dart and env/dev.json are used as
-          # they are; repository secrets only override them when defined.
+          # The versioned lib/firebase_options.dart is used as it is; the
+          # optional repository secrets only override it (another project).
           if [ -n "$FIREBASE_OPTIONS_DART" ]; then
             echo "$FIREBASE_OPTIONS_DART" | base64 -d > lib/firebase_options.dart
-            echo "$GOOGLE_SERVICES_JSON" | base64 -d > android/app/google-services.json
+            if [ -n "$GOOGLE_SERVICES_JSON" ]; then
+              echo "$GOOGLE_SERVICES_JSON" | base64 -d > android/app/google-services.json
+            fi
           elif [ ! -f lib/firebase_options.dart ]; then
             cp lib/firebase_options.dart.example lib/firebase_options.dart
-          fi
-          if [ -n "$SUPABASE_URL" ]; then
-            mkdir -p env
-            printf '{"SUPABASE_URL":"%s","SUPABASE_ANON_KEY":"%s"}\n' "$SUPABASE_URL" "$SUPABASE_ANON_KEY" > env/dev.json
           fi
 
       - run: flutter pub get
       - run: dart run build_runner build --delete-conflicting-outputs
-      - run: flutter build apk --debug --dart-define=FLAVOR=dev --dart-define-from-file=env/dev.json
+      - run: flutter build apk --debug -t lib/main_dev.dart --dart-define=FLAVOR=dev --dart-define-from-file=env/dev.json
 
       - uses: actions/upload-artifact@v4
         with:
           name: app-dev-debug.apk
           path: build/app/outputs/flutter-apk/app-debug.apk
+
+  # The app is multi-platform: the web build catches web-only compile errors
+  # (dart:io imports, plugins without a web implementation) on every PR.
+  web:
+    name: Build web (dev)
+    needs: [quality]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: 3.47.0
+          cache: true
+
+      - name: Firebase options fallback
+        run: test -f lib/firebase_options.dart || cp lib/firebase_options.dart.example lib/firebase_options.dart
+
+      - run: flutter pub get
+      - run: dart run build_runner build --delete-conflicting-outputs
+      - run: flutter build web --release -t lib/main_dev.dart --dart-define=FLAVOR=dev --dart-define-from-file=env/dev.json
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: web-dev
+          path: build/web

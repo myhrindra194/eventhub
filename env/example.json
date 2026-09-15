@@ -1,6 +1,6 @@
 {
-  "SUPABASE_URL": "https://<project-ref>.supabase.co",
-  "SUPABASE_ANON_KEY": "<Project Settings → API → anon / publishable key>",
+  "USE_FIREBASE_EMULATOR": false,
+  "FIREBASE_EMULATOR_HOST": "localhost",
   "GOOGLE_SERVER_CLIENT_ID": "<OAuth web client id>.apps.googleusercontent.com",
-  "FIREBASE_WEB_VAPID_KEY": ""
+  "FIREBASE_WEB_VAPID_KEY": "<Firebase console → Cloud Messaging → Web Push certificates>"
 }

@@ -54,7 +54,7 @@ final class CheckInRepositoryProvider
   }
 }
 
-String _$checkInRepositoryHash() => r'fadd27bf074b2ec579f7e3ac1779920de14faadc';
+String _$checkInRepositoryHash() => r'fe40f21d6ce69efb3a51f2334f708a3c0e8bb14a';
 
 @ProviderFor(eventCheckIns)
 final eventCheckInsProvider = EventCheckInsFamily._();
@@ -133,15 +133,18 @@ final class EventCheckInsFamily extends $Family
   String toString() => r'eventCheckInsProvider';
 }
 
-/// One scan at the door: read, judge (CheckInPolicy), record.
+/// One scan at the door: the local precheck (CheckInPolicy), then the
+/// server's atomic verdict.
 
 @ProviderFor(CheckInController)
 final checkInControllerProvider = CheckInControllerProvider._();
 
-/// One scan at the door: read, judge (CheckInPolicy), record.
+/// One scan at the door: the local precheck (CheckInPolicy), then the
+/// server's atomic verdict.
 final class CheckInControllerProvider
     extends $AsyncNotifierProvider<CheckInController, void> {
-  /// One scan at the door: read, judge (CheckInPolicy), record.
+  /// One scan at the door: the local precheck (CheckInPolicy), then the
+  /// server's atomic verdict.
   CheckInControllerProvider._()
     : super(
         from: null,
@@ -161,9 +164,10 @@ final class CheckInControllerProvider
   CheckInController create() => CheckInController();
 }
 
-String _$checkInControllerHash() => r'f258acfc380d4e11d0493b6ffb19a061ce3ff98c';
+String _$checkInControllerHash() => r'eed17d0aa2edd7de57e1841eac06f4def7bbfac3';
 
-/// One scan at the door: read, judge (CheckInPolicy), record.
+/// One scan at the door: the local precheck (CheckInPolicy), then the
+/// server's atomic verdict.
 
 abstract class _$CheckInController extends $AsyncNotifier<void> {
   FutureOr<void> build();

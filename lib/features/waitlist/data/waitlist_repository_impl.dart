@@ -38,11 +38,11 @@ class WaitlistRepositoryImpl implements WaitlistRepository {
           case Err(:final failure)) {
         throw FailureException(failure);
       }
-      await _remote.join(event.id, user);
+      await _remote.join(event.id);
     });
   }
 
   @override
-  AsyncResult<void> leave({required String eventId, required String userId}) =>
-      guard(() => _remote.leave(eventId, userId));
+  AsyncResult<void> leave({required String eventId}) =>
+      guard(() => _remote.leave(eventId));
 }

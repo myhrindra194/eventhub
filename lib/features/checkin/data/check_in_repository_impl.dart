@@ -1,60 +1,44 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:eventhub/core/firebase/firestore_paths.dart';
 import 'package:eventhub/core/result/result.dart';
+import 'package:eventhub/core/supabase/db.dart';
+import 'package:eventhub/core/supabase/supabase_providers.dart';
+import 'package:eventhub/core/supabase/timestamp_converter.dart';
+import 'package:eventhub/features/checkin/data/check_in_result_dto.dart';
+import 'package:eventhub/features/checkin/domain/check_in_policy.dart';
 import 'package:eventhub/features/checkin/domain/check_in_repository.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class CheckInRepositoryImpl implements CheckInRepository {
-  CheckInRepositoryImpl(FirebaseFirestore firestore)
-    : _events = firestore.collection(FirestorePaths.events);
+  const CheckInRepositoryImpl(this._client);
 
-  final CollectionReference<Map<String, dynamic>> _events;
+  final SupabaseClient _client;
 
-  CollectionReference<Map<String, dynamic>> _checkins(String eventId) =>
-      _events.doc(eventId).collection(FirestorePaths.checkins);
-
-  static DateTime _scannedAt(Map<String, dynamic>? data) =>
-      switch (data?['scannedAt']) {
-        final Timestamp t => t.toDate(),
-        // Local write not acknowledged yet: the scan is happening now.
-        _ => DateTime.now(),
-      };
+  /// Feeds the live "12 / 80" counter and "Entré · HH:mm" on the guest list.
+  /// `reservation_id` is the table's primary key: one row per ticket.
+  @override
+  Stream<Map<String, DateTime>> watchCheckIns(String eventId) => _client
+      .from(Tables.checkins)
+      .stream(primaryKey: ['reservation_id'])
+      .eq('event_id', eventId)
+      .map(
+        (rows) => {
+          for (final row in rows)
+            row['reservation_id'] as String: const TimestampConverter()
+                .fromJson(row['scanned_at'] as Object),
+        },
+      )
+      .resilient('checkins:$eventId');
 
   @override
-  Stream<Map<String, DateTime>> watchCheckIns(String eventId) =>
-      _checkins(eventId).snapshots().map(
-        (s) => {for (final d in s.docs) d.id: _scannedAt(d.data())},
-      );
-
-  @override
-  AsyncResult<DateTime?> checkedInAt({
+  AsyncResult<CheckInVerdict> checkIn({
     required String eventId,
     required String reservationId,
   }) => guard(() async {
-    final snap = await _checkins(eventId).doc(reservationId).get();
-    return snap.exists ? _scannedAt(snap.data()) : null;
-  });
-
-  @override
-  AsyncResult<bool> record({
-    required String eventId,
-    required String reservationId,
-    required String organizerId,
-  }) => guard(() async {
-    final ref = _checkins(eventId).doc(reservationId);
-    try {
-      await ref.set({
-        'reservationId': reservationId,
-        'scannedBy': organizerId,
-        'scannedAt': FieldValue.serverTimestamp(),
-      });
-      return true;
-    } on FirebaseException catch (e) {
-      // An existing check-in turns this `set` into a refused update: two
-      // doors scanned the same ticket at the same moment.
-      if (e.code == 'permission-denied' && (await ref.get()).exists) {
-        return false;
-      }
-      rethrow;
-    }
+    final json = await _client.rpc<dynamic>(
+      Rpc.checkInTicket,
+      params: {'p_event_id': eventId, 'p_reservation_id': reservationId},
+    );
+    return CheckInResultDto.fromJson(
+      Map<String, dynamic>.from(json as Map),
+    ).toDomain();
   });
 }

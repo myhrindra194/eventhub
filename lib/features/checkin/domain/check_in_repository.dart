@@ -1,21 +1,16 @@
 import 'package:eventhub/core/result/result.dart';
+import 'package:eventhub/features/checkin/domain/check_in_policy.dart';
 
-/// `events/{eventId}/checkins/{reservationId}` — append-only scan records,
-/// readable and writable by the event's organizer only.
+/// `public.checkins` — one row per admitted ticket, readable by the event
+/// team, written only by the `check_in_ticket` function.
 abstract interface class CheckInRepository {
   /// reservationId → first scan time.
   Stream<Map<String, DateTime>> watchCheckIns(String eventId);
 
-  AsyncResult<DateTime?> checkedInAt({
+  /// Judges the ticket and, when it is valid and unused, records the entry,
+  /// in one transaction.
+  AsyncResult<CheckInVerdict> checkIn({
     required String eventId,
     required String reservationId,
-  });
-
-  /// `true` when this call recorded the entry, `false` when another scanner
-  /// recorded it first (the rules refuse overwriting a check-in).
-  AsyncResult<bool> record({
-    required String eventId,
-    required String reservationId,
-    required String organizerId,
   });
 }

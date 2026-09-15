@@ -325,7 +325,8 @@ class _VerdictBand extends StatelessWidget {
             ),
           };
     final colors = t.resolve(tone);
-    final holder = verdict?.reservation;
+    // Name and ticket type only: the door function does not hand out emails.
+    final holder = verdict?.holderName;
 
     return Semantics(
       liveRegion: true,
@@ -351,7 +352,7 @@ class _VerdictBand extends StatelessWidget {
                       ),
                       if (holder != null)
                         Text(
-                          '${holder.userName} · ${holder.userEmail}',
+                          '$holder · ${verdict!.accessLabel}',
                           style: text.bodySmall?.copyWith(
                             color: colors.onSolid.withValues(alpha: 0.85),
                           ),

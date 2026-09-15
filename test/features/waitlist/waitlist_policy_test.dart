@@ -68,7 +68,7 @@ void main() {
 
   test('refuses someone who already holds a seat, and organizers', () {
     final seat = Reservation(
-      id: 'e1_u1',
+      id: '5a1c9e2b-7d3f-4b8a-9e6c-2f4d8a1b3c5e',
       eventId: 'e1',
       userId: 'u1',
       organizerId: 'o1',

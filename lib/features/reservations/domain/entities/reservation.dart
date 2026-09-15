@@ -23,17 +23,27 @@ enum ReservationStatus {
 /// organizer's participant list render without N+1 reads, and keep working
 /// if the event is later deleted.
 ///
-/// The document id is deterministic (`<eventId>_<userId>`, see
-/// [Reservation.composeId]) which makes the "one reservation per participant
-/// per event" rule enforceable both in the transaction and in security rules.
+/// The id is an opaque uuid given by the database. "One reservation per
+/// participant per event" is a unique constraint on `(event_id, user_id)`,
+/// so the participant's seat for an event is found by querying that pair,
+/// never by building an id. A re-booking after a cancellation reuses the
+/// same row, hence the same id and ticket code.
 @freezed
 abstract class Reservation with _$Reservation {
   const Reservation._();
 
   const factory Reservation({
     required String id,
+
+    /// Empty once the event is deleted: the reservation stays as history,
+    /// with its snapshot of title, date and place.
     required String eventId,
+
+    /// Empty once the participant's account is deleted (the row is
+    /// anonymised and kept for the organizer's statistics).
     required String userId,
+
+    /// Empty once the organizer's account is deleted.
     required String organizerId,
     required String userName,
     required String userEmail,
@@ -55,7 +65,8 @@ abstract class Reservation with _$Reservation {
     int? amountDue,
     String? currency,
 
-    /// `pending`, `paid`, `refunded`, `expired`, `cancelled`, `refund_failed`.
+    /// `pending`, `paid`, `refunded`, `expired`, `cancelled`, `failed`,
+    /// `refund_failed`.
     String? paymentStatus,
 
     /// Stripe Checkout page to resume a held purchase.
@@ -63,16 +74,18 @@ abstract class Reservation with _$Reservation {
     DateTime? holdExpiresAt,
   }) = _Reservation;
 
-  static String composeId({required String eventId, required String userId}) =>
-      '${eventId}_$userId';
-
   /// Human-readable ticket code, e.g. `EH-7K2Q-M9XD`.
   ///
   /// Derived from the id rather than stored: the id is already unique and
   /// immutable, so the code needs no migration and cannot drift from it. The
   /// alphabet drops `0/O` and `1/I/L` — this is read aloud at a door, and
   /// those are exactly the characters people get wrong.
-  String get ticketCode {
+  String get ticketCode => ticketCodeFor(id);
+
+  /// [ticketCode] of the reservation [id], without the reservation itself:
+  /// the door checks a scanned code against the id it came with before
+  /// asking the server anything.
+  static String ticketCodeFor(String id) {
     const alphabet = '23456789ABCDEFGHJKMNPQRSTUVWXYZ';
     // FNV-1a, 32 bits, twice with different offsets: stable across runs and
     // platforms, unlike `String.hashCode`.

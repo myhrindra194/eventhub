@@ -1,0 +1,1027 @@
+rules_version = '2';
+
+// =============================================================================
+//  EventHub — Cloud Firestore security rules (Spark plan: no server code)
+// =============================================================================
+//
+//  Threat model
+//  ------------
+//  The client is hostile: anyone can sign in and call Firestore directly with
+//  a crafted payload. With no Cloud Functions, these rules are the ONLY code
+//  that runs on Google's side, so every business invariant lives here.
+//
+//  How cross-document invariants hold without a server
+//  ----------------------------------------------------
+//  A value that depends on another document (a seat counter, a follower
+//  count, a rating, a staff list) is only accepted inside the batch or
+//  transaction that also writes the document justifying it. `getAfter()` /
+//  `existsAfter()` read the state *as it will be once the whole batch is
+//  committed*: a counter moves by exactly what the justifying document
+//  changed, and a client that skips half of the batch is refused.
+//
+//  Identity
+//  --------
+//   * role: `users/{uid}.role` — 'participant' at sign-up, 'organizer' once
+//     the account turns the organizer space on (verified email, one way).
+//     An organizer keeps every participant right (one account, two spaces);
+//   * administrator: the document `admins/{uid}`, created only from the
+//     Firebase console — no client write can grant it;
+//   * suspension: `users/{uid}.suspended`, set by an administrator. A
+//     suspended account still reads, but writes nothing.
+//
+//  Budget: at most 10 document reads per request (20 in a batch or a
+//  transaction). Helpers that read are marked `// read`.
+// =============================================================================
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ============================================================= identity
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function uid() {
+      return request.auth.uid;
+    }
+
+    function isSelf(userId) {
+      return signedIn() && uid() == userId;
+    }
+
+    function verified() {
+      return signedIn() && request.auth.token.email_verified == true;
+    }
+
+    function root() {
+      return /databases/$(database)/documents;
+    }
+
+    function userDoc(userId) {
+      return /databases/$(database)/documents/users/$(userId);
+    }
+
+    function organizerDoc(organizerId) {
+      return /databases/$(database)/documents/organizers/$(organizerId);
+    }
+
+    function eventDoc(eventId) {
+      return /databases/$(database)/documents/events/$(eventId);
+    }
+
+    function reservationDoc(reservationId) {
+      return /databases/$(database)/documents/reservations/$(reservationId);
+    }
+
+    function reviewDoc(reviewId) {
+      return /databases/$(database)/documents/reviews/$(reviewId);
+    }
+
+    function followDoc(userId, organizerId) {
+      return /databases/$(database)/documents/users/$(userId)/following/$(organizerId);
+    }
+
+    /// The e-mail lookup key: sha256 of the lowercase address, hex.
+    function emailKey(email) {
+      return hashing.sha256(email.lower()).toHexString().lower();
+    }
+
+    // read
+    function me() {
+      return get(userDoc(uid())).data;
+    }
+
+    // read
+    function isActive() {
+      return signedIn()
+        && exists(userDoc(uid()))
+        && me().get('suspended', false) != true;
+    }
+
+    // read
+    function isOrganizer() {
+      return isActive() && me().role == 'organizer';
+    }
+
+    // read
+    function isAdmin() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/admins/$(uid()));
+    }
+
+    // read
+    function isEventTeam(eventId) {
+      let event = get(eventDoc(eventId)).data;
+      return signedIn()
+        && (event.organizerId == uid() || event.get('staffIds', []).hasAny([uid()]));
+    }
+
+    // ================================================================ shape
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function changed() {
+      return incoming().diff(existing()).affectedKeys();
+    }
+
+    function onlyChanged(keys) {
+      return changed().hasOnly(keys);
+    }
+
+    function unchanged(key) {
+      return !(key in changed());
+    }
+
+    function isString(value, minLen, maxLen) {
+      return value is string && value.size() >= minLen && value.size() <= maxLen;
+    }
+
+    function isInt(value, minValue, maxValue) {
+      return value is int && value >= minValue && value <= maxValue;
+    }
+
+    function isHttpsUrl(value) {
+      return value is string && value.size() <= 2048 && value.matches('https://.+');
+    }
+
+    function optionalHttpsUrl(data, key) {
+      return !(key in data) || data[key] == null || isHttpsUrl(data[key]);
+    }
+
+    /// Server time: the client sends `FieldValue.serverTimestamp()`.
+    function isServerTime(value) {
+      return value == request.time;
+    }
+
+    /// A time the client must know before committing (it is part of a
+    /// deterministic id): close to the server clock, never far ahead.
+    function isRecentTime(value) {
+      return value is timestamp
+        && value <= request.time + duration.value(2, 'm')
+        && value >= request.time - duration.value(5, 'm');
+    }
+
+    // ================================================================ users
+    //
+    //  users/{userId}
+    //    name 2..80 · email (= token, immutable) · role · bio? ..500
+    //    suspended? (admin) · welcomedAt? · createdAt · updatedAt?
+    //
+    match /users/{userId} {
+      function validName(data) {
+        return isString(data.name, 2, 80);
+      }
+
+      function validBio(data) {
+        return !('bio' in data) || data.bio == null || isString(data.bio, 0, 500);
+      }
+
+      allow get: if isSelf(userId) || isAdmin();
+      // Enumerating accounts is never allowed, administrators included.
+      allow list: if false;
+
+      // Every account starts as a participant (the Eventbrite / Airbnb
+      // model): the organizer space is turned on later, never at sign-up.
+      allow create: if isSelf(userId)
+        && incoming().keys().hasAll(['name', 'email', 'role', 'createdAt'])
+        && incoming().keys().hasOnly(['name', 'email', 'role', 'bio', 'createdAt', 'updatedAt'])
+        && validName(incoming())
+        && validBio(incoming())
+        && incoming().email == request.auth.token.email
+        && incoming().role == 'participant'
+        && isServerTime(incoming().createdAt);
+
+      allow update: if
+        // ---- the owner edits their presentation ---------------------------
+        (isSelf(userId)
+          && existing().get('suspended', false) != true
+          && onlyChanged(['name', 'bio', 'welcomedAt', 'updatedAt'])
+          && validName(incoming())
+          && validBio(incoming())
+          && (unchanged('welcomedAt') || (existing().get('welcomedAt', null) == null && isServerTime(incoming().welcomedAt)))
+          && (unchanged('updatedAt') || isServerTime(incoming().updatedAt)))
+        ||
+        // ---- "Devenir organisateur": one way, verified email, the public
+        //      page created in the same batch ------------------------------
+        (isSelf(userId)
+          && existing().get('suspended', false) != true
+          && onlyChanged(['role', 'updatedAt'])
+          && existing().role == 'participant'
+          && incoming().role == 'organizer'
+          && verified()
+          && existsAfter(organizerDoc(userId)))
+        ||
+        // ---- moderation suspends or reinstates ----------------------------
+        (isAdmin() && !isSelf(userId)
+          && onlyChanged(['suspended', 'updatedAt'])
+          && incoming().suspended is bool);
+
+      // Account deletion: the owner, once their own data is cleaned up.
+      allow delete: if isSelf(userId);
+
+      // ---- preferences ---------------------------------------------------
+      match /private/{docId} {
+        allow read, delete: if isSelf(userId);
+        allow create, update: if isSelf(userId)
+          && docId == 'notifications'
+          && incoming().keys().hasOnly(['eventReminders', 'bookingAlerts', 'followedOrganizers', 'updatedAt'])
+          && incoming().get('eventReminders', true) is bool
+          && incoming().get('bookingAlerts', true) is bool
+          && incoming().get('followedOrganizers', true) is bool;
+      }
+
+      // ---- push tokens (kept for a future server sender) -------------------
+      match /devices/{deviceId} {
+        allow read, delete: if isSelf(userId);
+        allow create, update: if isSelf(userId)
+          && incoming().keys().hasOnly(['token', 'platform', 'updatedAt'])
+          && isString(incoming().token, 1, 4096)
+          && incoming().platform in ['android', 'ios', 'web', 'macos', 'windows', 'linux']
+          && isServerTime(incoming().updatedAt);
+      }
+
+      // ---- favorites: id == eventId ---------------------------------------
+      match /favorites/{eventId} {
+        allow read, delete: if isSelf(userId);
+        allow create: if isSelf(userId)
+          && incoming().keys().hasOnly(['eventId', 'createdAt'])
+          && incoming().eventId == eventId
+          && isServerTime(incoming().createdAt);
+        allow update: if false;
+      }
+
+      // ---- followed organizers: id == organizerId --------------------------
+      //  Private to the follower. The public follower count moves in the
+      //  same batch (see organizers).
+      match /following/{organizerId} {
+        allow read: if isSelf(userId);
+        allow create: if isSelf(userId)
+          && organizerId != userId
+          && incoming().keys().hasOnly(['organizerId', 'createdAt'])
+          && incoming().organizerId == organizerId
+          && isServerTime(incoming().createdAt)
+          && exists(organizerDoc(organizerId))
+          && getAfter(organizerDoc(organizerId)).data.followerCount
+               == get(organizerDoc(organizerId)).data.followerCount + 1;
+        allow delete: if isSelf(userId)
+          && (!exists(organizerDoc(organizerId))
+              || getAfter(organizerDoc(organizerId)).data.followerCount
+                   == get(organizerDoc(organizerId)).data.followerCount - 1);
+        allow update: if false;
+      }
+
+      // ---- in-app notifications -------------------------------------------
+      //  Written by whoever caused them, under strict conditions: a known
+      //  type, a deterministic id (one notice per fact, no flooding), the
+      //  actor is the caller, and the fact itself is proven.
+      match /notifications/{notificationId} {
+        function validNotice() {
+          return incoming().keys().hasOnly([
+                   'type', 'title', 'body', 'eventId', 'reservationId',
+                   'actorId', 'createdAt', 'readAt', 'expiresAt'
+                 ])
+            && isString(incoming().type, 1, 40)
+            && isString(incoming().title, 1, 120)
+            && isString(incoming().body, 1, 500)
+            && (incoming().get('eventId', null) == null || isString(incoming().eventId, 1, 200))
+            && (incoming().get('reservationId', null) == null || isString(incoming().reservationId, 1, 400))
+            && incoming().actorId == uid()
+            && isServerTime(incoming().createdAt)
+            && incoming().get('readAt', null) == null
+            && incoming().expiresAt is timestamp
+            && incoming().expiresAt <= request.time + duration.value(400, 'd');
+        }
+
+        // read
+        function callerReservation(eventId) {
+          return getAfter(reservationDoc(eventId + '_' + uid())).data;
+        }
+
+        // read
+        function recipientIsTeam(eventId) {
+          let event = get(eventDoc(eventId)).data;
+          return event.organizerId == userId || event.get('staffIds', []).hasAny([userId]);
+        }
+
+        function welcomeNotice() {
+          return incoming().type == 'welcome'
+            && isSelf(userId)
+            && notificationId == 'welcome';
+        }
+
+        function bookingNotice() {
+          let r = callerReservation(incoming().eventId);
+          return incoming().type == 'booking'
+            && r.status == 'confirmed'
+            && notificationId == 'booking_' + incoming().eventId + '_' + uid() + '_' + string(r.reservedAt.toMillis())
+            && recipientIsTeam(incoming().eventId);
+        }
+
+        function cancellationNotice() {
+          let r = callerReservation(incoming().eventId);
+          return incoming().type == 'cancellation'
+            && r.status == 'cancelled'
+            && notificationId == 'cancellation_' + incoming().eventId + '_' + uid() + '_' + string(r.cancelledAt.toMillis())
+            && recipientIsTeam(incoming().eventId);
+        }
+
+        // A seat opened: the person giving it back tells those waiting.
+        function waitlistNotice() {
+          let event = get(eventDoc(incoming().eventId)).data;
+          return incoming().type == 'waitlist'
+            && exists(/databases/$(database)/documents/events/$(incoming().eventId)/waitlist/$(userId))
+            && event.availablePlaces > 0
+            && event.startsAt > request.time
+            && callerReservation(incoming().eventId).status == 'cancelled'
+            && notificationId == 'waitlist_' + incoming().eventId + '_' + userId + '_' + uid();
+        }
+
+        function staffInviteNotice() {
+          return incoming().type == 'staffInvite'
+            && get(eventDoc(incoming().eventId)).data.organizerId == uid()
+            && exists(/databases/$(database)/documents/events/$(incoming().eventId)/invitations/$(userId))
+            && notificationId.matches('staffInvite_' + incoming().eventId + '_' + userId + '_[0-9]{1,16}');
+        }
+
+        function staffJoinedNotice() {
+          return incoming().type == 'staffJoined'
+            && get(eventDoc(incoming().eventId)).data.organizerId == userId
+            && get(eventDoc(incoming().eventId)).data.get('staffIds', []).hasAny([uid()])
+            && notificationId == 'staffJoined_' + incoming().eventId + '_' + uid();
+        }
+
+        function staffRemovedNotice() {
+          let event = get(eventDoc(incoming().eventId)).data;
+          return incoming().type == 'staffRemoved'
+            && event.organizerId == uid()
+            && !event.get('staffIds', []).hasAny([userId])
+            && notificationId.matches('staffRemoved_' + incoming().eventId + '_' + userId + '_[0-9]{1,16}');
+        }
+
+        function moderationNotice() {
+          return incoming().type in ['eventRemoved', 'reviewHidden', 'accountSuspended', 'accountReinstated']
+            && isAdmin();
+        }
+
+        allow read, delete: if isSelf(userId);
+        allow create: if signedIn()
+          && validNotice()
+          && (welcomeNotice()
+              || bookingNotice()
+              || cancellationNotice()
+              || waitlistNotice()
+              || staffInviteNotice()
+              || staffJoinedNotice()
+              || staffRemovedNotice()
+              || moderationNotice());
+        allow update: if isSelf(userId)
+          && onlyChanged(['readAt'])
+          && existing().get('readAt', null) == null
+          && isServerTime(incoming().readAt);
+      }
+    }
+
+    // ======================================================== administrators
+    //
+    //  admins/{uid} {email, name?, grantedAt} — created and removed from the
+    //  Firebase console only (see docs/SECURITY.md).
+    //
+    match /admins/{adminId} {
+      // Anyone may ask "am I an administrator?" about themself only.
+      allow get: if isSelf(adminId) || isAdmin();
+      allow list: if isAdmin();
+      allow write: if false;
+    }
+
+    // ============================================================ organizers
+    //
+    //  organizers/{uid} — the public face of an organizer.
+    //    name · bio · memberSince · followerCount · eventCount
+    //    ratingSum · ratingCount · lastEventId? · lastReviewId? · suspended?
+    //
+    match /organizers/{organizerId} {
+      function stepOf(key) {
+        return incoming()[key] - existing()[key];
+      }
+
+      /// eventCount moves by what `lastEventId` proves: created or deleted
+      /// in this very batch, by its owner (or by moderation).
+      function eventCountProven() {
+        let ref = eventDoc(incoming().lastEventId);
+        return incoming().lastEventId is string
+          && ((stepOf('eventCount') == 1
+                && !exists(ref) && existsAfter(ref)
+                && getAfter(ref).data.organizerId == organizerId)
+              || (stepOf('eventCount') == -1
+                && exists(ref) && !existsAfter(ref)
+                && get(ref).data.organizerId == organizerId));
+      }
+
+      function visibleRating(ref, after) {
+        return after
+          ? (existsAfter(ref) && getAfter(ref).data.get('hidden', false) != true ? getAfter(ref).data.rating : 0)
+          : (exists(ref) && get(ref).data.get('hidden', false) != true ? get(ref).data.rating : 0);
+      }
+
+      /// The rating moves by exactly what `lastReviewId` changed in this
+      /// batch: written, edited, removed, hidden or restored.
+      function ratingProven() {
+        let ref = reviewDoc(incoming().lastReviewId);
+        let review = existsAfter(ref) ? getAfter(ref).data : get(ref).data;
+        let before = visibleRating(ref, false);
+        let after = visibleRating(ref, true);
+        return incoming().lastReviewId is string
+          && review.organizerId == organizerId
+          && (review.authorId == uid() || isAdmin())
+          && stepOf('ratingSum') == after - before
+          && stepOf('ratingCount') == (after > 0 ? 1 : 0) - (before > 0 ? 1 : 0);
+      }
+
+      allow read: if signedIn();
+
+      // Created by the owner in the "Devenir organisateur" batch, empty.
+      allow create: if isSelf(organizerId)
+        && verified()
+        && incoming().keys().hasOnly(['name', 'bio', 'memberSince', 'followerCount', 'eventCount', 'ratingSum', 'ratingCount'])
+        && isString(incoming().name, 2, 80)
+        && isString(incoming().bio, 0, 500)
+        && isServerTime(incoming().memberSince)
+        && incoming().followerCount == 0
+        && incoming().eventCount == 0
+        && incoming().ratingSum == 0
+        && incoming().ratingCount == 0
+        && getAfter(userDoc(organizerId)).data.role == 'organizer'
+        && existsAfter(/databases/$(database)/documents/organizerEmails/$(emailKey(request.auth.token.email)));
+
+      allow update: if
+        // ---- the owner keeps the page in step with the private profile ----
+        (isSelf(organizerId)
+          && onlyChanged(['name', 'bio'])
+          && incoming().name == getAfter(userDoc(organizerId)).data.name
+          && isString(incoming().bio, 0, 500))
+        ||
+        // ---- a follow or unfollow, proven by the follower's document -----
+        (signedIn() && !isSelf(organizerId)
+          && onlyChanged(['followerCount'])
+          && ((stepOf('followerCount') == 1
+                && !exists(followDoc(uid(), organizerId)) && existsAfter(followDoc(uid(), organizerId)))
+              || (stepOf('followerCount') == -1
+                && exists(followDoc(uid(), organizerId)) && !existsAfter(followDoc(uid(), organizerId)))))
+        ||
+        // ---- an event published or deleted --------------------------------
+        ((isSelf(organizerId) || isAdmin())
+          && onlyChanged(['eventCount', 'lastEventId'])
+          && eventCountProven())
+        ||
+        // ---- a review written, edited, removed or moderated ---------------
+        (signedIn()
+          && onlyChanged(['ratingSum', 'ratingCount', 'lastReviewId'])
+          && ratingProven())
+        ||
+        // ---- moderation mirrors a suspension ------------------------------
+        (isAdmin() && onlyChanged(['suspended']) && incoming().suspended is bool);
+
+      allow delete: if isSelf(organizerId);
+    }
+
+    //  organizerEmails/{sha256(lowercase email)} {uid}
+    //  Finds a co-organizer from the address the owner typed, without ever
+    //  letting anyone enumerate accounts: `get` of one exact hash only.
+    match /organizerEmails/{key} {
+      allow get: if isOrganizer();
+      allow list: if false;
+      allow create: if isSelf(incoming().uid)
+        && verified()
+        && incoming().keys().hasOnly(['uid'])
+        && key == emailKey(request.auth.token.email);
+      allow delete: if signedIn() && existing().uid == uid();
+      allow update: if false;
+    }
+
+    // ================================================================ events
+    //
+    //  events/{eventId}
+    //    title 3..120 · description 1..5000 · category · startsAt · location
+    //    capacity 1..100000 · availablePlaces 0..capacity
+    //    organizerId (immutable) · organizerName · imageUrl? (https)
+    //    staffIds [≤ 10] · tiers {id: {name, description, price, capacity,
+    //    available, order}} [≤ 6] · currency? · createdAt · updatedAt?
+    //
+    match /events/{eventId} {
+      function validCategory(value) {
+        return value in ['conference', 'meetup', 'workshop', 'concert', 'sport', 'culture', 'other'];
+      }
+
+      function validShape() {
+        return incoming().keys().hasAll([
+                 'title', 'description', 'category', 'startsAt', 'location',
+                 'capacity', 'availablePlaces', 'organizerId', 'organizerName', 'createdAt'
+               ])
+          && incoming().keys().hasOnly([
+               'title', 'description', 'category', 'startsAt', 'location',
+               'capacity', 'availablePlaces', 'organizerId', 'organizerName',
+               'imageUrl', 'createdAt', 'updatedAt', 'staffIds', 'tiers', 'currency'
+             ])
+          && isString(incoming().title, 3, 120)
+          && isString(incoming().description, 1, 5000)
+          && validCategory(incoming().category)
+          && incoming().startsAt is timestamp
+          && isString(incoming().location, 1, 200)
+          && isInt(incoming().capacity, 1, 100000)
+          && isInt(incoming().availablePlaces, 0, 100000)
+          && incoming().availablePlaces <= incoming().capacity
+          && isString(incoming().organizerName, 1, 80)
+          && optionalHttpsUrl(incoming(), 'imageUrl')
+          && (!('staffIds' in incoming()) || (incoming().staffIds is list && incoming().staffIds.size() <= 10))
+          && (!('tiers' in incoming()) || (incoming().tiers is map && incoming().tiers.size() <= 6))
+          && (!('currency' in incoming()) || incoming().currency == null || incoming().currency in ['EUR', 'USD', 'MGA']);
+      }
+
+      function takenSeats() {
+        return existing().capacity - existing().availablePlaces;
+      }
+
+      function hasTiers(data) {
+        return data.get('tiers', {}).size() > 0;
+      }
+
+      // read
+      function reservationAfter() {
+        return getAfter(reservationDoc(eventId + '_' + uid())).data;
+      }
+
+      /// A seat moves in exactly one free ticket type — the one named by the
+      /// caller's own reservation at the end of the batch — by the same ±1.
+      function tierMoved(tierId, delta) {
+        return tierId in existing().tiers
+          && incoming().tiers.diff(existing().tiers).affectedKeys().hasOnly([tierId])
+          && incoming().tiers[tierId].diff(existing().tiers[tierId]).affectedKeys().hasOnly(['available'])
+          && incoming().tiers[tierId].available == existing().tiers[tierId].available + delta
+          && incoming().tiers[tierId].available >= 0
+          && incoming().tiers[tierId].available <= existing().tiers[tierId].capacity;
+      }
+
+      function seatTierConsistent(delta) {
+        return hasTiers(existing())
+          ? tierMoved(reservationAfter().get('tierId', ''), delta)
+          : unchanged('tiers');
+      }
+
+      /// The owner's public page counts the event in the same batch.
+      function countedOnPage(delta) {
+        return getAfter(organizerDoc(uid())).data.eventCount
+             == get(organizerDoc(uid())).data.eventCount + delta
+          && getAfter(organizerDoc(uid())).data.lastEventId == eventId;
+      }
+
+      // Events are public by nature: the shared link page reads one without
+      // an account. Listing (scraping) requires one, and a bounded page.
+      allow get: if true;
+      allow list: if signedIn() && request.query.limit <= 200;
+
+      allow create: if isOrganizer()
+        && verified()
+        && validShape()
+        && incoming().organizerId == uid()
+        && incoming().organizerName == me().name
+        && incoming().availablePlaces == incoming().capacity
+        && incoming().get('staffIds', []).size() == 0
+        && incoming().startsAt > request.time
+        && isServerTime(incoming().createdAt)
+        && countedOnPage(1);
+
+      allow update: if
+        // ---- (a) the team edits the content -------------------------------
+        (isOrganizer()
+          && (existing().organizerId == uid() || existing().get('staffIds', []).hasAny([uid()]))
+          && validShape()
+          && incoming().organizerId == existing().organizerId
+          && unchanged('createdAt')
+          && unchanged('staffIds')
+          && incoming().capacity >= takenSeats()
+          && incoming().availablePlaces == incoming().capacity - takenSeats()
+          && (unchanged('updatedAt') || isServerTime(incoming().updatedAt)))
+        ||
+        // ---- (b) anyone booking or giving back exactly one free seat ------
+        (isActive()
+          && !isEventTeam(eventId)
+          && onlyChanged(['availablePlaces', 'tiers'])
+          && ((incoming().availablePlaces == existing().availablePlaces - 1
+                && existing().startsAt > request.time
+                && reservationAfter().status == 'confirmed'
+                && seatTierConsistent(-1))
+              || (incoming().availablePlaces == existing().availablePlaces + 1
+                && reservationAfter().status == 'cancelled'
+                && seatTierConsistent(1)))
+          && incoming().availablePlaces <= existing().capacity)
+        ||
+        // ---- (c) an invitee joins the team, or a member leaves it ---------
+        (isActive()
+          && onlyChanged(['staffIds'])
+          && ((incoming().staffIds.toSet().difference(existing().get('staffIds', []).toSet()) == [uid()].toSet()
+                && incoming().staffIds.size() == existing().get('staffIds', []).size() + 1
+                && existing().get('staffIds', []).size() < 10
+                && getAfter(/databases/$(database)/documents/events/$(eventId)/invitations/$(uid())).data.status == 'accepted')
+              || (incoming().staffIds.size() == existing().get('staffIds', []).size() - 1
+                && incoming().staffIds.toSet().difference(existing().get('staffIds', []).toSet()).size() == 0
+                && (existing().organizerId == uid()
+                    || existing().get('staffIds', []).toSet().difference(incoming().staffIds.toSet()) == [uid()].toSet()))));
+
+      // The owner deletes an event nobody booked (and the page counts it);
+      // moderation removes any event.
+      allow delete: if (isActive() && existing().organizerId == uid() && takenSeats() == 0 && countedOnPage(-1))
+        || isAdmin();
+
+      // ---- waiting list ----------------------------------------------------
+      //  {userId, createdAt, notifiedAt?} — FIFO by createdAt. The person
+      //  giving a seat back reads the head of the queue to tell them.
+      match /waitlist/{userId} {
+        allow get: if isSelf(userId) || isEventTeam(eventId);
+        allow list: if signedIn() && request.query.limit <= 20;
+        allow create: if isSelf(userId) && isActive()
+          && incoming().keys().hasOnly(['userId', 'createdAt', 'notifiedAt'])
+          && incoming().userId == uid()
+          && incoming().get('notifiedAt', null) == null
+          && isServerTime(incoming().createdAt)
+          && !isEventTeam(eventId)
+          && get(eventDoc(eventId)).data.availablePlaces == 0
+          && get(eventDoc(eventId)).data.startsAt > request.time;
+        allow update: if isActive()
+          && onlyChanged(['notifiedAt'])
+          && existing().get('notifiedAt', null) == null
+          && isServerTime(incoming().notifiedAt)
+          && get(eventDoc(eventId)).data.availablePlaces > 0;
+        allow delete: if isSelf(userId) || isEventTeam(eventId);
+      }
+
+      // ---- door check-in: the team, append-only ----------------------------
+      match /checkins/{reservationId} {
+        allow read: if isEventTeam(eventId);
+        allow create: if isActive() && isEventTeam(eventId)
+          && incoming().keys().hasOnly(['reservationId', 'scannedBy', 'scannedAt'])
+          && incoming().reservationId == reservationId
+          && incoming().scannedBy == uid()
+          && isServerTime(incoming().scannedAt)
+          && get(reservationDoc(reservationId)).data.eventId == eventId
+          && get(reservationDoc(reservationId)).data.status == 'confirmed';
+        allow update, delete: if false;
+      }
+
+      // ---- co-organizer invitations ----------------------------------------
+      match /invitations/{inviteeId} {
+        allow get: if isSelf(inviteeId) || isEventTeam(eventId);
+        allow list: if isEventTeam(eventId);
+        allow create: if isActive()
+          && get(eventDoc(eventId)).data.organizerId == uid()
+          && inviteeId != uid()
+          && get(eventDoc(eventId)).data.startsAt > request.time
+          && incoming().keys().hasOnly([
+               'eventId', 'userId', 'email', 'name', 'invitedBy', 'invitedByName',
+               'eventTitle', 'eventStartsAt', 'status', 'createdAt', 'respondedAt'
+             ])
+          && incoming().eventId == eventId
+          && incoming().userId == inviteeId
+          && incoming().invitedBy == uid()
+          && isString(incoming().email, 3, 320)
+          && isString(incoming().name, 1, 80)
+          && isString(incoming().invitedByName, 1, 80)
+          && incoming().eventTitle == get(eventDoc(eventId)).data.title
+          && incoming().status == 'pending'
+          && incoming().get('respondedAt', null) == null
+          && isServerTime(incoming().createdAt)
+          && exists(organizerDoc(inviteeId))
+          && get(/databases/$(database)/documents/organizerEmails/$(emailKey(incoming().email))).data.uid == inviteeId;
+        allow update: if isSelf(inviteeId)
+          && existing().status == 'pending'
+          && onlyChanged(['status', 'respondedAt'])
+          && incoming().status in ['accepted', 'declined']
+          && isServerTime(incoming().respondedAt);
+        allow delete: if isSelf(inviteeId) || get(eventDoc(eventId)).data.organizerId == uid();
+      }
+
+      // ---- social proof: "Soa, Hery R. et 40 autres y vont" ----------------
+      //  One entry per attendee, keyed by a hash of the uid (never the uid),
+      //  holding only a short name.
+      match /attendees/{attendeeKey} {
+        allow read: if signedIn();
+        allow create: if isActive()
+          && attendeeKey == hashing.sha256(uid()).toHexString().lower()
+          && incoming().keys().hasOnly(['name', 'createdAt'])
+          && isString(incoming().name, 1, 40)
+          && isServerTime(incoming().createdAt)
+          && getAfter(reservationDoc(eventId + '_' + uid())).data.status == 'confirmed';
+        allow delete: if (isActive() && attendeeKey == hashing.sha256(uid()).toHexString().lower())
+          || isAdmin();
+        allow update: if false;
+      }
+    }
+
+    // The invitee finds their invitations across events.
+    match /{path=**}/invitations/{inviteeId} {
+      allow list: if signedIn() && resource.data.userId == uid();
+    }
+
+    // ========================================================== reservations
+    //
+    //  reservations/{eventId}_{userId}
+    //    eventId · userId · organizerId · userName · userEmail
+    //    eventTitle · eventStartsAt · eventLocation (copied from the event)
+    //    status confirmed|cancelled · reservedAt · cancelledAt? · cancelledBy?
+    //    tierId? · tierName? · pricePaid (always 0 without a payment server)
+    //
+    match /reservations/{reservationId} {
+      // read
+      function event() {
+        return get(eventDoc(incoming().eventId)).data;
+      }
+
+      function validShape() {
+        return incoming().keys().hasAll([
+                 'eventId', 'userId', 'organizerId', 'userName', 'userEmail',
+                 'eventTitle', 'eventStartsAt', 'eventLocation', 'status', 'reservedAt'
+               ])
+          && incoming().keys().hasOnly([
+               'eventId', 'userId', 'organizerId', 'userName', 'userEmail',
+               'eventTitle', 'eventStartsAt', 'eventLocation', 'status',
+               'reservedAt', 'cancelledAt', 'cancelledBy', 'tierId', 'tierName', 'pricePaid'
+             ])
+          && isString(incoming().userName, 1, 80)
+          && isString(incoming().userEmail, 3, 320)
+          && incoming().status in ['confirmed', 'cancelled']
+          && incoming().get('pricePaid', 0) == 0;
+      }
+
+      /// The copy matches the event it claims to come from.
+      function matchesEvent() {
+        return incoming().organizerId == event().organizerId
+          && incoming().eventTitle == event().title
+          && incoming().eventStartsAt == event().startsAt
+          && incoming().eventLocation == event().location;
+      }
+
+      /// Only a free seat is bookable without a payment server.
+      function tierBookable() {
+        return event().get('tiers', {}).size() > 0
+          ? (incoming().get('tierId', '') in event().tiers
+             && event().tiers[incoming().tierId].get('price', 0) == 0
+             && incoming().get('tierName', '') == event().tiers[incoming().tierId].name)
+          : incoming().get('tierId', null) == null;
+      }
+
+      /// The seat counter moved in the same transaction.
+      function seatTaken() {
+        return getAfter(eventDoc(incoming().eventId)).data.availablePlaces
+          == event().availablePlaces - 1;
+      }
+
+      function seatReleased() {
+        return getAfter(eventDoc(existing().eventId)).data.availablePlaces
+          == get(eventDoc(existing().eventId)).data.availablePlaces + 1;
+      }
+
+      function newBooking() {
+        return tierBookable()
+          && matchesEvent()
+          && !isEventTeam(incoming().eventId)
+          && event().startsAt > request.time
+          && event().availablePlaces > 0
+          && isRecentTime(incoming().reservedAt)
+          && incoming().get('cancelledAt', null) == null
+          && incoming().get('cancelledBy', null) == null
+          && seatTaken();
+      }
+
+      // A missing document has no `resource`: a caller may probe only the
+      // id of their own seat ("have I booked this?").
+      allow get: if signedIn()
+        && (resource == null
+          ? reservationId.matches('.+_' + uid())
+          : (existing().userId == uid()
+             || existing().organizerId == uid()
+             || isEventTeam(existing().eventId)
+             || isAdmin()));
+
+      // The query pins `userId ==` (participant), `organizerId ==` (owner)
+      // or `eventId ==` (team).
+      allow list: if signedIn()
+        && request.query.limit <= 500
+        && (resource.data.userId == uid()
+            || resource.data.organizerId == uid()
+            || isEventTeam(resource.data.eventId)
+            || isAdmin());
+
+      allow create: if isActive()
+        && validShape()
+        && reservationId == incoming().eventId + '_' + uid()
+        && incoming().userId == uid()
+        && incoming().userEmail == request.auth.token.email
+        && incoming().status == 'confirmed'
+        && newBooking();
+
+      allow update: if
+        (isActive()
+          && existing().userId == uid()
+          && validShape()
+          && incoming().userId == existing().userId
+          && incoming().eventId == existing().eventId
+          && (
+            // confirmed → cancelled, seat given back in the same transaction
+            (existing().status == 'confirmed'
+              && incoming().status == 'cancelled'
+              && onlyChanged(['status', 'cancelledAt', 'cancelledBy'])
+              && isRecentTime(incoming().cancelledAt)
+              && incoming().cancelledBy == uid()
+              && (!exists(eventDoc(existing().eventId)) || seatReleased()))
+            ||
+            // cancelled → confirmed: a new booking on the same ticket
+            (existing().status == 'cancelled'
+              && incoming().status == 'confirmed'
+              && incoming().userEmail == request.auth.token.email
+              && newBooking())
+          ))
+        ||
+        // account deletion: the history stays, anonymised
+        (signedIn() && existing().userId == uid()
+          && onlyChanged(['userId', 'userName', 'userEmail'])
+          && incoming().userId == ''
+          && incoming().userName == 'Compte supprimé'
+          && incoming().userEmail == 'supprime@eventhub.invalid')
+        ||
+        // moderation removes the event: every seat is cancelled
+        (isAdmin()
+          && existing().status == 'confirmed'
+          && incoming().status == 'cancelled'
+          && onlyChanged(['status', 'cancelledAt', 'cancelledBy'])
+          && incoming().cancelledBy == 'moderation'
+          && isRecentTime(incoming().cancelledAt));
+
+      // History is never destroyed.
+      allow delete: if false;
+    }
+
+    // =============================================================== reviews
+    //
+    //  reviews/{eventId}_{userId} — an attendee, once the event started.
+    //    eventId · organizerId · authorId · authorName · rating 1..5
+    //    comment ..2000 · hidden (false at creation) · createdAt · updatedAt?
+    //  The organizer's rating moves in the same batch.
+    //
+    match /reviews/{reviewId} {
+      // read
+      function attended(eventId) {
+        let r = get(reservationDoc(eventId + '_' + uid())).data;
+        return r.status == 'confirmed' && r.eventStartsAt < request.time;
+      }
+
+      // read
+      function ratingFollows(organizerId, sumDelta, countDelta) {
+        let before = get(organizerDoc(organizerId)).data;
+        let after = getAfter(organizerDoc(organizerId)).data;
+        return after.ratingSum == before.ratingSum + sumDelta
+          && after.ratingCount == before.ratingCount + countDelta;
+      }
+
+      function validReview() {
+        return isInt(incoming().rating, 1, 5) && isString(incoming().comment, 0, 2000);
+      }
+
+      allow get: if signedIn()
+        && (resource == null
+            || existing().hidden != true
+            || existing().authorId == uid()
+            || isAdmin());
+
+      // Lists pin `hidden == false`, except for moderation.
+      allow list: if signedIn()
+        && request.query.limit <= 200
+        && (resource.data.hidden == false || resource.data.authorId == uid() || isAdmin());
+
+      allow create: if isActive()
+        && verified()
+        && reviewId == incoming().eventId + '_' + uid()
+        && incoming().keys().hasOnly(['eventId', 'organizerId', 'authorId', 'authorName', 'rating', 'comment', 'hidden', 'createdAt'])
+        && incoming().authorId == uid()
+        && incoming().hidden == false
+        && incoming().organizerId == get(eventDoc(incoming().eventId)).data.organizerId
+        && isString(incoming().authorName, 1, 80)
+        && validReview()
+        && isServerTime(incoming().createdAt)
+        && attended(incoming().eventId)
+        && ratingFollows(incoming().organizerId, incoming().rating, 1);
+
+      allow update: if
+        (isActive()
+          && existing().authorId == uid()
+          && onlyChanged(['rating', 'comment', 'updatedAt'])
+          && validReview()
+          && isServerTime(incoming().updatedAt)
+          && (existing().hidden == true
+              || ratingFollows(existing().organizerId, incoming().rating - existing().rating, 0)))
+        ||
+        // anonymisation at account deletion
+        (signedIn() && existing().authorId == uid()
+          && onlyChanged(['authorId', 'authorName'])
+          && incoming().authorId == ''
+          && incoming().authorName == 'Compte supprimé')
+        ||
+        // moderation hides or restores, and the rating follows
+        (isAdmin()
+          && onlyChanged(['hidden'])
+          && incoming().hidden is bool
+          && incoming().hidden != existing().hidden
+          && (incoming().hidden
+              ? ratingFollows(existing().organizerId, -existing().rating, -1)
+              : ratingFollows(existing().organizerId, existing().rating, 1)));
+
+      allow delete: if signedIn()
+        && (existing().authorId == uid() || isAdmin())
+        && (existing().hidden == true
+            || ratingFollows(existing().organizerId, -existing().rating, -1));
+    }
+
+    // =============================================================== reports
+    //
+    //  reports/{type}_{targetId}_{reporterId} — write-only, one per person.
+    //  The moderation queue entry is opened or counted in the same batch.
+    //
+    match /reports/{reportId} {
+      allow read: if isAdmin();
+      allow create: if isActive()
+        && incoming().keys().hasOnly(['targetType', 'targetId', 'reason', 'details', 'reporterId', 'createdAt'])
+        && incoming().reporterId == uid()
+        && reportId == incoming().targetType + '_' + incoming().targetId + '_' + uid()
+        && incoming().targetType in ['event', 'user', 'review']
+        && isString(incoming().targetId, 1, 200)
+        && !(incoming().targetType == 'user' && incoming().targetId == uid())
+        && !(incoming().targetType == 'review' && incoming().targetId.matches('.+_' + uid()))
+        && incoming().reason in ['spam', 'misleading', 'inappropriate', 'fraud', 'harassment', 'other']
+        && isString(incoming().details, 0, 2000)
+        && (incoming().reason != 'other' || incoming().details.size() > 0)
+        && isServerTime(incoming().createdAt)
+        && existsAfter(/databases/$(database)/documents/moderationQueue/$(incoming().targetType + '_' + incoming().targetId));
+      allow update, delete: if false;
+    }
+
+    //  moderationQueue/{type}_{targetId}
+    //    targetType · targetId · reportCount · lastReason · status
+    //    decision? · decisionNote? · decidedBy? · decidedAt? · updatedAt
+    match /moderationQueue/{entryId} {
+      function reportOfCaller() {
+        return /databases/$(database)/documents/reports/$(entryId + '_' + uid());
+      }
+
+      function reporterCounted() {
+        return !exists(reportOfCaller()) && existsAfter(reportOfCaller());
+      }
+
+      allow read: if isAdmin();
+
+      allow create: if isActive()
+        && incoming().keys().hasOnly(['targetType', 'targetId', 'reportCount', 'lastReason', 'status', 'updatedAt'])
+        && entryId == incoming().targetType + '_' + incoming().targetId
+        && incoming().reportCount == 1
+        && incoming().status == 'open'
+        && isServerTime(incoming().updatedAt)
+        && reporterCounted();
+
+      allow update: if
+        (isActive()
+          && onlyChanged(['reportCount', 'lastReason', 'status', 'updatedAt'])
+          && incoming().reportCount == existing().reportCount + 1
+          && incoming().status == 'open'
+          && isServerTime(incoming().updatedAt)
+          && reporterCounted())
+        ||
+        (isAdmin()
+          && onlyChanged(['status', 'decision', 'decisionNote', 'decidedBy', 'decidedAt', 'updatedAt'])
+          && incoming().status in ['open', 'resolved', 'dismissed']
+          && incoming().decidedBy == uid()
+          && isServerTime(incoming().decidedAt));
+
+      allow delete: if false;
+
+      match /decisions/{decisionId} {
+        allow read: if isAdmin();
+        allow create: if isAdmin()
+          && incoming().keys().hasOnly(['action', 'note', 'by', 'at'])
+          && isString(incoming().action, 1, 40)
+          && isString(incoming().note, 0, 500)
+          && incoming().by == uid()
+          && isServerTime(incoming().at);
+        allow update, delete: if false;
+      }
+    }
+
+    // ============================================================ catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

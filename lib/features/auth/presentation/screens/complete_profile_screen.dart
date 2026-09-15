@@ -7,9 +7,7 @@ import 'package:eventhub/core/widgets/design_system.dart';
 import 'package:eventhub/features/auth/application/auth_controller.dart';
 import 'package:eventhub/features/auth/application/auth_providers.dart';
 import 'package:eventhub/features/auth/domain/entities/auth_session.dart';
-import 'package:eventhub/features/auth/domain/entities/user_role.dart';
 import 'package:eventhub/features/auth/presentation/widgets/auth_scaffold.dart';
-import 'package:eventhub/features/auth/presentation/widgets/role_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -30,7 +28,6 @@ class CompleteProfileScreen extends ConsumerStatefulWidget {
 class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
   final _formKey = GlobalKey<FormState>();
   final _name = TextEditingController();
-  UserRole _role = UserRole.participant;
 
   @override
   void initState() {
@@ -55,7 +52,7 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
 
     final result = await ref
         .read(authControllerProvider.notifier)
-        .completeProfile(name: _name.text.trim(), role: _role);
+        .completeProfile(name: _name.text.trim());
 
     if (result case Err(:final failure) when mounted) {
       context.showFailure(failure);
@@ -95,11 +92,6 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
                         Validators.minLength(v, 2, label: 'Le nom'),
                   ),
                 ],
-              ),
-              const SizedBox(height: AppSpacing.xxl),
-              RoleSelector(
-                value: _role,
-                onChanged: (r) => setState(() => _role = r),
               ),
               const SizedBox(height: AppSpacing.xxl),
               AppButton.primary(

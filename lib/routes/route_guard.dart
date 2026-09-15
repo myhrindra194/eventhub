@@ -142,12 +142,11 @@ abstract final class RouteGuard {
     if (AppRoutes.isPublic(location)) return pending ?? home;
 
     // A shared link: `/e/{id}` redirects to the event detail at route level.
-    if (location.startsWith('/e/')) return isOrganizer ? home : null;
+    if (location.startsWith('/e/')) return null;
 
-    // Role confinement: an organizer never lands in the participant area
-    // (and vice versa), whatever the deep link says.
-    final inOrganizerArea = AppRoutes.isOrganizerArea(location);
-    if (isOrganizer != inOrganizerArea) return home;
+    // One account, two spaces: an organizer also browses and books as a
+    // participant; the organizer space stays closed until it is turned on.
+    if (AppRoutes.isOrganizerArea(location) && !isOrganizer) return home;
 
     return null;
   }

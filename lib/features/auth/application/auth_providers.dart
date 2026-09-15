@@ -1,7 +1,7 @@
 import 'package:eventhub/core/config/app_config.dart';
-import 'package:eventhub/core/supabase/supabase_providers.dart';
+import 'package:eventhub/core/firebase/firebase_providers.dart';
 import 'package:eventhub/features/auth/data/datasources/account_remote_data_source.dart';
-import 'package:eventhub/features/auth/data/datasources/supabase_auth_data_source.dart';
+import 'package:eventhub/features/auth/data/datasources/firebase_auth_data_source.dart';
 import 'package:eventhub/features/auth/data/datasources/user_remote_data_source.dart';
 import 'package:eventhub/features/auth/data/repositories/auth_repository_impl.dart';
 import 'package:eventhub/features/auth/domain/entities/app_user.dart';
@@ -14,16 +14,16 @@ part 'auth_providers.g.dart';
 @Riverpod(keepAlive: true)
 AuthRepository authRepository(Ref ref) {
   final config = ref.watch(appConfigProvider);
-  final client = ref.watch(supabaseClientProvider);
+  final db = ref.watch(firestoreProvider);
   return AuthRepositoryImpl(
-    authDataSource: SupabaseAuthDataSource(
-      client.auth,
-      redirectUrl: AppConfig.authRedirectUrl,
+    authDataSource: FirebaseAuthDataSource(
+      ref.watch(firebaseAuthProvider),
+      googleServerClientId: config.googleServerClientId,
     ),
-    userDataSource: UserRemoteDataSource(client),
-    accountDataSource: AccountRemoteDataSource(client),
+    userDataSource: UserRemoteDataSource(db),
+    accountDataSource: AccountRemoteDataSource(db),
     profileGracePeriod: config.profileGracePeriod,
-    googleServerClientId: config.googleServerClientId,
+    clock: ref.watch(clockProvider),
   );
 }
 

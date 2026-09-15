@@ -6,17 +6,20 @@ part 'app_config.g.dart';
 
 /// Immutable runtime configuration derived from the [Flavor].
 ///
-/// There is no simulated backend: every flavor talks to a Supabase project,
-/// given at build time (`--dart-define=SUPABASE_URL=…` and
-/// `--dart-define=SUPABASE_ANON_KEY=…`). Point them at a local stack
-/// (`supabase start`) for development against disposable data.
+/// There is no simulated backend: every flavor talks to the Firebase project
+/// described by `lib/firebase_options.dart`. For development against
+/// disposable data, start the emulators (`make emulators`) and run with
+/// `--dart-define=USE_FIREBASE_EMULATOR=true`.
 @immutable
 class AppConfig {
   const AppConfig({
     required this.flavor,
     required this.appName,
-    this.supabaseUrl = const String.fromEnvironment('SUPABASE_URL'),
-    this.supabaseAnonKey = const String.fromEnvironment('SUPABASE_ANON_KEY'),
+    this.useEmulator = const bool.fromEnvironment('USE_FIREBASE_EMULATOR'),
+    this.emulatorHost = const String.fromEnvironment(
+      'FIREBASE_EMULATOR_HOST',
+      defaultValue: 'localhost',
+    ),
     this.profileGracePeriod = const Duration(seconds: 3),
     this.googleServerClientId = const String.fromEnvironment(
       'GOOGLE_SERVER_CLIENT_ID',
@@ -38,46 +41,40 @@ class AppConfig {
     Flavor.prod => const AppConfig(flavor: Flavor.prod, appName: 'EventHub'),
   };
 
-  /// Where Supabase Auth sends people back to the app: email confirmation,
-  /// password reset. Declared in `supabase/config.toml`
-  /// (`additional_redirect_urls`) and as an intent filter in
-  /// AndroidManifest.xml.
-  static const authRedirectUrl = 'eventhub://auth-callback';
-
   final Flavor flavor;
   final String appName;
 
-  /// `https://<project-ref>.supabase.co`.
-  final String supabaseUrl;
+  /// Talk to the local Auth (9099) and Firestore (8080) emulators instead of
+  /// the cloud project. Never set for a release build.
+  final bool useEmulator;
 
-  /// The project's public (anon) key. Safe to ship: it grants nothing that
-  /// Row Level Security does not allow a signed-in user.
-  final String supabaseAnonKey;
+  /// Host of the emulators: `localhost` on desktop, web and the iOS
+  /// simulator; `10.0.2.2` from the Android emulator; the computer's LAN
+  /// address from a physical phone.
+  final String emulatorHost;
 
-  /// Delay tolerated between account creation and its profile row before
-  /// the session is reported as `ProfileMissing`.
+  /// Delay tolerated between account creation and its profile document
+  /// before the session is reported as `ProfileMissing`.
   final Duration profileGracePeriod;
 
-  /// OAuth *web* client id of the Google Cloud project, required by native
-  /// Google Sign-In to obtain an ID token that Supabase Auth accepts
+  /// OAuth *web* client id of the Firebase project, which native Google
+  /// Sign-In on Android needs to obtain an ID token Firebase Auth accepts
   /// (`--dart-define=GOOGLE_SERVER_CLIENT_ID=…apps.googleusercontent.com`).
   /// Empty → the Google button is hidden on Android rather than failing.
   final String googleServerClientId;
 
-  /// Public "Web Push certificate" key of the Firebase project, which still
-  /// delivers push notifications (`--dart-define=FIREBASE_WEB_VAPID_KEY=…`).
-  /// Empty → no web push.
+  /// Public "Web Push certificate" key of the Firebase project
+  /// (`--dart-define=FIREBASE_WEB_VAPID_KEY=…`). Empty → no web push token.
   final String webPushVapidKey;
 
-  bool get hasBackend => supabaseUrl.isNotEmpty && supabaseAnonKey.isNotEmpty;
-
-  /// Google Sign-In needs no extra configuration on the web (OAuth redirect)
+  /// Google Sign-In needs no extra configuration on the web (Firebase popup)
   /// and on iOS (client id in Info.plist); Android needs
-  /// [googleServerClientId].
+  /// [googleServerClientId]. Desktop has no Google provider in FlutterFire.
   bool get isGoogleSignInAvailable =>
       kIsWeb ||
       defaultTargetPlatform == TargetPlatform.iOS ||
-      googleServerClientId.isNotEmpty;
+      (defaultTargetPlatform == TargetPlatform.android &&
+          googleServerClientId.isNotEmpty);
 }
 
 /// Must be overridden in `bootstrap()`; the default throws on purpose so a

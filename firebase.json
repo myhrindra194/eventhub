@@ -22,6 +22,12 @@
       }
     }
   },
+  "firestore": {
+    "database": "(default)",
+    "location": "nam5",
+    "rules": "firebase/firestore.rules",
+    "indexes": "firebase/firestore.indexes.json"
+  },
   "hosting": {
     "public": "hosting/public",
     "ignore": ["firebase.json", "**/node_modules/**"],
@@ -48,5 +54,12 @@
         ]
       }
     ]
+  },
+  "emulators": {
+    "auth": { "port": 9099 },
+    "firestore": { "port": 8080 },
+    "hosting": { "port": 5002 },
+    "ui": { "enabled": true, "port": 4000 },
+    "singleProjectMode": true
   }
 }

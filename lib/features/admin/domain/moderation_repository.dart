@@ -3,8 +3,8 @@ import 'package:eventhub/features/admin/domain/moderation.dart';
 import 'package:eventhub/features/moderation/domain/report.dart';
 
 /// Everything the moderation area reads and decides. Every read is allowed
-/// by the rules only with the `admin` claim; every decision goes through a
-/// callable Cloud Function that checks the claim again.
+/// by RLS to administrators only; every decision goes through a database
+/// function that checks the role again.
 abstract interface class ModerationRepository {
   /// Open entries, most reported first; closed ones, most recent first.
   Stream<List<ModerationEntry>> watchQueue({required bool open});

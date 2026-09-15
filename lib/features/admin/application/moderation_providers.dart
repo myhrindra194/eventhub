@@ -1,6 +1,6 @@
 import 'package:eventhub/core/errors/failure.dart';
-import 'package:eventhub/core/firebase/firebase_providers.dart';
 import 'package:eventhub/core/result/result.dart';
+import 'package:eventhub/core/supabase/supabase_providers.dart';
 import 'package:eventhub/features/admin/data/moderation_remote_data_source.dart';
 import 'package:eventhub/features/admin/data/moderation_repository_impl.dart';
 import 'package:eventhub/features/admin/domain/moderation.dart';
@@ -13,15 +13,14 @@ import 'package:riverpod_annotation/riverpod_annotation.dart' hide AsyncResult;
 part 'moderation_providers.g.dart';
 
 @Riverpod(keepAlive: true)
-ModerationRepository moderationRepository(Ref ref) => ModerationRepositoryImpl(
-  ModerationRemoteDataSource(
-    ref.watch(firestoreProvider),
-    ref.watch(firebaseFunctionsProvider),
-  ),
-);
+ModerationRepository moderationRepository(Ref ref) {
+  final remote = ModerationRemoteDataSource(ref.watch(supabaseClientProvider));
+  ref.onDispose(remote.dispose);
+  return ModerationRepositoryImpl(remote);
+}
 
-/// Nothing is even requested without the claim: the rules would refuse it,
-/// and a listener stuck on permission-denied is noise in the logs.
+/// Nothing is even requested without the claim: RLS would answer empty
+/// lists, and a subscription per screen for nothing is waste.
 bool _isAdmin(Ref ref) => ref.watch(currentUserProvider)?.isAdmin ?? false;
 
 @riverpod
@@ -63,18 +62,12 @@ Stream<ReportedAccount?> reportedAccount(Ref ref, String userId) {
   return ref.watch(moderationRepositoryProvider).watchAccount(userId);
 }
 
-/// A reported review, hidden or not. Review ids are `<eventId>_<authorId>`;
-/// uids never contain `_`, so the author is after the last one.
+/// A reported review, hidden or not (RLS shows hidden reviews to
+/// administrators). [reviewId] is the uuid carried by the queue entry.
 @riverpod
 Stream<Review?> moderatedReview(Ref ref, String reviewId) {
-  final cut = reviewId.lastIndexOf('_');
-  if (cut <= 0) return Stream.value(null);
-  return ref
-      .watch(reviewRepositoryProvider)
-      .watchReview(
-        eventId: reviewId.substring(0, cut),
-        userId: reviewId.substring(cut + 1),
-      );
+  if (reviewId.isEmpty) return Stream.value(null);
+  return ref.watch(reviewRepositoryProvider).watchReviewById(reviewId);
 }
 
 @riverpod

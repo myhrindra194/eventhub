@@ -2,12 +2,12 @@ import 'package:eventhub/core/errors/failure.dart';
 import 'package:eventhub/core/result/result.dart';
 import 'package:eventhub/features/auth/domain/entities/app_user.dart';
 
-/// `organizers/{uid}` — the public face of an organizer (F-10).
+/// `public.organizers` — the public face of an organizer (F-10).
 ///
 /// Every field is derived server-side: name and bio are copied from the
-/// private profile by `syncOrganizerProfile`, the counters are maintained by
-/// triggers. The client only reads it, which is what makes a follower count
-/// or a rating worth showing.
+/// private profile by a trigger, the counters are maintained by triggers on
+/// follows, events and reviews. The client only reads it, which is what
+/// makes a follower count or a rating worth showing.
 class OrganizerProfile {
   const OrganizerProfile({
     required this.id,
@@ -41,7 +41,8 @@ class OrganizerProfile {
   bool get hasBio => bio.trim().isNotEmpty;
 }
 
-/// Mirrored in `firestore.rules` (`users/{uid}/following` create).
+/// Mirrors the `follows_not_self` constraint, so the button explains itself
+/// instead of waiting for the database to refuse.
 abstract final class FollowPolicy {
   static Result<void> canFollow({
     required AppUser user,

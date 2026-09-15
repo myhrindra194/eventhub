@@ -4,6 +4,7 @@ import 'package:eventhub/core/result/result.dart';
 import 'package:eventhub/features/moderation/data/report_remote_data_source.dart';
 import 'package:eventhub/features/moderation/domain/report.dart';
 import 'package:eventhub/features/moderation/domain/report_repository.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' show PostgrestException;
 
 class ReportRepositoryImpl implements ReportRepository {
   const ReportRepositoryImpl(this._remote);
@@ -17,41 +18,40 @@ class ReportRepositoryImpl implements ReportRepository {
     required String targetId,
     required ReportReason reason,
     required String details,
-  }) async {
-    final result = await guard(() async {
-      if (ReportPolicy.validate(
-            reporterId: reporterId,
-            target: target,
-            targetId: targetId,
-            reason: reason,
-            details: details,
-          )
-          case Err(:final failure)) {
-        throw FailureException(failure);
-      }
+  }) => guard(() async {
+    if (ReportPolicy.validate(
+          reporterId: reporterId,
+          target: target,
+          targetId: targetId,
+          reason: reason,
+          details: details,
+        )
+        case Err(:final failure)) {
+      throw FailureException(failure);
+    }
+    try {
       await _remote.create(
-        reporterId: reporterId,
         target: target,
         targetId: targetId,
         reason: reason,
         details: details.trim(),
       );
-    });
-
-    // Reports are write-only: a second report by the same account lands on
-    // the existing document, which the rules treat as a (forbidden) update.
-    // The client cannot read the document to tell, so permission-denied on
-    // this path means "already reported" — and saying so is both true and
-    // reassuring.
-    if (result case Err(failure: PermissionFailure())) {
-      return const Err(
-        BusinessRuleFailure(
-          rule: BusinessRule.alreadyReported,
-          message:
-              'Vous avez déjà signalé ce contenu. Il est en cours d’examen.',
-        ),
-      );
+    } on PostgrestException catch (e) {
+      // `reports_one_per_reporter`: the automatic threshold counts people,
+      // not clicks. Saying so is both true and reassuring. Every other
+      // refusal (cannotReportSelf, notFound, validation) already carries its
+      // rule and French message from the trigger.
+      if (e.code == '23505') {
+        throw FailureException(
+          BusinessRuleFailure(
+            rule: BusinessRule.alreadyReported,
+            message:
+                'Vous avez déjà signalé ce contenu. Il est en cours d’examen.',
+            cause: e,
+          ),
+        );
+      }
+      rethrow;
     }
-    return result;
-  }
+  });
 }

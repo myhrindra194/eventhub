@@ -1,4 +1,4 @@
-import 'package:eventhub/core/firebase/timestamp_converter.dart';
+import 'package:eventhub/core/supabase/timestamp_converter.dart';
 import 'package:eventhub/features/auth/domain/entities/app_user.dart';
 import 'package:eventhub/features/auth/domain/entities/user_role.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
@@ -6,7 +6,7 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 part 'user_dto.freezed.dart';
 part 'user_dto.g.dart';
 
-/// Firestore document `users/{uid}`. The id is the document id, never a field.
+/// Row of `public.profiles`. The id is read separately by the repository.
 @freezed
 abstract class UserDto with _$UserDto {
   const UserDto._();
@@ -15,12 +15,12 @@ abstract class UserDto with _$UserDto {
     required String name,
     required String email,
     @JsonKey(unknownEnumValue: UserRole.participant) required UserRole role,
-    @NullableTimestampConverter() DateTime? createdAt,
+    @JsonKey(name: 'created_at')
+    @NullableTimestampConverter()
+    DateTime? createdAt,
 
-    /// Published on `organizers/{uid}` by the `syncOrganizerProfile` Cloud
-    /// Function. `includeIfNull: false`: a profile without a bio is created
-    /// without the field, which the rules accept either way.
-    @JsonKey(includeIfNull: false) String? bio,
+    /// Published on `organizers` by a trigger when the profile changes.
+    String? bio,
   }) = _UserDto;
 
   factory UserDto.fromJson(Map<String, dynamic> json) =>

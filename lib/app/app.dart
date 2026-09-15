@@ -43,6 +43,12 @@ class EventHubApp extends ConsumerWidget {
       // Subscribing instantiates the consent provider at startup; its build
       // applies the stored decision to Firebase Analytics.
       ..listen<AsyncValue<bool?>>(analyticsConsentProvider, (_, __) {})
+      // A password-reset link opened the app with a recovery session.
+      ..listen<AsyncValue<void>>(passwordRecoveryProvider, (_, next) {
+        if (next is AsyncData<void>) {
+          router.go('${AppRoutes.changePassword}?recovery=1');
+        }
+      })
       ..listen<AppUser?>(currentUserProvider, (previous, user) {
         ref
             .read(appAnalyticsProvider)

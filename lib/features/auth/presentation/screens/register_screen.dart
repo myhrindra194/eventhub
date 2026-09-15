@@ -9,6 +9,7 @@ import 'package:eventhub/features/auth/domain/entities/user_role.dart';
 import 'package:eventhub/features/auth/presentation/widgets/auth_scaffold.dart';
 import 'package:eventhub/features/auth/presentation/widgets/google_sign_in_button.dart';
 import 'package:eventhub/features/auth/presentation/widgets/role_selector.dart';
+import 'package:eventhub/routes/app_routes.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -67,8 +68,21 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           password: _password.text,
           role: _role,
         );
-    if (result case Err(:final failure) when mounted) {
-      context.showFailure(failure);
+    if (!mounted) return;
+    switch (result) {
+      case Err(:final failure):
+        context.showFailure(failure);
+      // Email confirmation is required: there is no session yet, so the
+      // person goes to their inbox, then back to the sign-in screen.
+      case Ok(:final value) when !value.emailVerified:
+        context.showToast(
+          AppStrings.confirmEmailSent(value.email),
+          tone: AppTone.success,
+          icon: Icons.mark_email_read_outlined,
+        );
+        context.go(AppRoutes.login);
+      case Ok():
+        break;
     }
   }
 

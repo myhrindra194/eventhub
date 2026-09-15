@@ -48,7 +48,7 @@ final class AuthRepositoryProvider
   }
 }
 
-String _$authRepositoryHash() => r'1e5d8b3ac55393b88456a8fdf0e56fd87ead393c';
+String _$authRepositoryHash() => r'97c0cb6f06011049ff5c1695bbb77b496cbeff5c';
 
 /// Single source of truth for "who is logged in". Kept alive for the whole
 /// app lifetime: the router and every feature derive from it.
@@ -96,6 +96,44 @@ final class AuthSessionProvider
 }
 
 String _$authSessionHash() => r'f96bf54429b058c7e1d0ebf0ab587907b7ac5457';
+
+/// Fires when a password-recovery link opens the app.
+
+@ProviderFor(passwordRecovery)
+final passwordRecoveryProvider = PasswordRecoveryProvider._();
+
+/// Fires when a password-recovery link opens the app.
+
+final class PasswordRecoveryProvider
+    extends $FunctionalProvider<AsyncValue<void>, void, Stream<void>>
+    with $FutureModifier<void>, $StreamProvider<void> {
+  /// Fires when a password-recovery link opens the app.
+  PasswordRecoveryProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'passwordRecoveryProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$passwordRecoveryHash();
+
+  @$internal
+  @override
+  $StreamProviderElement<void> $createElement($ProviderPointer pointer) =>
+      $StreamProviderElement(pointer);
+
+  @override
+  Stream<void> create(Ref ref) {
+    return passwordRecovery(ref);
+  }
+}
+
+String _$passwordRecoveryHash() => r'3f52133f83dc859933b0763f296ab7276aa48869';
 
 /// Convenience view: the signed-in user or `null`.
 

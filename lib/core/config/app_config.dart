@@ -6,16 +6,17 @@ part 'app_config.g.dart';
 
 /// Immutable runtime configuration derived from the [Flavor].
 ///
-/// There is no simulated backend: every flavor talks to Firebase. Local
-/// development against fake data goes through the emulator suite
-/// (`USE_EMULATORS=true`), which runs the real security rules.
+/// There is no simulated backend: every flavor talks to a Supabase project,
+/// given at build time (`--dart-define=SUPABASE_URL=…` and
+/// `--dart-define=SUPABASE_ANON_KEY=…`). Point them at a local stack
+/// (`supabase start`) for development against disposable data.
 @immutable
 class AppConfig {
   const AppConfig({
     required this.flavor,
     required this.appName,
-    required this.useFirebaseEmulators,
-    this.emulatorHost = '10.0.2.2',
+    this.supabaseUrl = const String.fromEnvironment('SUPABASE_URL'),
+    this.supabaseAnonKey = const String.fromEnvironment('SUPABASE_ANON_KEY'),
     this.profileGracePeriod = const Duration(seconds: 3),
     this.googleServerClientId = const String.fromEnvironment(
       'GOOGLE_SERVER_CLIENT_ID',
@@ -29,57 +30,50 @@ class AppConfig {
     Flavor.dev => const AppConfig(
       flavor: Flavor.dev,
       appName: 'EventHub (dev)',
-      useFirebaseEmulators: bool.fromEnvironment('USE_EMULATORS'),
     ),
     Flavor.staging => const AppConfig(
       flavor: Flavor.staging,
       appName: 'EventHub (staging)',
-      useFirebaseEmulators: false,
     ),
-    Flavor.prod => const AppConfig(
-      flavor: Flavor.prod,
-      appName: 'EventHub',
-      useFirebaseEmulators: false,
-    ),
+    Flavor.prod => const AppConfig(flavor: Flavor.prod, appName: 'EventHub'),
   };
 
-  /// Region of the callable Cloud Functions. Must equal `REGION` in
-  /// `functions/src/index.ts`, itself aligned on the Firestore location
-  /// (`nam5` → `us-central1`).
-  static const functionsRegion = 'us-central1';
+  /// Where Supabase Auth sends people back to the app: email confirmation,
+  /// password reset. Declared in `supabase/config.toml`
+  /// (`additional_redirect_urls`) and as an intent filter in
+  /// AndroidManifest.xml.
+  static const authRedirectUrl = 'eventhub://auth-callback';
 
   final Flavor flavor;
   final String appName;
 
-  /// When true, Auth/Firestore/Storage/Functions use the local emulators.
-  final bool useFirebaseEmulators;
+  /// `https://<project-ref>.supabase.co`.
+  final String supabaseUrl;
 
-  /// Host used to reach the emulators (10.0.2.2 = host loopback from the
-  /// Android emulator; use the machine LAN IP for a physical device).
-  final String emulatorHost;
+  /// The project's public (anon) key. Safe to ship: it grants nothing that
+  /// Row Level Security does not allow a signed-in user.
+  final String supabaseAnonKey;
 
-  /// Delay tolerated between Firebase user creation and the Firestore profile
-  /// write before the session is reported as `ProfileMissing`.
+  /// Delay tolerated between account creation and its profile row before
+  /// the session is reported as `ProfileMissing`.
   final Duration profileGracePeriod;
 
-  /// OAuth *web* client id of the Firebase project, required by Google
-  /// Sign-In on Android to obtain an ID token
+  /// OAuth *web* client id of the Google Cloud project, required by native
+  /// Google Sign-In to obtain an ID token that Supabase Auth accepts
   /// (`--dart-define=GOOGLE_SERVER_CLIENT_ID=…apps.googleusercontent.com`).
   /// Empty → the Google button is hidden on Android rather than failing.
   final String googleServerClientId;
 
-  /// Public "Web Push certificate" key of the project
-  /// (`--dart-define=FIREBASE_WEB_VAPID_KEY=…`). Empty → no web push.
+  /// Public "Web Push certificate" key of the Firebase project, which still
+  /// delivers push notifications (`--dart-define=FIREBASE_WEB_VAPID_KEY=…`).
+  /// Empty → no web push.
   final String webPushVapidKey;
 
-  /// reCAPTCHA v3 site key registered for App Check on the web
-  /// (`--dart-define=APP_CHECK_RECAPTCHA_SITE_KEY=…`). Empty → App Check is
-  /// not activated on the web.
-  String get appCheckWebSiteKey =>
-      const String.fromEnvironment('APP_CHECK_RECAPTCHA_SITE_KEY');
+  bool get hasBackend => supabaseUrl.isNotEmpty && supabaseAnonKey.isNotEmpty;
 
-  /// Google Sign-In needs no extra configuration on the web (popup) and on
-  /// iOS (client id in Info.plist); Android needs [googleServerClientId].
+  /// Google Sign-In needs no extra configuration on the web (OAuth redirect)
+  /// and on iOS (client id in Info.plist); Android needs
+  /// [googleServerClientId].
   bool get isGoogleSignInAvailable =>
       kIsWeb ||
       defaultTargetPlatform == TargetPlatform.iOS ||

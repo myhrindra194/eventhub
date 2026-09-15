@@ -432,6 +432,8 @@ abstract final class AppStrings {
   static const resendVerification = 'Renvoyer le lien';
   static const iVerifiedEmail = 'C’est fait';
   static const verificationSent = 'Lien de vérification envoyé.';
+  static String confirmEmailSent(String email) =>
+      'Compte créé. Ouvrez le lien envoyé à $email, puis connectez-vous.';
   static const stillNotVerified =
       'Adresse pas encore confirmée. Ouvrez le lien reçu par email, puis '
       'réessayez.';
@@ -458,6 +460,10 @@ abstract final class AppStrings {
   // Changement de mot de passe
   static const changePassword = 'Changer le mot de passe';
   static const changePasswordTitle = 'Nouveau mot de passe.';
+  static const recoveryPasswordTitle = 'Choisissez un mot de passe.';
+  static const recoveryPasswordLead =
+      'Le lien reçu par email confirme que c’est bien vous : il ne reste qu’à '
+      'choisir le nouveau mot de passe.';
   static const changePasswordLead =
       'Saisissez votre mot de passe actuel, puis celui que vous souhaitez '
       'utiliser désormais.';

@@ -16,10 +16,8 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$UserDto {
 
- String get name; String get email;@JsonKey(unknownEnumValue: UserRole.participant) UserRole get role;@NullableTimestampConverter() DateTime? get createdAt;/// Published on `organizers/{uid}` by the `syncOrganizerProfile` Cloud
-/// Function. `includeIfNull: false`: a profile without a bio is created
-/// without the field, which the rules accept either way.
-@JsonKey(includeIfNull: false) String? get bio;
+ String get name; String get email;@JsonKey(unknownEnumValue: UserRole.participant) UserRole get role;@JsonKey(name: 'created_at')@NullableTimestampConverter() DateTime? get createdAt;/// Published on `organizers` by a trigger when the profile changes.
+ String? get bio;
 /// Create a copy of UserDto
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -57,7 +55,7 @@ abstract mixin class $UserDtoCopyWith<$Res>  {
   factory $UserDtoCopyWith(UserDto value, $Res Function(UserDto) _then) = _$UserDtoCopyWithImpl;
 @useResult
 $Res call({
- String name, String email,@JsonKey(unknownEnumValue: UserRole.participant) UserRole role,@NullableTimestampConverter() DateTime? createdAt,@JsonKey(includeIfNull: false) String? bio
+ String name, String email,@JsonKey(unknownEnumValue: UserRole.participant) UserRole role,@JsonKey(name: 'created_at')@NullableTimestampConverter() DateTime? createdAt, String? bio
 });
 
 
@@ -166,7 +164,7 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String name,  String email, @JsonKey(unknownEnumValue: UserRole.participant)  UserRole role, @NullableTimestampConverter()  DateTime? createdAt, @JsonKey(includeIfNull: false)  String? bio)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String name,  String email, @JsonKey(unknownEnumValue: UserRole.participant)  UserRole role, @JsonKey(name: 'created_at')@NullableTimestampConverter()  DateTime? createdAt,  String? bio)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _UserDto() when $default != null:
 return $default(_that.name,_that.email,_that.role,_that.createdAt,_that.bio);case _:
@@ -187,7 +185,7 @@ return $default(_that.name,_that.email,_that.role,_that.createdAt,_that.bio);cas
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String name,  String email, @JsonKey(unknownEnumValue: UserRole.participant)  UserRole role, @NullableTimestampConverter()  DateTime? createdAt, @JsonKey(includeIfNull: false)  String? bio)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String name,  String email, @JsonKey(unknownEnumValue: UserRole.participant)  UserRole role, @JsonKey(name: 'created_at')@NullableTimestampConverter()  DateTime? createdAt,  String? bio)  $default,) {final _that = this;
 switch (_that) {
 case _UserDto():
 return $default(_that.name,_that.email,_that.role,_that.createdAt,_that.bio);case _:
@@ -207,7 +205,7 @@ return $default(_that.name,_that.email,_that.role,_that.createdAt,_that.bio);cas
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String name,  String email, @JsonKey(unknownEnumValue: UserRole.participant)  UserRole role, @NullableTimestampConverter()  DateTime? createdAt, @JsonKey(includeIfNull: false)  String? bio)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String name,  String email, @JsonKey(unknownEnumValue: UserRole.participant)  UserRole role, @JsonKey(name: 'created_at')@NullableTimestampConverter()  DateTime? createdAt,  String? bio)?  $default,) {final _that = this;
 switch (_that) {
 case _UserDto() when $default != null:
 return $default(_that.name,_that.email,_that.role,_that.createdAt,_that.bio);case _:
@@ -222,17 +220,15 @@ return $default(_that.name,_that.email,_that.role,_that.createdAt,_that.bio);cas
 @JsonSerializable()
 
 class _UserDto extends UserDto {
-  const _UserDto({required this.name, required this.email, @JsonKey(unknownEnumValue: UserRole.participant) required this.role, @NullableTimestampConverter() this.createdAt, @JsonKey(includeIfNull: false) this.bio}): super._();
+  const _UserDto({required this.name, required this.email, @JsonKey(unknownEnumValue: UserRole.participant) required this.role, @JsonKey(name: 'created_at')@NullableTimestampConverter() this.createdAt, this.bio}): super._();
   factory _UserDto.fromJson(Map<String, dynamic> json) => _$UserDtoFromJson(json);
 
 @override final  String name;
 @override final  String email;
 @override@JsonKey(unknownEnumValue: UserRole.participant) final  UserRole role;
-@override@NullableTimestampConverter() final  DateTime? createdAt;
-/// Published on `organizers/{uid}` by the `syncOrganizerProfile` Cloud
-/// Function. `includeIfNull: false`: a profile without a bio is created
-/// without the field, which the rules accept either way.
-@override@JsonKey(includeIfNull: false) final  String? bio;
+@override@JsonKey(name: 'created_at')@NullableTimestampConverter() final  DateTime? createdAt;
+/// Published on `organizers` by a trigger when the profile changes.
+@override final  String? bio;
 
 /// Create a copy of UserDto
 /// with the given fields replaced by the non-null parameter values.
@@ -269,7 +265,7 @@ abstract mixin class _$UserDtoCopyWith<$Res> implements $UserDtoCopyWith<$Res> {
   factory _$UserDtoCopyWith(_UserDto value, $Res Function(_UserDto) _then) = __$UserDtoCopyWithImpl;
 @override @useResult
 $Res call({
- String name, String email,@JsonKey(unknownEnumValue: UserRole.participant) UserRole role,@NullableTimestampConverter() DateTime? createdAt,@JsonKey(includeIfNull: false) String? bio
+ String name, String email,@JsonKey(unknownEnumValue: UserRole.participant) UserRole role,@JsonKey(name: 'created_at')@NullableTimestampConverter() DateTime? createdAt, String? bio
 });
 
 

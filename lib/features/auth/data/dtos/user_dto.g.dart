@@ -14,7 +14,7 @@ _UserDto _$UserDtoFromJson(Map<String, dynamic> json) => _UserDto(
     json['role'],
     unknownValue: UserRole.participant,
   ),
-  createdAt: const NullableTimestampConverter().fromJson(json['createdAt']),
+  createdAt: const NullableTimestampConverter().fromJson(json['created_at']),
   bio: json['bio'] as String?,
 );
 
@@ -22,8 +22,8 @@ Map<String, dynamic> _$UserDtoToJson(_UserDto instance) => <String, dynamic>{
   'name': instance.name,
   'email': instance.email,
   'role': _$UserRoleEnumMap[instance.role]!,
-  'createdAt': const NullableTimestampConverter().toJson(instance.createdAt),
-  'bio': ?instance.bio,
+  'created_at': const NullableTimestampConverter().toJson(instance.createdAt),
+  'bio': instance.bio,
 };
 
 const _$UserRoleEnumMap = {

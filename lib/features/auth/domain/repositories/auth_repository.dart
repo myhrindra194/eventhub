@@ -28,7 +28,7 @@ abstract interface class AuthRepository {
     required UserRole role,
   });
 
-  /// Creates the Firestore profile for an already-authenticated account
+  /// Creates the profile for an already-authenticated account
   /// (recovery path for [ProfileMissing], and first Google sign-in).
   AsyncResult<AppUser> completeProfile({
     required String name,
@@ -66,13 +66,21 @@ abstract interface class AuthRepository {
     required String newPassword,
   });
 
+  /// Fires when a password-reset link opens the app. The session is then a
+  /// recovery session, and the app asks for a new password.
+  Stream<void> get passwordRecoveries;
+
+  /// Sets a new password without the current one — only meaningful right
+  /// after a recovery link, which proved ownership of the address.
+  AsyncResult<void> setNewPassword(String newPassword);
+
   /// Whether the signed-in account has a password credential (otherwise it
   /// is a Google account). Decides how [deleteAccount] re-authenticates.
   bool get usesPasswordSignIn;
 
   /// Re-authenticates ([password] for a password account, Google otherwise),
-  /// then deletes the account server-side (Cloud Function `deleteAccount`)
-  /// and signs out.
+  /// then deletes the account server-side (`delete_my_account`) and signs
+  /// out.
   AsyncResult<void> deleteAccount({String? password});
 
   AsyncResult<void> signOut();

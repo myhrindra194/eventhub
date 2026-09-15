@@ -54,7 +54,7 @@ class AppBadge extends StatelessWidget {
       ),
       decoration: BoxDecoration(
         color: bg,
-        borderRadius: AppRadius.brPill,
+        borderRadius: AppRadius.brButton,
         border: border == null ? null : Border.all(color: border),
       ),
       child: Row(
@@ -115,7 +115,7 @@ class _LiveBadgeState extends State<LiveBadge>
       ),
       decoration: BoxDecoration(
         color: colors.solid,
-        borderRadius: AppRadius.brPill,
+        borderRadius: AppRadius.brButton,
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -226,7 +226,7 @@ class CountBadge extends StatelessWidget {
       alignment: Alignment.center,
       decoration: BoxDecoration(
         color: colors.solid,
-        borderRadius: AppRadius.brPill,
+        borderRadius: AppRadius.brButton,
       ),
       child: Text(
         count > max ? '$max+' : '$count',

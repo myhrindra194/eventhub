@@ -32,7 +32,6 @@ class TicketCard extends StatelessWidget {
     return Opacity(
       opacity: active ? 1 : 0.62,
       child: AppSurface.bare(
-        radius: AppRadius.lg,
         elevation: active ? SurfaceElevation.low : SurfaceElevation.flat,
         onTap: onTap,
         child: IntrinsicHeight(

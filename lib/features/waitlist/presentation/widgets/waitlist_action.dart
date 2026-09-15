@@ -43,7 +43,6 @@ class WaitlistAction extends ConsumerWidget {
     if (!waiting) {
       return AppButton.primary(
         label: AppStrings.joinWaitlist,
-        icon: Icons.hourglass_top_rounded,
         isLoading: busy,
         onPressed: () => _run(
           context,

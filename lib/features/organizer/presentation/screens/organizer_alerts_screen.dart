@@ -59,8 +59,7 @@ class OrganizerAlertsScreen extends ConsumerWidget {
                   itemCount: 5,
                   separatorBuilder: (_, __) =>
                       const SizedBox(height: AppSpacing.sm),
-                  itemBuilder: (_, __) =>
-                      const Skeleton(height: 60, radius: AppRadius.button),
+                  itemBuilder: (_, __) => const Skeleton(height: 60),
                 ),
               ),
               empty: const SliverFillRemaining(

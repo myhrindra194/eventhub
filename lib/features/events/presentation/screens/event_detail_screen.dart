@@ -493,7 +493,6 @@ class _InfoTile extends StatelessWidget {
 
     return AppSurface(
       elevation: SurfaceElevation.flat,
-      radius: AppRadius.lg,
       child: wide
           ? Row(
               children: [
@@ -523,7 +522,6 @@ class _CapacityCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return AppSurface(
       elevation: SurfaceElevation.flat,
-      radius: AppRadius.lg,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -733,7 +731,6 @@ class _ActionBar extends ConsumerWidget {
     if (pending != null) {
       action = AppButton.primary(
         label: AppStrings.paymentInProgress,
-        icon: Icons.hourglass_top_rounded,
         onPressed: () => context.push(AppRoutes.paymentPath(pending!.id)),
       );
     } else if (reservation != null) {
@@ -750,7 +747,6 @@ class _ActionBar extends ConsumerWidget {
             flex: 2,
             child: AppButton.primary(
               label: AppStrings.viewTicket,
-              icon: Icons.confirmation_number_rounded,
               onPressed: () =>
                   context.push(AppRoutes.ticketPath(reservation!.id)),
             ),
@@ -774,14 +770,12 @@ class _ActionBar extends ConsumerWidget {
         _Availability.lastSeats => AppButton(
           label: AppStrings.grabLast,
           variant: AppButtonVariant.danger,
-          icon: Icons.local_fire_department_rounded,
           isLoading: isBusy,
           loadingLabel: 'Réservation…',
           onPressed: isParticipant ? () => _reserve(context, ref) : null,
         ),
         _Availability.available => AppButton.primary(
           label: bookLabel,
-          icon: Icons.confirmation_number_rounded,
           isLoading: isBusy,
           loadingLabel: 'Réservation…',
           onPressed: isParticipant ? () => _reserve(context, ref) : null,

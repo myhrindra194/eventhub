@@ -90,7 +90,7 @@ class _EventImagePickerState extends State<EventImagePicker> {
                       ),
                       decoration: BoxDecoration(
                         color: t.brand,
-                        borderRadius: AppRadius.brPill,
+                        borderRadius: AppRadius.brButton,
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,

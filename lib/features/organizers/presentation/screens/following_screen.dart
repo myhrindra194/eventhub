@@ -79,7 +79,7 @@ class _FollowingRow extends ConsumerWidget {
     return profile.when(
       loading: () => const Padding(
         padding: EdgeInsets.all(AppSpacing.lg),
-        child: Skeleton(height: 40, radius: AppRadius.button),
+        child: Skeleton(height: 40),
       ),
       error: (_, __) => const SizedBox.shrink(),
       data: (p) {

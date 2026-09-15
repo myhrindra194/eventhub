@@ -27,29 +27,36 @@ abstract final class AppSpacing {
 
 /// Corner radii.
 ///
-/// The scale is *nested-aware*: a child inside a container of radius `r`
-/// uses the step below, which keeps concentric corners visually parallel.
+/// The scale is **deliberately flat at 6 px**. Every rounded rectangle —
+/// button, field, card, chip, badge, sheet, dialog, snack bar, image, track —
+/// takes the same drawn edge. The named steps (`xs` … `xxxl`) are kept so
+/// call sites still say *which* role a corner plays, but they all resolve to
+/// the same value: one sharp edge, repeated, reads as a decision; a ladder of
+/// neighbouring radii reads as a default template.
+///
+/// Circles are a different shape, not a bigger radius: avatars, status dots,
+/// pager dots and round icon-only buttons use `BoxShape.circle` /
+/// `CircleBorder`, never a radius.
 abstract final class AppRadius {
-  /// Controls the user *acts on* get a deliberately tight radius.
-  ///
   /// 6 px is not a rounded rectangle pretending to be a pill: it reads as a
-  /// drawn edge. Large radii on buttons are the single strongest tell of a
-  /// default template, and the product's identity lives in its photography
-  /// and its type, not in soft corners.
+  /// drawn edge. Large radii are the single strongest tell of a default
+  /// template, and the product's identity lives in its photography and its
+  /// type, not in soft corners.
   static const button = 6.0;
 
-  /// Fields share the button radius. One value for every rectangle a user
-  /// types into or taps — a single sharp edge, repeated, reads as a decision;
-  /// three neighbouring radii read as an accident.
+  /// Fields share the button radius.
   static const input = button;
 
-  static const xs = 8.0;
-  static const sm = 12.0;
-  static const md = 16.0;
-  static const lg = 20.0;
-  static const xl = 24.0;
-  static const xxl = 28.0;
-  static const xxxl = 34.0;
+  static const xs = button;
+  static const sm = button;
+  static const md = button;
+  static const lg = button;
+  static const xl = button;
+  static const xxl = button;
+  static const xxxl = button;
+
+  /// Fully rounded ends. Reserved for pager dots and hairline indicators
+  /// whose height *is* their diameter — never for a shape that holds text.
   static const pill = 999.0;
 
   static const brButton = BorderRadius.all(Radius.circular(button));
@@ -62,8 +69,8 @@ abstract final class AppRadius {
   static const brXxl = BorderRadius.all(Radius.circular(xxl));
   static const brPill = BorderRadius.all(Radius.circular(pill));
 
-  /// Top-only rounding used by bottom sheets and content sheets that
-  /// overlap a hero image.
+  /// Top-only rounding of the content sheet that overlaps a hero image.
+  /// Same 6 px as everything else.
   static const brSheet = BorderRadius.vertical(top: Radius.circular(xxxl));
 
   /// Modal bottom sheets use the control radius, not [brSheet]: a sheet is

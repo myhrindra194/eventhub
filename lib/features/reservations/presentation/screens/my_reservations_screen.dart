@@ -75,8 +75,7 @@ class _MyReservationsScreenState extends ConsumerState<MyReservationsScreen> {
                     itemCount: 3,
                     separatorBuilder: (_, __) =>
                         const SizedBox(height: AppSpacing.md),
-                    itemBuilder: (_, __) =>
-                        const Skeleton(height: 132, radius: AppRadius.lg),
+                    itemBuilder: (_, __) => const Skeleton(height: 132),
                   ),
                 ),
                 empty: SliverFillRemaining(
@@ -87,7 +86,6 @@ class _MyReservationsScreenState extends ConsumerState<MyReservationsScreen> {
                     message: AppStrings.noTickets,
                     action: AppButton.primary(
                       label: AppStrings.exploreEvents,
-                      icon: Icons.explore_rounded,
                       expand: false,
                       onPressed: () => context.go(AppRoutes.events),
                     ),

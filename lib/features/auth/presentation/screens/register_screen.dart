@@ -201,7 +201,7 @@ class _IdentityStepState extends State<_IdentityStep> {
                     icon: Icons.mail_outline_rounded,
                     controller: widget.email,
                     label: 'Email',
-                    hint: 'Entrez votre adresse emailcl',
+                    hint: 'Entrez votre adresse email',
                     keyboardType: TextInputType.emailAddress,
                     autofillHints: const [AutofillHints.email],
                     validator: Validators.email,
@@ -234,7 +234,6 @@ class _IdentityStepState extends State<_IdentityStep> {
               const SizedBox(height: AppSpacing.xl),
               AppButton.primary(
                 label: AppStrings.continueLabel,
-                trailingIcon: Icons.arrow_forward_rounded,
                 elevated: false,
                 onPressed: widget.onContinue,
               ),

@@ -227,7 +227,6 @@ class _EventFormState extends ConsumerState<_EventForm> {
         child: AppButton.primary(
           label: _isEditing ? AppStrings.save : AppStrings.publish,
           loadingLabel: _isEditing ? 'Enregistrement…' : 'Publication…',
-          icon: _isEditing ? Icons.check_rounded : Icons.rocket_launch_rounded,
           isLoading: isLoading,
           onPressed: _submit,
         ),
@@ -368,7 +367,6 @@ class _EventFormState extends ConsumerState<_EventForm> {
                 vertical: AppSpacing.xs,
               ),
               elevation: SurfaceElevation.flat,
-              radius: AppRadius.button,
               child: SwitchListTile.adaptive(
                 contentPadding: EdgeInsets.zero,
                 value: _useTiers,
@@ -683,7 +681,6 @@ class _TiersEditor extends StatelessWidget {
         if (tiers.length < EventTier.maxTiers)
           AppButton.secondary(
             label: AppStrings.addTicketType,
-            icon: Icons.add_rounded,
             size: AppButtonSize.medium,
             elevated: false,
             onPressed: onAdd,
@@ -756,7 +753,7 @@ class _CategoryPicker extends StatelessWidget {
                 color: category == value
                     ? category.color(context)
                     : t.surfaceSunken,
-                borderRadius: AppRadius.brPill,
+                borderRadius: AppRadius.brButton,
                 border: Border.all(
                   color: category == value ? category.color(context) : t.border,
                 ),

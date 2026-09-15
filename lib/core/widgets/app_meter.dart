@@ -49,7 +49,7 @@ class CapacityMeter extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         ClipRRect(
-          borderRadius: BorderRadius.circular(height),
+          borderRadius: AppRadius.brButton,
           child: TweenAnimationBuilder<double>(
             tween: Tween(begin: 0, end: _fill.clamp(0.0, 1.0)),
             duration: AppMotion.long,

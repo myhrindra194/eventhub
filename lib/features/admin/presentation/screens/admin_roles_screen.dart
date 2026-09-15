@@ -110,7 +110,6 @@ class _AdminRolesScreenState extends ConsumerState<AdminRolesScreen> {
           const SizedBox(height: AppSpacing.md),
           AppButton.primary(
             label: AppStrings.grantAdmin,
-            icon: Icons.add_moderator_outlined,
             elevated: false,
             isLoading: busy,
             loadingLabel: AppStrings.decisionSending,

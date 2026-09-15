@@ -71,11 +71,10 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
       title: AppStrings.completeProfile,
       lead: AppStrings.completeProfileHint,
       hero: const AuthHeroIcon(icon: Icons.person_add_alt_rounded),
-      footer: TextButton.icon(
+      footer: TextButton(
         onPressed: () => ref.read(authControllerProvider.notifier).signOut(),
-        icon: const Icon(Icons.logout_rounded, size: 16),
-        label: const Text(AppStrings.logout),
         style: TextButton.styleFrom(foregroundColor: t.textSecondary),
+        child: const Text(AppStrings.logout),
       ),
       children: [
         Form(
@@ -106,7 +105,6 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
               AppButton.primary(
                 label: AppStrings.continueLabel,
                 isLoading: isLoading,
-                trailingIcon: Icons.arrow_forward_rounded,
                 elevated: false,
                 onPressed: _submit,
               ),

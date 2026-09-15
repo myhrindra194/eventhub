@@ -151,7 +151,7 @@ class _Pill extends StatelessWidget {
       curve: AppMotion.standard,
       decoration: BoxDecoration(
         color: selected ? color : t.surface,
-        borderRadius: AppRadius.brPill,
+        borderRadius: AppRadius.brButton,
         border: Border.all(color: selected ? color : t.border),
         boxShadow: selected
             ? [
@@ -167,7 +167,7 @@ class _Pill extends StatelessWidget {
         color: Colors.transparent,
         child: InkWell(
           onTap: onTap,
-          borderRadius: AppRadius.brPill,
+          borderRadius: AppRadius.brButton,
           child: Padding(
             padding: const EdgeInsets.symmetric(
               horizontal: AppSpacing.lg,
@@ -245,7 +245,7 @@ class FilterButton extends ConsumerWidget {
                   padding: const EdgeInsets.symmetric(horizontal: 6),
                   decoration: BoxDecoration(
                     color: Colors.white.withValues(alpha: 0.25),
-                    borderRadius: AppRadius.brPill,
+                    borderRadius: AppRadius.brButton,
                   ),
                   child: Text(
                     '$count',
@@ -342,7 +342,6 @@ class _FilterSheet extends ConsumerWidget {
                 vertical: AppSpacing.sm,
               ),
               elevation: SurfaceElevation.flat,
-              radius: AppRadius.button,
               color: t.surfaceSunken,
               child: SwitchListTile.adaptive(
                 contentPadding: EdgeInsets.zero,

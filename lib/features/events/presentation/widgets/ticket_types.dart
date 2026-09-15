@@ -149,9 +149,6 @@ class _TicketTypePickerState extends State<_TicketTypePicker> {
               : selected.isFree
               ? AppStrings.bookFree
               : AppStrings.payAmount(Money.format(selected.price, currency)),
-          icon: selected == null || selected.isFree
-              ? Icons.confirmation_number_rounded
-              : Icons.lock_rounded,
           elevated: false,
           onPressed: selected == null
               ? null

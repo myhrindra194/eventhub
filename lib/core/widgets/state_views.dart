@@ -173,7 +173,6 @@ class ErrorStateView extends StatelessWidget {
         ? null
         : AppButton.secondary(
             label: AppStrings.retry,
-            icon: Icons.refresh_rounded,
             expand: false,
             size: AppButtonSize.medium,
             onPressed: onRetry,

@@ -74,11 +74,7 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
                 textAlign: TextAlign.center,
               ),
               const Spacer(flex: 2),
-              AppButton.primary(
-                label: cta,
-                trailingIcon: Icons.arrow_forward_rounded,
-                onPressed: _goHome,
-              ),
+              AppButton.primary(label: cta, onPressed: _goHome),
               const SizedBox(height: AppSpacing.lg),
               Text(
                 AppStrings.redirecting,

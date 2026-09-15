@@ -64,7 +64,9 @@ abstract final class AppTheme {
         backgroundColor: Colors.transparent,
         surfaceTintColor: Colors.transparent,
         indicatorColor: t.brandSoft,
-        indicatorShape: const StadiumBorder(),
+        indicatorShape: const RoundedRectangleBorder(
+          borderRadius: AppRadius.brButton,
+        ),
         height: AppSizes.navBarHeight,
         elevation: 0,
         labelBehavior: NavigationDestinationLabelBehavior.onlyShowSelected,
@@ -215,7 +217,7 @@ abstract final class AppTheme {
         labelStyle: text.labelLarge,
         secondaryLabelStyle: text.labelLarge?.copyWith(color: t.textOnBrand),
         side: BorderSide(color: t.border),
-        shape: const StadiumBorder(),
+        shape: const RoundedRectangleBorder(borderRadius: AppRadius.brButton),
         padding: const EdgeInsets.symmetric(
           horizontal: AppSpacing.md,
           vertical: AppSpacing.sm,
@@ -303,7 +305,7 @@ abstract final class AppTheme {
         dividerColor: Colors.transparent,
         indicator: UnderlineTabIndicator(
           borderSide: BorderSide(color: t.brand, width: 2.5),
-          borderRadius: AppRadius.brPill,
+          borderRadius: AppRadius.brButton,
         ),
       ),
       scrollbarTheme: ScrollbarThemeData(

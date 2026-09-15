@@ -66,14 +66,12 @@ Future<void> showShareEventSheet(BuildContext context, Event event) {
         actions: [
           AppButton.primary(
             label: AppStrings.shareNative,
-            icon: Icons.ios_share_rounded,
             elevated: false,
             onPressed: shareNative,
           ),
           const SizedBox(height: AppSpacing.md),
           AppButton.secondary(
             label: AppStrings.copyInvitation,
-            icon: Icons.notes_rounded,
             elevated: false,
             onPressed: () async {
               await Clipboard.setData(ClipboardData(text: _invitation(event)));

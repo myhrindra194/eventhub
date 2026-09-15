@@ -100,8 +100,7 @@ class _Results extends ConsumerWidget {
         sliver: SliverList.separated(
           itemCount: 4,
           separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.md),
-          itemBuilder: (_, __) =>
-              const Skeleton(height: 108, radius: AppRadius.lg),
+          itemBuilder: (_, __) => const Skeleton(height: 108),
         ),
       ),
       empty: SliverFillRemaining(
@@ -180,7 +179,6 @@ class _CategoryCard extends ConsumerWidget {
 
     return AppSurface(
       elevation: SurfaceElevation.flat,
-      radius: AppRadius.lg,
       color: category.tint(context),
       borderColor: color.withValues(alpha: 0.22),
       onTap: () =>

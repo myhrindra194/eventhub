@@ -143,7 +143,6 @@ class OrganizerEventTile extends StatelessWidget {
                     Expanded(
                       child: AppButton.tonal(
                         label: AppStrings.participants,
-                        icon: Icons.groups_2_rounded,
                         size: AppButtonSize.small,
                         expand: true,
                         onPressed: onParticipants,

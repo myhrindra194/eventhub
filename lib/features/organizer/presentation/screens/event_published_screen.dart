@@ -99,13 +99,11 @@ class EventPublishedScreen extends ConsumerWidget {
               const Spacer(flex: 2),
               AppButton.primary(
                 label: AppStrings.viewDashboard,
-                icon: Icons.dashboard_rounded,
                 onPressed: () => context.go(AppRoutes.organizerEvents),
               ),
               const SizedBox(height: AppSpacing.md),
               AppButton.secondary(
                 label: AppStrings.share,
-                icon: Icons.ios_share_rounded,
                 onPressed: event == null
                     ? null
                     : () => showShareEventSheet(context, event),

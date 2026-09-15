@@ -56,11 +56,11 @@ class OrganizerStatsScreen extends ConsumerWidget {
                 padding: EdgeInsets.symmetric(horizontal: AppSpacing.gutter),
                 sliver: SliverList(
                   delegate: SliverChildListDelegate.fixed([
-                    Skeleton(height: 110, radius: AppRadius.button),
+                    Skeleton(height: 110),
                     SizedBox(height: AppSpacing.lg),
-                    Skeleton(height: 150, radius: AppRadius.button),
+                    Skeleton(height: 150),
                     SizedBox(height: AppSpacing.lg),
-                    Skeleton(height: 200, radius: AppRadius.button),
+                    Skeleton(height: 200),
                   ]),
                 ),
               ),
@@ -74,7 +74,6 @@ class OrganizerStatsScreen extends ConsumerWidget {
                       'réservations apparaîtront ici en direct.',
                   action: AppButton.primary(
                     label: AppStrings.createFirstEvent,
-                    icon: Icons.add_rounded,
                     expand: false,
                     onPressed: () => context.push(AppRoutes.organizerEventNew),
                   ),
@@ -323,13 +322,8 @@ class _BookingsChartState extends State<_BookingsChart> {
                 ],
               ),
             ),
-            TextButton.icon(
+            TextButton(
               onPressed: () => setState(() => _asTable = !_asTable),
-              icon: Icon(
-                _asTable ? Icons.bar_chart_rounded : Icons.table_rows_outlined,
-                size: 16,
-              ),
-              label: Text(_asTable ? 'Graphique' : 'Tableau'),
               style: TextButton.styleFrom(
                 foregroundColor: t.textSecondary,
                 visualDensity: VisualDensity.compact,
@@ -337,6 +331,7 @@ class _BookingsChartState extends State<_BookingsChart> {
                   borderRadius: AppRadius.brButton,
                 ),
               ),
+              child: Text(_asTable ? 'Graphique' : 'Tableau'),
             ),
           ],
         ),
@@ -407,7 +402,7 @@ class _BookingsChartState extends State<_BookingsChart> {
                                     ? t.brand
                                     : t.brand.withValues(alpha: 0.42),
                                 borderRadius: const BorderRadius.vertical(
-                                  top: Radius.circular(4),
+                                  top: Radius.circular(AppRadius.button),
                                 ),
                               ),
                             ),

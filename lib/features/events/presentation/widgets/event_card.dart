@@ -71,7 +71,7 @@ class CategoryChip extends StatelessWidget {
       ),
       decoration: BoxDecoration(
         color: solid ? color : category.tint(context),
-        borderRadius: AppRadius.brPill,
+        borderRadius: AppRadius.brButton,
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -266,7 +266,6 @@ class EventRailCard extends StatelessWidget {
     return SizedBox(
       width: width,
       child: AppSurface.bare(
-        radius: AppRadius.lg,
         onTap: onTap,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -375,7 +374,6 @@ class EventResultTile extends StatelessWidget {
 
     return AppSurface(
       padding: const EdgeInsets.all(AppSpacing.md),
-      radius: AppRadius.lg,
       elevation: SurfaceElevation.flat,
       onTap: onTap,
       child: Row(
@@ -465,6 +463,6 @@ class EventCardSkeleton extends StatelessWidget {
   @override
   Widget build(BuildContext context) => AspectRatio(
     aspectRatio: aspectRatio,
-    child: const Skeleton(height: double.infinity, radius: AppRadius.xl),
+    child: const Skeleton(height: double.infinity),
   );
 }

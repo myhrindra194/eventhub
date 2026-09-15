@@ -14,8 +14,8 @@ pubspec_overrides.yaml
 # *.g.dart
 # *.freezed.dart
 
-# Firebase (secrets & local config)
-lib/firebase_options.dart
+# Firebase (local config). lib/firebase_options.dart is versioned on purpose:
+# it only holds the client keys already embedded in every build of the app.
 android/app/google-services.json
 ios/Runner/GoogleService-Info.plist
 macos/Runner/GoogleService-Info.plist
@@ -45,8 +45,9 @@ ios/Flutter/ephemeral/
 # Coverage
 coverage/
 
-# Local documents
+# Local documents (the product spec is versioned for the team)
 *.pdf
+!EVENTHUB*Cahier des charges MVP.pdf
 *.jpeg
 *.jpg
 !assets/**
@@ -54,9 +55,12 @@ coverage/
 # Local credential files (FCM service account, SMTP, OAuth) — never committed
 secrets/
 
-# Build-time keys per flavor (Supabase URL/anon key, Google client id)
+# Build-time keys per flavor (Supabase URL/anon key, Google client id).
+# env/dev.json is versioned: it only holds public client values (project URL,
+# publishable key). Never put a secret in env/*.json.
 env/*.json
 !env/example.json
+!env/dev.json
 
 # Supabase: database test suite dependencies, local function secrets
 supabase/tests/node_modules/

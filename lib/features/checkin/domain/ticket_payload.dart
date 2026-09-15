@@ -2,10 +2,10 @@
 /// (see `Reservation.ticketPayload`).
 ///
 /// The QR is not signed, and does not need to be: the scanner never trusts
-/// it. It only says *which* reservation to look up; admission is decided from
-/// the reservation document read server-side, and the short code must match
-/// the one derived from that document's id. A forged QR can at best point at
-/// someone else's real booking — which the check-in record then burns.
+/// it. It only says *which* reservation to look up; the short code must match
+/// the one derived from that id, and admission is decided by the database
+/// from the reservation row. A forged QR can at best point at someone else's
+/// real booking — which the check-in record then burns.
 class TicketPayload {
   const TicketPayload({required this.reservationId, required this.code});
 

@@ -55,7 +55,7 @@ final class ReservationRepositoryProvider
 }
 
 String _$reservationRepositoryHash() =>
-    r'67354a1bd07afa8c36cd3a3fbd1a25d82586fa0c';
+    r'9a648e0ac1a7791d7eef0457ef552fc0940c0fd7';
 
 /// Reservations of the signed-in participant.
 
@@ -188,16 +188,14 @@ final class MyReservationForEventFamily extends $Family
   String toString() => r'myReservationForEventProvider';
 }
 
-/// Active reservations of an event the signed-in organizer owns or
-/// co-organizes. The query differs (owner: `organizerId ==`, team:
-/// `eventId ==` only), because each is what the rules can prove.
+/// Confirmed reservations of an event the signed-in organizer owns or
+/// co-organizes. RLS returns nothing to anyone outside the team.
 
 @ProviderFor(eventParticipants)
 final eventParticipantsProvider = EventParticipantsFamily._();
 
-/// Active reservations of an event the signed-in organizer owns or
-/// co-organizes. The query differs (owner: `organizerId ==`, team:
-/// `eventId ==` only), because each is what the rules can prove.
+/// Confirmed reservations of an event the signed-in organizer owns or
+/// co-organizes. RLS returns nothing to anyone outside the team.
 
 final class EventParticipantsProvider
     extends
@@ -209,9 +207,8 @@ final class EventParticipantsProvider
     with
         $FutureModifier<List<Reservation>>,
         $StreamProvider<List<Reservation>> {
-  /// Active reservations of an event the signed-in organizer owns or
-  /// co-organizes. The query differs (owner: `organizerId ==`, team:
-  /// `eventId ==` only), because each is what the rules can prove.
+  /// Confirmed reservations of an event the signed-in organizer owns or
+  /// co-organizes. RLS returns nothing to anyone outside the team.
   EventParticipantsProvider._({
     required EventParticipantsFamily super.from,
     required String super.argument,
@@ -256,11 +253,10 @@ final class EventParticipantsProvider
   }
 }
 
-String _$eventParticipantsHash() => r'7e693d94c3c35c13b38782d969b96e813b72d772';
+String _$eventParticipantsHash() => r'0d88dbb0c12b7f191b30c1319bf47101dd40efa7';
 
-/// Active reservations of an event the signed-in organizer owns or
-/// co-organizes. The query differs (owner: `organizerId ==`, team:
-/// `eventId ==` only), because each is what the rules can prove.
+/// Confirmed reservations of an event the signed-in organizer owns or
+/// co-organizes. RLS returns nothing to anyone outside the team.
 
 final class EventParticipantsFamily extends $Family
     with $FunctionalFamilyOverride<Stream<List<Reservation>>, String> {
@@ -273,9 +269,8 @@ final class EventParticipantsFamily extends $Family
         isAutoDispose: true,
       );
 
-  /// Active reservations of an event the signed-in organizer owns or
-  /// co-organizes. The query differs (owner: `organizerId ==`, team:
-  /// `eventId ==` only), because each is what the rules can prove.
+  /// Confirmed reservations of an event the signed-in organizer owns or
+  /// co-organizes. RLS returns nothing to anyone outside the team.
 
   EventParticipantsProvider call(String eventId) =>
       EventParticipantsProvider._(argument: eventId, from: this);
@@ -384,7 +379,7 @@ final class ReservationControllerProvider
 }
 
 String _$reservationControllerHash() =>
-    r'40af5cc339552d288821015ca3d6b2392304ccf3';
+    r'5044007542727c8ce01699f3baddf2301e6a4f22';
 
 abstract class _$ReservationController extends $AsyncNotifier<void> {
   FutureOr<void> build();

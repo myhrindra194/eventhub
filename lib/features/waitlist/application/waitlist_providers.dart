@@ -1,8 +1,8 @@
 import 'package:eventhub/core/analytics/app_analytics.dart';
 import 'package:eventhub/core/config/app_config.dart';
 import 'package:eventhub/core/errors/failure.dart';
-import 'package:eventhub/core/firebase/firebase_providers.dart';
 import 'package:eventhub/core/result/result.dart';
+import 'package:eventhub/core/supabase/supabase_providers.dart';
 import 'package:eventhub/features/auth/application/auth_providers.dart';
 import 'package:eventhub/features/auth/domain/entities/app_user.dart';
 import 'package:eventhub/features/events/domain/entities/event.dart';
@@ -16,7 +16,7 @@ part 'waitlist_providers.g.dart';
 
 @Riverpod(keepAlive: true)
 WaitlistRepository waitlistRepository(Ref ref) => WaitlistRepositoryImpl(
-  WaitlistRemoteDataSource(ref.watch(firestoreProvider)),
+  WaitlistRemoteDataSource(ref.watch(supabaseClientProvider)),
 );
 
 @riverpod
@@ -57,11 +57,8 @@ class WaitlistController extends _$WaitlistController {
     return result;
   }
 
-  Future<Result<void>> leave(String eventId) => _run(
-    (user) => ref
-        .read(waitlistRepositoryProvider)
-        .leave(eventId: eventId, userId: user.id),
-  );
+  Future<Result<void>> leave(String eventId) =>
+      _run((_) => ref.read(waitlistRepositoryProvider).leave(eventId: eventId));
 
   Future<Result<void>> _run(
     AsyncResult<void> Function(AppUser user) action,

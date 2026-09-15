@@ -15,10 +15,16 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$Reservation {
 
- String get id; String get eventId; String get userId; String get organizerId; String get userName; String get userEmail; String get eventTitle; DateTime get eventStartsAt; String get eventLocation; ReservationStatus get status; DateTime get reservedAt; DateTime? get cancelledAt;/// Ticket type (F-12), copied at booking time.
+ String get id;/// Empty once the event is deleted: the reservation stays as history,
+/// with its snapshot of title, date and place.
+ String get eventId;/// Empty once the participant's account is deleted (the row is
+/// anonymised and kept for the organizer's statistics).
+ String get userId;/// Empty once the organizer's account is deleted.
+ String get organizerId; String get userName; String get userEmail; String get eventTitle; DateTime get eventStartsAt; String get eventLocation; ReservationStatus get status; DateTime get reservedAt; DateTime? get cancelledAt;/// Ticket type (F-12), copied at booking time.
  String? get tierId; String? get tierName;/// Amount actually paid, minor units; 0 for a free seat.
  int get pricePaid;/// Price of a held seat, before payment.
- int? get amountDue; String? get currency;/// `pending`, `paid`, `refunded`, `expired`, `cancelled`, `refund_failed`.
+ int? get amountDue; String? get currency;/// `pending`, `paid`, `refunded`, `expired`, `cancelled`, `failed`,
+/// `refund_failed`.
  String? get paymentStatus;/// Stripe Checkout page to resume a held purchase.
  String? get checkoutUrl; DateTime? get holdExpiresAt;
 /// Create a copy of Reservation
@@ -240,8 +246,13 @@ class _Reservation extends Reservation {
   
 
 @override final  String id;
+/// Empty once the event is deleted: the reservation stays as history,
+/// with its snapshot of title, date and place.
 @override final  String eventId;
+/// Empty once the participant's account is deleted (the row is
+/// anonymised and kept for the organizer's statistics).
 @override final  String userId;
+/// Empty once the organizer's account is deleted.
 @override final  String organizerId;
 @override final  String userName;
 @override final  String userEmail;
@@ -259,7 +270,8 @@ class _Reservation extends Reservation {
 /// Price of a held seat, before payment.
 @override final  int? amountDue;
 @override final  String? currency;
-/// `pending`, `paid`, `refunded`, `expired`, `cancelled`, `refund_failed`.
+/// `pending`, `paid`, `refunded`, `expired`, `cancelled`, `failed`,
+/// `refund_failed`.
 @override final  String? paymentStatus;
 /// Stripe Checkout page to resume a held purchase.
 @override final  String? checkoutUrl;

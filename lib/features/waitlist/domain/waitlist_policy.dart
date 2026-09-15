@@ -4,12 +4,11 @@ import 'package:eventhub/features/auth/domain/entities/app_user.dart';
 import 'package:eventhub/features/events/domain/entities/event.dart';
 import 'package:eventhub/features/reservations/domain/entities/reservation.dart';
 
-/// `events/{eventId}/waitlist/{userId}` — one entry per person, FIFO by
-/// `createdAt`.
+/// `public.waitlist_entries` — one entry per person, FIFO by `created_at`.
 ///
-/// When a seat is released, the `notifyWaitlistOnSeatRelease` Cloud Function
-/// notifies as many people as seats freed, oldest first. There is no hold on
-/// the seat: the first to book gets it. A reservation removes the entry.
+/// When a seat is released, a database trigger notifies as many people as
+/// seats freed, oldest first. There is no hold on the seat: the first to
+/// book gets it. A reservation removes the entry.
 class WaitlistEntry {
   const WaitlistEntry({
     required this.userId,
@@ -26,7 +25,7 @@ class WaitlistEntry {
   final DateTime? notifiedAt;
 }
 
-/// Mirrored in `firestore.rules` (`waitlist` create).
+/// Mirrored in the `join_waitlist` database function, which decides.
 abstract final class WaitlistPolicy {
   static Result<void> canJoin({
     required Event event,

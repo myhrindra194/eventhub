@@ -1,222 +1,115 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:eventhub/core/config/app_config.dart';
-import 'package:eventhub/core/errors/failure.dart';
-import 'package:eventhub/core/errors/failure_exception.dart';
-import 'package:eventhub/core/firebase/firestore_paths.dart';
-import 'package:eventhub/core/result/result.dart';
-import 'package:eventhub/features/auth/domain/entities/app_user.dart';
-import 'package:eventhub/features/events/data/dtos/event_dto.dart';
+import 'package:eventhub/core/supabase/db.dart';
+import 'package:eventhub/core/supabase/supabase_providers.dart';
 import 'package:eventhub/features/reservations/data/dtos/reservation_dto.dart';
 import 'package:eventhub/features/reservations/domain/entities/reservation.dart';
-import 'package:eventhub/features/reservations/domain/policies/reservation_policy.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
-/// Firestore access for `reservations/{id}`.
+/// `public.reservations`.
 ///
-/// `reserve` and `cancel` run as transactions touching both the reservation
-/// and the event document, so `availablePlaces` can never drift from the
-/// number of active reservations, even under concurrent bookings.
+/// Clients only read the table (RLS: the participant sees their own rows,
+/// the event team — owner and co-organizers — the event's rows). Booking
+/// and cancelling a free seat are the `reserve_seat` and
+/// `cancel_reservation` functions: they lock the event, check every rule of
+/// `ReservationPolicy` again and move the seat counters in the same
+/// transaction, so concurrent bookings cannot overbook.
+///
+/// A Realtime stream accepts a single filter: each query keeps the one that
+/// narrows the rows the most on the server, and finishes in Dart.
 class ReservationRemoteDataSource {
-  ReservationRemoteDataSource(FirebaseFirestore firestore, this._clock)
-    : _firestore = firestore,
-      _reservations = firestore.collection(FirestorePaths.reservations),
-      _events = firestore.collection(FirestorePaths.events);
+  const ReservationRemoteDataSource(this._client);
 
-  final FirebaseFirestore _firestore;
-  final Clock _clock;
-  final CollectionReference<Map<String, dynamic>> _reservations;
-  final CollectionReference<Map<String, dynamic>> _events;
+  final SupabaseClient _client;
 
-  /// Upper bound applied to every list query — mirrors the ceiling declared
-  /// in `firestore.rules` (`request.query.limit <= 200`), which rejects an
-  /// unbounded `list` request.
+  /// Bound on a participant's or an organizer's list.
   static const maxPageSize = 200;
 
-  Stream<List<Reservation>> watchByUser(String userId) {
-    return _reservations
-        .where(ReservationFields.userId, isEqualTo: userId)
-        .orderBy(ReservationFields.reservedAt, descending: true)
-        .limit(maxPageSize)
-        .snapshots()
-        .map(_toDomainList);
-  }
+  /// Bound on an event's guest list. Its rows include cancellations, which
+  /// are filtered out in Dart, so the bound is wider than [maxPageSize].
+  static const maxGuestList = 1000;
 
-  Stream<List<Reservation>> watchActiveByEvent({
-    required String eventId,
-    required String organizerId,
-  }) {
-    // Both equality filters are required by the security rules so the query
-    // is provably restricted to the organizer's own data.
-    return _reservations
-        .where(ReservationFields.eventId, isEqualTo: eventId)
-        .where(ReservationFields.organizerId, isEqualTo: organizerId)
-        .where(
-          ReservationFields.status,
-          isEqualTo: ReservationStatus.confirmed.name,
-        )
-        .orderBy(ReservationFields.reservedAt, descending: true)
-        .limit(maxPageSize)
-        .snapshots()
-        .map(_toDomainList);
-  }
+  Stream<List<Reservation>> watchByUser(String userId) => _client
+      .from(Tables.reservations)
+      .stream(primaryKey: ['id'])
+      .eq('user_id', userId)
+      .order('reserved_at')
+      .limit(maxPageSize)
+      .map(_toDomainList)
+      .resilient('reservations:user');
+
+  /// Confirmed seats of an event, most recent first. One query for the
+  /// owner and the co-organizers alike: RLS proves team membership from
+  /// `event_id`.
+  Stream<List<Reservation>> watchActiveByEvent(String eventId) => _client
+      .from(Tables.reservations)
+      .stream(primaryKey: ['id'])
+      .eq('event_id', eventId)
+      .order('reserved_at')
+      .limit(maxGuestList)
+      .map(
+        (rows) => _toDomainList(
+          rows,
+        ).where((r) => r.isActive).toList(growable: false),
+      )
+      .resilient('reservations:event');
 
   /// All statuses: cancellations are part of what an organizer monitors.
-  /// Backed by the `(organizerId, reservedAt desc)` composite index; the
-  /// equality on `organizerId` is what lets the list rule prove access.
-  /// Same list for a co-organizer (F-16). No `organizerId` filter — the
-  /// caller is not the owner — so the rules prove access from the `eventId`
-  /// equality instead (`isEventTeam(resource.data.eventId)`).
-  Stream<List<Reservation>> watchActiveByEventForTeam(String eventId) {
-    return _reservations
-        .where(ReservationFields.eventId, isEqualTo: eventId)
-        .where(ReservationFields.status, isEqualTo: 'confirmed')
-        .orderBy(ReservationFields.reservedAt, descending: true)
-        .limit(maxPageSize)
-        .snapshots()
-        .map(_toDomainList);
-  }
+  Stream<List<Reservation>> watchByOrganizer(String organizerId) => _client
+      .from(Tables.reservations)
+      .stream(primaryKey: ['id'])
+      .eq('organizer_id', organizerId)
+      .order('reserved_at')
+      .limit(maxPageSize)
+      .map(_toDomainList)
+      .resilient('reservations:organizer');
 
-  Stream<List<Reservation>> watchByOrganizer(String organizerId) {
-    return _reservations
-        .where(ReservationFields.organizerId, isEqualTo: organizerId)
-        .orderBy(ReservationFields.reservedAt, descending: true)
-        .limit(maxPageSize)
-        .snapshots()
-        .map(_toDomainList);
-  }
-
-  Stream<Reservation?> watchById(String reservationId) =>
-      _reservations.doc(reservationId).snapshots().map(_toDomainOrNull);
-
-  Future<Reservation> reserve({
+  /// The participant's row for an event. Filtered on `user_id` rather than
+  /// `event_id`: the channel then follows the participant's own history,
+  /// instead of receiving every booking of a popular event only for RLS to
+  /// drop it. `distinct` hides changes to their other reservations.
+  Stream<Reservation?> watchForEvent({
     required String eventId,
-    required AppUser participant,
-    String? tierId,
-  }) {
-    final eventRef = _events.doc(eventId);
-    final reservationId = Reservation.composeId(
-      eventId: eventId,
-      userId: participant.id,
+    required String userId,
+  }) => _client
+      .from(Tables.reservations)
+      .stream(primaryKey: ['id'])
+      .eq('user_id', userId)
+      .map(
+        (rows) =>
+            _toDomainList(rows).where((r) => r.eventId == eventId).firstOrNull,
+      )
+      .distinct()
+      .resilient('reservations:mine:$eventId');
+
+  Stream<Reservation?> watchById(String reservationId) => _client
+      .from(Tables.reservations)
+      .stream(primaryKey: ['id'])
+      .eq('id', reservationId)
+      .map((rows) => rows.isEmpty ? null : _toDomain(rows.first))
+      .resilient('reservation:$reservationId');
+
+  /// A free seat. [tierId] is required by the database on an event with
+  /// ticket types, refused on one without.
+  Future<Reservation> reserve({required String eventId, String? tierId}) async {
+    final row = await _client.rpc<dynamic>(
+      Rpc.reserveSeat,
+      params: {'p_event_id': eventId, 'p_tier_id': tierId},
     );
-    final reservationRef = _reservations.doc(reservationId);
-
-    return _firestore.runTransaction<Reservation>((tx) async {
-      final eventSnap = await tx.get(eventRef);
-      final eventData = eventSnap.data();
-      if (eventData == null) {
-        throw FailureException(
-          NotFoundFailure(
-            resource: 'events/$eventId',
-            message: 'Cet événement n\'existe plus.',
-          ),
-        );
-      }
-      final event = EventDto.fromJson(eventData).toDomain(eventSnap.id);
-      final existing = _toDomainOrNull(await tx.get(reservationRef));
-      final now = _clock();
-
-      if (ReservationPolicy.canReserve(
-            event: event,
-            existing: existing,
-            now: now,
-            tierId: tierId,
-          )
-          case Err(:final failure)) {
-        throw FailureException(failure);
-      }
-      final tier = event.hasTiers ? event.tier(tierId!) : null;
-
-      final reservation = Reservation(
-        id: reservationId,
-        eventId: event.id,
-        userId: participant.id,
-        organizerId: event.organizerId,
-        userName: participant.name,
-        userEmail: participant.email,
-        eventTitle: event.title,
-        eventStartsAt: event.startsAt,
-        eventLocation: event.location,
-        status: ReservationStatus.confirmed,
-        reservedAt: now,
-        tierId: tier?.id,
-        tierName: tier?.name,
-      );
-
-      // The seat leaves the event and its ticket type in the same write:
-      // the rules compare the two (`seatTierConsistent`).
-      tx
-        ..set(reservationRef, ReservationDto.fromDomain(reservation).toJson())
-        ..update(eventRef, {
-          EventFields.availablePlaces: FieldValue.increment(-1),
-          if (tier != null)
-            FieldPath([EventFields.tiers, tier.id, 'available']):
-                FieldValue.increment(-1),
-          EventFields.updatedAt: FieldValue.serverTimestamp(),
-        });
-      return reservation;
-    });
+    return _toDomain(row);
   }
 
-  Future<void> cancel({
-    required String reservationId,
-    required AppUser participant,
-  }) {
-    final reservationRef = _reservations.doc(reservationId);
-
-    return _firestore.runTransaction<void>((tx) async {
-      final reservation = _toDomainOrNull(await tx.get(reservationRef));
-      if (reservation == null) {
-        throw FailureException(
-          NotFoundFailure(
-            resource: 'reservations/$reservationId',
-            message: 'Réservation introuvable.',
-          ),
-        );
-      }
-      if (ReservationPolicy.canCancel(
-            reservation: reservation,
-            userId: participant.id,
-          )
-          case Err(:final failure)) {
-        throw FailureException(failure);
-      }
-
-      final eventRef = _events.doc(reservation.eventId);
-      final eventSnap = await tx.get(eventRef);
-
-      tx.update(reservationRef, {
-        ReservationFields.status: ReservationStatus.cancelled.name,
-        ReservationFields.cancelledAt: Timestamp.fromDate(_clock()),
-      });
-      // The event may have been deleted meanwhile: releasing a seat on a
-      // missing document must not fail the cancellation.
-      if (eventSnap.exists) {
-        final tiers = eventSnap.data()?[EventFields.tiers];
-        final tierId = reservation.tierId;
-        final inTier =
-            tierId != null && tiers is Map && tiers.containsKey(tierId);
-        tx.update(eventRef, {
-          EventFields.availablePlaces: FieldValue.increment(1),
-          if (inTier)
-            FieldPath([EventFields.tiers, tierId, 'available']):
-                FieldValue.increment(1),
-          EventFields.updatedAt: FieldValue.serverTimestamp(),
-        });
-      }
-    });
+  /// Gives a free seat back; the cancelled row is returned.
+  Future<Reservation> cancel(String reservationId) async {
+    final row = await _client.rpc<dynamic>(
+      Rpc.cancelReservation,
+      params: {'p_reservation_id': reservationId},
+    );
+    return _toDomain(row);
   }
 
-  List<Reservation> _toDomainList(
-    QuerySnapshot<Map<String, dynamic>> snapshot,
-  ) => snapshot.docs
-      .map((doc) => ReservationDto.fromJson(doc.data()).toDomain(doc.id))
-      .toList(growable: false);
+  static Reservation _toDomain(Object? row) => ReservationDto.fromJson(
+    Map<String, dynamic>.from(row! as Map),
+  ).toDomain();
 
-  Reservation? _toDomainOrNull(
-    DocumentSnapshot<Map<String, dynamic>> snapshot,
-  ) {
-    final data = snapshot.data();
-    return data == null
-        ? null
-        : ReservationDto.fromJson(data).toDomain(snapshot.id);
-  }
+  static List<Reservation> _toDomainList(List<Map<String, dynamic>> rows) =>
+      rows.map(_toDomain).toList(growable: false);
 }

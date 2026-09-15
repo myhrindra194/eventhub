@@ -1,18 +1,18 @@
-import 'package:eventhub/core/errors/failure.dart';
-import 'package:eventhub/core/errors/failure_exception.dart';
+import 'package:eventhub/core/config/app_config.dart';
 import 'package:eventhub/core/result/result.dart';
 import 'package:eventhub/features/auth/domain/entities/app_user.dart';
-import 'package:eventhub/features/reservations/data/datasources/payment_functions_data_source.dart';
 import 'package:eventhub/features/reservations/data/datasources/reservation_remote_data_source.dart';
 import 'package:eventhub/features/reservations/domain/entities/checkout.dart';
 import 'package:eventhub/features/reservations/domain/entities/reservation.dart';
+import 'package:eventhub/features/reservations/domain/policies/reservation_policy.dart';
 import 'package:eventhub/features/reservations/domain/repositories/reservation_repository.dart';
 
 class ReservationRepositoryImpl implements ReservationRepository {
-  const ReservationRepositoryImpl(this._remote, this._payments);
+  const ReservationRepositoryImpl(this._remote, {required Clock clock})
+    : _clock = clock;
 
   final ReservationRemoteDataSource _remote;
-  final PaymentFunctionsDataSource _payments;
+  final Clock _clock;
 
   @override
   Stream<List<Reservation>> watchByUser(String userId) =>
@@ -36,45 +36,53 @@ class ReservationRepositoryImpl implements ReservationRepository {
   Stream<Reservation?> watchById(String reservationId) =>
       _remote.watchById(reservationId);
 
+  /// The policy is handed to the data source rather than run here: it must
+  /// judge the event and the seat *as the transaction read them*, or two
+  /// people taking the last seat would both pass it.
   @override
   AsyncResult<Reservation> reserve({
     required String eventId,
     required AppUser participant,
     String? tierId,
-  }) {
-    return guard(() {
-      _requireParticipant(participant);
-      return _remote.reserve(eventId: eventId, tierId: tierId);
-    });
-  }
+  }) => guard(
+    () => _remote.reserve(
+      eventId: eventId,
+      participant: participant,
+      tierId: tierId,
+      check: (event, existing) => ReservationPolicy.canReserve(
+        event: event,
+        existing: existing,
+        now: _clock(),
+        tierId: tierId,
+        userId: participant.id,
+      ),
+    ),
+  );
 
   @override
-  AsyncResult<Reservation> cancel({required String reservationId}) =>
-      guard(() => _remote.cancel(reservationId));
+  AsyncResult<Reservation> cancel({
+    required String reservationId,
+    required String userId,
+  }) => guard(
+    () => _remote.cancel(
+      reservationId: reservationId,
+      userId: userId,
+      check: (reservation) =>
+          ReservationPolicy.canCancel(reservation: reservation, userId: userId),
+    ),
+  );
 
   @override
   AsyncResult<CheckoutStart> startCheckout({
     required String eventId,
     required String tierId,
-  }) => guard(() => _payments.startCheckout(eventId: eventId, tierId: tierId));
+  }) async => const Err(ReservationPolicy.paymentUnavailable);
 
   @override
-  AsyncResult<void> cancelPendingCheckout({required String eventId}) =>
-      guard(() => _payments.cancelPending(eventId));
+  AsyncResult<void> cancelPendingCheckout({required String eventId}) async =>
+      const Err(ReservationPolicy.paymentUnavailable);
 
   @override
-  AsyncResult<void> refund({required String eventId}) =>
-      guard(() => _payments.refund(eventId));
-
-  /// The database refuses too; checked here so an organizer gets the precise
-  /// sentence without a round trip.
-  void _requireParticipant(AppUser user) {
-    if (!user.isParticipant) {
-      throw const FailureException(
-        PermissionFailure(
-          message: 'Seul un participant peut réserver une place.',
-        ),
-      );
-    }
-  }
+  AsyncResult<void> refund({required String eventId}) async =>
+      const Err(ReservationPolicy.paymentUnavailable);
 }

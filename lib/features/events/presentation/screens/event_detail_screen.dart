@@ -11,7 +11,6 @@ import 'package:eventhub/core/widgets/design_system.dart';
 import 'package:eventhub/features/auth/application/auth_providers.dart';
 import 'package:eventhub/features/events/application/event_providers.dart';
 import 'package:eventhub/features/events/domain/entities/event.dart';
-import 'package:eventhub/features/events/domain/entities/event_tier.dart';
 import 'package:eventhub/features/events/presentation/widgets/event_card.dart';
 import 'package:eventhub/features/events/presentation/widgets/share_event_sheet.dart';
 import 'package:eventhub/features/events/presentation/widgets/social_proof_row.dart';
@@ -21,13 +20,13 @@ import 'package:eventhub/features/moderation/domain/report.dart';
 import 'package:eventhub/features/moderation/presentation/widgets/report_sheet.dart';
 import 'package:eventhub/features/reservations/application/reservation_providers.dart';
 import 'package:eventhub/features/reservations/domain/entities/reservation.dart';
+import 'package:eventhub/features/reservations/domain/policies/reservation_policy.dart';
 import 'package:eventhub/features/reviews/presentation/widgets/reviews_section.dart';
 import 'package:eventhub/features/waitlist/presentation/widgets/waitlist_action.dart';
 import 'package:eventhub/routes/routes.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 /// Event detail — the conversion screen.
 ///
@@ -631,13 +630,17 @@ class _ActionBar extends ConsumerWidget {
   final Reservation? pending;
 
   /// A simple event books directly; an event with ticket types asks which
-  /// one first, then books a free seat or opens the payment.
+  /// one first. Only a free seat is bookable without a payment server: the
+  /// picker keeps paid types disabled.
   Future<void> _reserve(BuildContext context, WidgetRef ref) async {
     String? tierId;
     if (event.hasTiers) {
       final tier = await showTicketTypePicker(context, event);
       if (tier == null || !context.mounted) return;
-      if (!tier.isFree) return _checkout(context, ref, tier);
+      if (!tier.isFree) {
+        context.showFailure(ReservationPolicy.paymentUnavailable);
+        return;
+      }
       tierId = tier.id;
     }
     final result = await ref
@@ -649,32 +652,6 @@ class _ActionBar extends ConsumerWidget {
         unawaited(
           context.push(AppRoutes.reservationConfirmationPath(value.id)),
         );
-      case Err(:final failure):
-        context.showFailure(failure);
-    }
-  }
-
-  Future<void> _checkout(
-    BuildContext context,
-    WidgetRef ref,
-    EventTier tier,
-  ) async {
-    final result = await ref
-        .read(reservationControllerProvider.notifier)
-        .startCheckout(eventId: event.id, tierId: tier.id);
-    if (!context.mounted) return;
-    switch (result) {
-      case Ok(:final value):
-        // The payment screen follows the reservation; the Stripe page opens
-        // on top of the app, in the browser.
-        unawaited(context.push(AppRoutes.paymentPath(value.reservationId)));
-        final opened = await launchUrl(
-          value.url,
-          mode: LaunchMode.externalApplication,
-        ).catchError((_) => false);
-        if (!opened && context.mounted) {
-          context.showToast(AppStrings.openPaymentFailed);
-        }
       case Err(:final failure):
         context.showFailure(failure);
     }
@@ -718,8 +695,10 @@ class _ActionBar extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isBusy = ref.watch(reservationControllerProvider).isLoading;
-    final isParticipant =
-        ref.watch(currentUserProvider)?.isParticipant ?? false;
+    // One account, two spaces: any signed-in account books or waits, except
+    // the event's own team, which the rules refuse.
+    final user = ref.watch(currentUserProvider);
+    final canBook = user != null && !event.isManagedBy(user.id);
     final bottom = MediaQuery.paddingOf(context).bottom;
 
     // Paid-only events say "choose a ticket" rather than "book my seat".
@@ -761,7 +740,7 @@ class _ActionBar extends ConsumerWidget {
         ),
         // A sold-out event is a queue, not a dead end.
         _Availability.soldOut =>
-          isParticipant
+          canBook
               ? WaitlistAction(event: event)
               : const AppButton.primary(
                   label: AppStrings.soldOut,
@@ -772,13 +751,13 @@ class _ActionBar extends ConsumerWidget {
           variant: AppButtonVariant.danger,
           isLoading: isBusy,
           loadingLabel: 'Réservation…',
-          onPressed: isParticipant ? () => _reserve(context, ref) : null,
+          onPressed: canBook ? () => _reserve(context, ref) : null,
         ),
         _Availability.available => AppButton.primary(
           label: bookLabel,
           isLoading: isBusy,
           loadingLabel: 'Réservation…',
-          onPressed: isParticipant ? () => _reserve(context, ref) : null,
+          onPressed: canBook ? () => _reserve(context, ref) : null,
         ),
       };
     }

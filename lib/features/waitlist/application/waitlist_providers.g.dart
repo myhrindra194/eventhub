@@ -55,14 +55,22 @@ final class WaitlistRepositoryProvider
 }
 
 String _$waitlistRepositoryHash() =>
-    r'017c60a9c6d9f6a99bc6bd660b5a4d556df2e32d';
+    r'c8f6cd235b0468da832c168abae3fa4515aaf3fe';
+
+/// Any signed-in account may wait (one account, two spaces); the event's
+/// team is excluded by `WaitlistPolicy`, not here.
 
 @ProviderFor(isOnWaitlist)
 final isOnWaitlistProvider = IsOnWaitlistFamily._();
 
+/// Any signed-in account may wait (one account, two spaces); the event's
+/// team is excluded by `WaitlistPolicy`, not here.
+
 final class IsOnWaitlistProvider
     extends $FunctionalProvider<AsyncValue<bool>, bool, Stream<bool>>
     with $FutureModifier<bool>, $StreamProvider<bool> {
+  /// Any signed-in account may wait (one account, two spaces); the event's
+  /// team is excluded by `WaitlistPolicy`, not here.
   IsOnWaitlistProvider._({
     required IsOnWaitlistFamily super.from,
     required String super.argument,
@@ -106,7 +114,10 @@ final class IsOnWaitlistProvider
   }
 }
 
-String _$isOnWaitlistHash() => r'dba4d315fb76b21400e22b5e8cd8cf8e634bc946';
+String _$isOnWaitlistHash() => r'10512c5dd69f6ff386e71cd6b4967ea93a610f45';
+
+/// Any signed-in account may wait (one account, two spaces); the event's
+/// team is excluded by `WaitlistPolicy`, not here.
 
 final class IsOnWaitlistFamily extends $Family
     with $FunctionalFamilyOverride<Stream<bool>, String> {
@@ -119,6 +130,9 @@ final class IsOnWaitlistFamily extends $Family
         isAutoDispose: true,
       );
 
+  /// Any signed-in account may wait (one account, two spaces); the event's
+  /// team is excluded by `WaitlistPolicy`, not here.
+
   IsOnWaitlistProvider call(String eventId) =>
       IsOnWaitlistProvider._(argument: eventId, from: this);
 
@@ -126,17 +140,17 @@ final class IsOnWaitlistFamily extends $Family
   String toString() => r'isOnWaitlistProvider';
 }
 
-/// Organizer view.
+/// Organizer view, capped at [WaitlistRepository.queueLengthCap].
 
 @ProviderFor(waitlistLength)
 final waitlistLengthProvider = WaitlistLengthFamily._();
 
-/// Organizer view.
+/// Organizer view, capped at [WaitlistRepository.queueLengthCap].
 
 final class WaitlistLengthProvider
     extends $FunctionalProvider<AsyncValue<int>, int, Stream<int>>
     with $FutureModifier<int>, $StreamProvider<int> {
-  /// Organizer view.
+  /// Organizer view, capped at [WaitlistRepository.queueLengthCap].
   WaitlistLengthProvider._({
     required WaitlistLengthFamily super.from,
     required String super.argument,
@@ -182,7 +196,7 @@ final class WaitlistLengthProvider
 
 String _$waitlistLengthHash() => r'b2a37c8b69e15a3ae967aef319f5d72568a3dcc7';
 
-/// Organizer view.
+/// Organizer view, capped at [WaitlistRepository.queueLengthCap].
 
 final class WaitlistLengthFamily extends $Family
     with $FunctionalFamilyOverride<Stream<int>, String> {
@@ -195,7 +209,7 @@ final class WaitlistLengthFamily extends $Family
         isAutoDispose: true,
       );
 
-  /// Organizer view.
+  /// Organizer view, capped at [WaitlistRepository.queueLengthCap].
 
   WaitlistLengthProvider call(String eventId) =>
       WaitlistLengthProvider._(argument: eventId, from: this);
@@ -229,7 +243,7 @@ final class WaitlistControllerProvider
 }
 
 String _$waitlistControllerHash() =>
-    r'86dcace2483002b45025d3eb19b024d539bbb737';
+    r'dad2f8773d503b3cd6d752927ed391f330fc939d';
 
 abstract class _$WaitlistController extends $AsyncNotifier<void> {
   FutureOr<void> build();

@@ -5,8 +5,9 @@ part 'reservation.freezed.dart';
 enum ReservationStatus {
   confirmed,
 
-  /// A paid seat held while the buyer is on the Stripe page (F-11). Set and
-  /// cleared by the payment functions only.
+  /// A paid seat held while the buyer pays (F-11). Kept in the domain for
+  /// the day a payment server exists; on the Spark plan it is never written
+  /// (the security rules accept `confirmed` and `cancelled` only).
   pending,
   cancelled;
 
@@ -23,11 +24,12 @@ enum ReservationStatus {
 /// organizer's participant list render without N+1 reads, and keep working
 /// if the event is later deleted.
 ///
-/// The id is an opaque uuid given by the database. "One reservation per
-/// participant per event" is a unique constraint on `(event_id, user_id)`,
-/// so the participant's seat for an event is found by querying that pair,
-/// never by building an id. A re-booking after a cancellation reuses the
-/// same row, hence the same id and ticket code.
+/// The id is deterministic: `DocIds.reservation(eventId, userId)`, i.e.
+/// `<eventId>_<userId>`. That is how "one seat per person per event" holds
+/// without a unique index — there is only one document to write — and how
+/// the security rules find the caller's own seat to prove a booking, a
+/// cancellation or an attendance. A re-booking after a cancellation rewrites
+/// the same document, hence keeps the same ticket code.
 @freezed
 abstract class Reservation with _$Reservation {
   const Reservation._();
@@ -54,22 +56,24 @@ abstract class Reservation with _$Reservation {
     required DateTime reservedAt,
     DateTime? cancelledAt,
 
+    /// Who cancelled: the holder's uid, or `moderation` when an administrator
+    /// removed the event.
+    String? cancelledBy,
+
     /// Ticket type (F-12), copied at booking time.
     String? tierId,
     String? tierName,
 
-    /// Amount actually paid, minor units; 0 for a free seat.
+    /// Amount actually paid, minor units. Always 0 without a payment server:
+    /// the rules refuse anything else.
     @Default(0) int pricePaid,
 
-    /// Price of a held seat, before payment.
+    // Payment fields (F-11). Never stored on the Spark plan — no server can
+    // take a payment — so they stay null; the payment screens keep reading
+    // them for the day a payment backend is added.
     int? amountDue,
     String? currency,
-
-    /// `pending`, `paid`, `refunded`, `expired`, `cancelled`, `failed`,
-    /// `refund_failed`.
     String? paymentStatus,
-
-    /// Stripe Checkout page to resume a held purchase.
     String? checkoutUrl,
     DateTime? holdExpiresAt,
   }) = _Reservation;

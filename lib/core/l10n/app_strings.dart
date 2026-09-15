@@ -709,11 +709,12 @@ abstract final class AppStrings {
   static String fromPrice(String price) => 'Dès $price';
   static const chooseTicket = 'Choisir un billet';
   static const chooseTicketLead =
-      'Un billet par personne. Les billets payants se règlent par carte, sur '
-      'la page sécurisée de Stripe.';
+      'Un billet par personne. Seuls les billets gratuits se réservent pour '
+      'l’instant : le paiement en ligne arrive bientôt.';
   static String seatsLeftShort(int n) => n > 1 ? '$n restantes' : '1 restante';
   static const tierSoldOut = 'Complet';
   static String payAmount(String price) => 'Payer $price';
+  static const paidTicketUnavailable = 'Paiement en ligne bientôt disponible';
   static const bookFree = 'Réserver gratuitement';
   static const paymentTitle = 'Paiement';
   static const paymentPendingTitle = 'Paiement en cours';

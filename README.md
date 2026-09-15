@@ -1,21 +1,23 @@
 # EventHub
 
 > Application mobile Flutter de découverte, de réservation et d'organisation
-> d'événements, entièrement adossée à **Firebase** : Authentication (email et
-> Google), Cloud Firestore, Cloud Storage, Cloud Messaging, Cloud Functions,
-> App Check, Crashlytics et Analytics. Deux rôles, un parcours de bout en
-> bout : un **organisateur** publie un événement et contrôle les billets à
-> l'entrée ; un **participant** découvre, réserve, garde son billet et reçoit
-> ses rappels. Cahier des charges : `EVENTHUB — Cahier des charges MVP.pdf`.
+> d'événements, adossée à **Supabase** : Postgres avec Row Level Security,
+> fonctions et triggers SQL, Auth (email et Google), Storage, Realtime et Edge
+> Functions (paiements Stripe, envoi des push, page publique). Firebase ne
+> garde que ce que Supabase ne fournit pas : la livraison des notifications
+> (FCM), Crashlytics et Analytics. Deux rôles, un parcours de bout en bout : un
+> **organisateur** publie un événement et contrôle les billets à l'entrée ; un
+> **participant** découvre, réserve, garde son billet et reçoit ses rappels.
+> Cahier des charges : `EVENTHUB — Cahier des charges MVP.pdf`.
 
 [![CI](https://img.shields.io/badge/CI-GitHub_Actions-2088FF?logo=githubactions&logoColor=white)](.github/workflows/ci.yml)
 ![Flutter](https://img.shields.io/badge/Flutter-3.47-02569B?logo=flutter&logoColor=white)
 ![Dart](https://img.shields.io/badge/Dart-3.13-0175C2?logo=dart&logoColor=white)
 ![Riverpod](https://img.shields.io/badge/Riverpod-3-6366F1)
-![Firebase](https://img.shields.io/badge/Firebase-Auth_·_Firestore_·_Storage_·_FCM_·_Functions_·_App_Check-FFCA28?logo=firebase&logoColor=black)
-![Tests Dart](https://img.shields.io/badge/tests_Dart-197_passing-10B981)
-![Tests règles](https://img.shields.io/badge/tests_règles-145_passing-10B981)
-![Tests fonctions](https://img.shields.io/badge/tests_fonctions-29_passing-10B981)
+![Supabase](https://img.shields.io/badge/Supabase-Postgres_·_RLS_·_Auth_·_Storage_·_Realtime_·_Edge_Functions-3ECF8E?logo=supabase&logoColor=white)
+![Firebase](https://img.shields.io/badge/Firebase-FCM_·_Crashlytics_·_Analytics-FFCA28?logo=firebase&logoColor=black)
+![Tests Dart](https://img.shields.io/badge/tests_Dart-232_passing-10B981)
+![Tests base de données](https://img.shields.io/badge/tests_base_de_données-39_passing-10B981)
 
 ---
 
@@ -30,7 +32,7 @@
 7. [Règles métier](#7-règles-métier)
 8. [Sécurité](#8-sécurité)
 9. [Notifications push](#9-notifications-push)
-10. [Production : App Check, Crashlytics, Analytics, hors ligne](#10-production--app-check-crashlytics-analytics-hors-ligne)
+10. [Production : Crashlytics, Analytics, hors ligne](#10-production--crashlytics-analytics-hors-ligne)
 11. [Design system](#11-design-system)
 12. [Écrans, routes et correspondance maquette](#12-écrans-routes-et-correspondance-maquette)
 13. [Configuration](#13-configuration)
@@ -44,7 +46,7 @@
 
 Documentation détaillée : [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
 (référence technique), [`docs/SECURITY.md`](docs/SECURITY.md) (modèle de
-menace, règles, fonctions), [`docs/DESIGN_SYSTEM.md`](docs/DESIGN_SYSTEM.md)
+menace, droits, RLS, fonctions, paiements), [`docs/DESIGN_SYSTEM.md`](docs/DESIGN_SYSTEM.md)
 (langage visuel), [`docs/ROADMAP.md`](docs/ROADMAP.md) (feuille de route),
 [`docs/CONVENTIONS.md`](docs/CONVENTIONS.md) (conventions d'équipe).
 
@@ -54,23 +56,26 @@ menace, règles, fonctions), [`docs/DESIGN_SYSTEM.md`](docs/DESIGN_SYSTEM.md)
 
 | Rôle             | En une phrase |
 |------------------|---------------|
-| **Participant**  | découvre les événements (dont une sélection « Pour vous »), voit qui y va, en garde en favoris, suit ses organisateurs préférés, réserve une place ou rejoint la liste d'attente, présente son billet QR, laisse un avis après l'événement |
-| **Organisateur** | publie ses événements (ses abonnés sont prévenus), soigne son profil public, reçoit une notification à chaque réservation, suit stats et alertes, exporte sa liste d'invités en fichier CSV et scanne les billets à l'entrée |
+| **Participant**  | découvre les événements (dont une sélection « Pour vous »), voit qui y va, en garde en favoris, suit ses organisateurs préférés, réserve une place gratuite ou achète un billet, rejoint la liste d'attente, présente son billet QR, laisse un avis après l'événement |
+| **Organisateur** | publie ses événements avec des types de billets (ses abonnés sont prévenus), compose une équipe, soigne son profil public, reçoit une notification à chaque réservation, suit stats, recettes et alertes, exporte sa liste d'invités en CSV et scanne les billets à l'entrée |
 
-**Il n'y a pas de backend simulé.** Toutes les données viennent du projet
-Firebase `eventhub-d411f` ; le développement local passe par la suite
-d'émulateurs, qui exécute les vraies règles.
+**Il n'y a pas de backend simulé.** Toutes les données viennent d'un projet
+Supabase ; les règles s'exécutent dans la base, et toute la logique serveur est
+versionnée dans `supabase/` (migrations, Edge Functions, tests).
 
-| Service Firebase | Rôle dans EventHub |
+| Brique | Rôle dans EventHub |
 |---|---|
-| Authentication | email / mot de passe, **Google**, vérification d'email, réinitialisation, changement de mot de passe |
-| Cloud Firestore | profils privés et publics, événements, réservations, favoris, abonnements, liste d'attente, avis, signalements, entrées scannées, appareils, préférences, historique de notifications, agrégats ; cache hors ligne |
-| Cloud Storage | bannières d'événements |
-| Cloud Messaging | notifications push Android, web (et iOS une fois la clé APNs fournie) |
-| Cloud Functions | rôle en custom claim, push organisateur, rappels J-1, liste d'attente, **suppression de compte en cascade**, profils organisateurs publics et compteurs, annonce aux abonnés, preuve sociale, modération, page publique d'événement |
-| Hosting | page publique `/e/{id}` avec aperçu Open Graph, vérification des App Links Android |
-| App Check | n'accepte que les requêtes de l'application authentique (Play Integrity, App Attest, reCAPTCHA v3) |
-| Crashlytics · Analytics | rapports de plantage ; mesure d'audience **sur consentement** |
+| **Postgres** | profils, événements et types de billets, réservations, équipes, favoris, abonnements, liste d'attente, avis, signalements et modération, entrées scannées, appareils, préférences, notifications |
+| **Row Level Security + droits par colonne** | chaque utilisateur ne lit et n'écrit que ce qui lui revient ; les colonnes sensibles (rôle, montants, compteurs) ne sont jamais écrites par un client |
+| **Fonctions SQL** | toutes les opérations métier en une transaction : publier, réserver, annuler, entrée à la porte, équipe, modération, suppression de compte, paiements |
+| **Triggers** | compteurs et note des organisateurs, totaux des types de billets, notifications, seuil de signalements, instantanés des billets |
+| **Middleware de requête** | compte suspendu refusé à la requête suivante, écritures limitées en débit |
+| **pg_cron + file de jobs** | rappels J-1, libération des places tenues, rétention ; push, remboursements et nettoyage des fichiers mis en file et exécutés par le worker |
+| **Auth** | email + mot de passe avec **confirmation obligatoire**, **Google**, réinitialisation, changement de mot de passe |
+| **Storage** | bannières d'événements (taille, type et chemin imposés) |
+| **Realtime** | jauges, billets, liste des participants, compteur d'entrées, cloche de notifications, file de modération en direct |
+| **Edge Functions** | Stripe Checkout, remboursements, webhook signé, worker (FCM, Stripe, Storage), instantané public d'un événement |
+| Firebase | **FCM** (livraison des push), **Crashlytics**, **Analytics sur consentement**, **Hosting** (page `/e/{id}`, retours de paiement, App Links) |
 
 ---
 
@@ -80,17 +85,17 @@ d'émulateurs, qui exécute les vraies règles.
 
 | Fonctionnalité | Détail |
 |---|---|
-| Inscription | 2 étapes (identité → rôle définitif), jauge de robustesse, **email de vérification envoyé** |
-| Connexion | email + mot de passe, ou **« Continuer avec Google »** (un premier compte Google choisit son rôle sur l'écran de complétion, nom pré-rempli) |
-| Vérification d'email | bandeau « Confirmez votre adresse » (profil, tableau de bord organisateur) : renvoi limité à 1/min, « C'est fait » recharge le compte et le jeton. **Obligatoire pour publier un événement et laisser un avis** |
-| Mots de passe | oubli (lien Firebase), changement avec ré-authentification |
+| Inscription | 2 étapes (identité → rôle définitif), jauge de robustesse (8 caractères, lettres et chiffres) ; **le profil est créé par la base avec le compte**, puis l'app invite à ouvrir le lien de confirmation reçu par email |
+| Connexion | email + mot de passe (adresse confirmée), ou **« Continuer avec Google »** (un premier compte Google choisit son rôle sur l'écran de complétion, nom pré-rempli) |
+| Confirmation d'email | obligatoire avant la première connexion ; le lien revient dans l'app (`eventhub://auth-callback`) ; renvoi du lien depuis le bandeau |
+| Mots de passe | oubli : le lien reçu ouvre l'app sur « Choisissez un mot de passe » (sans l'ancien) ; changement avec l'actuel |
 | Profil | identité, statistiques du rôle, modification du nom (et de la **présentation publique** pour un organisateur) |
-| **Profil organisateur public** | `/organizers/{id}`, ouvert depuis la fiche d'un événement : présentation, nombre d'événements, d'abonnés et note moyenne (tous calculés côté serveur), dates à venir puis passées, bouton **Suivre** |
+| **Profil organisateur public** | `/organizers/{id}`, ouvert depuis la fiche d'un événement : présentation, nombre d'événements, d'abonnés et note moyenne (tous maintenus par la base), dates à venir puis passées, bouton **Suivre** |
 | **Abonnements** | « Organisateurs suivis » : liste, désabonnement ; push à chaque nouvel événement publié par un organisateur suivi |
 | **Signalement** | événement, organisateur ou avis : motif dans une liste fermée + précisions ; anonyme ; un signalement par compte et par contenu ; un avis signalé par 3 personnes est masqué en attendant la modération |
-| Paramètres | thème ; notifications (préférences réelles lues par le serveur, dont « Nouveaux événements ») ; **mesure d'audience** ; **suppression du compte** (ré-authentification par mot de passe ou Google, cascade côté serveur) |
-| Centre de notifications | historique 30 jours des push, groupé par jour, « tout lire », balayage pour supprimer, tap vers l'écran concerné ; cloche à pastille sur l'accueil et les alertes |
-| Aide · Confidentialité · À propos | FAQ, notice fondée sur les vraies règles, version |
+| Paramètres | thème ; notifications (préférences lues par la base à chaque envoi, dont « Nouveaux événements ») ; **mesure d'audience** ; **suppression du compte** (ré-authentification par mot de passe ou Google, une seule transaction côté serveur) |
+| Centre de notifications | historique 30 jours, groupé par jour, « tout lire », balayage pour supprimer, tap vers l'écran concerné ; cloche à pastille en direct |
+| Aide · Confidentialité · À propos | FAQ, notice fondée sur les vraies règles, version, projet Supabase utilisé |
 
 ### 2.2 Participant — Explorer · Recherche · Billets · Profil
 
@@ -99,155 +104,154 @@ d'émulateurs, qui exécute les vraies règles.
 | Fil éditorialisé | à la une, **pour vous**, ça se remplit vite, cette semaine, catalogue **paginé** (100 en temps réel, puis « Charger plus ») |
 | **Pour vous** | recommandations calculées sur l'appareil : organisateurs suivis (+4), catégories des billets (+3) et des favoris (+2), remplissage pour départager ; jamais un événement complet, commencé, déjà réservé ou déjà en favori |
 | Recherche et filtres | titre, lieu, organisateur, catégorie ; période, tri, masquer les complets |
-| **Favoris** | cœur sur les cartes et la fiche ; écran « Mes favoris » (y compris événements complets, passés ou supprimés) |
-| Fiche événement | 4 états, **prix** (« Gratuit », « 25,00 € », « Dès 15,00 € »), jauge temps réel, **« Soa, Hery R. et 40 autres y vont »** avec les visages des derniers inscrits, organisateur cliquable, signalement |
-| **Types de billets** | section « Billets » de la fiche : chaque type (Standard, VIP, Étudiant…) avec son prix et ses places restantes, « Complet » par type ; au moment de réserver, choix du type dans une feuille |
-| **Paiement** | un billet payant ouvre la page de paiement **Stripe Checkout** (carte, Apple/Google Pay selon l'appareil) ; la place est **tenue 30 minutes** ; retour automatique dans l'app, écran « Paiement en cours » qui bascule sur le billet dès que Stripe confirme ; « Reprendre le paiement » ou « Abandonner » tant que la place est tenue ; montant payé sur le billet |
+| **Favoris** | cœur sur les cartes et la fiche (bascule immédiate, annulée si l'écriture échoue) ; écran « Mes favoris » (événements complets et passés compris ; un événement supprimé disparaît de la liste) |
+| Fiche événement | 4 états, **prix** (« Gratuit », « 25,00 € », « Dès 15,00 € »), jauge temps réel, **« Soa, Hery R. et 40 autres y vont »**, organisateur cliquable, signalement |
+| **Types de billets** | section « Billets » de la fiche : chaque type (Standard, VIP, Étudiant…) avec sa description, son prix et ses places restantes, « Complet » par type ; au moment de réserver, choix du type dans une feuille |
+| **Paiement** | un billet payant ouvre la page **Stripe Checkout** (carte, Apple/Google Pay selon l'appareil) ; la place est **tenue 30 minutes** ; retour automatique dans l'app, écran « Paiement en cours » qui bascule sur le billet dès que Stripe confirme ; « Reprendre le paiement » ou « Abandonner » tant que la place est tenue ; montant payé sur le billet |
 | **Remboursement** | « Annuler et être remboursé » sur un billet payé, jusqu'au début de l'événement : remboursement Stripe intégral, place remise en vente |
-| **Partage** | feuille de partage native, lien public `https://eventhub-d411f.web.app/e/{id}` (aperçu Open Graph pour qui n'a pas l'app, ouverture directe dans l'app sur Android), invitation prête à coller |
-| Réserver / annuler | transaction atomique ; re-réservation possible |
+| **Partage** | feuille de partage native, lien public `https://eventhub-d411f.web.app/e/{id}` (page web pour qui n'a pas l'app, ouverture directe dans l'app sur Android), invitation prête à coller |
+| Réserver / annuler | une fonction de la base verrouille l'événement : **aucune survente possible**, même à plusieurs au même instant ; re-réservation possible |
 | **Liste d'attente** | sur un événement complet : rejoindre / quitter ; push dès qu'une place se libère |
 | Billet | QR code + code `EH-XXXX-XXXX`, états annulé / passé |
-| Rappel J-1 | push la veille, ouvre le billet |
+| Rappel J-1 | push la veille, ouvre le billet (un seul rappel par billet, rattrapé si une exécution est manquée) |
 | **Avis** | après le début de l'événement, pour les inscrits vérifiés : note 1–5 et commentaire, modifiable ; moyenne et répartition sur la fiche |
 
 ### 2.3 Organisateur — Événements · Stats · Alertes · Profil
 
 | Fonctionnalité | Détail |
 |---|---|
-| Mes événements | KPI, à venir / passés ; suppression bloquée (avec explication) s'il y a des réservations |
-| Créer / modifier | bannière Storage, validation, email vérifié requis pour publier |
-| **Types de billets et prix** | interrupteur « Plusieurs types de billets » : jusqu'à 6 types (nom, places, prix), devise EUR, USD ou MGA ; la capacité est la somme des types. Un type qui a vendu ne peut pas être supprimé ni descendre sous ses ventes ; on ne bascule pas entre « capacité unique » et « types » une fois des places vendues |
-| Participants | type de billet sur chaque ligne, recherche, **export CSV en fichier** (colonnes Billet et Montant payé) (feuille de partage : Drive, email, tableur ; UTF-8 avec BOM pour Excel, séparateur `;`) ou copie, **compteur d'entrées**, **personnes en liste d'attente**, marqueur « Entré · HH:mm » |
+| Mes événements | KPI, à venir / passés, co-organisés ; suppression bloquée (avec explication) s'il y a des réservations |
+| Créer / modifier | bannière (Storage), validation immédiate dans le formulaire puis par la base (erreurs affichées champ par champ), email vérifié requis pour publier ; les billets existants suivent un changement de date, de titre ou de lieu |
+| **Types de billets et prix** | interrupteur « Plusieurs types de billets » : jusqu'à 6 types (nom ≤ 40, description ≤ 160, places, prix), devise EUR, USD ou MGA ; la capacité est la somme des types. Un type qui a vendu ne peut pas être supprimé ni descendre sous ses ventes ; on ne bascule plus entre « capacité unique » et « types » une fois des places vendues ; la devise se fige après un paiement |
+| Participants | type de billet sur chaque ligne, recherche, **export CSV en fichier** (colonnes Billet et Montant payé ; feuille de partage : Drive, email, tableur ; UTF-8 avec BOM pour Excel, séparateur `;`) ou copie, **compteur d'entrées**, **personnes en liste d'attente**, marqueur « Entré · HH:mm » |
 | Profil public | présentation modifiable, abonnés, note moyenne sur les avis visibles ; chaque publication prévient les abonnés |
-| **Équipe (co-organisateurs)** | l'organisateur principal invite jusqu'à 10 organisateurs par email ; l'invité accepte ou refuse depuis « Invitations » ; un co-organisateur modifie l'événement, voit les participants, scanne les billets et reçoit les alertes de réservation, mais ne supprime pas l'événement et ne compose pas l'équipe ; il peut la quitter. Les événements co-organisés apparaissent dans le tableau de bord, marqués « Co-organisé » |
-| **Contrôle à l'entrée** | scanner caméra (lampe), verdict plein écran en couleur : entrée validée, déjà scanné (heure), billet annulé, autre événement, code invalide, introuvable ; saisie manuelle du code ; retour haptique distinct ; enregistrement anti-doublon même à plusieurs portes |
+| **Équipe (co-organisateurs)** | l'organisateur principal invite jusqu'à 10 organisateurs par email ; l'invité accepte ou refuse depuis « Invitations » ; un co-organisateur modifie l'événement, voit les participants, scanne les billets et reçoit les alertes de réservation, mais ne supprime pas l'événement et ne compose pas l'équipe ; il peut la quitter |
+| **Contrôle à l'entrée** | scanner caméra (lampe), verdict plein écran en couleur : entrée validée, déjà scanné (heure), billet annulé, non payé, autre événement, code invalide, introuvable ; saisie manuelle du code ; retour haptique distinct ; **verdict décidé et enregistré en une instruction** : deux portes qui scannent le même billet n'admettent qu'une personne |
 | Stats · Alertes | remplissage, **recettes encaissées** par devise, 14 jours de réservations (graphique + tableau), classement ; à surveiller + journal |
-| Push | réservation et annulation en temps réel |
+| Push | réservation et annulation en temps réel, pour le principal et chaque co-organisateur |
 
-### 2.4 Administration (compte avec le rôle `admin`, quel que soit son rôle métier)
+### 2.4 Administration (compte administrateur, quel que soit son rôle métier)
 
 | Fonctionnalité | Détail |
 |---|---|
-| **File de modération** | Profil → Modération (pastille du nombre de dossiers ouverts) : « À traiter » trié par nombre de signalements, « Traités » par date ; filtre Avis / Événements / Organisateurs ; marque « Masqué auto » |
+| **File de modération** | Profil → Modération (pastille du nombre de dossiers ouverts, en direct) : « À traiter » trié par nombre de signalements, « Traités » par date ; filtre Avis / Événements / Organisateurs ; marque « Masqué auto » |
 | **Dossier** | contenu signalé tel quel (avis masqué compris, événement avec description, compte avec email), chaque signalement (motif, précisions, date, clé courte du signaleur), historique des décisions |
-| **Décisions** | avis : masquer / rétablir ; événement : **retirer** (réservations annulées, inscrits et organisateur prévenus, suppression) ; compte : **suspendre** / réactiver ; tous : classer sans suite. Conséquence expliquée avant confirmation, note obligatoire quand une personne perd quelque chose |
+| **Décisions** | avis : masquer / rétablir ; événement : **retirer** (réservations annulées, billets payés remboursés, inscrits et organisateur prévenus, suppression) ; compte : **suspendre** (refusé dès la requête suivante, sessions révoquées) / réactiver ; tous : classer sans suite. Conséquence expliquée avant confirmation, note obligatoire quand une personne perd quelque chose |
 | **Administrateurs** | liste, ajout par email, retrait (jamais soi-même) |
 
 ### 2.5 Transverse
 
-Bandeau **hors ligne** (les données en cache restent consultables, les
-écritures sont envoyées au retour du réseau), rapport de plantage, consentement
-à la mesure d'audience demandé une fois.
+Bandeau **hors ligne** (ce qui est déjà à l'écran reste consultable ; les
+écritures demandent le réseau), rapport de plantage, consentement à la mesure
+d'audience demandé une fois.
 
 ---
 
 ## 3. Mise en route
 
-Prérequis : Flutter 3.47+, Node 22+, Java 17+ (émulateurs), un appareil
-Android **avec Google Play**, `make` (Git Bash / WSL sous Windows).
+Prérequis : Flutter 3.47+, Node 22+ (tests de la base, CLI Supabase via
+`npx`), un appareil Android **avec Google Play** (push), `make` (Git Bash /
+WSL sous Windows). **Ni Docker ni Java** ne sont nécessaires.
 
 ```sh
 git clone <repo> eventhub && cd eventhub
 make setup              # pub get + génération de code
-make functions-setup    # npm install dans functions/
+make db-setup           # dépendances de la suite de tests de la base (PGlite)
+make test-db            # toutes les migrations + 39 tests, en local, en ~15 s
 ```
 
-### 3.1 Console Firebase (une seule fois)
+### 3.1 Projet Supabase (une seule fois)
+
+1. **Créer le projet** sur [supabase.com](https://supabase.com) (région proche
+   des utilisateurs), noter la **référence** (`https://<ref>.supabase.co`) et
+   le **mot de passe de la base**.
+2. **Relier ce dossier et appliquer les migrations** :
+   ```sh
+   make supabase-login                       # ouvre le navigateur
+   make supabase-link PROJECT_REF=<ref>      # demande le mot de passe de la base
+   make db-push                              # lance d'abord make test-db, puis applique les 11 migrations
+   ```
+   Les extensions `pg_cron`, `pg_net`, `pgcrypto` et `citext` sont activées par
+   les migrations ; les quatre tâches planifiées (`eventhub-*`) apparaissent
+   dans *Integrations → Cron*.
+3. **Auth** : `make config-push` applique `supabase/config.toml` (confirmation
+   d'email obligatoire, mot de passe de 8 caractères avec lettres et chiffres,
+   redirections `eventhub://auth-callback` et site public). Pour **Google** :
+   dans Google Cloud, créer un client OAuth *Web* (ID et secret) et un client
+   *Android* (package + **SHA-1** de la clé de signature, voir
+   `android/key.properties.example`) ; renseigner l'ID et le secret Web dans
+   *Authentication → Providers → Google* (ou via
+   `SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID` / `_SECRET` avant `config-push`) ;
+   l'ID Web va aussi dans `GOOGLE_SERVER_CLIENT_ID`.
+4. **Secrets des Edge Functions** : copier `supabase/functions/.env.example`
+   en `supabase/functions/.env` (ignoré par Git) et le remplir :
+   - `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` (étape 6) ;
+   - `WORKER_SECRET` : `openssl rand -hex 32` ;
+   - `FCM_SERVICE_ACCOUNT` : JSON sur une ligne d'un compte de service
+     Firebase avec le rôle *Firebase Cloud Messaging API Admin* ;
+   - `PUBLIC_ORIGIN` : `https://eventhub-d411f.web.app`.
+
+   Puis :
+   ```sh
+   make secrets-push
+   make functions-deploy     # deno check puis déploiement des 6 fonctions
+   ```
+5. **Réveil du worker** : dans *SQL Editor*, exécuter
+   `supabase/snippets/wire_worker.sql` avec la référence du projet et le même
+   `WORKER_SECRET` (URL et secret rangés dans **Vault**, jamais dans une
+   migration). Sans cette étape, push, remboursements en file et nettoyage des
+   fichiers attendent.
+6. **Stripe (billets payants)** : compte Stripe en mode test pour commencer.
+   Dans *Développeurs → Webhooks*, ajouter
+   `https://<ref>.supabase.co/functions/v1/stripe-webhook` avec les événements
+   `checkout.session.completed`, `checkout.session.async_payment_succeeded`,
+   `checkout.session.expired`, `checkout.session.async_payment_failed` ;
+   copier son secret de signature dans `STRIPE_WEBHOOK_SECRET`, puis
+   `make secrets-push`. Sans ces secrets, tout fonctionne sauf l'achat d'un
+   billet payant (« Le paiement est indisponible pour le moment »).
+7. **Premier administrateur** : le compte doit exister dans l'app ; dans
+   *SQL Editor*, exécuter `supabase/snippets/grant_admin.sql` avec son email.
+   La personne se déconnecte puis se reconnecte : l'entrée **Modération**
+   apparaît. Les administrateurs suivants s'ajoutent depuis l'app.
+
+### 3.2 Firebase (push, Crashlytics, Analytics, Hosting)
 
 Projet `eventhub-d411f` (`.firebaserc`). `lib/firebase_options.dart` est
 généré par FlutterFire et ignoré par Git (`flutterfire configure --project=eventhub-d411f`).
 
-1. **Authentication → Sign-in method** : activer *Email/Password* **et**
-   *Google*. Pour Google sur Android, ajouter l'empreinte **SHA-1** (et
-   SHA-256) de la clé de signature dans *Paramètres du projet → application
-   Android* (`keytool -list -v -keystore …`, voir `android/key.properties.example`),
-   puis récupérer l'**ID client OAuth Web** (type 3 dans `google-services.json`)
-   → `GOOGLE_SERVER_CLIENT_ID`.
-2. **Firestore Database** : base `(default)`, mode production, emplacement
-   **`nam5`** (multi-région États-Unis, déclaré dans `firebase.json`). Les
-   fonctions déclenchées par Firestore doivent tourner dans la région de la
-   base : `REGION` (`functions/src/index.ts`) et `AppConfig.functionsRegion`
-   valent donc **`us-central1`**. Si la base est un jour recréée ailleurs,
-   changer ces deux constantes ensemble.
-3. **Storage** : activer.
-4. **Plan Blaze** : requis pour les Cloud Functions et Cloud Scheduler.
-5. **Cloud Messaging** : *Web Push certificates* → générer la clé
-   (`FIREBASE_WEB_VAPID_KEY`) ; iOS : téléverser la clé APNs.
-6. **App Check** : enregistrer l'app Android (Play Integrity), iOS (App
-   Attest), web (reCAPTCHA v3 → `APP_CHECK_RECAPTCHA_SITE_KEY`) ; déclarer
-   les **jetons de debug** affichés dans les logs des appareils de dev.
-   N'activer l'**application** d'App Check (Firestore, Storage, Functions via
-   `ENFORCE_APP_CHECK=true`) qu'une fois ces enregistrements faits.
-7. **Crashlytics** et **Analytics** : activer dans la console.
-8. **Firestore → TTL** : politiques sur `notifications.expiresAt` et
-   `audit.expiresAt` (déclarées dans `firestore.indexes.json`, déployées avec
-   les index).
-9. **Hosting** : le site `eventhub-d411f.web.app` sert `hosting/public` et
-   réécrit `/e/**` vers la fonction `publicEventPage`. Pour que Android ouvre
-   ces liens dans l'app, `hosting/public/.well-known/assetlinks.json` doit
-   contenir l'empreinte **SHA-256** de chaque clé de signature : celle de la
-   clé de debug de ce poste y est ; **ajouter celle de la clé release** avant
-   publication.
-10. **Premier administrateur** : le compte doit exister dans l'app, puis,
-    depuis ce poste (une fois : `gcloud auth application-default login` avec
-    un compte ayant le rôle *Firebase Admin* sur le projet) :
-    ```sh
-    make grant-admin EMAIL=moderation@exemple.org          # accorder
-    make grant-admin EMAIL=moderation@exemple.org REVOKE=1 # retirer
-    ```
-    La personne se déconnecte puis se reconnecte : l'entrée **Modération**
-    apparaît dans son profil. Les administrateurs suivants s'ajoutent depuis
-    l'app (Modération → Administrateurs).
-11. **Stripe (billets payants)** : créer un compte Stripe (mode test pour
-    commencer), puis :
-    ```sh
-    firebase functions:secrets:set STRIPE_SECRET_KEY       # sk_test_… puis sk_live_…
-    firebase functions:secrets:set STRIPE_WEBHOOK_SECRET   # whsec_… (étape suivante)
-    ```
-    Dans *Stripe → Développeurs → Webhooks*, ajouter le point de terminaison
-    `https://us-central1-eventhub-d411f.cloudfunctions.net/stripeWebhook`
-    avec les événements `checkout.session.completed`,
-    `checkout.session.async_payment_succeeded`, `checkout.session.expired`,
-    `checkout.session.async_payment_failed` ; copier son secret de signature
-    dans `STRIPE_WEBHOOK_SECRET` puis redéployer les fonctions. Les pages de
-    retour `/pay/success` et `/pay/cancel` sont servies par Hosting et
-    s'ouvrent dans l'app via les App Links. Pour tester en local :
-    `stripe listen --forward-to localhost:5001/eventhub-d411f/us-central1/stripeWebhook`.
-    Sans ces secrets, tout fonctionne sauf l'achat d'un billet payant
-    (« Le paiement est indisponible pour le moment »).
+1. **Cloud Messaging** : *Web Push certificates* → générer la clé
+   (`FIREBASE_WEB_VAPID_KEY`) ; iOS : téléverser la clé APNs. Le compte de
+   service de l'étape 3.1.4 vient de *Paramètres du projet → Comptes de service*.
+2. **Crashlytics** et **Analytics** : activer dans la console.
+3. **Hosting** : le site sert `hosting/public` (accueil, `/e/{id}`, retours
+   `/pay/success` et `/pay/cancel`, `.well-known/assetlinks.json`).
+   `make hosting-deploy` écrit d'abord `eventhub-config.js` depuis
+   `env/prod.json`. Pour qu'Android ouvre ces liens dans l'app,
+   `assetlinks.json` doit contenir l'empreinte **SHA-256** de chaque clé de
+   signature : celle de la clé de debug de ce poste y est ; **ajouter celle de
+   la clé release** avant publication.
+
+### 3.3 Lancer
+
+Copier `env/example.json` en `env/dev.json` (ignoré par Git) et le remplir
+(URL et clé *anon / publishable* du projet, *Project Settings → API*), puis :
 
 ```sh
-firebase login
-firebase firestore:databases:get "(default)"    # doit afficher nam5
-make deploy                                     # règles, index, Storage, fonctions, Hosting
-```
-
-### 3.2 Lancer
-
-```sh
-flutter run -d <id> --dart-define=FLAVOR=dev \
-  --dart-define=GOOGLE_SERVER_CLIENT_ID=930281380072-xxxx.apps.googleusercontent.com
+make run DEVICE=<id>            # flutter run --dart-define-from-file=env/dev.json
 ```
 
 Sans `GOOGLE_SERVER_CLIENT_ID`, le bouton Google est masqué sur Android. Au
-premier lancement il n'y a aucun compte : on s'inscrit depuis l'app. Si
-Firebase ne s'initialise pas, l'écran « Connexion à Firebase impossible »
-s'affiche.
-
-### 3.3 Émulateurs (développement)
-
-```sh
-make emulators              # Auth 9099, Firestore 8080, Storage 9199, Functions 5001, Hosting 5002, UI 4000
-make run-emu DEVICE=<id>    # --dart-define=USE_EMULATORS=true
-```
+premier lancement il n'y a aucun compte : on s'inscrit depuis l'app. Sans
+`SUPABASE_URL` / `SUPABASE_ANON_KEY`, l'écran de démarrage explique la
+configuration manquante.
 
 ### 3.4 Release Android
 
 Copier `android/key.properties.example` en `android/key.properties`, créer la
-keystore, enregistrer ses empreintes dans Firebase, puis `make build-apk FLAVOR=prod`.
-Sans ce fichier, un build release est signé avec la clé de debug et **ne doit
-pas être publié**.
+keystore, enregistrer son SHA-1 (client OAuth Android) et son SHA-256
+(`assetlinks.json`), remplir `env/prod.json`, puis `make build-apk FLAVOR=prod`.
+Sans `key.properties`, un build release est signé avec la clé de debug et **ne
+doit pas être publié**.
 
 ---
 
@@ -258,13 +262,15 @@ pas être publié**.
 | Framework | Flutter 3.47 / Dart 3.13 |
 | État | Riverpod 3 + `riverpod_generator` |
 | Navigation | go_router 18 (`StatefulShellRoute` par rôle, guard pur) |
-| Modèles | freezed 4 + json_serializable |
-| Firebase | `firebase_auth`, `cloud_firestore`, `firebase_storage`, `firebase_messaging`, `cloud_functions`, `firebase_app_check`, `firebase_crashlytics`, `firebase_analytics` |
-| Auth tierce | `google_sign_in` 7 (natif) / popup Firebase (web) |
-| Appareil | `flutter_local_notifications`, `mobile_scanner`, `connectivity_plus`, `image_picker`, `qr_flutter`, `share_plus`, `url_launcher` |
-| Serveur | Cloud Functions 2ᵉ génération, TypeScript, Node 22, `firebase-admin`, `stripe` (Checkout, webhooks signés, remboursements), Secret Manager |
+| Modèles | freezed 4 + json_serializable (DTO en snake_case, miroir des tables) |
+| Backend | `supabase_flutter` 2 (PostgREST, Auth PKCE, Storage, Realtime, Functions) |
+| Base | Postgres 17 : RLS, droits par colonne, fonctions `SECURITY DEFINER`, triggers, `pg_cron`, `pg_net`, Vault |
+| Serveur | Edge Functions Deno 2 (TypeScript), `stripe` (Checkout, webhooks signés, remboursements), FCM HTTP v1 |
+| Firebase | `firebase_core`, `firebase_messaging`, `firebase_crashlytics`, `firebase_analytics` |
+| Auth tierce | `google_sign_in` 7 (jeton d'identité natif) / redirection OAuth (web) |
+| Appareil | `flutter_local_notifications`, `mobile_scanner`, `connectivity_plus`, `image_picker`, `qr_flutter`, `share_plus`, `url_launcher`, `shared_preferences` |
 | UI | Material 3 clair/sombre, `google_fonts`, `cached_network_image` |
-| Qualité | `flutter_lints` strict, `riverpod_lint`, `mocktail`, `@firebase/rules-unit-testing`, `node:test`, GitHub Actions |
+| Qualité | `flutter_lints` strict, `riverpod_lint`, `mocktail`, PGlite + `node:test` (base), `deno check`, GitHub Actions |
 
 ---
 
@@ -275,183 +281,181 @@ Référence : [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
 ```
 lib/
-├── bootstrap.dart            Firebase, App Check, Crashlytics, handler FCM, ProviderScope
-├── app/                      MaterialApp, thèmes, bandeau hors ligne, consentement, identité analytics
+├── bootstrap.dart            Supabase (PKCE), Firebase (FCM, Crashlytics), handler FCM, ProviderScope
+├── app/                      MaterialApp, thèmes, bandeau hors ligne, consentement, lien de récupération
 ├── routes/                   AppRoutes, RouteGuard (pur, testé), routeur, observateur → Analytics
 ├── core/
-│   ├── analytics/            AppAnalytics (jamais bloquant), AnalyticsConsent (opt-in)
-│   ├── connectivity/         isOnline
-│   ├── config/ · errors/ · result/ · firebase/ · l10n/ · utils/
+│   ├── supabase/             client, flux Realtime résilients, noms des tables / fonctions / buckets, dates
+│   ├── errors/ · result/     Failure, ErrorMapper (PostgREST, Edge Functions, Auth, Storage), Result, guard
+│   ├── analytics/ · connectivity/ · config/ · firebase/ · l10n/ · utils/
 │   └── widgets/              design system, OfflineAware, feuille de consentement
 └── features/
-    ├── auth/                 email, Google, vérification, profil, paramètres, suppression de compte
-    ├── events/               catalogue paginé, recherche, fiche, formulaire, partage
-    ├── reservations/         réservation, paiement Stripe, remboursement, portefeuille, billet
-    ├── team/                 co-organisateurs, invitations
-    ├── admin/                file de modération, dossiers, administrateurs
-    ├── favorites/            favoris
-    ├── waitlist/             liste d'attente
-    ├── reviews/              avis
-    ├── checkin/              contrôle à l'entrée (policy pure, scanner)
+    ├── auth/                 email + confirmation, Google, récupération, profil, paramètres, suppression
+    ├── events/               catalogue paginé, recherche, fiche, formulaire (save_event), bannières, preuve sociale
+    ├── reservations/         reserve_seat, paiement Stripe, remboursement, portefeuille, billet
+    ├── team/ · admin/        co-organisateurs · modération et administrateurs
+    ├── favorites/ · waitlist/ · reviews/ · checkin/
     ├── organizer/            dashboard, stats, alertes, participants, export CSV
-    ├── organizers/           profil organisateur public, abonnements
-    ├── moderation/           signalements (policy pure, feuille de signalement)
-    ├── notifications/        préférences, appareils, FCM, centre de notifications
+    ├── organizers/ · moderation/
+    ├── notifications/        préférences, appareils (register_device), FCM, centre de notifications
     ├── participant/          coque participant, recommandations « Pour vous »
-    ├── onboarding/ · support/
+    └── onboarding/ · support/
 
-functions/src/index.ts        setRoleClaim · notifyOrganizerOnReservation · notifyWaitlistOnSeatRelease
-                              · sendEventReminders (runEventReminders) · deleteAccount
-                              · syncOrganizerProfile · onFollowWritten · onEventWritten · aggregateOrganizerRating
-                              · aggregateAttendance · onReportCreated · moderateContent · setAdminRole · publicEventPage
-                              · inviteCoOrganizer · respondToStaffInvite · removeCoOrganizer
-                              · normalizeEventTiers · createCheckoutSession · cancelPendingCheckout
-                              · cancelPaidReservation · stripeWebhook · releaseExpiredHolds
-functions/test/               tests d'intégration sur émulateurs
-functions/scripts/            grant-admin.mjs (premier administrateur)
-firebase/                     firestore.rules · storage.rules · firestore.indexes.json · tests/ (règles)
-hosting/public/               accueil web, 404, pay/success · pay/cancel, .well-known/assetlinks.json (App Links)
+supabase/
+├── config.toml               Auth (confirmation, redirections, Google), JWT des Edge Functions
+├── migrations/               11 migrations ordonnées (voir §6–8)
+├── functions/                payments-checkout · payments-cancel · payments-refund · stripe-webhook
+│                             · worker · public-event · _shared (middleware, Stripe, FCM)
+├── tests/                    suite d'intégration de la base sur PGlite (Postgres 17, sans Docker)
+└── snippets/                 premier administrateur, secrets du worker (SQL Editor)
+hosting/public/               accueil, /e/{id}, pay/success · pay/cancel, .well-known/assetlinks.json
+env/                          clés de build par flavor (ignorées, example.json versionné)
 ```
 
 Règle de dépendance : `presentation → application → domain ← data`. Seule
-`data` importe les SDK Firebase (et `core/analytics`, qui est de
-l'infrastructure). Une feature n'importe jamais la couche `data` d'une autre ;
-elle compose ses providers (ex. le contrôle d'entrée lit les réservations via
-`reservationRepositoryProvider`).
+`data` importe `supabase_flutter` (ou `firebase_messaging` pour le push). Une
+feature n'importe jamais la couche `data` d'une autre ; elle compose ses
+providers.
 
 ---
 
 ## 6. Modèle de données
 
+Schéma complet : `supabase/migrations/20260914120100_schema.sql`.
+
 ```
-users/{uid}                       name, email, role, bio?, createdAt, updatedAt?          (privé)
-  ├── devices/{deviceId}          token, platform, locale, updatedAt
-  ├── private/notifications       eventReminders, bookingAlerts, followedOrganizers
-  ├── notifications/{id}          type, title, body, eventId, reservationId, createdAt, readAt, expiresAt (TTL)
-  ├── favorites/{eventId}         eventId, createdAt
-  ├── following/{organizerId}     organizerId, createdAt
-  └── staffInvitations/{eventId}  copie de l'invitation, pour la boîte de l'invité          (serveur)
+auth.users ─┐
+            └─ profiles (privé)            id, name, email, role, bio, photo_url, suspended_at, created_at, updated_at
+                ├─ notification_preferences  event_reminders, booking_alerts, followed_organizers
+                ├─ devices                    device_id, token (unique), platform, locale
+                ├─ notifications              type, title, body, event_id, reservation_id, read_at, expires_at (30 j)
+                ├─ favorites                  event_id
+                └─ follows                    organizer_id
 
-organizers/{uid}                  name, bio, photoUrl, memberSince, followerCount, eventCount,
-                                  ratingSum, ratingCount, updatedAt                        (public, serveur)
-  └── followers/{uid}             userId, createdAt                                        (serveur seul)
+organizers (public, maintenu par triggers)  name, bio, photo_url, member_since, follower_count, event_count,
+                                            rating_sum, rating_count, suspended
+administrators                              user_id, email, name, granted_by, granted_at
 
-aggregates/event_{eventId}        eventId, recentAttendees [{key: sha256(uid)[0..16], name: "Hery R."}]
-reports/{type}_{targetId}_{uid}   targetType, targetId, reason, details, reporterId, createdAt (écriture seule)
-moderationQueue/{type}_{targetId} reportCount, lastReason, status, autoHidden?, decision?   (admin)
-audit/{id}                        action, détails, at, expiresAt (TTL) — et fx_{triggerId} (idempotence)
+events                                      organizer_id, organizer_name, title, description, category, starts_at,
+                                            location, image_url, capacity, available_places, currency (EUR·USD·MGA)
+  ├─ event_tiers        [≤ 6]               name (≤ 40), description (≤ 160), price (unités mineures), capacity,
+  │                                         available, position — capacity/available de l'événement = sommes
+  ├─ event_staff        [≤ 10]              user_id
+  ├─ staff_invitations                      user_id, email, name, invited_by(_name), event_title, event_starts_at,
+  │                                         status (pending · accepted · declined), responded_at
+  ├─ waitlist_entries                       user_id, user_name, created_at, notified_at
+  └─ checkins                               reservation_id, scanned_by, scanned_at
 
-events/{id}                       title, description, imageUrl?, category, startsAt, location,
-                                  capacity, availablePlaces, organizerId, organizerName, createdAt, updatedAt,
-                                  staffIds [≤ 10]                                          (équipe : serveur)
-                                  currency? (EUR · USD · MGA),
-                                  tiers? {tierId: {name, price, capacity, available, order}} [≤ 6]
-                                  — capacity / availablePlaces = sommes des types (normalizeEventTiers)
-  ├── waitlist/{userId}           userId, userName, createdAt, notifiedAt? (serveur)
-  ├── checkins/{reservationId}    reservationId, scannedBy, scannedAt
-  └── invitations/{userId}        eventId, userId, email, name, invitedBy(Name), eventTitle, eventStartsAt,
-                                  status (pending · accepted · declined), createdAt, respondedAt?  (serveur)
+reservations  UNIQUE (event_id, user_id)    user_name, user_email, event_title, event_starts_at, event_location,
+                                            status (pending · confirmed · cancelled), reserved_at, cancelled_at,
+                                            cancelled_by, tier_id, tier_name, price_paid, amount_due, currency,
+                                            payment_status, checkout_session_id, checkout_url, hold_expires_at,
+                                            payment_intent_id, refund_id, reminder_sent_at
 
-reservations/{eventId}_{userId}   eventId, userId, organizerId, userName, userEmail,
-                                  eventTitle, eventStartsAt, eventLocation, status (pending · confirmed · cancelled),
-                                  reservedAt, cancelledAt?, cancelledBy?, tierId?, tierName?,
-                                  pricePaid, amountDue?, currency?, paymentStatus? (pending · paid · refunded ·
-                                  expired · cancelled · failed · refund_failed), paymentIntentId?,
-                                  checkoutSessionId?, checkoutUrl?, holdExpiresAt?, refundId?   (paiement : serveur)
+reviews       UNIQUE (event_id, author_id)  organizer_id, author_name, rating (1–5), comment, hidden, moderated_at…
+reports       UNIQUE (cible, signaleur)     target_type, target_id, reason, details
+moderation_queue · moderation_decisions     report_count, last_reason, status, auto_hidden, decision…
 
-reviews/{eventId}_{userId}        eventId, authorId, authorName, rating (1–5), comment, createdAt, updatedAt?,
-                                  hidden?, hiddenAt?, moderatedAt?, moderatedBy?           (modération : serveur)
+private.jobs · private.audit_log · private.rate_limits   (jamais exposés par l'API)
 ```
 
-Identifiants déterministes (réservation, avis, favori, abonnement, entrée,
-liste d'attente, signalement) : l'unicité est une propriété du stockage.
-Compteurs publics (abonnés, événements, note) maintenus par des triggers
-idempotents : chaque mise à jour enregistre l'id du déclenchement dans la même
-transaction (`audit/fx_{id}`), car Firebase livre un trigger *au moins* une
-fois. Dénormalisation sur la
-réservation : portefeuille, invités, notifications et contrôle d'entrée sans
-lecture supplémentaire. Code billet dérivé de l'id, jamais stocké.
+Choix structurants :
 
-Montants en **unités mineures entières** (centimes ; ariary pour MGA, devise
-sans décimale chez Stripe) : aucun flottant ne touche un prix. Les types de
-billets sont une **map sur l'événement** plutôt qu'une sous-collection : la
-transaction de réservation et les règles lisent le type et l'événement en un
-seul document, et `tiers.{id}.available` se décrémente dans la même écriture
-que `availablePlaces`.
+- **Identifiants UUID** partout ; l'unicité (une réservation, un avis, un
+  signalement par personne) est une contrainte `UNIQUE`, pas une convention
+  d'identifiant. Le code billet reste dérivé de l'id, jamais stocké.
+- **L'historique survit** : un événement ou un compte supprimé met
+  `event_id` / `user_id` à `NULL` ; les colonnes instantanées (titre, date,
+  lieu, nom anonymisé) gardent le billet prouvable.
+- **Montants en unités mineures entières** (centimes ; ariary pour MGA, devise
+  sans décimale chez Stripe) : aucun flottant ne touche un prix.
+- **Dénormalisation assumée** : la réservation copie l'événement et le
+  participant (portefeuille, liste d'invités, entrée sans jointure) ; un
+  trigger la tient à jour si l'organisateur déplace l'événement.
 
 ---
 
 ## 7. Règles métier
 
-| Règle | Client | Serveur |
+Chaque règle est vérifiée **deux fois** : dans l'app pour une réponse
+immédiate, puis dans la base, qui décide.
+
+| Règle | App | Base |
 |---|---|---|
-| Une réservation par participant et par événement | `ReservationPolicy` + id déterministe | règles |
-| Pas de réservation sur un événement complet / commencé | `ReservationPolicy` | règles + transaction |
-| Re-réservation après annulation | nouvelle date de réservation | règles : heure récente, `cancelledAt` vidé |
-| Publier un événement | email vérifié (`EventFormController`) | règles : `isVerified()` |
-| Supprimer un événement | `EventPolicy.canDelete` : aucune réservation | règles : `takenSeats() == 0` |
-| Liste d'attente | `WaitlistPolicy` : participant, complet, à venir, sans place | règles + fonction (FIFO, une notification par place libérée) |
-| Avis | `ReviewPolicy` : inscrit confirmé, événement commencé, email vérifié, note 1–5, ≤ 2 000 caractères | règles (création et modification) |
-| Entrée | `CheckInPolicy` : existe, bon événement, code conforme, non annulé, non déjà scanné | règles : organisateur seul, append-only |
-| Suppression de compte | ré-authentification | fonction : refus si événement à venir avec participants ; places libérées ; anonymisation |
-| Rôle | inchangeable | règles + custom claim |
-| S'abonner | `FollowPolicy` : pas à soi-même | règles : id = organizerId, pas soi-même ; compteur par fonction |
-| Signaler | `ReportPolicy` : motif de la liste, précisions si « Autre », ≤ 2 000, pas son propre contenu | règles : id `type_cible_uid` (un par compte), motifs fermés, lecture admin seule |
-| Masquer un avis | automatique à 3 signalements distincts, ou décision admin | fonctions `onReportCreated` / `moderateContent` ; l'auteur ne peut pas modifier `hidden` |
-| Profil public | le client ne l'écrit jamais | règles : écriture refusée ; `syncOrganizerProfile` copie nom et présentation |
-| Équipe d'un événement | `EventPolicy` (gérer : principal ou co-organisateur ; supprimer et composer l'équipe : principal), `TeamPolicy` (email, pas soi-même, événement à venir, ≤ 10 avec les invitations en attente) | règles : `staffIds` jamais écrit par un client, `isEventTeam()` pour participants, entrées, liste d'attente ; fonctions `inviteCoOrganizer` (compte organisateur existant), `respondToStaffInvite`, `removeCoOrganizer` |
-| Types de billets | `EventDraft.validate` (≤ 6, noms uniques, ≥ 1 place, devise dès qu'un type est payant), `TierPlanner.apply` (ventes conservées, type vendu non supprimable, mode verrouillé après vente) | règles : forme des types, somme = capacité, `tierMoved` ; `normalizeEventTiers` corrige toute dérive |
-| Réserver un type gratuit | `ReservationPolicy.canReserve(tierId)` | règles : le type existe, est gratuit, a une place ; `tiers.{id}.available` et `availablePlaces` bougent ensemble |
-| Acheter un type payant | `ReservationPolicy.canCheckout` | **jamais par le client** (règles : statut `pending`/champs de paiement interdits) ; `createCheckoutSession` tient la place 30 min en transaction, Stripe fixe le montant côté serveur |
-| Confirmer un paiement | écran « Paiement en cours » en lecture seule | `stripeWebhook` (signature vérifiée) : confirme ; si la place a été relâchée entre-temps, la reprend s'il en reste, **sinon rembourse** — jamais de débit sans billet |
-| Place tenue abandonnée | « Abandonner » | `cancelPendingCheckout`, webhook `expired`, balayage `releaseExpiredHolds` toutes les 10 min (marge de 5 min après l'expiration Stripe) |
-| Annuler un billet payé | `ReservationPolicy.canCancel` le refuse, `canRefund` : actif, payé, avant le début | règles : annulation client refusée si `pricePaid > 0` ; `cancelPaidReservation` rembourse puis libère la place |
-| Événement retiré, compte supprimé | — | billets payés à venir remboursés (`refund_failed` journalisé si Stripe échoue, sans bloquer) |
+| Une réservation par participant et par événement | `ReservationPolicy` | `UNIQUE` + `reserve_seat` |
+| Pas de réservation sur un événement complet / commencé ; aucune survente | `ReservationPolicy` | `reserve_seat` (événement verrouillé) |
+| Re-réservation après annulation | nouvelle date | `reserve_seat` réutilise la ligne, efface l'annulation |
+| Publier un événement | email vérifié (`EventFormController`) | `save_event` : organisateur, email confirmé, date future |
+| Supprimer un événement | `EventPolicy.canDelete` : aucune place prise | `delete_event` : principal seulement, aucune place prise |
+| Types de billets | `EventDraft.validate`, `TierPlanner` | `save_event` : ≤ 6, noms uniques, ventes conservées, type vendu non supprimable, mode et devise figés après vente ; totaux par trigger |
+| Réserver un type gratuit | `canReserve(tierId)` | `reserve_seat` : le type existe, est gratuit, a une place |
+| Acheter un type payant | `canCheckout` | **jamais par l'app** : `payments-checkout` → `payments_hold_seat` tient la place 30 min ; le montant vient de la base |
+| Confirmer un paiement | écran « Paiement en cours » en lecture seule | `stripe-webhook` (signature) → `payments_fulfill` ; place relâchée entre-temps : reprise s'il en reste, **sinon remboursement** |
+| Place tenue abandonnée | « Abandonner » | `payments-cancel`, webhook `expired`, balayage `pg_cron` toutes les 10 min (5 min de marge après Stripe) |
+| Annuler un billet payé | `canCancel` le refuse, `canRefund` : actif, payé, avant le début | `payments-refund` : Stripe rembourse d'abord, la place revient ensuite |
+| Liste d'attente | `WaitlistPolicy` : participant, complet, à venir, sans place | `join_waitlist` ; trigger : une notification par place libérée, la plus ancienne d'abord |
+| Avis | `ReviewPolicy` : inscrit confirmé, événement commencé, email vérifié, 1–5, ≤ 2 000 | RLS à l'insertion + triggers (auteur, nom, note de l'organisateur) |
+| Entrée | `CheckInPolicy.precheck` : identifiant valide, code conforme | `check_in_ticket` : bon événement, payé, non annulé, non déjà scanné — décidé et enregistré ensemble |
+| Suppression de compte | ré-authentification | `delete_my_account` : refus si événement à venir avec participants ; places libérées, payées remboursées ; anonymisation ; fichiers en file |
+| Rôle | inchangeable | droits par colonne + trigger |
+| S'abonner | `FollowPolicy` : pas à soi-même | `CHECK` + compteur par trigger |
+| Signaler | `ReportPolicy` : motif de la liste, précisions si « Autre », ≤ 2 000 | `UNIQUE` (un par compte) + trigger : contenu existant, pas le sien |
+| Masquer un avis | automatique à 3 signalements distincts, ou décision admin | trigger de seuil / `moderate_content` ; une décision humaine n'est jamais écrasée ; la RLS cache l'avis masqué |
+| Profil public | le client ne l'écrit jamais | triggers depuis `profiles` |
+| Équipe d'un événement | `EventPolicy`, `TeamPolicy` (email, pas soi-même, à venir, ≤ 10 invitations comprises) | `invite_co_organizer` (compte organisateur existant), `respond_to_staff_invite`, `remove_co_organizer` ; `is_event_team()` dans la RLS |
+| Événement retiré par la modération | — | `moderate_content` : billets annulés, payés remboursés via la file (`refund_failed` si Stripe échoue après 8 essais) |
 
 ---
 
 ## 8. Sécurité
 
-Les règles sont le seul contrôle qui s'exécute côté client ; les opérations
-qui touchent les données d'autrui (suppression de compte, notifications,
-liste d'attente) sont réservées aux Cloud Functions. App Check limite l'accès
-aux applications authentiques. Correctifs importants : lecture d'une
-réservation pas encore créée, re-réservation, listes de réservations
-restreintes à l'appelant. Tout est détaillé et testé : [`docs/SECURITY.md`](docs/SECURITY.md).
+La base est le seul contrôle qui s'exécute réellement : la clé `anon` est
+publique, n'importe quel compte peut appeler l'API avec une requête fabriquée.
+Quatre couches se superposent : **middleware de requête** (compte suspendu,
+limitation de débit), **droits par colonne**, **Row Level Security** sur chaque
+table, **fonctions et triggers** en transaction avec un ordre de verrouillage
+unique. Les fonctions de paiement et la file de jobs ne sont exécutables que par
+le rôle serveur des Edge Functions. Tout est détaillé et testé sous les vrais
+rôles : [`docs/SECURITY.md`](docs/SECURITY.md).
 
-> ⚠️ Toute modification de règles, d'index ou de fonctions doit être
-> **redéployée** (`make deploy`).
+> ⚠️ Toute modification du modèle, d'une règle ou d'une fonction passe par une
+> **nouvelle migration** (jamais par l'éditeur SQL), un test dans
+> `supabase/tests/db`, puis `make db-push`.
 
 ---
 
 ## 9. Notifications push
 
-| Notification | Destinataire | Déclencheur | Tap ouvre | Préférence |
+| Notification | Destinataire | Déclencheur (base) | Tap ouvre | Préférence |
 |---|---|---|---|---|
-| Nouvelle réservation / annulation | organisateur **et co-organisateurs** | `notifyOrganizerOnReservation` | liste des participants | `bookingAlerts` (chacun la sienne) |
-| Invitation à co-organiser · Nouveau co-organisateur · Retiré de l'équipe | invité · principal · membre retiré | `inviteCoOrganizer` · `respondToStaffInvite` · `removeCoOrganizer` | invitations · équipe · tableau de bord | — (transactionnel) |
-| Paiement confirmé · Paiement remboursé | acheteur | `stripeWebhook` (`fulfillCheckout`) · remboursement automatique d'un paiement arrivé sans place | billet · fiche | — (transactionnel) |
-| Événement annulé · Avis masqué | détenteurs et organisateur · auteur | `moderateContent`, `onReportCreated` | billets · fiche | — (transactionnel) |
-| Demain : … | participant | `sendEventReminders` (horaire) | billet | `eventReminders` |
-| Une place s'est libérée | participant en attente | `notifyWaitlistOnSeatRelease` | fiche de l'événement | `eventReminders` |
-| « Mirindra publie un événement » | abonnés de l'organisateur | `onEventWritten` (création, événement à venir) | fiche de l'événement | `followedOrganizers` |
+| Nouvelle réservation / annulation | organisateur **et co-organisateurs** | trigger `reservations_after_write` | liste des participants | `booking_alerts` (chacun la sienne) |
+| Invitation à co-organiser · Nouveau co-organisateur · Retiré de l'équipe | invité · principal · membre retiré | `invite_co_organizer` · `respond_to_staff_invite` · `remove_co_organizer` | invitations · équipe · tableau de bord | — (transactionnel) |
+| Paiement confirmé · Paiement remboursé | acheteur | `payments_fulfill` · `payments_mark_refunded` | billet · fiche | — (transactionnel) |
+| Événement annulé · Avis masqué | détenteurs et organisateur · auteur | `moderate_content`, trigger de seuil | billets · fiche | — (transactionnel) |
+| Demain : … | participant | `pg_cron` → `send_event_reminders` (horaire, un rappel par billet) | billet | `event_reminders` |
+| Une place s'est libérée | participant en attente | trigger `events_after_update` | fiche de l'événement | `event_reminders` |
+| « Mirindra publie un événement » | abonnés de l'organisateur | trigger `events_after_insert` (événement à venir) | fiche de l'événement | `followed_organizers` |
 
-Chaque envoi est aussi écrit dans `users/{uid}/notifications` (centre de
-notifications, TTL 30 jours). Côté app, `PushNotifications` suit la session :
-permission, jeton, affichage au premier plan, tap, invalidation du jeton à la
-déconnexion. Web : `web/firebase-messaging-sw.js` + clé VAPID.
+Chaque notification est une ligne de `notifications` (centre de notifications,
+30 jours), écrite dans la transaction qui la cause. Un trigger met en file un
+job `push` si le destinataire a un appareil ; le worker l'envoie par **FCM
+HTTP v1** et oublie les jetons refusés. Côté app, `PushNotifications` suit la
+session (permission, jeton, affichage au premier plan, tap) ; chaque
+installation a son identifiant d'appareil, `register_device` retire un jeton
+d'un autre compte, et le jeton est invalidé à la déconnexion. Web :
+`web/firebase-messaging-sw.js` + clé VAPID.
 
 ---
 
-## 10. Production : App Check, Crashlytics, Analytics, hors ligne
+## 10. Production : Crashlytics, Analytics, hors ligne
 
 | Sujet | Mise en œuvre |
 |---|---|
-| App Check | `bootstrap.dart` : Play Integrity / App Attest en release, fournisseurs debug sinon, reCAPTCHA v3 sur le web ; fonctions : `ENFORCE_APP_CHECK` |
 | Crashlytics | erreurs Flutter et plateforme (fatales) + `AppLogger.error` (non fatales), désactivé en debug, identifiant technique du compte |
-| Analytics | **opt-in** (collecte coupée par défaut dans le manifeste et l'`Info.plist`), feuille de consentement unique, interrupteur dans les Paramètres ; vues d'écran via l'observateur de routes ; événements : `login`, `sign_up`, `event_published`, `reservation_confirmed/cancelled`, `share` (lien, invitation, natif), `add_to_wishlist`, `waitlist_joined`, `review_published`, `ticket_scanned`, `organizer_followed/unfollowed`, `content_reported` (type et motif seulement) |
-| Hors ligne | cache Firestore persistant (100 Mo), bandeau global via `connectivity_plus` |
-| Pagination | première page temps réel, pages suivantes par curseur `startsAt` + id |
+| Analytics | **opt-in** (collecte coupée par défaut dans le manifeste et l'`Info.plist`), feuille de consentement unique, interrupteur dans les Paramètres ; vues d'écran via l'observateur de routes ; événements : `login`, `sign_up`, `event_published`, `reservation_confirmed/cancelled`, `checkout_started`, `share`, `add_to_wishlist`, `waitlist_joined`, `review_published`, `ticket_scanned`, `organizer_followed/unfollowed`, `content_reported` (type et motif seulement) |
+| Journaux serveur | une ligne JSON par requête d'Edge Function (statut, durée, règle, identifiant de requête) ; `private.audit_log` pour chaque décision et mouvement d'argent (1 an) |
+| Hors ligne | bandeau global via `connectivity_plus` ; ce qui est à l'écran reste consultable ; flux Realtime résilients (réabonnement automatique) ; pas de cache local de la base |
+| Pagination | première page temps réel, pages suivantes par curseur `(starts_at, id)` |
 | Signature | `android/key.properties` |
 
 ---
@@ -470,12 +474,12 @@ aplat plein écran. Détails : [`docs/DESIGN_SYSTEM.md`](docs/DESIGN_SYSTEM.md).
 | Écran | Route |
 |---|---|
 | Splash · Onboarding · Connexion · Inscription · Bienvenue | `/splash` · `/onboarding` · `/login` · `/register` · `/welcome` |
-| Mot de passe oublié / changement · Profil incomplet | `/forgot-password` · `/change-password` · `/complete-profile` |
+| Mot de passe oublié / changement / récupération · Profil incomplet | `/forgot-password` · `/change-password` · `/change-password?recovery=1` · `/complete-profile` |
 | Explorer · Recherche · Billets · Profil | `/events` · `/search` · `/reservations` · `/profile` |
 | Fiche événement (favori, partage, liste d'attente, avis, signalement) | `/events/:eventId` |
 | Lien partagé (App Links) → fiche | `/e/:eventId` |
 | Profil organisateur public · Organisateurs suivis | `/organizers/:organizerId` · `/following` |
-| Modération · Dossier · Administrateurs (claim `admin`) | `/admin/moderation` · `/admin/moderation/:entryId` · `/admin/roles` |
+| Modération · Dossier · Administrateurs | `/admin/moderation` · `/admin/moderation/:entryId` · `/admin/roles` |
 | Confirmation · Billet | `/reservations/:reservationId/confirmation` · `/reservations/:reservationId/ticket` |
 | Paiement en cours · retours Stripe (App Links → écran de paiement) | `/reservations/:reservationId/payment` · `/pay/success` · `/pay/cancel` |
 | Mes favoris | `/favorites` |
@@ -491,52 +495,69 @@ aplat plein écran. Détails : [`docs/DESIGN_SYSTEM.md`](docs/DESIGN_SYSTEM.md).
 
 ## 13. Configuration
 
-| `--dart-define` | Effet |
+**Build** — `env/<flavor>.json` (ignoré par Git, modèle `env/example.json`),
+passé par `make run` / `make build-apk` avec `--dart-define-from-file` :
+
+| Clé | Effet |
 |---|---|
-| `FLAVOR` | `dev` (défaut), `staging`, `prod` |
-| `USE_EMULATORS` | `true` → Auth, Firestore, Storage et Functions sur les émulateurs |
+| `FLAVOR` | `dev` (défaut), `staging`, `prod` (argument de `make`) |
+| `SUPABASE_URL` · `SUPABASE_ANON_KEY` | projet Supabase ; clé publique par construction (la RLS protège) ; sans elles, écran de configuration |
 | `GOOGLE_SERVER_CLIENT_ID` | ID client OAuth web ; requis pour Google Sign-In sur Android |
 | `FIREBASE_WEB_VAPID_KEY` | clé Web Push ; sans elle, pas de push sur le web |
-| `APP_CHECK_RECAPTCHA_SITE_KEY` | clé reCAPTCHA v3 ; sans elle, App Check inactif sur le web |
 
-| Constante / paramètre | Où | À aligner avec |
+**Serveur** — secrets des Edge Functions (`supabase/functions/.env` →
+`make secrets-push`) et Vault :
+
+| Secret / paramètre | Où | À aligner avec |
 |---|---|---|
-| `REGION` / `AppConfig.functionsRegion` = `us-central1` | `functions/src/index.ts` / `app_config.dart` | emplacement Firestore `nam5` |
-| bloc `flutter` de `firebase.json` | écrit par `flutterfire configure` | apps Android, iOS, macOS, web, Windows du projet `eventhub-d411f` ; régénère `lib/firebase_options.dart` et `android/app/google-services.json` (ignorés par Git) |
-| `ENFORCE_APP_CHECK` | paramètre des fonctions | enregistrement App Check fait |
-| `STRIPE_SECRET_KEY` · `STRIPE_WEBHOOK_SECRET` | Secret Manager (`firebase functions:secrets:set`) ; émulateurs : `functions/.secret.local` (valeurs factices, ignoré par Git, créé par `make functions-secrets`) | compte Stripe, point de terminaison du webhook |
-| `PUBLIC_ORIGIN` · `HOLD_MINUTES` (30) | `functions/src/index.ts` | domaine Hosting (pages `/pay/*`) · durée affichée sur l'écran de paiement |
-| `eventhub_default` | canal Android | manifeste, fonctions, app |
-| `applicationId` | `build.gradle.kts` | app Android Firebase |
+| `STRIPE_SECRET_KEY` · `STRIPE_WEBHOOK_SECRET` | secrets des fonctions | compte Stripe, point de terminaison du webhook |
+| `WORKER_SECRET` | secrets des fonctions **et** Vault `eventhub_worker_secret` | `supabase/snippets/wire_worker.sql` |
+| `eventhub_functions_url` | Vault | `https://<ref>.supabase.co/functions/v1` |
+| `FCM_SERVICE_ACCOUNT` | secrets des fonctions | projet Firebase de l'app (FCM) |
+| `PUBLIC_ORIGIN` | secrets des fonctions | domaine Hosting (pages `/pay/*`, liens partagés) |
+| `HOLD_MINUTES` (31) | `supabase/functions/payments-checkout` | minimum de 30 min imposé par Stripe |
+
+**Constantes à garder alignées** :
+
+| Constante | Où | Avec |
+|---|---|---|
+| `eventhub://auth-callback` | `AppConfig.authRedirectUrl` | `supabase/config.toml` (`additional_redirect_urls`), intent filter Android |
+| `eventhub_default` | canal Android | manifeste, `_shared/fcm.ts`, app |
+| limites des types de billets (6, 40, 160) | `EventTier`, `EventDraft` | migrations 5 et 11 |
+| bloc `flutter` de `firebase.json` | `flutterfire configure` | régénère `lib/firebase_options.dart` et `android/app/google-services.json` (ignorés par Git) |
+| `applicationId` | `build.gradle.kts` | app Android Firebase, client OAuth Android |
 
 ---
 
 ## 14. Qualité : lint, tests, CI
 
 - **Analyse** : zéro issue (`flutter_lints` strict, `riverpod_lint`).
-- **Tests Dart** (`make test`, **197**) : policies (réservation gratuite,
-  achat, annulation et remboursement par type, événement dont suppression,
-  équipe, modération, liste d'attente, avis, entrée dont billet non payé,
-  abonnement, signalement), montants (`Money`), types de billets
-  (`TierPlanner`, DTO, validation, libellés de prix), code billet, CSV
-  (fichier, BOM, nom, colonnes billet et montant), stats (recettes) et alertes,
-  catalogue paginé, recommandations, phrase de preuve sociale, profil public,
-  préférences et routage des notifications, mapping d'erreurs, logger,
-  `RouteGuard` (dont liens profonds conservés à travers le splash et la
-  connexion) ; widgets et goldens (connexion, écrans d'auth, démarrage, billet,
-  stats, centre de notifications).
-- **Tests de règles** (`make test-rules`, **145**) contre les émulateurs.
-- **Tests des fonctions** (`make test-functions`, **36**) : types de billets
-  (normalisation), place tenue et libérée, webhook signé (confirmation,
-  expiration, signature refusée), paiement tardif re-placé, balayage des
-  places expirées, équipe, administration,
-  claim de rôle, notifications organisateur et préférences, liste d'attente,
-  rappels J-1, suppression de compte, profil public (publication, compteur
-  d'abonnés, annonce aux abonnés, note moyenne hors avis masqués), preuve
-  sociale, modération (masquage au seuil, file, décision admin), page publique
-  (Open Graph, échappement, 404) — contre les émulateurs Auth, Firestore,
-  Functions et Storage.
-- **CI** : `quality`, `rules`, `functions` (compilation + intégration), `android`.
+- **Tests Dart** (`make test`, **232**) : policies (réservation gratuite,
+  achat, annulation et remboursement, événement, équipe, modération, liste
+  d'attente, avis, entrée), montants, types de billets (`TierPlanner`,
+  validation, lecture des lignes, payload de `save_event`), chemins de
+  bannières, code billet, CSV, stats (recettes) et alertes, catalogue paginé,
+  recommandations, preuve sociale, profil public, notifications (lignes,
+  préférences, routage des données FCM), **mapping de toutes les familles
+  d'erreurs** (PostgREST, Edge Functions, Auth, Storage), logger, `RouteGuard` ;
+  widgets et goldens.
+- **Tests de la base** (`make test-db`, **39**) : les 11 migrations appliquées
+  dans l'ordre sur **PGlite** (Postgres 17 en WebAssembly, sans Docker ni
+  projet distant), puis des scénarios exécutés **sous les vrais rôles** :
+  droits et RLS (rôle immuable, profils privés, API fermée à `anon`, fonctions
+  serveur inaccessibles), suspension immédiate, jetons d'appareil, premier
+  administrateur, profil créé à l'inscription, publication et types de billets
+  (ventes protégées, descriptions, limites), survente impossible, liste des
+  participants limitée à l'équipe, liste d'attente, verdict d'entrée atomique,
+  prénoms courts, rappels uniques, push en file, paiements (place tenue et
+  reprise, webhook rejoué, paiement tardif re-placé ou remboursé, balayage,
+  remboursement, devise figée), avis réservés aux présents, signalements et
+  seuil, décision humaine prioritaire, suspension, retrait d'un événement payé,
+  équipe, suppression de compte, file de jobs et tâches planifiées.
+- **Edge Functions** (`make functions-check`) : `deno check` strict des six
+  fonctions et du middleware.
+- **CI** : `quality` (format, analyse, tests Dart), `database` (PGlite),
+  `edge-functions` (Deno), `android` (APK dev).
 
 ---
 
@@ -546,23 +567,25 @@ aplat plein écran. Détails : [`docs/DESIGN_SYSTEM.md`](docs/DESIGN_SYSTEM.md).
 |---|---|
 | `make setup` · `make gen` | dépendances, génération de code |
 | `make analyze` · `make format` · `make test` | qualité Dart |
-| `make rules-setup` · `make test-rules` | tests des règles |
-| `make functions-setup` · `make functions-build` · `make test-functions` | fonctions |
-| `make functions-secrets` | secrets Stripe factices pour les émulateurs (`functions/.secret.local`) |
-| `make run DEVICE=<id>` · `make run-emu DEVICE=<id>` | lancer |
-| `make emulators` | suite d'émulateurs |
-| `make firebase-deploy` · `make deploy` | règles + index + Storage · tout, fonctions et Hosting compris |
-| `make build-apk FLAVOR=prod` | APK release |
-| `make grant-admin EMAIL=… [REVOKE=1]` | accorder / retirer le rôle administrateur (identifiants Google Cloud du poste) |
+| `make db-setup` · `make test-db` | suite de la base (PGlite) |
+| `make functions-check` | typage des Edge Functions |
+| `make run DEVICE=<id>` · `make build-apk FLAVOR=prod` | lancer · APK release (`env/<flavor>.json`) |
+| `make supabase-login` · `make supabase-link PROJECT_REF=<ref>` | relier la CLI au projet |
+| `make db-push` | tests de la base puis migrations en attente |
+| `make config-push` | réglages Auth de `supabase/config.toml` |
+| `make secrets-push` · `make functions-deploy` | secrets puis déploiement des Edge Functions |
+| `make hosting-deploy` | site public (écrit `eventhub-config.js` puis `firebase deploy --only hosting`) |
+| `make deploy` | migrations, fonctions et Hosting |
+| `make grant-admin EMAIL=…` | rappelle la requête SQL du premier administrateur |
 
 ---
 
 ## 16. Scénario de démonstration
 
-Deux appareils Android, projet déployé.
+Deux appareils Android, projet déployé (§3).
 
-1. **Organisateur** : inscription (email) → lien de vérification → « C'est
-   fait » → notifications acceptées → publier *Flutter Meetup*, capacité 1.
+1. **Organisateur** : inscription (email) → lien de confirmation → connexion →
+   notifications acceptées → publier *Flutter Meetup*, capacité 1.
 2. **Participant A** : « Continuer avec Google » → rôle participant → cœur sur
    l'événement → **Réserver**. L'organisateur reçoit « Nouvelle réservation ».
 3. **Participant B** : l'événement est complet → **Rejoindre la liste d'attente**.
@@ -572,24 +595,24 @@ Deux appareils Android, projet déployé.
 6. Après le début : B laisse un avis 5 ★ ; la fiche affiche la moyenne.
 7. Paramètres de A → **Supprimer mon compte** → mot de passe / Google → compte
    effacé, avis et historique anonymisés.
-8. Couper le réseau : le bandeau « Hors ligne » apparaît, les billets restent
-   consultables.
-9. **Participant B** : fiche → nom de l'organisateur → **Suivre**. L'organisateur
+8. **Participant B** : fiche → nom de l'organisateur → **Suivre**. L'organisateur
    publie un second événement → B reçoit « Mirindra publie un événement » ;
    l'accueil de B affiche le rail **Pour vous**.
-10. **Partage** : fiche → Partager… → WhatsApp. Le lien s'ouvre dans l'app sur
-    un Android qui l'a installée, et en page web avec aperçu ailleurs.
-11. **Signalement** : trois comptes signalent un avis → il disparaît de la
+9. **Partage** : fiche → Partager… → WhatsApp. Le lien s'ouvre dans l'app sur
+   un Android qui l'a installée, et en page web ailleurs.
+10. **Signalement** : trois comptes signalent un avis → il disparaît de la
     fiche ; son auteur voit « Votre avis est masqué… ».
-12. **Organisateur** : Participants → **Exporter le CSV** → Drive ; le fichier
+11. **Organisateur** : Participants → **Exporter le CSV** → Drive ; le fichier
     s'ouvre correctement dans Excel.
-13. **Billet payant** (Stripe en mode test) : l'organisateur active « Plusieurs
-    types de billets » → *Standard* gratuit (50) et *VIP* 25,00 € (10). A
-    choisit VIP → page Stripe → carte `4242 4242 4242 4242` → retour dans
-    l'app : « Paiement en cours » puis le billet, « VIP · 25,00 € ». La fiche
-    affiche « VIP · 9 places ».
-14. A : billet → **Annuler et être remboursé** → le paiement apparaît remboursé
+12. **Billet payant** (Stripe en mode test) : l'organisateur active « Plusieurs
+    types de billets » → *Standard* gratuit (50) et *VIP* 25,00 € (10, « Accès
+    backstage »). A choisit VIP → page Stripe → carte `4242 4242 4242 4242` →
+    retour dans l'app : « Paiement en cours » puis le billet, « VIP · 25,00 € ».
+    La fiche affiche « VIP · 9 places ».
+13. A : billet → **Annuler et être remboursé** → le paiement apparaît remboursé
     dans le tableau de bord Stripe, la place VIP revient en vente.
+14. **Modération** : un administrateur suspend un compte → la requête suivante
+    de ce compte est refusée, sans attendre l'expiration de son jeton.
 
 ---
 
@@ -597,61 +620,65 @@ Deux appareils Android, projet déployé.
 
 | # | Décision | Motivation |
 |---|---|---|
-| 1 | Transaction Firestore client + règles serveur pour réserver | atomicité sans latence de fonction ; intégrité par les règles |
-| 2 | Ids déterministes (réservation, avis, favori, entrée, attente) | unicité structurelle, vérifiable par les règles |
-| 3 | `Result<T>` + `Failure` scellée | erreurs exhaustives, pas de `try/catch` dans l'UI |
-| 4 | Aucun backend simulé ; émulateurs pour le développement | un seul chemin de code, vraies règles en local |
-| 5 | Push envoyés par Cloud Functions, préférences lues à l'envoi | le client ne cible jamais l'appareil d'autrui ; coupure immédiate |
-| 6 | Rôle en custom claim | règles sans lecture de document |
-| 7 | Google : même parcours de complétion que le profil manquant | un seul écran de choix du rôle, déjà protégé par le guard |
-| 8 | Email vérifié pour publier et pour les avis | contenu visible par d'autres, barrière anti-spam minimale |
-| 9 | Suppression de compte côté serveur | les règles interdisent de supprimer un profil ; cascade sur les données d'autrui |
-| 10 | QR non signé, verdict par lecture serveur + code dérivé | rien à falsifier utilement ; un billet ne sert qu'une fois (entrée append-only) |
-| 11 | Liste d'attente sans réservation de place | premier arrivé, premier servi, annoncé comme tel ; pas d'expiration à gérer |
-| 12 | Catalogue : page live + pages par curseur | les règles plafonnent un `list` à 100 ; filtres côté client sur ce qui est chargé |
-| 13 | Analytics opt-in, jamais bloquant | CNIL ; une mesure ne doit pas casser une réservation ni les tests |
-| 14 | App Check activé tôt, appliqué plus tard (`ENFORCE_APP_CHECK`) | ne pas verrouiller les builds de dev avant l'enregistrement des jetons |
-| 15 | Stats et alertes calculées côté client | aucune lecture en plus ; limite de 200 réservations assumée |
-| 16 | Profil organisateur public dans une collection distincte, écrite par fonction | `users/{uid}` reste privé (email, rôle) ; un compteur écrit par le client ne vaudrait rien |
-| 17 | Triggers idempotents par marqueur transactionnel | livraison *au moins une fois* : sans marqueur, un compteur dérive |
-| 18 | Preuve sociale : compte exact depuis l'événement, noms courts depuis un agrégat | la jauge est transactionnelle ; les noms sont réduits à « Prénom I. », clés hachées |
-| 19 | Signalements écriture seule, un par compte, masquage automatique des avis seulement | anonymat du signaleur ; seuil de personnes distinctes ; un événement a des billets, un humain tranche |
-| 20 | Recommandations sur l'appareil, heuristique explicable | aucun profilage serveur ; chaque suggestion a une raison vraie |
-| 21 | Page publique rendue par fonction derrière Hosting, App Links vérifiés | aperçu dans les messageries sans exposer les règles Firestore ; lien unique pour app et web |
-| 22 | Lien profond conservé dans `?from=` à travers splash et connexion, liste blanche de destinations | un lien ouvre souvent l'app à froid ; `from` vient de l'extérieur |
-| 23 | Rôle admin en claim, décisions par fonctions journalisées, premier admin en ligne de commande | aucun document ne confère de pouvoir ; chaque décision est traçable ; pas de porte dérobée dans l'app |
-| 24 | Co-organisateurs dans `staffIds` sur l'événement, modifié par fonctions seulement ; invitation dupliquée (événement + invité) | une seule lecture pour que les règles prouvent l'appartenance ; chacun lit sa copie sans requête de groupe |
-| 25 | Liste des participants : requête différente pour le principal (`organizerId ==`) et l'équipe (`eventId ==`) | chaque requête est celle que les règles savent prouver ; le principal ne paie aucune lecture supplémentaire |
-| 26 | Types de billets en map sur l'événement, totaux recalculés par `normalizeEventTiers` | une réservation touche un seul document, vérifiable par les règles ; la fonction rattrape toute écriture incohérente |
-| 27 | Stripe Checkout hébergé plutôt qu'un formulaire de carte dans l'app | aucune donnée de carte chez nous (PCI SAQ A), 3-D Secure et portefeuilles gérés par Stripe, rien à publier sur les stores |
-| 28 | Place tenue 30 min à la création de la session, confirmée par webhook seulement | pas de survente pendant le paiement ; le retour navigateur n'est jamais une preuve de paiement |
-| 29 | Paiement arrivé sans place → remboursement automatique ; échec de remboursement journalisé sans bloquer | l'acheteur n'est jamais débité sans billet ; une annulation de masse ne s'arrête pas sur une erreur Stripe |
+| 1 | **Supabase (Postgres) plutôt que Firebase pour les données, l'auth et la logique serveur** | intégrité relationnelle (clés étrangères, `UNIQUE`, `CHECK`), transactions multi-lignes, règles métier au plus près des données, migrations versionnées et testables ; Firebase garde FCM, Crashlytics et Analytics |
+| 2 | Écritures métier par fonctions SQL `SECURITY DEFINER`, lectures directes sous RLS | une opération = une transaction qui revérifie tout ; les lectures profitent de PostgREST et de Realtime sans code serveur |
+| 3 | Erreurs `PTnnn` + règle dans `hint`, même forme pour les Edge Functions | un seul chemin de mapping dans l'app ; messages français écrits côté serveur |
+| 4 | `Result<T>` + `Failure` scellée | erreurs exhaustives, pas de `try/catch` dans l'UI |
+| 5 | Aucun backend simulé ; tests de la base sur PGlite | un seul chemin de code ; les vraies migrations éprouvées en local et en CI sans Docker |
+| 6 | Ordre de verrouillage unique (événement → réservation → type) | aucune survente, aucun interblocage entre réserver, payer, annuler et modifier |
+| 7 | Rôle métier en colonne figée, admin en table sans droit d'écriture, recopiés dans `app_metadata` | la base relit la vérité ; le jeton ne sert qu'à l'affichage ; aucune écriture client ne confère de pouvoir |
+| 8 | Confirmation d'email obligatoire, profil créé par trigger à l'inscription | contenu attribuable ; pas de session avant confirmation, donc la base écrit le profil après validation du rôle |
+| 9 | Middleware `db_pre_request` | suspension effective immédiatement et limitation de débit sans code dans chaque fonction |
+| 10 | Outbox `private.jobs` + worker, réveil `pg_net` après commit et `pg_cron` | un effet externe (push, remboursement) n'existe que si la transaction réussit ; reprise automatique, pas de perte |
+| 11 | Push décidés par la base, livrés par FCM depuis une Edge Function | préférences lues à l'envoi, un seul endroit qui cible un appareil, jetons morts oubliés |
+| 12 | QR non signé, verdict par `check_in_ticket` + code dérivé | rien à falsifier utilement ; un billet ne sert qu'une fois, même à deux portes |
+| 13 | Liste d'attente sans réservation de place | premier arrivé, premier servi, annoncé comme tel ; pas d'expiration à gérer |
+| 14 | Catalogue : page live + pages par curseur `(starts_at, id)` | Realtime pour ce qui compte, pagination bornée pour le reste |
+| 15 | Flux combinés événements + types + équipe côté client | Realtime ne sait pas joindre ; un événement payant n'apparaît jamais gratuit le temps d'un chargement |
+| 16 | Analytics opt-in, jamais bloquant | CNIL ; une mesure ne doit pas casser une réservation ni les tests |
+| 17 | Stats et alertes calculées côté client | aucune requête en plus ; volumes MVP |
+| 18 | Profil organisateur public dans une table distincte, maintenue par triggers | `profiles` reste privé (email, rôle) ; un compteur écrit par le client ne vaudrait rien |
+| 19 | Preuve sociale par fonction (`event_attendance`) : compte exact, prénoms courts, clés hachées | aucune donnée d'inscrit publiée au-delà de « Prénom I. » |
+| 20 | Signalements écriture seule, un par compte, masquage automatique des avis seulement | anonymat du signaleur ; seuil de personnes distinctes ; un événement a des billets, un humain tranche |
+| 21 | Recommandations sur l'appareil, heuristique explicable | aucun profilage serveur ; chaque suggestion a une raison vraie |
+| 22 | Page publique statique sur Hosting alimentée par une Edge Function, App Links vérifiés | lien unique pour app et web ; contenu rendu sans HTML injecté ; aperçus riches possibles avec un domaine personnalisé |
+| 23 | Lien profond conservé dans `?from=` à travers splash et connexion, liste blanche de destinations | un lien ouvre souvent l'app à froid ; `from` vient de l'extérieur |
+| 24 | Premier administrateur par l'éditeur SQL uniquement | pas de porte dérobée dans l'app ni dans l'API ; chaque décision ensuite journalisée |
+| 25 | Co-organisateurs en table `event_staff`, invitations en table dédiée | l'appartenance se prouve par une jointure indexée dans la RLS ; une seule requête pour le principal et l'équipe |
+| 26 | Types de billets en table, totaux de l'événement par trigger | contraintes par type (bornes, noms uniques) ; l'événement ne peut pas diverger de ses types |
+| 27 | Stripe Checkout hébergé plutôt qu'un formulaire de carte dans l'app | aucune donnée de carte chez nous (PCI SAQ A), 3-D Secure et portefeuilles gérés par Stripe |
+| 28 | Place tenue à la création de la session, confirmée par webhook seulement | pas de survente pendant le paiement ; le retour navigateur n'est jamais une preuve |
+| 29 | Paiement arrivé sans place → remboursement automatique ; remboursements de masse en file | l'acheteur n'est jamais débité sans billet ; une annulation de masse ne s'arrête pas sur une erreur Stripe |
 | 30 | Montants en unités mineures entières, devises fermées (EUR, USD, MGA) | pas d'arrondi flottant ; MGA sans décimale traité comme Stripe l'attend |
 
 ---
 
 ## 18. Périmètre : ce qui est fait, ce qui reste
 
-**Fait** : tout le cahier des charges et les maquettes, branchés sur Firebase ;
-email + Google ; vérification d'email ; suppression de compte ; push (Android,
-web) et centre de notifications ; favoris, liste d'attente, avis, contrôle à
-l'entrée ; stats et alertes ; pagination ; App Check, Crashlytics, Analytics
-sur consentement ; hors ligne ; signature release ; profils organisateurs
-publics et abonnements (F-10) ; preuve sociale (F-07) ; partage natif, page
-publique et App Links (F-08) ; export CSV en fichier (F-15) ; recommandations
-(F-18) ; signalement et modération (F-19) avec écran d'administration ;
-co-organisateurs (F-16) ; types de billets (F-12) ; billetterie payante
-Stripe avec remboursements (F-11) ; tests Dart, règles et fonctions ; CI.
+**Fait** : tout le cahier des charges et les maquettes, sur un backend Supabase
+versionné et testé ; email + Google avec confirmation ; récupération de mot de
+passe dans l'app ; suppression de compte ; push (Android, web) et centre de
+notifications ; favoris, liste d'attente, avis, contrôle à l'entrée ; stats et
+alertes ; pagination ; Crashlytics, Analytics sur consentement ; signature
+release ; profils organisateurs publics et abonnements (F-10) ; preuve sociale
+(F-07) ; partage natif, page publique et App Links (F-08) ; export CSV (F-15) ;
+recommandations (F-18) ; signalement et modération avec administration
+(F-19) ; co-organisateurs (F-16) ; types de billets avec descriptions (F-12) ;
+billetterie payante Stripe avec remboursements (F-11) ; tests Dart, base et
+Edge Functions ; CI.
 
 | Reste | Pourquoi / action |
 |---|---|
-| **Déploiement** | nécessite `firebase login`, le plan Blaze et la configuration de la console (§3.1) |
-| iOS | build sur Mac, clé APNs, capacités *Push* et *Background modes* dans Xcode, App Attest |
-| Clés à fournir | `GOOGLE_SERVER_CLIENT_ID`, `FIREBASE_WEB_VAPID_KEY`, `APP_CHECK_RECAPTCHA_SITE_KEY`, keystore release |
+| **Déploiement** | `make supabase-login`, `make supabase-link`, puis §3.1 (secrets, worker, Stripe, premier administrateur) |
+| iOS | build sur Mac, clé APNs, capacités *Push* et *Background modes* dans Xcode, schéma `eventhub://` dans `Info.plist` |
+| Clés à fournir | `env/<flavor>.json`, secrets des Edge Functions, keystore release |
+| Aperçus riches des liens | domaine personnalisé pour les Edge Functions (la fonction rend déjà l'HTML Open Graph) |
+| Cache hors ligne | stockage local des billets à venir pour une ouverture à froid sans réseau |
+| CAPTCHA à l'inscription | `[auth.captcha]` si des inscriptions automatisées apparaissent (pas d'App Check sur Supabase) |
 | « Add to Cal » | plugin natif de calendrier |
 | Empreinte release dans `assetlinks.json` | à ajouter avec la keystore release, sinon les liens s'ouvrent dans le navigateur |
-| Clés Stripe | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` et le webhook (§3.1, étape 11) ; reversement aux organisateurs (Stripe Connect) non inclus : les fonds arrivent sur le compte de la plateforme |
-| Séries (F-13), carte (F-14), discussion (F-17), multilingue (F-20) | en cours, lot par lot (voir `docs/ROADMAP.md`) |
+| Stripe Connect | reversement aux organisateurs non inclus : les fonds arrivent sur le compte de la plateforme |
+| Séries (F-13), carte (F-14), discussion (F-17), multilingue (F-20) | lot par lot (voir `docs/ROADMAP.md`) |
 | Revue juridique | notice de confidentialité et consentement à valider (DPO) |
 
 ---
@@ -660,31 +687,36 @@ Stripe avec remboursements (F-11) ; tests Dart, règles et fonctions ; CI.
 
 | Symptôme | Cause / correctif |
 |---|---|
-| « Connexion à Firebase impossible » | `flutterfire configure --project=eventhub-d411f` |
-| `operation-not-allowed` | fournisseur non activé dans Authentication |
-| Bouton Google absent (Android) | `--dart-define=GOOGLE_SERVER_CLIENT_ID=…` |
-| Google : `DEVELOPER_ERROR` / échec | SHA-1 de la clé de signature absent de la console |
-| « Confirmez votre adresse email avant de publier » | ouvrir le lien reçu puis « C'est fait » |
-| `permission-denied` | règles non déployées, ou App Check appliqué sans jeton de debug déclaré |
-| « requires an index » | `make firebase-deploy`, attendre la construction |
-| Aucune notification | permission refusée, appareil sans Google Play, fonctions non déployées, préférence coupée ; `firebase functions:log` |
+| « Configuration Supabase manquante » au démarrage | `env/<flavor>.json` absent ou incomplet ; lancer avec `make run` |
+| « Connexion à Firebase impossible » / push absents | `flutterfire configure --project=eventhub-d411f` |
+| « Confirmez votre adresse » à la connexion | ouvrir le lien reçu par email (vérifier les indésirables) ; renvoyer depuis l'écran |
+| Le lien de confirmation ou de réinitialisation ouvre le navigateur | `eventhub://auth-callback` absent de `additional_redirect_urls` (`make config-push`) ou de l'intent filter |
+| Bouton Google absent (Android) | `GOOGLE_SERVER_CLIENT_ID` manquant dans `env/<flavor>.json` |
+| Google : échec après le choix du compte | client OAuth Android sans le bon SHA-1, ou fournisseur Google non configuré dans Supabase |
+| « Vous n'avez pas les droits pour cette action » | migrations non appliquées (`make db-push`) ou compte sans le rôle requis |
+| « Trop de requêtes » | limitation de débit (240 écritures/min par compte, plus fine sur réserver/publier) : réessayer dans une minute |
+| « Ce compte est suspendu par la modération » | décision d'un administrateur ; réactivation depuis le dossier |
+| Aucune notification | permission refusée, appareil sans Google Play, `FCM_SERVICE_ACCOUNT` absent, worker non relié (`wire_worker.sql`), préférence coupée ; `select status, count(*) from private.jobs group by status` et journaux de la fonction `worker` |
 | Suppression de compte refusée | événement à venir avec participants (message explicite) |
 | Scanner : caméra indisponible | autoriser la caméra ; ou saisir le code du billet |
-| `make test-functions` échoue | Java requis ; `make functions-setup` et `make rules-setup` une fois ; si l'émulateur Functions expire au chargement : `FUNCTIONS_DISCOVERY_TIMEOUT=60` |
-| Un lien `/e/…` s'ouvre dans le navigateur au lieu de l'app | empreinte SHA-256 de la clé de signature absente de `assetlinks.json`, ou Hosting non déployé ; `adb shell pm get-app-links com.example.eventhub` |
+| `make test-db` échoue | `make db-setup` une fois (Node 22+) ; le message indique la migration et la ligne fautives |
+| `make db-push` : « Access token not provided » | `make supabase-login`, puis `make supabase-link PROJECT_REF=<ref>` |
+| Un lien `/e/…` s'ouvre dans le navigateur au lieu de l'app | empreinte SHA-256 absente de `assetlinks.json`, ou Hosting non déployé ; `adb shell pm get-app-links com.example.eventhub` |
+| Page `/e/…` : « Cet événement n'existe plus » pour un événement existant | `eventhub-config.js` non régénéré (`make hosting-deploy`) ou fonction `public-event` non déployée |
 | « Vous avez déjà signalé ce contenu » | normal : un signalement par compte et par contenu |
-| Profil organisateur « indisponible » | fonctions non déployées (profil public jamais créé) ou compte supprimé |
-| Pas d'entrée « Modération » après `make grant-admin` | se déconnecter puis se reconnecter (le rôle est dans le jeton) |
-| `make grant-admin` : « Could not load the default credentials » | `gcloud auth application-default login`, ou `GOOGLE_APPLICATION_CREDENTIALS=<clé>` |
-| « Le paiement est indisponible pour le moment » | secret `STRIPE_SECRET_KEY` absent ou invalide ; `firebase functions:log --only createCheckoutSession` |
+| Pas d'entrée « Modération » après `grant_admin.sql` | se déconnecter puis se reconnecter (le rôle d'affichage est dans le jeton) |
+| « Le paiement est indisponible pour le moment » | `STRIPE_SECRET_KEY` absent ou invalide ; journaux de `payments-checkout` |
 | Paiement effectué mais billet resté « en cours » | webhook non déclaré, mauvais `STRIPE_WEBHOOK_SECRET` (réponses 400 dans Stripe) ou événements manquants ; Stripe relivre automatiquement une fois corrigé |
 | « Paiement remboursé » juste après avoir payé | le paiement a abouti après la libération de la place et l'événement était complet : remboursement automatique voulu |
-| Types de billets : « Des places ont été vendues… » | un type vendu ne se supprime pas et le mode ne change plus après la première vente |
+| Réservation au statut `refund_failed` | remboursement de masse refusé 8 fois par Stripe : voir `private.audit_log` (`job.failed`) et rembourser depuis Stripe |
+| Types de billets : « Des places ont été vendues… » | un type vendu ne se supprime pas ; le mode et la devise ne changent plus après la première vente |
 
 ---
 
 ## 20. Contribuer
 
 Branches par tâche, Conventional Commits, CI verte. Toute évolution (écran,
-route, dépendance, règle, fonction) met à jour **ce README et le document
-`docs/` concerné dans la même PR** ([`docs/CONVENTIONS.md`](docs/CONVENTIONS.md)).
+route, dépendance, table, règle, fonction) met à jour **ce README et le
+document `docs/` concerné dans la même PR** ; tout changement du modèle ou
+d'une règle arrive avec **sa migration et son test de base**
+([`docs/CONVENTIONS.md`](docs/CONVENTIONS.md)).

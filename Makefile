@@ -1,12 +1,20 @@
 # EventHub developer shortcuts. Requires GNU make (Git Bash / WSL on Windows).
 DEVICE ?=
 FLAVOR ?= dev
-DART_DEFINES = --dart-define=FLAVOR=$(FLAVOR)
+# Supabase URL, anon key and the other build-time keys of a flavor live in
+# env/<flavor>.json (git-ignored). Template: env/example.json.
+ENV_FILE ?= env/$(FLAVOR).json
+DART_DEFINES = --dart-define=FLAVOR=$(FLAVOR) $(if $(wildcard $(ENV_FILE)),--dart-define-from-file=$(ENV_FILE),)
+SUPABASE = npx --yes supabase
 
-.PHONY: help setup gen watch analyze format test test-cov test-rules rules-setup run run-emu build-apk clean emulators firebase-deploy functions-setup functions-build test-functions functions-secrets deploy grant-admin
+.PHONY: help setup gen watch analyze format test test-cov db-setup test-db functions-check \
+	supabase-login supabase-link db-push functions-deploy secrets-push config-push \
+	hosting-config hosting-deploy deploy grant-admin run build-apk clean
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-16s\033[0m %s\n", $$1, $$2}'
+
+# ------------------------------------------------------------------ app ---
 
 setup: ## Install deps and generate code
 	flutter pub get
@@ -30,44 +38,53 @@ test: ## Unit + widget tests
 test-cov: ## Tests with coverage report
 	flutter test --coverage
 
-rules-setup: ## Install the Node deps of the security-rules test suite
-	npm --prefix firebase/tests install
-
-test-rules: ## Firestore + Storage security rules, against the emulators (needs Java)
-	firebase/tests/node_modules/.bin/firebase --project demo-eventhub emulators:exec --only firestore,storage "npm --prefix firebase/tests test"
-
-run: ## Run on $(DEVICE) with FLAVOR=$(FLAVOR)
+run: ## Run on $(DEVICE) with FLAVOR=$(FLAVOR) and env/$(FLAVOR).json
 	flutter run $(if $(DEVICE),-d $(DEVICE),) $(DART_DEFINES)
 
-run-emu: ## Run against the local Firebase emulator suite
-	flutter run $(if $(DEVICE),-d $(DEVICE),) $(DART_DEFINES) --dart-define=USE_EMULATORS=true
-
-build-apk: ## Release APK for FLAVOR
+build-apk: ## Release APK for FLAVOR (env/$(FLAVOR).json)
 	flutter build apk --release $(DART_DEFINES)
 
-emulators: ## Start Firebase emulators (auth, firestore, storage, functions, hosting)
-	firebase emulators:start
+# ------------------------------------------------------------- backend ---
 
-firebase-deploy: ## Deploy Firestore/Storage rules and indexes
-	firebase deploy --only firestore:rules,firestore:indexes,storage
+db-setup: ## Install the database test suite (PGlite, no Docker)
+	npm --prefix supabase/tests ci
 
-functions-setup: ## Install the Cloud Functions dependencies
-	npm --prefix functions install
+test-db: ## Migrations, RLS, RPCs, triggers, payments, jobs — on Postgres 17 in WebAssembly
+	npm --prefix supabase/tests test
 
-functions-build: ## Compile the Cloud Functions (TypeScript)
-	npm --prefix functions run build
+functions-check: ## Type-check every Edge Function (Deno)
+	cd supabase/functions && npx --yes deno check */index.ts
 
-functions-secrets: ## Local placeholder secrets for the emulators (never real keys)
-	test -f functions/.secret.local || printf 'STRIPE_SECRET_KEY=sk_test_emulator_not_a_real_key\nSTRIPE_WEBHOOK_SECRET=whsec_emulator_local_testing_secret\n' > functions/.secret.local
+supabase-login: ## Authenticate the Supabase CLI (opens the browser)
+	$(SUPABASE) login
 
-test-functions: functions-build functions-secrets ## Cloud Functions integration tests, against the emulators (needs Java)
-	firebase/tests/node_modules/.bin/firebase --project demo-eventhub emulators:exec --only auth,firestore,functions,storage "npm --prefix functions test"
+supabase-link: ## Link this folder to the cloud project: PROJECT_REF=<ref>
+	$(SUPABASE) link --project-ref $(PROJECT_REF)
 
-deploy: functions-build ## Deploy rules, indexes, Storage rules, Cloud Functions and Hosting (Blaze plan)
-	firebase deploy --only firestore,storage,functions,hosting
+db-push: test-db ## Apply pending migrations to the linked project (tests first)
+	$(SUPABASE) db push
 
-grant-admin: functions-build ## Grant the admin claim: EMAIL=<email> [REVOKE=1] (needs gcloud ADC)
-	node functions/scripts/grant-admin.mjs $(EMAIL) $(if $(REVOKE),--revoke,)
+functions-deploy: functions-check ## Deploy every Edge Function
+	$(SUPABASE) functions deploy
+
+secrets-push: ## Upload supabase/functions/.env as Edge Function secrets
+	$(SUPABASE) secrets set --env-file supabase/functions/.env
+
+config-push: ## Apply supabase/config.toml (Auth: redirects, confirmation, Google) to the project
+	$(SUPABASE) config push
+
+hosting-config: ## Write hosting/public/eventhub-config.js from env/prod.json
+	node -e "const e=require('./env/prod.json');require('fs').writeFileSync('hosting/public/eventhub-config.js','window.EVENTHUB = '+JSON.stringify({functionsUrl:e.SUPABASE_URL.replace(/\/$$/,'')+'/functions/v1'},null,2)+';\n')"
+
+hosting-deploy: hosting-config ## Deploy the public site (shared links, Checkout return, App Links)
+	firebase deploy --only hosting
+
+deploy: db-push functions-deploy hosting-deploy ## Migrations, Edge Functions and Hosting
+
+grant-admin: ## How to grant the first administrator: EMAIL=<email>
+	@echo "Supabase → SQL Editor, then run:"
+	@echo "  select private.grant_admin('$(EMAIL)');"
+	@echo "(to revoke: select private.grant_admin('$(EMAIL)', false);)"
 
 clean: ## Clean build artefacts
 	flutter clean

@@ -87,3 +87,4 @@ firebase-debug.log
 
 # Node tooling (Firestore rules tests)
 node_modules/
+*-debug.log

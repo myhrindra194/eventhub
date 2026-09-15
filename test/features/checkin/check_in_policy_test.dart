@@ -1,15 +1,15 @@
+import 'package:eventhub/features/checkin/data/check_in_result_dto.dart';
 import 'package:eventhub/features/checkin/domain/check_in_policy.dart';
 import 'package:eventhub/features/checkin/domain/ticket_payload.dart';
 import 'package:eventhub/features/reservations/domain/entities/reservation.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  Reservation reservation({
-    String eventId = 'e1',
-    ReservationStatus status = ReservationStatus.confirmed,
-  }) => Reservation(
-    id: Reservation.composeId(eventId: eventId, userId: 'u1'),
-    eventId: eventId,
+  const id = '8d7f3a2c-1b4e-4c9a-a5d6-0e2f7b9c4a11';
+
+  Reservation reservation() => Reservation(
+    id: id,
+    eventId: 'e1',
     userId: 'u1',
     organizerId: 'o1',
     userName: 'Jean Rakoto',
@@ -17,7 +17,7 @@ void main() {
     eventTitle: 'Flutter Meetup',
     eventStartsAt: DateTime(2030),
     eventLocation: 'Antananarivo',
-    status: status,
+    status: ReservationStatus.confirmed,
     reservedAt: DateTime(2029),
   );
 
@@ -32,7 +32,7 @@ void main() {
     test('rejects anything that is not an EventHub ticket', () {
       expect(TicketPayload.parse('https://eventhub.app/e/e1'), isNull);
       expect(TicketPayload.parse('eventhub://ticket/?code=EH-1'), isNull);
-      expect(TicketPayload.parse('eventhub://ticket/e1_u1'), isNull);
+      expect(TicketPayload.parse('eventhub://ticket/$id'), isNull);
       expect(TicketPayload.parse('WIFI:S:guest;;'), isNull);
     });
 
@@ -41,49 +41,75 @@ void main() {
     });
   });
 
-  group('CheckInPolicy.evaluate', () {
-    CheckInStatus status({
-      Reservation? r,
-      String eventId = 'e1',
-      String? code,
-      DateTime? checkedInAt,
-    }) => CheckInPolicy.evaluate(
-      eventId: eventId,
-      code: code ?? r?.ticketCode ?? 'EH-XXXX-XXXX',
-      reservation: r,
-      checkedInAt: checkedInAt,
-    ).status;
-
-    test('admits a valid, unused ticket', () {
-      expect(status(r: reservation()), CheckInStatus.admitted);
-    });
-
-    test('accepts the code in any case', () {
-      final r = reservation();
+  group('CheckInPolicy.precheck', () {
+    test('leaves a genuine ticket to the server, in any case', () {
+      final code = Reservation.ticketCodeFor(id);
+      expect(CheckInPolicy.precheck(reservationId: id, code: code), isNull);
       expect(
-        status(r: r, code: r.ticketCode.toLowerCase()),
-        CheckInStatus.admitted,
+        CheckInPolicy.precheck(
+          reservationId: id.toUpperCase(),
+          code: Reservation.ticketCodeFor(id.toUpperCase()).toLowerCase(),
+        ),
+        isNull,
       );
     });
 
-    test('refuses, most severe first', () {
-      expect(status(), CheckInStatus.notFound);
-      expect(status(r: reservation(eventId: 'e2')), CheckInStatus.wrongEvent);
-      expect(
-        status(r: reservation(), code: 'EH-AAAA-AAAA'),
-        CheckInStatus.invalidCode,
+    test('refuses a code that does not belong to its id', () {
+      final verdict = CheckInPolicy.precheck(
+        reservationId: id,
+        code: 'EH-AAAA-AAAA',
       );
+      expect(verdict?.status, CheckInStatus.invalidCode);
+      expect(verdict?.isAdmitted, isFalse);
+    });
+
+    test('an id that is not a uuid is no reservation', () {
+      const legacy = 'e1_u1';
       expect(
-        status(r: reservation(status: ReservationStatus.pending)),
-        CheckInStatus.unpaid,
+        CheckInPolicy.precheck(
+          reservationId: legacy,
+          code: Reservation.ticketCodeFor(legacy),
+        )?.status,
+        CheckInStatus.notFound,
       );
+    });
+  });
+
+  group('CheckInResultDto', () {
+    test('maps every status of check_in_ticket', () {
+      for (final status in CheckInStatus.values) {
+        if (status == CheckInStatus.invalidCode) continue;
+        expect(
+          CheckInResultDto.fromJson({'status': status.name}).toDomain().status,
+          status,
+        );
+      }
+    });
+
+    test('carries the holder and the first scan time', () {
+      final verdict = CheckInResultDto.fromJson({
+        'status': 'alreadyCheckedIn',
+        'reservation_id': id,
+        'user_name': 'Jean Rakoto',
+        'tier_name': null,
+        'price_paid': 0,
+        'currency': null,
+        'scanned_at': '2030-01-01T18:30:00+00:00',
+      }).toDomain();
+      expect(verdict.reservationId, id);
+      expect(verdict.holderName, 'Jean Rakoto');
+      expect(verdict.accessLabel, 'Accès général');
       expect(
-        status(r: reservation(status: ReservationStatus.cancelled)),
-        CheckInStatus.cancelled,
+        verdict.checkedInAt?.isAtSameMomentAs(DateTime.utc(2030, 1, 1, 18, 30)),
+        isTrue,
       );
+      expect(verdict.isAdmitted, isFalse);
+    });
+
+    test('an unknown status never admits', () {
       expect(
-        status(r: reservation(), checkedInAt: DateTime(2030)),
-        CheckInStatus.alreadyCheckedIn,
+        CheckInResultDto.fromJson({'status': 'vip'}).toDomain().status,
+        CheckInStatus.notFound,
       );
     });
   });

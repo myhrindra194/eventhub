@@ -212,14 +212,6 @@ void main() {
       },
     );
   });
-
-  test('composeId is deterministic per (event, user)', () {
-    expect(
-      Reservation.composeId(eventId: 'e', userId: 'u'),
-      Reservation.composeId(eventId: 'e', userId: 'u'),
-    );
-    expect(Reservation.composeId(eventId: 'e', userId: 'u'), 'e_u');
-  });
 }
 
 BusinessRule? _rule(Result<void> result) => switch (result) {

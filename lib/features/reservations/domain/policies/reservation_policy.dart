@@ -5,9 +5,12 @@ import 'package:eventhub/features/events/domain/entities/event_tier.dart';
 import 'package:eventhub/features/reservations/domain/entities/reservation.dart';
 
 /// Business rules from the spec (§4.4 / §7), extended with ticket types
-/// (F-12) and payments (F-11). Pure and unit-tested; [canReserve] is
-/// evaluated inside the Firestore transaction so concurrent bookings cannot
-/// overbook.
+/// (F-12) and payments (F-11). Pure and unit-tested.
+///
+/// The app evaluates it for an immediate, precise answer; the database
+/// functions (`reserve_seat`, `cancel_reservation`, `payments_hold_seat`)
+/// check the same rules again under a row lock and are the ones that decide,
+/// so concurrent bookings cannot overbook.
 abstract final class ReservationPolicy {
   /// A free seat, booked directly. [tierId] is required on an event that
   /// has ticket types.
@@ -44,7 +47,8 @@ abstract final class ReservationPolicy {
   }
 
   /// A paid seat, through Stripe Checkout. Same checks as the server's
-  /// `holdSeat`, so the participant gets a sentence before any round trip.
+  /// `payments_hold_seat`, so the participant gets a sentence before any
+  /// round trip.
   static Result<EventTier> canCheckout({
     required Event event,
     required Reservation? existing,
@@ -140,7 +144,7 @@ abstract final class ReservationPolicy {
   }
 
   /// A direct cancellation: free seats only. A paid ticket is refunded by
-  /// the `cancelPaidReservation` function instead.
+  /// the `payments-refund` Edge Function instead.
   static Result<void> canCancel({
     required Reservation reservation,
     required String userId,

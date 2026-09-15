@@ -7,14 +7,9 @@ abstract interface class ReservationRepository {
   /// Reservations of a participant, most recent first (all statuses).
   Stream<List<Reservation>> watchByUser(String userId);
 
-  /// Active reservations of an event, for its organizer.
-  Stream<List<Reservation>> watchByEvent({
-    required String eventId,
-    required String organizerId,
-  });
-
-  /// Active reservations of an event, for one of its co-organizers.
-  Stream<List<Reservation>> watchByEventForTeam(String eventId);
+  /// Confirmed reservations of an event, for its team (owner and
+  /// co-organizers see the same list).
+  Stream<List<Reservation>> watchByEvent(String eventId);
 
   /// Every reservation (all statuses) on the organizer's events, most recent
   /// first. Feeds the organizer's statistics and activity feed.
@@ -28,20 +23,17 @@ abstract interface class ReservationRepository {
 
   Stream<Reservation?> watchById(String reservationId);
 
-  /// Atomically creates the reservation and decrements the event's
-  /// `availablePlaces` (and the ticket type's), after checking
-  /// `ReservationPolicy`. Free seats only.
+  /// Books a free seat. The database re-checks `ReservationPolicy` and
+  /// takes the seat from the event (and the ticket type) atomically.
   AsyncResult<Reservation> reserve({
     required String eventId,
     required AppUser participant,
     String? tierId,
   });
 
-  /// Atomically cancels and releases the seat. Free seats only.
-  AsyncResult<void> cancel({
-    required String reservationId,
-    required AppUser participant,
-  });
+  /// Cancels a free seat and releases it atomically; returns the cancelled
+  /// reservation.
+  AsyncResult<Reservation> cancel({required String reservationId});
 
   /// Holds a paid seat and opens a Stripe Checkout session for it.
   AsyncResult<CheckoutStart> startCheckout({

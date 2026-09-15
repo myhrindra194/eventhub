@@ -55,7 +55,7 @@ final class WaitlistRepositoryProvider
 }
 
 String _$waitlistRepositoryHash() =>
-    r'c8f6cd235b0468da832c168abae3fa4515aaf3fe';
+    r'017c60a9c6d9f6a99bc6bd660b5a4d556df2e32d';
 
 @ProviderFor(isOnWaitlist)
 final isOnWaitlistProvider = IsOnWaitlistFamily._();
@@ -229,7 +229,7 @@ final class WaitlistControllerProvider
 }
 
 String _$waitlistControllerHash() =>
-    r'dad2f8773d503b3cd6d752927ed391f330fc939d';
+    r'86dcace2483002b45025d3eb19b024d539bbb737';
 
 abstract class _$WaitlistController extends $AsyncNotifier<void> {
   FutureOr<void> build();

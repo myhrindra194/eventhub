@@ -1,83 +1,93 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:eventhub/core/firebase/firestore_paths.dart';
+import 'package:eventhub/core/supabase/db.dart';
+import 'package:eventhub/core/supabase/supabase_providers.dart';
+import 'package:eventhub/features/reviews/data/review_dto.dart';
 import 'package:eventhub/features/reviews/domain/review.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
-/// `reviews/{eventId}_{authorId}`.
+/// `public.reviews`. RLS hides a hidden review from everyone but its author
+/// and administrators, and lets a client write only its own review.
 class ReviewRemoteDataSource {
-  ReviewRemoteDataSource(FirebaseFirestore firestore)
-    : _reviews = firestore.collection(FirestorePaths.reviews);
+  const ReviewRemoteDataSource(this._client);
 
-  final CollectionReference<Map<String, dynamic>> _reviews;
+  final SupabaseClient _client;
 
-  /// Mirrors `request.query.limit <= 100` in the rules.
+  /// The event detail shows the latest reviews, not an archive.
   static const maxPageSize = 100;
 
-  Stream<List<Review>> watchEventReviews(String eventId) => _reviews
-      .where('eventId', isEqualTo: eventId)
-      .orderBy('createdAt', descending: true)
+  Stream<List<Review>> watchEventReviews(String eventId) => _client
+      .from(Tables.reviews)
+      .stream(primaryKey: ['id'])
+      .eq('event_id', eventId)
+      .order('created_at')
       .limit(maxPageSize)
-      .snapshots()
       .map(
-        (s) => s.docs
-            .map((d) => reviewFromFirestore(d.id, d.data()))
-            // Filtered here rather than in the query: `hidden` is absent on
-            // most documents, and `!= true` cannot be combined with this
-            // order without another composite index.
+        (rows) => rows
+            .map(reviewFromRow)
+            // The database already hides them from other people; the author
+            // still receives their own hidden review, which belongs in the
+            // "my review" card, not in the public list.
             .where((r) => !r.hidden)
             .toList(growable: false),
-      );
+      )
+      .resilient('event-reviews');
 
-  Stream<Review?> watchReview(String id) =>
-      _reviews.doc(id).snapshots().map((s) {
-        final data = s.data();
-        return data == null ? null : reviewFromFirestore(s.id, data);
-      });
-
-  /// Field set accepted by the `create` rule.
-  Future<void> create({
-    required String id,
+  /// The one review of [authorId] on [eventId] (unique per pair). Realtime
+  /// takes a single filter: the author narrows the rows to a handful, the
+  /// event is matched here.
+  Stream<Review?> watchAuthorReview({
     required String eventId,
     required String authorId,
-    required String authorName,
+  }) => _client
+      .from(Tables.reviews)
+      .stream(primaryKey: ['id'])
+      .eq('author_id', authorId)
+      .map((rows) {
+        for (final row in rows) {
+          if (row['event_id'] == eventId) return reviewFromRow(row);
+        }
+        return null;
+      })
+      .resilient('my-review');
+
+  Stream<Review?> watchById(String reviewId) => _client
+      .from(Tables.reviews)
+      .stream(primaryKey: ['id'])
+      .eq('id', reviewId)
+      .map((rows) => rows.isEmpty ? null : reviewFromRow(rows.first))
+      .resilient('review');
+
+  /// The only insertable columns. Author, name, organizer and dates are
+  /// stamped by `reviews_before_insert`; RLS checks attendance.
+  Future<void> create({
+    required String eventId,
     required int rating,
     required String comment,
-  }) => _reviews.doc(id).set({
-    'eventId': eventId,
-    'authorId': authorId,
-    'authorName': authorName,
+  }) => _client.from(Tables.reviews).insert({
+    'event_id': eventId,
     'rating': rating,
     'comment': comment,
-    'createdAt': FieldValue.serverTimestamp(),
   });
 
-  /// Only `rating`, `comment` and `updatedAt` may change.
+  /// Only `rating` and `comment` are updatable; `updated_at` is stamped by
+  /// the trigger.
   Future<void> update({
-    required String id,
+    required String eventId,
+    required String authorId,
     required int rating,
     required String comment,
-  }) => _reviews.doc(id).update({
-    'rating': rating,
-    'comment': comment,
-    'updatedAt': FieldValue.serverTimestamp(),
-  });
+  }) => _client
+      .from(Tables.reviews)
+      .update({'rating': rating, 'comment': comment})
+      .eq('event_id', eventId)
+      .eq('author_id', authorId);
 
-  Future<void> delete(String id) => _reviews.doc(id).delete();
+  Future<void> delete({required String eventId, required String authorId}) =>
+      _client
+          .from(Tables.reviews)
+          .delete()
+          .eq('event_id', eventId)
+          .eq('author_id', authorId);
 
-  static Review reviewFromFirestore(String id, Map<String, dynamic> data) {
-    DateTime? time(String key) => switch (data[key]) {
-      final Timestamp t => t.toDate(),
-      _ => null,
-    };
-    return Review(
-      id: id,
-      eventId: data['eventId'] as String? ?? '',
-      authorId: data['authorId'] as String? ?? '',
-      authorName: data['authorName'] as String? ?? '',
-      rating: (data['rating'] as num?)?.toInt() ?? 0,
-      comment: data['comment'] as String? ?? '',
-      createdAt: time('createdAt') ?? DateTime.now(),
-      updatedAt: time('updatedAt'),
-      hidden: data['hidden'] == true,
-    );
-  }
+  static Review reviewFromRow(Map<String, dynamic> row) =>
+      ReviewDto.fromJson(row).toDomain();
 }

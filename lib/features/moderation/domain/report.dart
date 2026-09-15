@@ -1,7 +1,7 @@
 import 'package:eventhub/core/errors/failure.dart';
 import 'package:eventhub/core/result/result.dart';
 
-/// What can be reported. Wire values match `targetType` in firestore.rules.
+/// What can be reported. Names match the `report_target` enum in Postgres.
 enum ReportTarget {
   event('Événement'),
   user('Organisateur'),
@@ -12,7 +12,7 @@ enum ReportTarget {
   final String label;
 }
 
-/// Closed list, mirrored in firestore.rules: moderators triage by reason, so
+/// Closed list, the `report_reason` enum: moderators triage by reason, so
 /// a free-text reason would be a reason nobody can sort.
 enum ReportReason {
   misleading(
@@ -41,16 +41,10 @@ enum ReportReason {
   final String description;
 }
 
-/// Mirrored in firestore.rules (`reports` create).
+/// Local checks before inserting a report; `reports_before_insert` repeats
+/// them all with the facts the client cannot see (who wrote a review).
 abstract final class ReportPolicy {
   static const maxDetails = 2000;
-
-  /// One report per account per target: the id is the uniqueness.
-  static String composeId({
-    required ReportTarget target,
-    required String targetId,
-    required String reporterId,
-  }) => '${target.name}_${targetId}_$reporterId';
 
   static Result<void> validate({
     required String reporterId,
@@ -62,12 +56,10 @@ abstract final class ReportPolicy {
     if (targetId.isEmpty) {
       return const Err(ValidationFailure(message: 'Contenu introuvable.'));
     }
-    final isOwn = switch (target) {
-      ReportTarget.user => targetId == reporterId,
-      // Review ids are `<eventId>_<authorId>`.
-      ReportTarget.review => targetId.endsWith('_$reporterId'),
-      ReportTarget.event => false,
-    };
+    // Only an account id says who it belongs to. A review id is an opaque
+    // uuid: the review list hides the report action on one's own review,
+    // and the trigger answers `cannotReportSelf` if it is reached anyway.
+    final isOwn = target == ReportTarget.user && targetId == reporterId;
     if (isOwn) {
       return const Err(
         BusinessRuleFailure(

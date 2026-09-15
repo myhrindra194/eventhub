@@ -1,8 +1,8 @@
 import 'package:eventhub/core/result/result.dart';
 import 'package:eventhub/features/team/domain/team.dart';
 
-/// Co-organizer invitations and membership (F-16). Reads come from
-/// Firestore; every change goes through a Cloud Function.
+/// Co-organizer invitations and membership (F-16). Reads are Realtime
+/// streams; every change goes through a database function.
 abstract interface class TeamRepository {
   /// Pending invitations of an event, for its team.
   Stream<List<StaffInvitation>> watchPendingForEvent(String eventId);

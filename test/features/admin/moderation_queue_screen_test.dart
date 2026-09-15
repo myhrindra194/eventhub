@@ -14,6 +14,9 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
 void main() {
+  const reviewId = '6f1c9a52-3b7e-4d0a-9c1e-2b8f0d4e7a11';
+  const eventId = '0b6f7c1e-8d2a-4f3b-9e5c-1a2b3c4d5e6f';
+
   setUpAll(() async {
     GoogleFonts.config.allowRuntimeFetching = false;
     await initializeDateFormatting(AppDateFormats.locale);
@@ -21,9 +24,9 @@ void main() {
 
   final open = [
     ModerationEntry(
-      id: 'review_e1_p9',
+      id: 'review_$reviewId',
       target: ReportTarget.review,
-      targetId: 'e1_p9',
+      targetId: reviewId,
       reportCount: 3,
       status: ModerationStatus.open,
       lastReason: ReportReason.harassment,
@@ -31,9 +34,9 @@ void main() {
       updatedAt: DateTime(2026, 9, 14, 9),
     ),
     ModerationEntry(
-      id: 'event_e2',
+      id: 'event_$eventId',
       target: ReportTarget.event,
-      targetId: 'e2',
+      targetId: eventId,
       reportCount: 1,
       status: ModerationStatus.open,
       lastReason: ReportReason.fraud,

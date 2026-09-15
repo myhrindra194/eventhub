@@ -1,11 +1,13 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:eventhub/core/result/result.dart';
+import 'package:eventhub/features/admin/data/moderation_dtos.dart';
 import 'package:eventhub/features/admin/data/moderation_remote_data_source.dart';
 import 'package:eventhub/features/admin/domain/moderation.dart';
 import 'package:eventhub/features/moderation/domain/report.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  const reviewId = '6f1c9a52-3b7e-4d0a-9c1e-2b8f0d4e7a11';
+
   group('ModerationPolicy.actionsFor', () {
     test('offers hide or restore for a review depending on its state', () {
       expect(ModerationPolicy.actionsFor(ReportTarget.review), [
@@ -35,7 +37,7 @@ void main() {
       },
     );
 
-    test('wire values match ACTIONS_BY_TARGET in the Cloud Functions', () {
+    test('wire values match the moderation_action enum', () {
       expect(ModerationAction.values.map((a) => a.wire).toSet(), {
         'hide',
         'restore',
@@ -93,12 +95,11 @@ void main() {
     });
   });
 
-  group('ModerationEntry.parseId', () {
-    test('splits on the first underscore; review ids keep theirs', () {
-      expect(ModerationEntry.parseId('review_e1_p9'), (
-        ReportTarget.review,
-        'e1_p9',
-      ));
+  group('ModerationEntry ids', () {
+    test('compose and parse the id stamped by the database', () {
+      final id = ModerationEntry.composeId(ReportTarget.review, reviewId);
+      expect(id, 'review_$reviewId');
+      expect(ModerationEntry.parseId(id), (ReportTarget.review, reviewId));
       expect(ModerationEntry.parseId('event_abc'), (ReportTarget.event, 'abc'));
     });
 
@@ -109,38 +110,91 @@ void main() {
     });
   });
 
-  group('Firestore mapping', () {
-    test('maps a queue entry', () {
-      final entry =
-          ModerationRemoteDataSource.entryFromFirestore('review_e1_p9', {
-            'targetType': 'review',
-            'targetId': 'e1_p9',
-            'reportCount': 3,
-            'lastReason': 'harassment',
-            'autoHidden': true,
-            'status': 'resolved',
-            'decision': 'hide',
-            'decisionNote': 'Insultes.',
-            'updatedAt': Timestamp.fromDate(DateTime(2026, 9, 14)),
-          });
+  group('row mapping', () {
+    test('maps a moderation_queue row', () {
+      final entry = ModerationRemoteDataSource.entryFromRow({
+        'target_type': 'review',
+        'target_id': reviewId,
+        'id': 'review_$reviewId',
+        'report_count': 3,
+        'last_reason': 'harassment',
+        'status': 'resolved',
+        'auto_hidden': true,
+        'decision': 'hide',
+        'decision_note': 'Insultes.',
+        'decided_by': '11111111-2222-4333-8444-555555555555',
+        'decided_at': '2026-09-14T09:30:00+00:00',
+        'created_at': '2026-09-13T20:00:00+00:00',
+        'updated_at': DateTime(2026, 9, 14).toUtc().toIso8601String(),
+      });
       expect(entry, isNotNull);
-      expect(entry!.target, ReportTarget.review);
-      expect(entry.targetId, 'e1_p9');
+      expect(entry!.id, 'review_$reviewId');
+      expect(entry.target, ReportTarget.review);
+      expect(entry.targetId, reviewId);
       expect(entry.lastReason, ReportReason.harassment);
       expect(entry.autoHidden, isTrue);
       expect(entry.status, ModerationStatus.resolved);
       expect(entry.decision, ModerationAction.hide);
+      expect(entry.decisionNote, 'Insultes.');
+      expect(entry.updatedAt, DateTime(2026, 9, 14));
       expect(entry.isOpen, isFalse);
     });
 
-    test('never exposes the reporter uid, only a short key', () {
-      final report = ModerationRemoteDataSource.reportFromFirestore('r1', {
+    test('skips a target type the app does not know', () {
+      expect(
+        ModerationRemoteDataSource.entryFromRow({
+          'target_type': 'comment',
+          'target_id': 'x',
+          'id': 'comment_x',
+        }),
+        isNull,
+      );
+    });
+
+    test('never exposes the reporter uuid, only its first group', () {
+      final report = ModerationRemoteDataSource.reportFromRow({
+        'id': '0f0e0d0c-0b0a-4908-8706-050403020100',
+        'target_type': 'review',
+        'target_id': reviewId,
         'reason': 'spam',
         'details': 'Liens répétés',
-        'reporterId': 'Xy12AbCdEfGh',
+        'reporter_id': 'a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d',
+        'created_at': '2026-09-14T08:00:00+00:00',
       });
-      expect(report.reporterKey, 'Xy12Ab');
+      expect(report.reporterKey, 'a1b2c3d4');
       expect(report.reason, ReportReason.spam);
+      expect(
+        ModerationRemoteDataSource.reportFromRow({
+          'id': 'r2',
+          'reporter_id': null,
+        }).reporterKey,
+        '',
+      );
+    });
+
+    test('maps a decision and an administrator', () {
+      final decision = ModerationDecisionDto.fromJson({
+        'id': 42,
+        'target_type': 'user',
+        'target_id': 'u1',
+        'action': 'suspend',
+        'note': 'Fraude.',
+        'decided_by': 'admin-uuid',
+        'decided_at': '2026-09-14T08:00:00+00:00',
+      }).toDomain();
+      expect(decision.action, ModerationAction.suspend);
+      expect(decision.by, 'admin-uuid');
+
+      final admin = AdminAccountDto.fromJson({
+        'user_id': 'admin-uuid',
+        'email': 'admin@eventhub.test',
+        'name': 'Admin',
+        'granted_by': null,
+        'granted_at': '2026-09-01T08:00:00+00:00',
+      }).toDomain();
+      expect(admin.id, 'admin-uuid');
+      expect(admin.email, 'admin@eventhub.test');
+      expect(admin.grantedBy, isNull);
     });
   });
 }

@@ -22,24 +22,6 @@
       }
     }
   },
-  "firestore": {
-    "database": "(default)",
-    "location": "nam5",
-    "rules": "firebase/firestore.rules",
-    "indexes": "firebase/firestore.indexes.json"
-  },
-  "storage": {
-    "rules": "firebase/storage.rules"
-  },
-  "functions": [
-    {
-      "source": "functions",
-      "codebase": "default",
-      "runtime": "nodejs22",
-      "ignore": ["node_modules", ".git", "*.local", "src", "test"],
-      "predeploy": ["npm --prefix functions run build"]
-    }
-  ],
   "hosting": {
     "public": "hosting/public",
     "ignore": ["firebase.json", "**/node_modules/**"],
@@ -47,7 +29,7 @@
     "rewrites": [
       {
         "source": "/e/**",
-        "function": { "functionId": "publicEventPage", "region": "us-central1" }
+        "destination": "/e.html"
       }
     ],
     "headers": [
@@ -66,14 +48,5 @@
         ]
       }
     ]
-  },
-  "emulators": {
-    "auth": { "port": 9099 },
-    "firestore": { "port": 8080 },
-    "storage": { "port": 9199 },
-    "functions": { "port": 5001 },
-    "hosting": { "port": 5002 },
-    "ui": { "enabled": true, "port": 4000 },
-    "singleProjectMode": true
   }
 }

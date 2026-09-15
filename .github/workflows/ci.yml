@@ -38,35 +38,8 @@ jobs:
           name: coverage
           path: coverage/lcov.info
 
-  rules:
-    name: Security rules
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@v4
-
-      # The Firestore and Storage emulators are Java processes.
-      - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: 17
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: firebase/tests/package-lock.json
-
-      - run: npm --prefix firebase/tests ci
-
-      # `demo-` prefixed project id: the emulators never ask for credentials,
-      # so this job needs no secret and runs on forks too.
-      - name: Firestore + Storage rules
-        run: |
-          firebase/tests/node_modules/.bin/firebase --project demo-eventhub emulators:exec --only firestore,storage "npm --prefix firebase/tests test"
-
-  functions:
-    name: Cloud Functions (build)
+  database:
+    name: Database (migrations, RLS, RPCs)
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -75,29 +48,29 @@ jobs:
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: functions/package-lock.json
-      - run: npm --prefix functions ci
-      - run: npm --prefix functions run build
+          cache-dependency-path: supabase/tests/package-lock.json
+      # Every migration applied in order on PGlite (Postgres 17), then the
+      # integration suite under the real roles: no Docker, no secret, runs on
+      # forks too.
+      - run: npm --prefix supabase/tests ci
+      - run: npm --prefix supabase/tests test
 
-      # Integration tests need the emulators (Java) and the Firebase CLI from
-      # the rules test suite.
-      - uses: actions/setup-java@v4
+  edge-functions:
+    name: Edge Functions (type-check)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: denoland/setup-deno@v2
         with:
-          distribution: temurin
-          java-version: 17
-      - run: npm --prefix firebase/tests ci
-      # Placeholder Stripe secrets for the emulator: the tests sign webhook
-      # payloads with this value and never call the Stripe API.
-      - name: Emulator secrets
-        run: |
-          printf 'STRIPE_SECRET_KEY=sk_test_emulator_not_a_real_key\nSTRIPE_WEBHOOK_SECRET=whsec_emulator_local_testing_secret\n' > functions/.secret.local
-      - name: Functions integration tests
-        run: |
-          firebase/tests/node_modules/.bin/firebase --project demo-eventhub emulators:exec --only auth,firestore,functions,storage "npm --prefix functions test"
+          deno-version: v2.x
+      - name: deno check
+        working-directory: supabase/functions
+        run: deno check */index.ts
 
   android:
     name: Build APK (dev)
-    needs: [quality, rules, functions]
+    needs: [quality, database, edge-functions]
     runs-on: ubuntu-latest
     timeout-minutes: 30
     if: github.event_name == 'push'
@@ -113,11 +86,15 @@ jobs:
           flutter-version: 3.47.0
           cache: true
 
-      # Real Firebase config comes from secrets; see docs/SETUP.md.
-      - name: Write Firebase config
+      # Firebase (push, Crashlytics, Analytics) and Supabase come from
+      # secrets; without them the APK builds and shows the configuration
+      # error screen.
+      - name: Write backend config
         env:
           FIREBASE_OPTIONS_DART: ${{ secrets.FIREBASE_OPTIONS_DART }}
           GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
         run: |
           if [ -n "$FIREBASE_OPTIONS_DART" ]; then
             echo "$FIREBASE_OPTIONS_DART" | base64 -d > lib/firebase_options.dart
@@ -125,10 +102,12 @@ jobs:
           else
             cp lib/firebase_options.dart.example lib/firebase_options.dart
           fi
+          mkdir -p env
+          printf '{"SUPABASE_URL":"%s","SUPABASE_ANON_KEY":"%s"}\n' "$SUPABASE_URL" "$SUPABASE_ANON_KEY" > env/dev.json
 
       - run: flutter pub get
       - run: dart run build_runner build --delete-conflicting-outputs
-      - run: flutter build apk --debug --dart-define=FLAVOR=dev
+      - run: flutter build apk --debug --dart-define=FLAVOR=dev --dart-define-from-file=env/dev.json
 
       - uses: actions/upload-artifact@v4
         with:

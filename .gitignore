@@ -50,21 +50,16 @@ coverage/
 *.jpg
 !assets/**
 
-# Cloud Functions build output and dependencies
-functions/node_modules/
-functions/lib/
-functions/.secret.local
+# Build-time keys per flavor (Supabase URL/anon key, Google client id)
+env/*.json
+!env/example.json
 
 # Supabase: database test suite dependencies, local function secrets
 supabase/tests/node_modules/
 supabase/functions/.env
 
-# Security-rules test suite (Node)
-firebase/tests/node_modules/
+# Firebase CLI (Hosting deploys)
 firebase-debug.log
-firestore-debug.log
-ui-debug.log
-storage-debug.log
 
 # Artefacts locaux de l'outil de design (hors projet Flutter)
 /uploads/

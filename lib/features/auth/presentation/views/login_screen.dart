@@ -1,21 +1,22 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/router/app_router.dart';
+import '../../../../core/di/auth_dependencies.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/widgets/app_button.dart';
-import '../../../organizer/presentation/views/organizer_main_screen.dart';
 import '../widgets/auth_text_field.dart';
-import 'forgot_password_screen.dart';
-import 'register_screen.dart';
+import '../providers/auth_provider.dart';
+import '../utils/auth_error_message.dart';
 
-class LoginScreen extends StatefulWidget {
+class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
 
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+  ConsumerState<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
@@ -60,41 +61,74 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _handleSignIn() async {
+    if (!_ensureFirebaseAuthAvailable()) return;
     if (!_validate()) return;
 
     setState(() => _isLoading = true);
-
-    final email = _emailController.text.trim().toLowerCase();
-    
-    // Récupération du rôle sauvegardé en local
-    final prefs = await SharedPreferences.getInstance();
-    final savedRole = prefs.getString('user_role');
-
-    await Future.delayed(const Duration(seconds: 1));
+    await ref
+        .read(authProvider.notifier)
+        .login(
+          email: _emailController.text.trim(),
+          password: _passwordController.text,
+        );
 
     if (!mounted) return;
-
-    // Redirection vers l'espace Organisateur si le rôle sauvegardé est 'organizer' 
-    // ou si l'e-mail saisi contient le mot 'organizer'
-    if (savedRole == 'organizer' || email.contains('organizer')) {
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (context) => const OrganizerMainScreen()),
+    final authState = ref.read(authProvider);
+    if (authState.hasError) {
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(authErrorMessage(authState.error))),
       );
-    } else {
-      Navigator.of(context).pushNamedAndRemoveUntil('/home', (route) => false);
+      return;
     }
+
+    _openRoleHome(ref.read(authProvider).value);
+  }
+
+  Future<void> _handleGoogleSignIn() async {
+    if (!_ensureFirebaseAuthAvailable()) return;
+
+    setState(() => _isLoading = true);
+    await ref.read(authProvider.notifier).loginWithGoogle();
+
+    if (!mounted) return;
+    final authState = ref.read(authProvider);
+    if (authState.hasError) {
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(authErrorMessage(authState.error))),
+      );
+      return;
+    }
+
+    _openRoleHome(ref.read(authProvider).value);
+  }
+
+  void _openRoleHome(dynamic user) {
+    final destination = user?.isOrganizer == true
+        ? AppRouter.organizer
+        : AppRouter.home;
+    Navigator.of(
+      context,
+    ).pushNamedAndRemoveUntil(destination, (route) => false);
+  }
+
+  bool _ensureFirebaseAuthAvailable() {
+    if (ref.read(authAvailabilityProvider)) return true;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(
+          'Firebase Auth is not available on Linux or Windows. '
+          'Use Chrome, Android, iOS, or macOS.',
+        ),
+      ),
+    );
+    return false;
   }
 
   void _goToRegister() {
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (context) => const RegisterScreen()),
-    );
-  }
-
-  void _goToForgotPassword() {
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (context) => const ForgotPasswordScreen()),
-    );
+    Navigator.of(context).pushReplacementNamed(AppRouter.register);
   }
 
   @override
@@ -183,32 +217,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   },
                 ),
               ),
-              const SizedBox(height: 4),
-
-              // Forgot password button
-              Align(
-                alignment: Alignment.centerRight,
-                child: TextButton(
-                  onPressed: _goToForgotPassword,
-                  style: TextButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(
-                      vertical: 8.0,
-                      horizontal: 4.0,
-                    ),
-                    minimumSize: Size.zero,
-                    tapTargetSize: MaterialTapTargetSize.padded,
-                  ),
-                  child: const Text(
-                    'Forgot Password?',
-                    style: TextStyle(
-                      color: AppColors.accentIndigo,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 14,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 40),
 
               // Sign In button
               AppButton(
@@ -218,7 +227,6 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 24),
 
-              // Divider "OR"
               Row(
                 children: [
                   Expanded(
@@ -239,7 +247,8 @@ class _LoginScreenState extends State<LoginScreen> {
               AppButton(
                 text: 'Continue with Google',
                 variant: AppButtonVariant.secondary,
-                onPressed: () {},
+                isLoading: _isLoading,
+                onPressed: _handleGoogleSignIn,
                 icon: Icons.g_mobiledata_rounded,
               ),
               const SizedBox(height: 32),

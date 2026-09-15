@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
+import '../../../../core/router/app_router.dart';
 import '../widgets/chevron_background.dart';
 import '../widgets/typewriter_cursor_text.dart';
-import '../../../auth/presentation/views/login_screen.dart';
 
 class WelcomeScreen extends StatefulWidget {
   const WelcomeScreen({super.key});
@@ -76,9 +76,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
   }
 
   void _goToLogin() {
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (context) => const LoginScreen()),
-    );
+    Navigator.of(context).pushNamed(AppRouter.login);
   }
 
   @override
@@ -119,8 +117,14 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                                 children: [
                                   Image.asset(
                                     'assets/images/logoblanc.png',
-                                    width: (size.width * 0.28).clamp(96.0, 150.0),
-                                    height: (size.width * 0.28).clamp(96.0, 150.0),
+                                    width: (size.width * 0.28).clamp(
+                                      96.0,
+                                      150.0,
+                                    ),
+                                    height: (size.width * 0.28).clamp(
+                                      96.0,
+                                      150.0,
+                                    ),
                                     fit: BoxFit.contain,
                                   ),
                                   const SizedBox(height: 24),
@@ -142,7 +146,9 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                                     style: TextStyle(
                                       fontSize: subtitleFontSize,
                                       fontWeight: FontWeight.w400,
-                                      color: Colors.white.withValues(alpha: 0.85),
+                                      color: Colors.white.withValues(
+                                        alpha: 0.85,
+                                      ),
                                       height: 1.4,
                                     ),
                                   ),

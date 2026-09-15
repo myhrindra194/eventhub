@@ -1,7 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../data/datasources/event_local_datasource.dart';
+import '../../../../core/di/auth_dependencies.dart';
+import '../../data/datasources/event_remote_datasource.dart';
 import '../../data/repositories/event_repository_impl.dart';
 import '../../domain/entities/event.dart';
+import '../../domain/repositories/event_repository.dart';
 import '../../domain/usecases/get_events_usecase.dart';
 import '../../domain/usecases/get_event_detail_usecase.dart';
 
@@ -13,6 +15,10 @@ class SelectedCategoryNotifier extends Notifier<String> {
   void setCategory(String category) {
     state = category;
   }
+
+  void reset() {
+    state = 'All';
+  }
 }
 
 final selectedCategoryProvider =
@@ -21,8 +27,8 @@ final selectedCategoryProvider =
     );
 
 // Injection des UseCases
-final eventRepositoryProvider = Provider<EventRepositoryImpl>((ref) {
-  final dataSource = EventLocalDataSourceImpl();
+final eventRepositoryProvider = Provider<EventRepository>((ref) {
+  final dataSource = EventRemoteDataSource(ref.watch(firestoreProvider));
   return EventRepositoryImpl(dataSource);
 });
 
@@ -41,6 +47,13 @@ final eventsFutureProvider = FutureProvider<List<Event>>((ref) async {
   final useCase = ref.watch(getEventsUseCaseProvider);
   final category = ref.watch(selectedCategoryProvider);
   return await useCase(category: category);
+});
+
+/// Flux temps réel de tous les événements publiés.
+/// Le filtrage par catégorie est fait côté UI pour ne pas recréer
+/// le Stream à chaque changement de catégorie (évite le flash de rechargement).
+final eventsStreamProvider = StreamProvider<List<Event>>((ref) {
+  return ref.watch(eventRepositoryProvider).watchEvents();
 });
 
 // Retrieve an event by ID.

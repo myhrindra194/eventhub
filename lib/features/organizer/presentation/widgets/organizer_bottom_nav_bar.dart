@@ -33,9 +33,9 @@ class OrganizerBottomNavBar extends StatelessWidget {
           label: 'Alerts',
         ),
         BottomNavigationBarItem(
-          icon: Icon(Icons.settings_outlined),
-          activeIcon: Icon(Icons.settings),
-          label: 'Settings',
+          icon: Icon(Icons.logout_outlined),
+          activeIcon: Icon(Icons.logout),
+          label: 'Log out',
         ),
       ],
     );

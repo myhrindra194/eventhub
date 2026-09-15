@@ -1,0 +1,122 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ─────────────────────────────────────────────
+    // HELPERS
+    // ─────────────────────────────────────────────
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated()
+        && request.auth.uid == userId;
+    }
+
+    function userRole() {
+      return exists(
+        /databases/$(database)/documents/users/$(request.auth.uid)
+      ) ? get(
+        /databases/$(database)/documents/users/$(request.auth.uid)
+      ).data.role : '';
+    }
+
+    function isParticipant() {
+      return isAuthenticated()
+        && userRole() == 'participant';
+    }
+
+    function isOrganizer() {
+      return isAuthenticated()
+        && userRole() == 'organizer';
+    }
+
+
+    // ─────────────────────────────────────────────
+    // USERS
+    // ─────────────────────────────────────────────
+
+    match /users/{userId} {
+      allow create: if isOwner(userId)
+        && request.resource.data.keys().hasOnly(['name', 'email', 'role'])
+        && request.resource.data.role in ['participant', 'organizer'];
+
+      allow read, update: if isOwner(userId);
+      allow delete: if false;
+    }
+
+
+    // ─────────────────────────────────────────────
+    // EVENTS
+    // ─────────────────────────────────────────────
+
+    match /events/{eventId} {
+      allow read: if (
+          isParticipant()
+          && resource.data.status == 'live'
+        ) || (
+          isOrganizer()
+          && resource.data.organizerId == request.auth.uid
+        );
+
+      allow create: if isOrganizer()
+        && request.resource.data.organizerId == request.auth.uid
+        && request.resource.data.status in ['draft', 'live', 'completed', 'cancelled']
+        && request.resource.data.capacity is int
+        && request.resource.data.capacity > 0;
+
+      allow update: if (
+          isOrganizer()
+          && resource.data.organizerId == request.auth.uid
+          && request.resource.data.organizerId == resource.data.organizerId
+        ) || (
+          isParticipant()
+          && resource.data.status == 'live'
+          && request.resource.data.diff(resource.data).affectedKeys()
+              .hasAny(['currentAttendees', 'updatedAt'])
+          && request.resource.data.currentAttendees is int
+          && request.resource.data.currentAttendees >= resource.data.currentAttendees
+          && request.resource.data.currentAttendees <= resource.data.capacity
+        );
+
+      allow delete: if isOrganizer()
+        && resource.data.organizerId == request.auth.uid;
+    }
+
+
+    // ─────────────────────────────────────────────
+    // RESERVATIONS
+    // ─────────────────────────────────────────────
+
+    match /reservations/{reservationId} {
+      allow create: if isParticipant()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.eventId is string
+        && exists(
+          /databases/$(database)/documents/events/$(request.resource.data.eventId)
+        )
+        && request.resource.data.status in ['confirmed', 'pending']
+        && request.resource.data.reservedAt != null;
+
+      allow read: if isAuthenticated()
+        && (
+          resource.data.userId == request.auth.uid
+          || (
+            isOrganizer()
+            && resource.data.eventId is string
+            && exists(
+              /databases/$(database)/documents/events/$(resource.data.eventId)
+            )
+            && get(
+              /databases/$(database)/documents/events/$(resource.data.eventId)
+            ).data.organizerId == request.auth.uid
+          )
+        );
+
+      allow update, delete: if false;
+    }
+  }
+}

@@ -1,43 +1,189 @@
 import 'package:flutter/material.dart';
-import 'dart:convert';
-import '../../../../core/widgets/app_header.dart';
-import '../../data/repositories/event_repository_impl.dart';
-import '../../domain/entities/event.dart';
-import 'create_event_screen.dart';
-import 'event_detail_screen.dart';
-import 'event_participants_screen.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class OrganizerEventsScreen extends StatefulWidget {
+import '../../../../core/router/app_router.dart';
+import '../../../../core/widgets/app_header.dart';
+import '../../../auth/presentation/providers/auth_provider.dart';
+import '../../../events/domain/entities/event.dart';
+import '../providers/organizer_events_provider.dart';
+import '../widgets/organizer_bottom_nav_bar.dart';
+import 'event_detail_screen.dart';
+import 'organizer_alerts_screen.dart';
+import 'organizer_stats_screen.dart';
+
+/// Main entry point for the Organizer section.
+///
+/// This screen replaces the previous OrganizerMainScreen.
+/// It contains the bottom navigation and the different organizer sections.
+class OrganizerEventsScreen extends ConsumerStatefulWidget {
   const OrganizerEventsScreen({super.key});
 
   @override
-  State<OrganizerEventsScreen> createState() => _OrganizerEventsScreenState();
+  ConsumerState<OrganizerEventsScreen> createState() =>
+      _OrganizerEventsScreenState();
 }
 
-class _OrganizerEventsScreenState extends State<OrganizerEventsScreen> {
-  final EventRepositoryImpl _repository = EventRepositoryImpl();
+class _OrganizerEventsScreenState
+    extends ConsumerState<OrganizerEventsScreen> {
+  int _currentIndex = 0;
+
+  final List<Widget> _screens = const [
+    OrganizerEventsContent(),
+    OrganizerStatsScreen(),
+    OrganizerAlertsScreen(),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    final backgroundColor = isDark
+        ? const Color(0xFF0F1117)
+        : const Color(0xFFF8F9FA);
+
+    return Scaffold(
+      backgroundColor: backgroundColor,
+      body: SafeArea(
+        child: IndexedStack(index: _currentIndex, children: _screens),
+      ),
+      bottomNavigationBar: OrganizerBottomNavBar(
+        currentIndex: _currentIndex,
+        onTap: (index) {
+          if (index == 3) {
+            _confirmLogout();
+            return;
+          }
+
+          setState(() {
+            _currentIndex = index;
+          });
+        },
+      ),
+    );
+  }
+
+  Future<void> _confirmLogout() async {
+    final navigator = Navigator.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+    final shouldLogout = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Log out'),
+        content: const Text('Do you want to log out?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Log out'),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldLogout != true) return;
+    await ref.read(authProvider.notifier).logout();
+    if (!mounted) return;
+
+    final authState = ref.read(authProvider);
+    if (authState.hasError) {
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            'Unable to log out: ${authState.error ?? 'Please try again.'}',
+          ),
+        ),
+      );
+      return;
+    }
+
+    navigator.pushNamedAndRemoveUntil(
+      AppRouter.welcome,
+      (route) => false,
+    );
+  }
+}
+
+/// Events tab content.
+class OrganizerEventsContent extends ConsumerStatefulWidget {
+  const OrganizerEventsContent({super.key});
+
+  @override
+  ConsumerState<OrganizerEventsContent> createState() =>
+      _OrganizerEventsContentState();
+}
+
+class _OrganizerEventsContentState
+    extends ConsumerState<OrganizerEventsContent> {
   List<Event> _events = [];
   bool _isLoading = true;
+  ProviderSubscription<AsyncValue<List<Event>>>? _eventsSubscription;
 
   @override
   void initState() {
     super.initState();
-    _loadEvents();
+    // Écoute réactive : la liste se met à jour après create/update/delete
+    // sans setState manuel + invalidate.
+    _eventsSubscription = ref.listenManual(organizerEventsStreamProvider, (
+      _,
+      next,
+    ) {
+      if (!mounted) return;
+      next.when(
+        data: (events) => setState(() {
+          _events = events;
+          _isLoading = false;
+        }),
+        loading: () => setState(() => _isLoading = true),
+        error: (error, _) {
+          // Une erreur peut arriver pendant la transition de déconnexion,
+          // alors que l'ancien abonnement Firestore n'est pas encore fermé.
+          if (ref.read(authProvider).value == null) return;
+
+          setState(() => _isLoading = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Unable to load events: $error')),
+          );
+        },
+      );
+    }, fireImmediately: true);
+  }
+
+  @override
+  void dispose() {
+    _eventsSubscription?.close();
+    super.dispose();
   }
 
   Future<void> _loadEvents() async {
-    final events = await _repository.getEvents();
-    setState(() {
-      _events = events;
-      _isLoading = false;
-    });
+    // Conservé pour le pull-to-refresh explicite si besoin futur.
+    // Le stream met déjà à jour la liste automatiquement.
+    ref.invalidate(organizerEventsStreamProvider);
+  }
+
+  Future<void> _publishEvent(Event event) async {
+    try {
+      await ref.read(organizerEventRepositoryProvider).publishEvent(event.id);
+      // Pas de reload manuel : le stream Firestore pousse la mise à jour.
+    } catch (error) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Unable to publish event: $error')),
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+
     final cardColor = isDark ? const Color(0xFF1A1D26) : Colors.white;
+
     final textColor = isDark ? Colors.white : Colors.black87;
+
     final subtextColor = isDark ? Colors.grey[400] : Colors.grey[600];
 
     return Column(
@@ -46,39 +192,49 @@ class _OrganizerEventsScreenState extends State<OrganizerEventsScreen> {
           title: 'Organizer Events',
           subtitle: 'Manage your active listings',
         ),
+
         Expanded(
           child: _isLoading
               ? const Center(child: CircularProgressIndicator())
               : _events.isEmpty
-                  ? _buildEmptyState(context, textColor, subtextColor)
-                  : SafeArea(
-                      top: false,
-                      child: SingleChildScrollView(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 20.0, vertical: 16.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _buildHeader(textColor, subtextColor),
-                            const SizedBox(height: 24),
-                            ..._events.map((event) => _buildEventCard(
-                                  context: context,
-                                  event: event,
-                                  cardColor: cardColor,
-                                  textColor: textColor,
-                                  subtextColor: subtextColor,
-                                )),
-                          ],
-                        ),
-                      ),
+              ? _buildEmptyState(context, textColor, subtextColor)
+              : SafeArea(
+                  top: false,
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20.0,
+                      vertical: 16.0,
                     ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildHeader(textColor, subtextColor),
+
+                        const SizedBox(height: 24),
+
+                        ..._events.map(
+                          (event) => _buildEventCard(
+                            context: context,
+                            event: event,
+                            cardColor: cardColor,
+                            textColor: textColor,
+                            subtextColor: subtextColor,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
         ),
       ],
     );
   }
 
   Widget _buildEmptyState(
-      BuildContext context, Color textColor, Color? subtextColor) {
+    BuildContext context,
+    Color textColor,
+    Color? subtextColor,
+  ) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 32.0),
       child: Column(
@@ -97,7 +253,9 @@ class _OrganizerEventsScreenState extends State<OrganizerEventsScreen> {
               color: Colors.white70,
             ),
           ),
+
           const SizedBox(height: 32),
+
           Text(
             'No Events Yet',
             style: TextStyle(
@@ -107,27 +265,25 @@ class _OrganizerEventsScreenState extends State<OrganizerEventsScreen> {
             ),
             textAlign: TextAlign.center,
           ),
+
           const SizedBox(height: 12),
+
           Text(
             'Ready to host something amazing? Create your first event and start selling tickets.',
-            style: TextStyle(
-              fontSize: 14,
-              color: subtextColor,
-              height: 1.4,
-            ),
+            style: TextStyle(fontSize: 14, color: subtextColor, height: 1.4),
             textAlign: TextAlign.center,
           ),
+
           const SizedBox(height: 32),
+
           SizedBox(
             width: double.infinity,
             height: 52,
             child: ElevatedButton(
               onPressed: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (context) => const CreateEventScreen(),
-                  ),
-                );
+                Navigator.of(context)
+                    .pushNamed(AppRouter.organizerCreateEvent)
+                    .then((_) => _loadEvents());
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF6C5CE7),
@@ -139,10 +295,7 @@ class _OrganizerEventsScreenState extends State<OrganizerEventsScreen> {
               ),
               child: const Text(
                 'Create My First Event',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                ),
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
               ),
             ),
           ),
@@ -167,23 +320,21 @@ class _OrganizerEventsScreenState extends State<OrganizerEventsScreen> {
                 color: textColor,
               ),
             ),
+
             const SizedBox(height: 4),
+
             Text(
               'Manage your active listings',
-              style: TextStyle(
-                fontSize: 14,
-                color: subtextColor,
-              ),
+              style: TextStyle(fontSize: 14, color: subtextColor),
             ),
           ],
         ),
+
         GestureDetector(
           onTap: () {
-            Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (context) => const CreateEventScreen(),
-              ),
-            );
+            Navigator.of(context)
+                .pushNamed(AppRouter.organizerCreateEvent)
+                .then((_) => _loadEvents());
           },
           child: Container(
             width: 44,
@@ -192,11 +343,7 @@ class _OrganizerEventsScreenState extends State<OrganizerEventsScreen> {
               color: Color(0xFF6C5CE7),
               shape: BoxShape.circle,
             ),
-            child: const Icon(
-              Icons.add,
-              color: Colors.white,
-              size: 24,
-            ),
+            child: const Icon(Icons.add, color: Colors.white, size: 24),
           ),
         ),
       ],
@@ -216,13 +363,9 @@ class _OrganizerEventsScreenState extends State<OrganizerEventsScreen> {
       padding: const EdgeInsets.only(bottom: 20),
       child: GestureDetector(
         onTap: () {
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (context) => EventDetailScreen(
-                eventId: event.id,
-                eventTitle: event.title,
-              ),
-            ),
+          Navigator.of(context).pushNamed(
+            AppRouter.organizerEventDetail,
+            arguments: {'eventId': event.id, 'eventTitle': event.title},
           );
         },
         child: Container(
@@ -236,31 +379,8 @@ class _OrganizerEventsScreenState extends State<OrganizerEventsScreen> {
             children: [
               Stack(
                 children: [
-                  event.isBase64
-                      ? Image.memory(
-                          base64Decode(event.imageUrl),
-                          height: 180,
-                          width: double.infinity,
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) => Container(
-                            height: 180,
-                            color: Colors.grey[800],
-                            child: const Icon(Icons.image,
-                                color: Colors.white54, size: 50),
-                          ),
-                        )
-                      : Image.asset(
-                          event.imageUrl,
-                          height: 180,
-                          width: double.infinity,
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) => Container(
-                            height: 180,
-                            color: Colors.grey[800],
-                            child: const Icon(Icons.image,
-                                color: Colors.white54, size: 50),
-                          ),
-                        ),
+                  _buildEventImage(event),
+
                   Positioned(
                     top: 12,
                     left: 12,
@@ -286,6 +406,7 @@ class _OrganizerEventsScreenState extends State<OrganizerEventsScreen> {
                   ),
                 ],
               ),
+
               Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: Column(
@@ -298,51 +419,43 @@ class _OrganizerEventsScreenState extends State<OrganizerEventsScreen> {
                         fontWeight: FontWeight.bold,
                         color: textColor,
                       ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                     ),
+
                     const SizedBox(height: 16),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+
+                    Wrap(
+                      spacing: 16,
+                      runSpacing: 10,
+                      crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
-                        Row(
-                          children: [
-                            Icon(Icons.people_outline,
-                                size: 18, color: subtextColor),
-                            const SizedBox(width: 6),
-                            Text(
-                              '${event.currentAttendees}/${event.capacity}',
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: subtextColor,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                            Icon(Icons.euro, size: 16, color: subtextColor),
-                            const SizedBox(width: 6),
-                            Text(
-                              event.formattedPrice,
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: subtextColor,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                            Icon(Icons.calendar_today_outlined,
-                                size: 16, color: subtextColor),
-                            const SizedBox(width: 6),
-                            Text(
-                              '${event.date.month}/${event.date.day}/${event.date.year}',
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: subtextColor,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ],
+                        _buildEventMeta(
+                          icon: Icons.people_outline,
+                          text: '${event.currentAttendees}/${event.capacity}',
+                          color: subtextColor,
                         ),
-                        _buildActions(context, event, isDark),
+
+                        _buildEventMeta(
+                          icon: Icons.euro,
+                          text: event.formattedPrice,
+                          color: subtextColor,
+                        ),
+
+                        _buildEventMeta(
+                          icon: Icons.calendar_today_outlined,
+                          text:
+                              '${event.date.month}/${event.date.day}/${event.date.year}',
+                          color: subtextColor,
+                        ),
                       ],
+                    ),
+
+                    const SizedBox(height: 12),
+
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: _buildActions(context, event, isDark),
                     ),
                   ],
                 ),
@@ -354,13 +467,70 @@ class _OrganizerEventsScreenState extends State<OrganizerEventsScreen> {
     );
   }
 
+  Widget _buildEventImage(Event event) {
+    if (event.imageUrl.startsWith('http')) {
+      return Image.network(
+        event.imageUrl,
+        height: 180,
+        width: double.infinity,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) {
+          return _buildImageError();
+        },
+      );
+    }
+
+    return Image.asset(
+      event.imageUrl,
+      height: 180,
+      width: double.infinity,
+      fit: BoxFit.cover,
+      errorBuilder: (context, error, stackTrace) {
+        return _buildImageError();
+      },
+    );
+  }
+
+  Widget _buildImageError() {
+    return Container(
+      height: 180,
+      width: double.infinity,
+      color: Colors.grey[800],
+      child: const Icon(Icons.image, color: Colors.white54, size: 50),
+    );
+  }
+
+  Widget _buildEventMeta({
+    required IconData icon,
+    required String text,
+    required Color? color,
+  }) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 16, color: color),
+
+        const SizedBox(width: 6),
+
+        Text(
+          text,
+          style: TextStyle(
+            fontSize: 13,
+            color: color,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildActions(BuildContext context, Event event, bool isDark) {
     if (event.status == EventStatus.draft) {
       return ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 120),
         child: ElevatedButton(
           onPressed: () {
-            // Publish action
+            _publishEvent(event);
           },
           style: ElevatedButton.styleFrom(
             backgroundColor: const Color(0xFF6C5CE7),
@@ -389,20 +559,28 @@ class _OrganizerEventsScreenState extends State<OrganizerEventsScreen> {
           icon: Icons.edit_outlined,
           isDark: isDark,
           onTap: () {
-            // Edit action
+            Navigator.of(context)
+                .push(
+                  MaterialPageRoute(
+                    builder: (context) => EventDetailScreen(
+                      eventId: event.id,
+                      eventTitle: event.title,
+                    ),
+                  ),
+                )
+                .then((_) => _loadEvents());
           },
         ),
+
         const SizedBox(width: 8),
+
         _buildIconButton(
           icon: Icons.bar_chart_rounded,
           isDark: isDark,
           onTap: () {
-            Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (context) => EventParticipantsScreen(
-                  eventId: event.id,
-                ),
-              ),
+            Navigator.of(context).pushNamed(
+              AppRouter.organizerEventParticipants,
+              arguments: {'eventId': event.id},
             );
           },
         ),
@@ -437,10 +615,13 @@ class _OrganizerEventsScreenState extends State<OrganizerEventsScreen> {
     switch (status) {
       case EventStatus.live:
         return Colors.green;
+
       case EventStatus.draft:
         return Colors.orange;
+
       case EventStatus.completed:
         return Colors.blue;
+
       case EventStatus.cancelled:
         return Colors.red;
     }

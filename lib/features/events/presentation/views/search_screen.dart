@@ -19,6 +19,10 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
   void initState() {
     super.initState();
     _searchController = TextEditingController();
+    // Rebuild pour mettre à jour la croix (suffixIcon) quand le texte change.
+    _searchController.addListener(() {
+      if (mounted) setState(() {});
+    });
   }
 
   @override
@@ -138,31 +142,6 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                               fontSize: 13,
                               fontWeight: FontWeight.bold,
                             ),
-                          ),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 14,
-                            vertical: 8,
-                          ),
-                          decoration: BoxDecoration(
-                            color: theme.colorScheme.surface,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: Colors.white10),
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(Icons.tune, size: 16),
-                              SizedBox(width: 8),
-                              Text(
-                                'Filters',
-                                style: TextStyle(
-                                  color: theme.colorScheme.onSurface,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ],
                           ),
                         ),
                       ],

@@ -10,7 +10,8 @@ class ReservationRepositoryImpl implements ReservationRepository {
 
   @override
   Future<List<Reservation>> getMesBillets() async {
-    return await remoteDataSource.fetchUserReservations();
+    final models = await remoteDataSource.fetchUserReservations();
+    return models.map((model) => model.toEntity()).toList();
   }
 
   @override
@@ -18,10 +19,12 @@ class ReservationRepositoryImpl implements ReservationRepository {
     await remoteDataSource.saveReservation(
       ReservationModel(
         id: reservation.id,
+        eventId: reservation.eventId,
         eventTitle: reservation.eventTitle,
         date: reservation.date,
         status: reservation.status,
         seatInfo: reservation.seatInfo,
+        quantity: reservation.quantity,
       ),
     );
   }

@@ -1,16 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/widgets/app_header.dart';
-import '../../data/repositories/event_repository_impl.dart';
+import '../providers/organizer_events_provider.dart';
 
-class OrganizerStatsScreen extends StatefulWidget {
+class OrganizerStatsScreen extends ConsumerStatefulWidget {
   const OrganizerStatsScreen({super.key});
 
   @override
-  State<OrganizerStatsScreen> createState() => _OrganizerStatsScreenState();
+  ConsumerState<OrganizerStatsScreen> createState() =>
+      _OrganizerStatsScreenState();
 }
 
-class _OrganizerStatsScreenState extends State<OrganizerStatsScreen> {
-  final EventRepositoryImpl _repository = EventRepositoryImpl();
+class _OrganizerStatsScreenState extends ConsumerState<OrganizerStatsScreen> {
   Map<String, dynamic> _stats = {};
   bool _isLoading = true;
 
@@ -21,13 +22,18 @@ class _OrganizerStatsScreenState extends State<OrganizerStatsScreen> {
   }
 
   Future<void> _loadStats() async {
-    final events = await _repository.getEvents();
-    
+    final events = await ref.read(organizerEventsProvider.future);
+
     final totalEvents = events.length;
     final liveEvents = events.where((e) => e.status.name == 'live').length;
-    final totalParticipants = events.fold<int>(0, (sum, e) => sum + e.currentAttendees);
+    final totalParticipants = events.fold<int>(
+      0,
+      (sum, e) => sum + e.currentAttendees,
+    );
     final totalCapacity = events.fold<int>(0, (sum, e) => sum + e.capacity);
-    final attendanceRate = totalCapacity > 0 ? (totalParticipants / totalCapacity * 100).toStringAsFixed(1) : '0.0';
+    final attendanceRate = totalCapacity > 0
+        ? (totalParticipants / totalCapacity * 100).toStringAsFixed(1)
+        : '0.0';
 
     setState(() {
       _stats = {
@@ -44,7 +50,10 @@ class _OrganizerStatsScreenState extends State<OrganizerStatsScreen> {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        const AppHeader(title: 'Organizer Stats', subtitle: 'Track your performance'),
+        const AppHeader(
+          title: 'Organizer Stats',
+          subtitle: 'Track your performance',
+        ),
         Expanded(
           child: _isLoading
               ? const Center(child: CircularProgressIndicator())
@@ -55,25 +64,37 @@ class _OrganizerStatsScreenState extends State<OrganizerStatsScreen> {
                       icon: Icons.event,
                       label: 'Total Events',
                       value: _stats['totalEvents'] ?? '0',
-                      onTap: () => _showDetails(context, 'Total Events: ${_stats['totalEvents']}'),
+                      onTap: () => _showDetails(
+                        context,
+                        'Total Events: ${_stats['totalEvents']}',
+                      ),
                     ),
                     _StatTile(
                       icon: Icons.play_circle,
                       label: 'Live Events',
                       value: _stats['liveEvents'] ?? '0',
-                      onTap: () => _showDetails(context, 'Live Events: ${_stats['liveEvents']}'),
+                      onTap: () => _showDetails(
+                        context,
+                        'Live Events: ${_stats['liveEvents']}',
+                      ),
                     ),
                     _StatTile(
                       icon: Icons.people,
                       label: 'Total Participants',
                       value: _stats['totalParticipants'] ?? '0',
-                      onTap: () => _showDetails(context, 'Total Participants: ${_stats['totalParticipants']}'),
+                      onTap: () => _showDetails(
+                        context,
+                        'Total Participants: ${_stats['totalParticipants']}',
+                      ),
                     ),
                     _StatTile(
                       icon: Icons.trending_up,
                       label: 'Attendance Rate',
                       value: _stats['attendanceRate'] ?? '0%',
-                      onTap: () => _showDetails(context, 'Attendance Rate: ${_stats['attendanceRate']}'),
+                      onTap: () => _showDetails(
+                        context,
+                        'Attendance Rate: ${_stats['attendanceRate']}',
+                      ),
                     ),
                   ],
                 ),
@@ -83,7 +104,9 @@ class _OrganizerStatsScreenState extends State<OrganizerStatsScreen> {
   }
 
   void _showDetails(BuildContext context, String message) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 }
 
@@ -109,7 +132,11 @@ class _StatTile extends StatelessWidget {
         title: Text(label),
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
-          children: [Text(value), const SizedBox(width: 8), const Icon(Icons.chevron_right)],
+          children: [
+            Text(value),
+            const SizedBox(width: 8),
+            const Icon(Icons.chevron_right),
+          ],
         ),
         onTap: onTap,
       ),

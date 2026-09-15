@@ -5,12 +5,14 @@ import '../theme/theme_provider.dart';
 class AppHeader extends ConsumerWidget {
   final String title;
   final String subtitle;
+  final VoidCallback? onLogout;
   final bool showBackButton;
 
   const AppHeader({
     super.key,
     required this.title,
     required this.subtitle,
+    this.onLogout,
     this.showBackButton = false,
   });
 
@@ -119,11 +121,14 @@ class AppHeader extends ConsumerWidget {
               ),
             ),
             const SizedBox(width: 4),
-            CircleAvatar(
-              radius: 20,
-              backgroundColor: theme.colorScheme.primary,
-              child: const Icon(Icons.person_rounded, color: Colors.white),
-            ),
+            if (onLogout != null) ...[
+              const SizedBox(width: 4),
+              IconButton(
+                onPressed: onLogout,
+                tooltip: 'Log out',
+                icon: const Icon(Icons.logout_rounded),
+              ),
+            ],
           ],
         ),
       ),

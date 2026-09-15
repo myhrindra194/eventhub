@@ -214,25 +214,23 @@ Le dossier `core` contient les éléments communs à plusieurs fonctionnalités.
 
 ```text
 core/
-├── constants/
-├── errors/
-├── network/
+├── di/
 ├── router/
 ├── theme/
-└── utils/
+├── utils/
+└── widgets/
 ```
 
-### constants
+> Les dossiers `constants/`, `errors/` et `network/` initialement prévus se sont
+> révélés inutiles : aucune constante globale, `AuthFailure` couvre déjà les
+> erreurs et aucun client HTTP n'est nécessaire (Firebase/Supabase gèrent le
+> transport). Ils ont été supprimés — à recréer uniquement si le besoin
+> apparaît réellement.
 
-Constantes globales de l'application.
+### di
 
-### errors
-
-Gestion des exceptions et failures.
-
-### network
-
-Configuration réseau et clients HTTP si nécessaires.
+Injection de dépendances Riverpod (`Provider`) : instances Firebase, Supabase,
+datasources, repositories et use cases.
 
 ### router
 
@@ -245,6 +243,10 @@ Thème global de l'application.
 ### utils
 
 Fonctions utilitaires partagées.
+
+### widgets
+
+Composants UI réutilisables (`AppButton`, `AppHeader`, `AppSearchField`…).
 
 ---
 
@@ -274,17 +276,16 @@ Les services externes sont utilisés dans la couche Data ou dans les composants 
 
 ---
 
-## 6. Structure cible
+## 6. Structure réelle
 
 ```text
 lib/
 ├── core/
-│   ├── constants/
-│   ├── errors/
-│   ├── network/
+│   ├── di/
 │   ├── router/
 │   ├── theme/
-│   └── utils/
+│   ├── utils/
+│   └── widgets/
 │
 ├── features/
 │   ├── auth/
@@ -292,28 +293,35 @@ lib/
 │   │   ├── domain/
 │   │   └── presentation/
 │   │
-│   ├── events/
+│   ├── events/          (parcours participant : liste, recherche, détail)
 │   │   ├── data/
 │   │   ├── domain/
 │   │   └── presentation/
 │   │
-│   ├── reservations/
+│   ├── reservations/    (billets du participant)
 │   │   ├── data/
 │   │   ├── domain/
 │   │   └── presentation/
 │   │
-│   ├── profile/
+│   ├── organizer/       (back-office organisateur)
 │   │   ├── data/
 │   │   ├── domain/
 │   │   └── presentation/
 │   │
-│   └── organizer/
-│       ├── data/
-│       ├── domain/
-│       └── presentation/
+│   ├── home/            (navigation participant)
+│   ├── onboarding/      (écran de bienvenue)
+│   └── splash/
 │
 └── main.dart
 ```
+
+> `features/profile/` reste **planifié** (voir section 7) : son arborescence sera
+> créée lors de son implémentation, pas avant.
+
+> Entité partagée : `Event` / `EventCategory` / `EventStatus` vivent dans
+> `features/events/domain/entities/event.dart` et constituent la **source unique
+> de vérité**. `features/organizer/domain/entities/event.dart` ne fait que
+> ré-exporter cette entité (`export`) — aucune duplication.
 
 ---
 

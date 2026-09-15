@@ -7,14 +7,16 @@ class EventPublishedScreen extends StatelessWidget {
 
   const EventPublishedScreen({
     super.key,
-    this.eventTitle = 'Tech Nexus 2024',
-    this.publicUrl = 'eventhub.com/e/tech-nexus-24',
+    required this.eventTitle,
+    required this.publicUrl,
   });
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final backgroundColor = isDark ? const Color(0xFF0F1117) : const Color(0xFFF8F9FA);
+    final backgroundColor = isDark
+        ? const Color(0xFF0F1117)
+        : const Color(0xFFF8F9FA);
     final cardBgColor = isDark ? const Color(0xFF161922) : Colors.white;
     final textColor = isDark ? Colors.white : Colors.black87;
     final subtextColor = isDark ? const Color(0xFF8A8F9E) : Colors.grey[600]!;
@@ -34,7 +36,7 @@ class EventPublishedScreen extends StatelessWidget {
                   height: 140,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: const Color(0xFF6C5CE7).withOpacity(0.12),
+                    color: const Color(0xFF6C5CE7).withValues(alpha: 0.12),
                   ),
                   child: Center(
                     child: Container(
@@ -42,7 +44,7 @@ class EventPublishedScreen extends StatelessWidget {
                       height: 100,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: const Color(0xFF6C5CE7).withOpacity(0.25),
+                        color: const Color(0xFF6C5CE7).withValues(alpha: 0.25),
                       ),
                       child: Center(
                         child: Container(
@@ -91,12 +93,17 @@ class EventPublishedScreen extends StatelessWidget {
 
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 14,
+                ),
                 decoration: BoxDecoration(
                   color: cardBgColor,
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
-                    color: isDark ? const Color(0xFF262A36) : const Color(0xFFE0E0E0),
+                    color: isDark
+                        ? const Color(0xFF262A36)
+                        : const Color(0xFFE0E0E0),
                   ),
                 ),
                 child: Row(
@@ -105,7 +112,9 @@ class EventPublishedScreen extends StatelessWidget {
                       width: 36,
                       height: 36,
                       decoration: BoxDecoration(
-                        color: isDark ? const Color(0xFF202330) : const Color(0xFFF0F2F5),
+                        color: isDark
+                            ? const Color(0xFF202330)
+                            : const Color(0xFFF0F2F5),
                         shape: BoxShape.circle,
                       ),
                       child: const Icon(
@@ -143,9 +152,13 @@ class EventPublishedScreen extends StatelessWidget {
                     ),
                     TextButton(
                       onPressed: () {
-                        Clipboard.setData(ClipboardData(text: 'https://$publicUrl'));
+                        Clipboard.setData(
+                          ClipboardData(text: 'https://$publicUrl'),
+                        );
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Link copied to clipboard!')),
+                          const SnackBar(
+                            content: Text('Link copied to clipboard!'),
+                          ),
                         );
                       },
                       child: const Text(
@@ -168,7 +181,7 @@ class EventPublishedScreen extends StatelessWidget {
                 height: 56,
                 child: ElevatedButton(
                   onPressed: () {
-                    Navigator.of(context).popUntil((route) => route.isFirst);
+                    Navigator.of(context).pop(true);
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF6C5CE7),
@@ -191,7 +204,10 @@ class EventPublishedScreen extends StatelessWidget {
 
               TextButton(
                 onPressed: () {
-                  // Share event
+                  Clipboard.setData(ClipboardData(text: 'https://$publicUrl'));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Link copied to clipboard!')),
+                  );
                 },
                 child: Text(
                   'Share Event',

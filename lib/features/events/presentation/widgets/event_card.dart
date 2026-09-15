@@ -43,17 +43,7 @@ class EventCard extends StatelessWidget {
           children: [
             Stack(
               children: [
-                Image.asset(
-                  imagePath,
-                  height: 180,
-                  width: double.infinity,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) => Container(
-                    height: 180,
-                    color: theme.colorScheme.surfaceContainerHighest,
-                    child: Icon(Icons.image, color: theme.hintColor, size: 50),
-                  ),
-                ),
+                _buildImage(context),
                 Positioned(
                   top: 12,
                   left: 12,
@@ -134,9 +124,13 @@ class EventCard extends StatelessWidget {
                         color: theme.colorScheme.onSurfaceVariant,
                       ),
                       const SizedBox(width: 4),
-                      Text(
-                        '$location • $time',
-                        style: theme.textTheme.bodySmall,
+                      Expanded(
+                        child: Text(
+                          '$location • $time',
+                          style: theme.textTheme.bodySmall,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
                     ],
                   ),
@@ -146,6 +140,34 @@ class EventCard extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildImage(BuildContext context) {
+    Container errorBuilder(
+      BuildContext context,
+      Object error,
+      StackTrace? stackTrace,
+    ) => Container(
+      height: 180,
+      color: Theme.of(context).colorScheme.surfaceContainerHighest,
+      child: Icon(Icons.image, color: Theme.of(context).hintColor, size: 50),
+    );
+    if (imagePath.startsWith('http')) {
+      return Image.network(
+        imagePath,
+        height: 180,
+        width: double.infinity,
+        fit: BoxFit.cover,
+        errorBuilder: errorBuilder,
+      );
+    }
+    return Image.asset(
+      imagePath,
+      height: 180,
+      width: double.infinity,
+      fit: BoxFit.cover,
+      errorBuilder: errorBuilder,
     );
   }
 }

@@ -1,20 +1,23 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/router/app_router.dart';
+import '../../../../core/di/auth_dependencies.dart';
 import '../widgets/create_account_step.dart';
 import '../widgets/role_selection_step.dart';
 import '../widgets/confirmation_step.dart';
-import 'login_screen.dart';
 import '../../domain/entities/user_role.dart';
+import '../providers/auth_provider.dart';
+import '../utils/auth_error_message.dart';
 
-class RegisterScreen extends StatefulWidget {
+class RegisterScreen extends ConsumerStatefulWidget {
   const RegisterScreen({super.key});
 
   @override
-  State<RegisterScreen> createState() => _RegisterScreenState();
+  ConsumerState<RegisterScreen> createState() => _RegisterScreenState();
 }
 
-class _RegisterScreenState extends State<RegisterScreen> {
+class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   int _currentStep = 0;
 
   final _firstNameController = TextEditingController();
@@ -53,13 +56,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
       _emailError = email.isEmpty
           ? 'Email address is required.'
           : (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(email)
-              ? 'Enter a valid email address.'
-              : null);
+                ? 'Enter a valid email address.'
+                : null);
       _passwordError = password.isEmpty
           ? 'Password is required.'
           : (password.length < 8
-              ? 'Password must contain at least 8 characters.'
-              : null);
+                ? 'Password must contain at least 8 characters.'
+                : null);
     });
 
     return _firstNameError == null &&
@@ -69,29 +72,47 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   Future<void> _handleCreateAccount() async {
+    if (!ref.read(authAvailabilityProvider)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Firebase Auth is not available on Linux or Windows. '
+            'Use Chrome, Android, iOS, or macOS.',
+          ),
+        ),
+      );
+      return;
+    }
     if (!_validateAccountForm()) {
       _goToStep(0);
       return;
     }
 
     setState(() => _isLoading = true);
+    await ref
+        .read(authProvider.notifier)
+        .register(
+          email: _emailController.text.trim(),
+          password: _passwordController.text,
+          name:
+              '${_firstNameController.text.trim()} ${_lastNameController.text.trim()}',
+          role: _selectedRole.name,
+        );
 
-    // Enregistrement des informations en local avec SharedPreferences
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('user_first_name', _firstNameController.text.trim());
-    await prefs.setString('user_last_name', _lastNameController.text.trim());
-    await prefs.setString('user_email', _emailController.text.trim());
-    await prefs.setString('user_role', _selectedRole.name); // Sauvegarde 'participant' ou 'organizer'
-    await prefs.setBool('is_logged_in', true);
-
-    await Future.delayed(const Duration(milliseconds: 900));
-
-    if (mounted) {
-      setState(() {
-        _isLoading = false;
-        _currentStep = 2; // Passe à l'étape de confirmation
-      });
+    if (!mounted) return;
+    final authState = ref.read(authProvider);
+    if (authState.hasError) {
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(authErrorMessage(authState.error))),
+      );
+      return;
     }
+
+    setState(() {
+      _isLoading = false;
+      _currentStep = 2;
+    });
   }
 
   @override
@@ -145,9 +166,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             }
           },
           onSignIn: () {
-            Navigator.of(context).pushReplacement(
-              MaterialPageRoute(builder: (context) => const LoginScreen()),
-            );
+            Navigator.of(context).pushReplacementNamed(AppRouter.login);
           },
         );
       case 1:

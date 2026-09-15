@@ -1,11 +1,7 @@
-import 'dart:convert';
-import 'dart:typed_data';
-
 import 'package:flutter/material.dart';
 
 class OrganizerEventDetailScreen extends StatelessWidget {
   final String imageUrl;
-  final bool isBase64;
   final String eventTitleFirstPart;
   final String eventTitleSecondPart;
   final String category;
@@ -17,13 +13,13 @@ class OrganizerEventDetailScreen extends StatelessWidget {
   final int placesTotal;
   final int participantsCount;
   final VoidCallback? onParticipantsTap;
+  final VoidCallback? onStatusChange;
   final VoidCallback? onEditTap;
   final VoidCallback? onDeleteTap;
 
   const OrganizerEventDetailScreen({
     super.key,
     required this.imageUrl,
-    this.isBase64 = false,
     required this.eventTitleFirstPart,
     required this.eventTitleSecondPart,
     required this.category,
@@ -35,6 +31,7 @@ class OrganizerEventDetailScreen extends StatelessWidget {
     required this.placesTotal,
     required this.participantsCount,
     this.onParticipantsTap,
+    this.onStatusChange,
     this.onEditTap,
     this.onDeleteTap,
   });
@@ -277,6 +274,31 @@ class OrganizerEventDetailScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 14),
 
+                  _actionButton(
+                    onTap: onStatusChange,
+                    borderColor: _accentAmber.withValues(alpha: 0.45),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(
+                          Icons.swap_vert_rounded,
+                          color: _accentAmber,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 10),
+                        const Text(
+                          'Change status',
+                          style: TextStyle(
+                            color: _accentAmber,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+
                   // --- Edit button (gray outline) ---
                   _actionButton(
                     onTap: onEditTap,
@@ -347,19 +369,13 @@ class OrganizerEventDetailScreen extends StatelessWidget {
       ),
     );
 
-    if (isBase64) {
-      try {
-        final bytes = base64Decode(imageUrl);
-        return Image.memory(
-          Uint8List.fromList(bytes),
-          fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) => errorFallback,
-        );
-      } on FormatException {
-        return errorFallback;
-      }
+    if (imageUrl.startsWith('http')) {
+      return Image.network(
+        imageUrl,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) => errorFallback,
+      );
     }
-
     return Image.asset(
       imageUrl,
       fit: BoxFit.cover,

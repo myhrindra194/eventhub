@@ -19,14 +19,8 @@ class ReservationRepositoryImpl implements ReservationRepository {
       _remote.watchByUser(userId);
 
   @override
-  Stream<List<Reservation>> watchByEvent({
-    required String eventId,
-    required String organizerId,
-  }) => _remote.watchActiveByEvent(eventId: eventId, organizerId: organizerId);
-
-  @override
-  Stream<List<Reservation>> watchByEventForTeam(String eventId) =>
-      _remote.watchActiveByEventForTeam(eventId);
+  Stream<List<Reservation>> watchByEvent(String eventId) =>
+      _remote.watchActiveByEvent(eventId);
 
   @override
   Stream<List<Reservation>> watchByOrganizer(String organizerId) =>
@@ -36,9 +30,7 @@ class ReservationRepositoryImpl implements ReservationRepository {
   Stream<Reservation?> watchForEvent({
     required String eventId,
     required String userId,
-  }) => _remote.watchById(
-    Reservation.composeId(eventId: eventId, userId: userId),
-  );
+  }) => _remote.watchForEvent(eventId: eventId, userId: userId);
 
   @override
   Stream<Reservation?> watchById(String reservationId) =>
@@ -52,22 +44,13 @@ class ReservationRepositoryImpl implements ReservationRepository {
   }) {
     return guard(() {
       _requireParticipant(participant);
-      return _remote.reserve(
-        eventId: eventId,
-        participant: participant,
-        tierId: tierId,
-      );
+      return _remote.reserve(eventId: eventId, tierId: tierId);
     });
   }
 
   @override
-  AsyncResult<void> cancel({
-    required String reservationId,
-    required AppUser participant,
-  }) => guard(
-    () =>
-        _remote.cancel(reservationId: reservationId, participant: participant),
-  );
+  AsyncResult<Reservation> cancel({required String reservationId}) =>
+      guard(() => _remote.cancel(reservationId));
 
   @override
   AsyncResult<CheckoutStart> startCheckout({
@@ -83,6 +66,8 @@ class ReservationRepositoryImpl implements ReservationRepository {
   AsyncResult<void> refund({required String eventId}) =>
       guard(() => _payments.refund(eventId));
 
+  /// The database refuses too; checked here so an organizer gets the precise
+  /// sentence without a round trip.
   void _requireParticipant(AppUser user) {
     if (!user.isParticipant) {
       throw const FailureException(

@@ -3,13 +3,13 @@ import 'package:eventhub/features/reservations/domain/entities/reservation.dart'
 
 /// Outcome of scanning one ticket at the door, most severe first.
 enum CheckInStatus {
-  /// No reservation behind this QR, or not readable by this organizer.
+  /// No reservation behind this QR.
   notFound,
 
   /// A real ticket, for another event.
   wrongEvent,
 
-  /// The reservation exists but the short code does not match it: the QR
+  /// The short code does not match the reservation id it came with: the QR
   /// was tampered with.
   invalidCode,
 
@@ -27,53 +27,66 @@ enum CheckInStatus {
   admitted,
 }
 
+/// The door's answer, and what it can say about the ticket holder.
+///
+/// The holder fields come from the `check_in_ticket` function, which only
+/// returns them once the ticket is known to belong to this event.
 class CheckInVerdict {
-  const CheckInVerdict(this.status, {this.reservation, this.checkedInAt});
+  const CheckInVerdict(
+    this.status, {
+    this.reservationId,
+    this.holderName,
+    this.tierName,
+    this.checkedInAt,
+  });
 
   final CheckInStatus status;
-  final Reservation? reservation;
+  final String? reservationId;
+  final String? holderName;
+  final String? tierName;
 
-  /// When the ticket was first scanned, for [CheckInStatus.alreadyCheckedIn].
+  /// When the ticket was scanned: now for [CheckInStatus.admitted], the
+  /// first time for [CheckInStatus.alreadyCheckedIn].
   final DateTime? checkedInAt;
 
   bool get isAdmitted => status == CheckInStatus.admitted;
+
+  /// What the ticket gives access to, as printed on it.
+  String get accessLabel =>
+      (tierName?.isNotEmpty ?? false) ? tierName! : 'Accès général';
 }
 
-/// Decides admission. Pure: the data source reads the reservation and any
-/// existing check-in, this function only judges, so every branch is tested.
+/// What the scanner decides on its own, before asking the server.
+///
+/// Pure. Admission itself — status, payment, first scan — is decided and
+/// recorded atomically by the `check_in_ticket` database function, so two
+/// doors scanning one ticket at the same instant never both admit it.
 abstract final class CheckInPolicy {
-  static CheckInVerdict evaluate({
-    required String eventId,
+  static final _uuid = RegExp(
+    r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
+    caseSensitive: false,
+  );
+
+  /// A verdict the scanner can give without the server, or `null` when the
+  /// ticket must be checked there.
+  ///
+  /// The short code is derived from the reservation id, so a QR whose code
+  /// does not match its own id is forged — no need to reveal whether that
+  /// id exists. An id that is not a uuid cannot be a reservation.
+  static CheckInVerdict? precheck({
+    required String reservationId,
     required String code,
-    required Reservation? reservation,
-    required DateTime? checkedInAt,
   }) {
-    if (reservation == null) {
+    if (!_uuid.hasMatch(reservationId)) {
       return const CheckInVerdict(CheckInStatus.notFound);
     }
-    if (reservation.eventId != eventId) {
-      return CheckInVerdict(CheckInStatus.wrongEvent, reservation: reservation);
-    }
     if (TicketPayload.normalizeCode(code) !=
-        TicketPayload.normalizeCode(reservation.ticketCode)) {
+        TicketPayload.normalizeCode(Reservation.ticketCodeFor(reservationId))) {
       return CheckInVerdict(
         CheckInStatus.invalidCode,
-        reservation: reservation,
+        reservationId: reservationId,
       );
     }
-    if (reservation.isPending) {
-      return CheckInVerdict(CheckInStatus.unpaid, reservation: reservation);
-    }
-    if (reservation.isCancelled) {
-      return CheckInVerdict(CheckInStatus.cancelled, reservation: reservation);
-    }
-    if (checkedInAt != null) {
-      return CheckInVerdict(
-        CheckInStatus.alreadyCheckedIn,
-        reservation: reservation,
-        checkedInAt: checkedInAt,
-      );
-    }
-    return CheckInVerdict(CheckInStatus.admitted, reservation: reservation);
+    return null;
   }
 }

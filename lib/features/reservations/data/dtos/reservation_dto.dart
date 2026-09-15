@@ -1,22 +1,30 @@
-import 'package:eventhub/core/firebase/timestamp_converter.dart';
+import 'package:eventhub/core/supabase/timestamp_converter.dart';
 import 'package:eventhub/features/reservations/domain/entities/reservation.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 
 part 'reservation_dto.freezed.dart';
 part 'reservation_dto.g.dart';
 
-/// Firestore document `reservations/{eventId}_{userId}`.
+/// Row of `public.reservations`, as returned by PostgREST, Realtime and the
+/// `reserve_seat` / `cancel_reservation` functions.
 ///
-/// Payment fields are omitted when null: the rules refuse a client write
-/// that carries any of them (they belong to the payment functions).
-@freezed
+/// Read-only: every write goes through a database function or a payment
+/// Edge Function, so there is no `toJson` path back to the table. Internal
+/// payment columns (`checkout_session_id`, `payment_intent_id`, `refund_id`,
+/// `reminder_sent_at`) are ignored — the app never acts on them.
+@Freezed(toJson: false)
 abstract class ReservationDto with _$ReservationDto {
   const ReservationDto._();
 
+  @JsonSerializable(fieldRename: FieldRename.snake, createToJson: false)
   const factory ReservationDto({
-    required String eventId,
-    required String userId,
-    required String organizerId,
+    required String id,
+
+    /// The three references become null when the event or an account is
+    /// deleted; the snapshot columns stay.
+    String? eventId,
+    String? userId,
+    String? organizerId,
     required String userName,
     required String userEmail,
     required String eventTitle,
@@ -26,48 +34,24 @@ abstract class ReservationDto with _$ReservationDto {
     required ReservationStatus status,
     @TimestampConverter() required DateTime reservedAt,
     @NullableTimestampConverter() DateTime? cancelledAt,
-    @JsonKey(includeIfNull: false) String? tierId,
-    @JsonKey(includeIfNull: false) String? tierName,
+    String? tierId,
+    String? tierName,
     @Default(0) int pricePaid,
-    @JsonKey(includeIfNull: false) int? amountDue,
-    @JsonKey(includeIfNull: false) String? currency,
-    @JsonKey(includeIfNull: false) String? paymentStatus,
-    @JsonKey(includeIfNull: false) String? checkoutUrl,
-    @JsonKey(includeIfNull: false)
-    @NullableTimestampConverter()
-    DateTime? holdExpiresAt,
+    int? amountDue,
+    String? currency,
+    String? paymentStatus,
+    String? checkoutUrl,
+    @NullableTimestampConverter() DateTime? holdExpiresAt,
   }) = _ReservationDto;
 
   factory ReservationDto.fromJson(Map<String, dynamic> json) =>
       _$ReservationDtoFromJson(json);
 
-  factory ReservationDto.fromDomain(Reservation r) => ReservationDto(
-    eventId: r.eventId,
-    userId: r.userId,
-    organizerId: r.organizerId,
-    userName: r.userName,
-    userEmail: r.userEmail,
-    eventTitle: r.eventTitle,
-    eventStartsAt: r.eventStartsAt,
-    eventLocation: r.eventLocation,
-    status: r.status,
-    reservedAt: r.reservedAt,
-    cancelledAt: r.cancelledAt,
-    tierId: r.tierId,
-    tierName: r.tierName,
-    pricePaid: r.pricePaid,
-    amountDue: r.amountDue,
-    currency: r.currency,
-    paymentStatus: r.paymentStatus,
-    checkoutUrl: r.checkoutUrl,
-    holdExpiresAt: r.holdExpiresAt,
-  );
-
-  Reservation toDomain(String id) => Reservation(
+  Reservation toDomain() => Reservation(
     id: id,
-    eventId: eventId,
-    userId: userId,
-    organizerId: organizerId,
+    eventId: eventId ?? '',
+    userId: userId ?? '',
+    organizerId: organizerId ?? '',
     userName: userName,
     userEmail: userEmail,
     eventTitle: eventTitle,

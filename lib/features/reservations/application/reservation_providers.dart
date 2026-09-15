@@ -1,8 +1,8 @@
 import 'package:eventhub/core/analytics/app_analytics.dart';
 import 'package:eventhub/core/config/app_config.dart';
 import 'package:eventhub/core/errors/failure.dart';
-import 'package:eventhub/core/firebase/firebase_providers.dart';
 import 'package:eventhub/core/result/result.dart';
+import 'package:eventhub/core/supabase/supabase_providers.dart';
 import 'package:eventhub/features/auth/application/auth_providers.dart';
 import 'package:eventhub/features/auth/domain/entities/app_user.dart';
 import 'package:eventhub/features/events/application/event_providers.dart';
@@ -11,6 +11,7 @@ import 'package:eventhub/features/reservations/data/datasources/reservation_remo
 import 'package:eventhub/features/reservations/data/repositories/reservation_repository_impl.dart';
 import 'package:eventhub/features/reservations/domain/entities/checkout.dart';
 import 'package:eventhub/features/reservations/domain/entities/reservation.dart';
+import 'package:eventhub/features/reservations/domain/policies/reservation_policy.dart';
 import 'package:eventhub/features/reservations/domain/repositories/reservation_repository.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart' hide AsyncResult;
 
@@ -18,12 +19,10 @@ part 'reservation_providers.g.dart';
 
 @Riverpod(keepAlive: true)
 ReservationRepository reservationRepository(Ref ref) {
+  final client = ref.watch(supabaseClientProvider);
   return ReservationRepositoryImpl(
-    ReservationRemoteDataSource(
-      ref.watch(firestoreProvider),
-      ref.watch(clockProvider),
-    ),
-    PaymentFunctionsDataSource(ref.watch(firebaseFunctionsProvider)),
+    ReservationRemoteDataSource(client),
+    PaymentFunctionsDataSource(client.functions),
   );
 }
 
@@ -45,19 +44,13 @@ Stream<Reservation?> myReservationForEvent(Ref ref, String eventId) {
       .watchForEvent(eventId: eventId, userId: user.id);
 }
 
-/// Active reservations of an event the signed-in organizer owns or
-/// co-organizes. The query differs (owner: `organizerId ==`, team:
-/// `eventId ==` only), because each is what the rules can prove.
+/// Confirmed reservations of an event the signed-in organizer owns or
+/// co-organizes. RLS returns nothing to anyone outside the team.
 @riverpod
 Stream<List<Reservation>> eventParticipants(Ref ref, String eventId) {
   final user = ref.watch(currentUserProvider);
   if (user == null) return Stream.value(const []);
-  final event = ref.watch(eventByIdProvider(eventId)).value;
-  final repo = ref.watch(reservationRepositoryProvider);
-  if (event != null && event.isStaff(user.id)) {
-    return repo.watchByEventForTeam(eventId);
-  }
-  return repo.watchByEvent(eventId: eventId, organizerId: user.id);
+  return ref.watch(reservationRepositoryProvider).watchByEvent(eventId);
 }
 
 @riverpod
@@ -69,8 +62,21 @@ class ReservationController extends _$ReservationController {
   @override
   FutureOr<void> build() {}
 
+  /// [ReservationPolicy] runs first on what the screen already shows (the
+  /// event and the participant's seat), for an answer without a round trip;
+  /// the database decides either way.
   Future<Result<Reservation>> reserve(String eventId, {String? tierId}) async {
-    final result = await _run((user) {
+    final result = await _run<Reservation>((user) async {
+      final event = ref.read(eventByIdProvider(eventId)).value;
+      if (event != null) {
+        final check = ReservationPolicy.canReserve(
+          event: event,
+          existing: ref.read(myReservationForEventProvider(eventId)).value,
+          now: ref.read(clockProvider)(),
+          tierId: tierId,
+        );
+        if (check case Err(:final failure)) return Err<Reservation>(failure);
+      }
       return ref
           .read(reservationRepositoryProvider)
           .reserve(eventId: eventId, participant: user, tierId: tierId);
@@ -122,16 +128,28 @@ class ReservationController extends _$ReservationController {
     return result;
   }
 
+  /// The event id for analytics comes from the cancelled row the database
+  /// returns: the reservation id no longer contains it.
   Future<Result<void>> cancel(String reservationId) async {
-    final result = await _run((user) {
+    final result = await _run((user) async {
+      final known = ref
+          .read(myReservationsProvider)
+          .value
+          ?.where((r) => r.id == reservationId)
+          .firstOrNull;
+      if (known != null) {
+        final check = ReservationPolicy.canCancel(
+          reservation: known,
+          userId: user.id,
+        );
+        if (check case Err(:final failure)) return Err<Reservation>(failure);
+      }
       return ref
           .read(reservationRepositoryProvider)
-          .cancel(reservationId: reservationId, participant: user);
+          .cancel(reservationId: reservationId);
     });
-    if (result is Ok<void>) {
-      ref
-          .read(appAnalyticsProvider)
-          .reservationCancelled(reservationId.split('_').first);
+    if (result case Ok(:final value)) {
+      ref.read(appAnalyticsProvider).reservationCancelled(value.eventId);
     }
     return result;
   }

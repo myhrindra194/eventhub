@@ -31,7 +31,7 @@ void main() {
     required DateTime reservedAt,
     DateTime? cancelledAt,
   }) => Reservation(
-    id: Reservation.composeId(eventId: eventId, userId: userId),
+    id: 'res-$eventId-$userId',
     eventId: eventId,
     userId: userId,
     organizerId: 'o1',

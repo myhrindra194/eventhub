@@ -10,10 +10,11 @@ abstract interface class WaitlistRepository {
     required String userId,
   });
 
-  /// Number of people queued — readable by the event's organizer only.
+  /// Number of people queued — readable by the event team only.
   Stream<int> watchQueueLength(String eventId);
 
-  /// Checks `WaitlistPolicy.canJoin` before writing.
+  /// Checks `WaitlistPolicy.canJoin` before asking the server, which checks
+  /// the same rules again.
   AsyncResult<void> join({
     required Event event,
     required AppUser user,
@@ -21,5 +22,6 @@ abstract interface class WaitlistRepository {
     required DateTime now,
   });
 
-  AsyncResult<void> leave({required String eventId, required String userId});
+  /// Leaves the signed-in user's own entry; a no-op when there is none.
+  AsyncResult<void> leave({required String eventId});
 }

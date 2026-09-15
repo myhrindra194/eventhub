@@ -55,7 +55,7 @@ final class ModerationRepositoryProvider
 }
 
 String _$moderationRepositoryHash() =>
-    r'5cc14aa41d4c561b0c243f522df311502b8f5b56';
+    r'b869454e5ed9b3a438dc37bbef681aa24c25b614';
 
 @ProviderFor(moderationQueue)
 final moderationQueueProvider = ModerationQueueFamily._();
@@ -486,20 +486,20 @@ final class ReportedAccountFamily extends $Family
   String toString() => r'reportedAccountProvider';
 }
 
-/// A reported review, hidden or not. Review ids are `<eventId>_<authorId>`;
-/// uids never contain `_`, so the author is after the last one.
+/// A reported review, hidden or not (RLS shows hidden reviews to
+/// administrators). [reviewId] is the uuid carried by the queue entry.
 
 @ProviderFor(moderatedReview)
 final moderatedReviewProvider = ModeratedReviewFamily._();
 
-/// A reported review, hidden or not. Review ids are `<eventId>_<authorId>`;
-/// uids never contain `_`, so the author is after the last one.
+/// A reported review, hidden or not (RLS shows hidden reviews to
+/// administrators). [reviewId] is the uuid carried by the queue entry.
 
 final class ModeratedReviewProvider
     extends $FunctionalProvider<AsyncValue<Review?>, Review?, Stream<Review?>>
     with $FutureModifier<Review?>, $StreamProvider<Review?> {
-  /// A reported review, hidden or not. Review ids are `<eventId>_<authorId>`;
-  /// uids never contain `_`, so the author is after the last one.
+  /// A reported review, hidden or not (RLS shows hidden reviews to
+  /// administrators). [reviewId] is the uuid carried by the queue entry.
   ModeratedReviewProvider._({
     required ModeratedReviewFamily super.from,
     required String super.argument,
@@ -543,10 +543,10 @@ final class ModeratedReviewProvider
   }
 }
 
-String _$moderatedReviewHash() => r'27b29f4ba93dd79fbd89576998cdf1a92fe82b34';
+String _$moderatedReviewHash() => r'de3add5458939245e05a94397d55c703461a7157';
 
-/// A reported review, hidden or not. Review ids are `<eventId>_<authorId>`;
-/// uids never contain `_`, so the author is after the last one.
+/// A reported review, hidden or not (RLS shows hidden reviews to
+/// administrators). [reviewId] is the uuid carried by the queue entry.
 
 final class ModeratedReviewFamily extends $Family
     with $FunctionalFamilyOverride<Stream<Review?>, String> {
@@ -559,8 +559,8 @@ final class ModeratedReviewFamily extends $Family
         isAutoDispose: true,
       );
 
-  /// A reported review, hidden or not. Review ids are `<eventId>_<authorId>`;
-  /// uids never contain `_`, so the author is after the last one.
+  /// A reported review, hidden or not (RLS shows hidden reviews to
+  /// administrators). [reviewId] is the uuid carried by the queue entry.
 
   ModeratedReviewProvider call(String reviewId) =>
       ModeratedReviewProvider._(argument: reviewId, from: this);

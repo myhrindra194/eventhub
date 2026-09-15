@@ -1,8 +1,8 @@
 import 'package:eventhub/core/analytics/app_analytics.dart';
 import 'package:eventhub/core/config/app_config.dart';
 import 'package:eventhub/core/errors/failure.dart';
-import 'package:eventhub/core/firebase/firebase_providers.dart';
 import 'package:eventhub/core/result/result.dart';
+import 'package:eventhub/core/supabase/supabase_providers.dart';
 import 'package:eventhub/features/auth/application/auth_providers.dart';
 import 'package:eventhub/features/auth/domain/entities/app_user.dart';
 import 'package:eventhub/features/reservations/application/reservation_providers.dart';
@@ -16,8 +16,9 @@ import 'package:riverpod_annotation/riverpod_annotation.dart' hide AsyncResult;
 part 'review_providers.g.dart';
 
 @Riverpod(keepAlive: true)
-ReviewRepository reviewRepository(Ref ref) =>
-    ReviewRepositoryImpl(ReviewRemoteDataSource(ref.watch(firestoreProvider)));
+ReviewRepository reviewRepository(Ref ref) => ReviewRepositoryImpl(
+  ReviewRemoteDataSource(ref.watch(supabaseClientProvider)),
+);
 
 @riverpod
 Stream<List<Review>> eventReviews(Ref ref, String eventId) =>

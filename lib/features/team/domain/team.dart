@@ -16,9 +16,9 @@ enum InvitationStatus {
   };
 }
 
-/// An invitation to co-organize (F-16). Same shape under the event
-/// (`events/{id}/invitations/{uid}`) and under the invitee
-/// (`users/{uid}/staffInvitations/{eventId}`); written by Cloud Functions.
+/// An invitation to co-organize (F-16): a row of `public.staff_invitations`,
+/// read by the invitee and by the event team, written only by the team
+/// database functions.
 class StaffInvitation {
   const StaffInvitation({
     required this.eventId,
@@ -45,7 +45,7 @@ class StaffInvitation {
   bool get isPending => status == InvitationStatus.pending;
 }
 
-/// Client-side checks before calling the team functions, so the owner gets
+/// Client-side checks before calling the team RPCs, so the owner gets
 /// a sentence instead of a round trip. The server re-checks everything.
 abstract final class TeamPolicy {
   static Result<void> canInvite({

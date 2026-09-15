@@ -53,7 +53,7 @@ final class ReportRepositoryProvider
   }
 }
 
-String _$reportRepositoryHash() => r'd17876078b26bd7c065a39287fc4d9ffbcdaa484';
+String _$reportRepositoryHash() => r'3b57e052f6aa9ab2ffa927e1d783f1825710c003';
 
 @ProviderFor(ReportController)
 final reportControllerProvider = ReportControllerProvider._();

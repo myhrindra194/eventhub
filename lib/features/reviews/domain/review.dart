@@ -1,8 +1,8 @@
-/// A post-event review: `reviews/{eventId}_{authorId}`.
+/// A post-event review: a row of `public.reviews`.
 ///
-/// Same deterministic-id trick as reservations: one review per person per
-/// event is a property of the storage, and editing is an overwrite of the
-/// same document.
+/// One review per person per event is a UNIQUE constraint on
+/// (event, author); the id itself is an opaque uuid, so the review of a
+/// given person is looked up by that pair, never by composing an id.
 class Review {
   const Review({
     required this.id,
@@ -16,11 +16,10 @@ class Review {
     this.hidden = false,
   });
 
-  static String composeId({required String eventId, required String userId}) =>
-      '${eventId}_$userId';
-
   final String id;
   final String eventId;
+
+  /// Empty once the author's account is deleted (the review stays).
   final String authorId;
   final String authorName;
 

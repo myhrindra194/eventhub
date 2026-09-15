@@ -2,7 +2,7 @@ import 'package:eventhub/core/errors/failure.dart';
 import 'package:eventhub/core/result/result.dart';
 import 'package:eventhub/features/moderation/domain/report.dart';
 
-/// Where an entry of `moderationQueue` stands.
+/// Where an entry of `moderation_queue` stands (`moderation_status`).
 enum ModerationStatus {
   open,
   resolved,
@@ -15,8 +15,9 @@ enum ModerationStatus {
   };
 }
 
-/// A decision an administrator can take. Wire values and the per-target
-/// lists mirror `ACTIONS_BY_TARGET` in functions/src/index.ts.
+/// A decision an administrator can take. Wire values are the
+/// `moderation_action` enum; the per-target lists mirror the check at the
+/// top of `public.moderate_content`.
 enum ModerationAction {
   hide(
     'hide',
@@ -86,7 +87,7 @@ enum ModerationAction {
   }
 }
 
-/// One entry of `moderationQueue/{targetType}_{targetId}`.
+/// One entry of `public.moderation_queue`, one per reported target.
 class ModerationEntry {
   const ModerationEntry({
     required this.id,
@@ -118,8 +119,13 @@ class ModerationEntry {
 
   bool get isOpen => status == ModerationStatus.open;
 
-  /// Entry ids are `<targetType>_<targetId>`; the target id may itself
-  /// contain underscores (review ids do), the type never does.
+  /// Entry ids are `<targetType>_<targetId>` (e.g. `review_<uuid>`), the
+  /// format stamped by the database and used in routes.
+  static String composeId(ReportTarget target, String targetId) =>
+      '${target.name}_$targetId';
+
+  /// Inverse of [composeId]. Splits on the first underscore: the type never
+  /// contains one, a target id may.
   static (ReportTarget, String)? parseId(String id) {
     final cut = id.indexOf('_');
     if (cut <= 0 || cut == id.length - 1) return null;
@@ -163,7 +169,7 @@ class ModerationDecision {
   final DateTime? at;
 }
 
-/// The reported account, read from `users/{uid}` (admins may read it).
+/// The reported account, read from `public.profiles` (admins may read any).
 class ReportedAccount {
   const ReportedAccount({
     required this.id,
@@ -180,7 +186,7 @@ class ReportedAccount {
   final DateTime? createdAt;
 }
 
-/// `admins/{uid}` — mirror of the claim, for the list screen.
+/// `public.administrators` — who holds the back-office role.
 class AdminAccount {
   const AdminAccount({
     required this.id,
@@ -224,8 +230,8 @@ abstract final class ModerationPolicy {
     ],
   };
 
-  /// The last decision tells whether the account is currently suspended —
-  /// the Auth `disabled` flag itself is not readable from a client.
+  /// The last decision tells whether the account is currently suspended:
+  /// `moderate_content` is the only way to suspend or reinstate.
   static bool isSuspended(ModerationEntry? entry) =>
       entry?.target == ReportTarget.user &&
       entry?.decision == ModerationAction.suspend;

@@ -3,9 +3,10 @@ import 'package:eventhub/core/result/result.dart';
 import 'package:eventhub/features/auth/domain/entities/app_user.dart';
 import 'package:eventhub/features/reservations/domain/entities/reservation.dart';
 
-/// Who may review, and what a valid review is. Mirrors `reviews` in
-/// `firestore.rules`: participant, confirmed seat, event started, verified
-/// email, rating 1..5, comment ≤ 2 000 characters.
+/// Who may review, and what a valid review is. Mirrors the `reviews` insert
+/// policy (`private.can_review`) and the table constraints: participant,
+/// confirmed seat, event started, verified email, rating 1..5, comment ≤
+/// 2 000 characters.
 abstract final class ReviewPolicy {
   static const maxCommentLength = 2000;
 

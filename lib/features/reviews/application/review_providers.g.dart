@@ -53,7 +53,7 @@ final class ReviewRepositoryProvider
   }
 }
 
-String _$reviewRepositoryHash() => r'de983f103b00483b075fc83454fe8e9ab07e9227';
+String _$reviewRepositoryHash() => r'e6a2a9329fd49d1948d5e86847b03c601cf1e3e0';
 
 @ProviderFor(eventReviews)
 final eventReviewsProvider = EventReviewsFamily._();

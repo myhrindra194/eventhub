@@ -1,4 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:eventhub/core/errors/failure.dart';
 import 'package:eventhub/core/result/result.dart';
 import 'package:eventhub/features/auth/domain/entities/app_user.dart';
@@ -119,24 +118,26 @@ void main() {
     );
   });
 
-  test('maps an invitation document', () {
-    final invitation = TeamRemoteDataSource.invitationFromFirestore({
-      'eventId': 'e1',
-      'userId': 'org-2',
+  test('maps a staff_invitations row', () {
+    final invitation = TeamRemoteDataSource.invitationFromRow({
+      'event_id': '0b6f7c1e-8d2a-4f3b-9e5c-1a2b3c4d5e6f',
+      'user_id': '9c8b7a6d-5e4f-4a3b-8c2d-1e0f9a8b7c6d',
       'email': 'hery@example.com',
       'name': 'Hery',
-      'invitedByName': 'Mirindra',
-      'eventTitle': 'Flutter Meetup',
-      'eventStartsAt': Timestamp.fromDate(DateTime(2026, 10, 2, 18)),
+      'invited_by': '11111111-2222-4333-8444-555555555555',
+      'invited_by_name': 'Mirindra',
+      'event_title': 'Flutter Meetup',
+      'event_starts_at': DateTime(2026, 10, 2, 18).toUtc().toIso8601String(),
       'status': 'pending',
+      'created_at': '2026-09-14T08:00:00+00:00',
+      'responded_at': null,
     });
     expect(invitation.isPending, isTrue);
+    expect(invitation.eventId, '0b6f7c1e-8d2a-4f3b-9e5c-1a2b3c4d5e6f');
     expect(invitation.eventStartsAt, DateTime(2026, 10, 2, 18));
     expect(invitation.invitedByName, 'Mirindra');
     expect(
-      TeamRemoteDataSource.invitationFromFirestore({
-        'status': 'accepted',
-      }).status,
+      TeamRemoteDataSource.invitationFromRow({'status': 'accepted'}).status,
       InvitationStatus.accepted,
     );
   });

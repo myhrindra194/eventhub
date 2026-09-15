@@ -13,7 +13,7 @@ class LocalNotificationDataSource {
   bool _initialized = false;
 
   /// Must match `default_notification_channel_id` in AndroidManifest.xml and
-  /// `ANDROID_CHANNEL` in the Cloud Functions.
+  /// `ANDROID_CHANNEL` in `supabase/functions/_shared/fcm.ts`.
   static const channelId = 'eventhub_default';
 
   static const _channel = AndroidNotificationChannel(

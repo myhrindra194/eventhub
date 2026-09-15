@@ -55,7 +55,7 @@ final class NotificationRepositoryProvider
 }
 
 String _$notificationRepositoryHash() =>
-    r'2980df71856bc086a8f4dcf3738eca5d5b484e05';
+    r'60dbd6f47408413cd59f523941fb08ba0c57a73d';
 
 @ProviderFor(pushMessaging)
 final pushMessagingProvider = PushMessagingProvider._();
@@ -367,7 +367,7 @@ final class NotificationFeedControllerProvider
 }
 
 String _$notificationFeedControllerHash() =>
-    r'12d91b37b9cc7b82909155561d7cfb898fc94cc8';
+    r'd16c22f46c9a0d3b033eb93e435f9364087473e0';
 
 abstract class _$NotificationFeedController extends $AsyncNotifier<void> {
   FutureOr<void> build();
@@ -389,12 +389,22 @@ abstract class _$NotificationFeedController extends $AsyncNotifier<void> {
 
 /// The push pipeline on the device, driven by the session.
 ///
-/// * signed in → ask permission, register the FCM token under the user,
-///   keep it registered on refresh;
+/// * signed in → ask permission, register the FCM token under the user
+///   (`public.register_device`), keep it registered on refresh;
 /// * signed out → invalidate the token (see
 ///   [PushMessagingDataSource.deleteToken]);
 /// * foreground message → shown as a local notification;
 /// * tap (foreground, background or cold start) → [NotificationRoute].
+///
+/// Why sign-out does not delete the `devices` row: this provider learns of
+/// the sign-out from [currentUserProvider], i.e. once the session is already
+/// gone, and RLS refuses an anonymous delete. Invalidating the token needs no
+/// session and is enough on its own: FCM answers `UNREGISTERED` to the next
+/// send and the worker forgets the row (`devices_forget_tokens`). If the
+/// device is offline and the invalidation fails, the next account signing in
+/// on the phone gets the same token, and `register_device` moves it away from
+/// the previous account. The row is keyed by installation, so the same
+/// person signing in again replaces the dead token in place.
 ///
 /// Watched once by `EventHubApp`; kept alive for the app's lifetime. Web is
 /// excluded on purpose: web push needs a VAPID key and a service worker.
@@ -404,12 +414,22 @@ final pushNotificationsProvider = PushNotificationsProvider._();
 
 /// The push pipeline on the device, driven by the session.
 ///
-/// * signed in → ask permission, register the FCM token under the user,
-///   keep it registered on refresh;
+/// * signed in → ask permission, register the FCM token under the user
+///   (`public.register_device`), keep it registered on refresh;
 /// * signed out → invalidate the token (see
 ///   [PushMessagingDataSource.deleteToken]);
 /// * foreground message → shown as a local notification;
 /// * tap (foreground, background or cold start) → [NotificationRoute].
+///
+/// Why sign-out does not delete the `devices` row: this provider learns of
+/// the sign-out from [currentUserProvider], i.e. once the session is already
+/// gone, and RLS refuses an anonymous delete. Invalidating the token needs no
+/// session and is enough on its own: FCM answers `UNREGISTERED` to the next
+/// send and the worker forgets the row (`devices_forget_tokens`). If the
+/// device is offline and the invalidation fails, the next account signing in
+/// on the phone gets the same token, and `register_device` moves it away from
+/// the previous account. The row is keyed by installation, so the same
+/// person signing in again replaces the dead token in place.
 ///
 /// Watched once by `EventHubApp`; kept alive for the app's lifetime. Web is
 /// excluded on purpose: web push needs a VAPID key and a service worker.
@@ -417,12 +437,22 @@ final class PushNotificationsProvider
     extends $NotifierProvider<PushNotifications, void> {
   /// The push pipeline on the device, driven by the session.
   ///
-  /// * signed in → ask permission, register the FCM token under the user,
-  ///   keep it registered on refresh;
+  /// * signed in → ask permission, register the FCM token under the user
+  ///   (`public.register_device`), keep it registered on refresh;
   /// * signed out → invalidate the token (see
   ///   [PushMessagingDataSource.deleteToken]);
   /// * foreground message → shown as a local notification;
   /// * tap (foreground, background or cold start) → [NotificationRoute].
+  ///
+  /// Why sign-out does not delete the `devices` row: this provider learns of
+  /// the sign-out from [currentUserProvider], i.e. once the session is already
+  /// gone, and RLS refuses an anonymous delete. Invalidating the token needs no
+  /// session and is enough on its own: FCM answers `UNREGISTERED` to the next
+  /// send and the worker forgets the row (`devices_forget_tokens`). If the
+  /// device is offline and the invalidation fails, the next account signing in
+  /// on the phone gets the same token, and `register_device` moves it away from
+  /// the previous account. The row is keyed by installation, so the same
+  /// person signing in again replaces the dead token in place.
   ///
   /// Watched once by `EventHubApp`; kept alive for the app's lifetime. Web is
   /// excluded on purpose: web push needs a VAPID key and a service worker.
@@ -453,16 +483,26 @@ final class PushNotificationsProvider
   }
 }
 
-String _$pushNotificationsHash() => r'5c92d56824de06e6a9ce6b3aa7d1ebeb38392a14';
+String _$pushNotificationsHash() => r'32c0bf3e77c487ef72b0a7349c7badcea2a126c8';
 
 /// The push pipeline on the device, driven by the session.
 ///
-/// * signed in → ask permission, register the FCM token under the user,
-///   keep it registered on refresh;
+/// * signed in → ask permission, register the FCM token under the user
+///   (`public.register_device`), keep it registered on refresh;
 /// * signed out → invalidate the token (see
 ///   [PushMessagingDataSource.deleteToken]);
 /// * foreground message → shown as a local notification;
 /// * tap (foreground, background or cold start) → [NotificationRoute].
+///
+/// Why sign-out does not delete the `devices` row: this provider learns of
+/// the sign-out from [currentUserProvider], i.e. once the session is already
+/// gone, and RLS refuses an anonymous delete. Invalidating the token needs no
+/// session and is enough on its own: FCM answers `UNREGISTERED` to the next
+/// send and the worker forgets the row (`devices_forget_tokens`). If the
+/// device is offline and the invalidation fails, the next account signing in
+/// on the phone gets the same token, and `register_device` moves it away from
+/// the previous account. The row is keyed by installation, so the same
+/// person signing in again replaces the dead token in place.
 ///
 /// Watched once by `EventHubApp`; kept alive for the app's lifetime. Web is
 /// excluded on purpose: web push needs a VAPID key and a service worker.

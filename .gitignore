@@ -51,6 +51,9 @@ coverage/
 *.jpg
 !assets/**
 
+# Local credential files (FCM service account, SMTP, OAuth) — never committed
+secrets/
+
 # Build-time keys per flavor (Supabase URL/anon key, Google client id)
 env/*.json
 !env/example.json

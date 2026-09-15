@@ -11,9 +11,10 @@ class FavoritesRepositoryImpl implements FavoritesRepository {
   Stream<List<String>> watchFavoriteIds(String userId) =>
       _remote.watchIds(userId);
 
+  /// [userId] is implied by the session: the row takes `auth.uid()`.
   @override
   AsyncResult<void> add({required String userId, required String eventId}) =>
-      guard(() => _remote.add(userId, eventId));
+      guard(() => _remote.add(eventId));
 
   @override
   AsyncResult<void> remove({required String userId, required String eventId}) =>

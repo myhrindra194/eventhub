@@ -4,12 +4,14 @@ import 'package:eventhub/core/errors/failure_exception.dart';
 import 'package:eventhub/core/result/result.dart';
 import 'package:eventhub/features/auth/domain/entities/app_user.dart';
 import 'package:eventhub/features/events/data/datasources/event_remote_data_source.dart';
-import 'package:eventhub/features/events/data/dtos/event_dto.dart';
 import 'package:eventhub/features/events/domain/entities/event.dart';
 import 'package:eventhub/features/events/domain/entities/event_draft.dart';
 import 'package:eventhub/features/events/domain/policies/event_policy.dart';
 import 'package:eventhub/features/events/domain/repositories/event_repository.dart';
 
+/// The domain checks run first for an instant, precise message; `save_event`
+/// and `delete_event` enforce the same rules again, atomically, and are the
+/// authority (a concurrent booking, a stale screen).
 class EventRepositoryImpl implements EventRepository {
   const EventRepositoryImpl({
     required EventRemoteDataSource remote,
@@ -48,17 +50,14 @@ class EventRepositoryImpl implements EventRepository {
       if (!organizer.isOrganizer) {
         throw const FailureException(_notOrganizer);
       }
-      final valid = _validated(draft);
-      return _remote.create(
-        EventDto.fromDraft(
-          valid,
-          organizerId: organizer.id,
-          organizerName: organizer.name,
-        ),
-      );
+      // The organizer name is copied from the profile by the database.
+      return _remote.save(_validated(draft));
     });
   }
 
+  /// Seats already sold, per type or in the single pool, are kept by the
+  /// database while the row is locked: no read-then-write race with a
+  /// booking.
   @override
   AsyncResult<void> update({
     required String eventId,
@@ -66,12 +65,7 @@ class EventRepositoryImpl implements EventRepository {
     required AppUser organizer,
   }) {
     return guard(() async {
-      final valid = _validated(draft);
-      await _remote.update(
-        eventId: eventId,
-        draft: valid,
-        organizerId: organizer.id,
-      );
+      await _remote.save(_validated(draft), eventId: eventId);
     });
   }
 

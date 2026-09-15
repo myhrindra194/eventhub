@@ -217,7 +217,10 @@ make test-db            # toutes les migrations + 39 tests, en local, en ~15 s
 ### 3.2 Firebase (push, Crashlytics, Analytics, Hosting)
 
 Projet `eventhub-d411f` (`.firebaserc`). `lib/firebase_options.dart` est
-généré par FlutterFire et ignoré par Git (`flutterfire configure --project=eventhub-d411f`).
+généré par FlutterFire et **versionné** (`flutterfire configure --project=eventhub-d411f`
+pour le régénérer) : il ne contient que les clés client Firebase, présentes de
+toute façon dans chaque build de l'app ; restreindre ces clés dans Google Cloud
+(applications Android/iOS/web autorisées) reste la bonne pratique.
 
 1. **Cloud Messaging** : *Web Push certificates* → générer la clé
    (`FIREBASE_WEB_VAPID_KEY`) ; iOS : téléverser la clé APNs. Le compte de
@@ -233,7 +236,9 @@ généré par FlutterFire et ignoré par Git (`flutterfire configure --project=e
 
 ### 3.3 Lancer
 
-Copier `env/example.json` en `env/dev.json` (ignoré par Git) et le remplir
+`env/dev.json` est **versionné** avec l'URL et la clé publique du projet de
+développement (valeurs publiques par nature, la RLS protège les données) ; pour
+un autre projet, copier `env/example.json` et le remplir
 (URL et clé *anon / publishable* du projet, *Project Settings → API*), puis :
 
 ```sh
@@ -309,7 +314,7 @@ supabase/
 ├── tests/                    suite d'intégration de la base sur PGlite (Postgres 17, sans Docker)
 └── snippets/                 premier administrateur, secrets du worker (SQL Editor)
 hosting/public/               accueil, /e/{id}, pay/success · pay/cancel, .well-known/assetlinks.json
-env/                          clés de build par flavor (ignorées, example.json versionné)
+env/                          clés de build publiques par flavor (dev.json et example.json versionnés, jamais de secret)
 ```
 
 Règle de dépendance : `presentation → application → domain ← data`. Seule
@@ -501,7 +506,7 @@ aplat plein écran. Détails : [`docs/DESIGN_SYSTEM.md`](docs/DESIGN_SYSTEM.md).
 
 ## 13. Configuration
 
-**Build** — `env/<flavor>.json` (ignoré par Git, modèle `env/example.json`),
+**Build** — `env/<flavor>.json` (`dev.json` versionné car il ne contient que des valeurs publiques ; les autres flavors restent locaux, modèle `env/example.json`),
 passé par `make run` / `make build-apk` avec `--dart-define-from-file` :
 
 | Clé | Effet |
@@ -530,7 +535,7 @@ passé par `make run` / `make build-apk` avec `--dart-define-from-file` :
 | `eventhub://auth-callback` | `AppConfig.authRedirectUrl` | `supabase/config.toml` (`additional_redirect_urls`), intent filter Android |
 | `eventhub_default` | canal Android | manifeste, `_shared/fcm.ts`, app |
 | limites des types de billets (6, 40, 160) | `EventTier`, `EventDraft` | migrations 5 et 11 |
-| bloc `flutter` de `firebase.json` | `flutterfire configure` | régénère `lib/firebase_options.dart` et `android/app/google-services.json` (ignorés par Git) |
+| bloc `flutter` de `firebase.json` | `flutterfire configure` | régénère `lib/firebase_options.dart` (versionné) et `android/app/google-services.json` (non utilisé par le build, ignoré) |
 | `applicationId` | `build.gradle.kts` | app Android Firebase, client OAuth Android |
 
 ---

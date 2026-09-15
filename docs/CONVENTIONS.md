@@ -31,5 +31,5 @@
 
 1. Comportement conforme au cahier des charges (section citée dans la PR).
 2. Tests : règle métier => test unitaire ; écran => test widget minimal.
-3. Règles Firestore mises à jour si le modèle change.
+3. Migration Supabase (schéma, RLS, fonctions) **et** test dans `supabase/tests/db` si le modèle ou une règle change ; `make test-db` vert.
 4. Colonne « Statut » du tableau de suivi passée en *En review* avec le lien PR.

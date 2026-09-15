@@ -3,7 +3,7 @@
 > Ce document répond à une question précise : **que construire ensuite, et
 > pourquoi**. Chaque fonctionnalité est justifiée par ce que font les grandes
 > plateformes du secteur, puis traduite en impact produit, coût technique et
-> dépendances (règles Firestore, index, écrans). Rien n'est listé « parce que
+> dépendances (tables, RLS, fonctions SQL, écrans). Rien n'est listé « parce que
 > ça se fait » : si une ligne n'a pas de raison d'être, elle n'est pas ici.
 
 ---
@@ -76,6 +76,8 @@
 | Organisateur | **Export CSV en fichier** via la feuille de partage (UTF-8 + BOM) | ✅ v1.4 — F-15 |
 | Découverte | Rail **« Pour vous »** (heuristique locale explicable) | ✅ v1.4 — F-18 |
 | Confiance | **Signalement** (événement, organisateur, avis), masquage automatique des avis, file de modération, décision admin | ✅ v1.4 — F-19 |
+| Backend | **Migration vers Supabase** : Postgres (RLS et droits par colonne, fonctions SQL, triggers, `pg_cron`), Auth avec confirmation d'email obligatoire, Storage, Realtime, Edge Functions (Stripe, worker FCM, page publique), file de jobs ; Firebase ne garde que FCM, Crashlytics, Analytics et Hosting. Les jalons v1.x ci-dessus décrivent leur première livraison sur Firebase ; leur mise en œuvre actuelle est dans `docs/ARCHITECTURE.md` | ✅ v2.0 |
+| Tests | Suite d'intégration de la base sur PGlite (migrations réelles, vrais rôles, sans Docker), `deno check` des Edge Functions | ✅ v2.0 |
 
 ---
 
@@ -234,8 +236,10 @@ bouton « suivre ».
 
 ### 3.4 P3 — Paris
 
-- **Mode hors ligne complet** — cache Firestore persistant + file d'attente
-  d'écritures. Pertinent à Madagascar où la connectivité est intermittente.
+- **Mode hors ligne complet** — depuis la migration vers Supabase, plus aucun
+  cache local de la base : stocker au moins les billets à venir sur l'appareil
+  (ouverture à froid sans réseau), puis une file d'attente d'écritures.
+  Pertinent à Madagascar où la connectivité est intermittente.
 - **Widget d'accueil / Live Activity** — le prochain billet sur l'écran de
   verrouillage (Dice le fait, c'est spectaculaire).
 - **Apple / Google Wallet** — le billet dans le portefeuille système.
@@ -266,22 +270,16 @@ bloquante juste après, et c'est exactement le moment où le trafic arrive.
 
 ## 5. Ce que l'infrastructure anticipe déjà
 
-Les règles et les index livrés couvrent **plus** que ce que l'application
-utilise aujourd'hui. C'est délibéré : écrire une règle après avoir livré la
+Le schéma Supabase couvre **plus** que ce que l'application utilise
+aujourd'hui. C'est délibéré : écrire une politique RLS après avoir livré la
 fonctionnalité, c'est livrer une faille pendant l'intervalle.
 
 | Prêt côté serveur | Utilisé par le client | Fonctionnalité cible |
 |---|---|---|
-| `users/{uid}/favorites` | ✅ v1.3 | F-05 |
-| `users/{uid}/devices` | ✅ v1.2 | F-02 |
-| `users/{uid}/private/notifications` | ✅ v1.2 (préférences) | F-02 |
-| `users/{uid}/notifications` (+ TTL) | ✅ v1.3 (centre de notifications) | F-02 |
-| `events/{id}/waitlist` | ✅ v1.3 | F-06 |
-| `events/{id}/checkins` | ✅ v1.3 | F-01 |
-| `reviews` | ✅ v1.3 | F-09 |
-| `reports` | ✅ v1.4 | F-19 |
-| `aggregates` (lecture seule) | ✅ v1.4 | F-07 |
-| `organizers` + `users/{uid}/following` | ✅ v1.4 | F-10 |
-| `moderationQueue` (admin) | ✅ v1.4 (console) | F-19 |
-| `config` (lecture publique) | ❌ | remote config |
-| `audit` (fermé au client) | ✅ v1.4 (journal de modération, marqueurs d'idempotence, TTL) | conformité |
+| `favorites`, `follows`, `devices`, `notification_preferences`, `notifications` | ✅ | F-05, F-10, F-02 |
+| `waitlist_entries`, `checkins`, `reviews`, `reports`, `moderation_*`, `administrators` | ✅ | F-06, F-01, F-09, F-19 |
+| `event_tiers`, `event_staff`, `staff_invitations`, fonctions `payments_*` | ✅ | F-12, F-16, F-11 |
+| `profiles.photo_url`, `organizers.photo_url`, bucket `avatars` (2 Mo, chemin propriétaire) | ❌ | photo de profil |
+| `organizers.suspended` | ❌ (non affiché) | badge « compte suspendu » sur le profil public |
+| `private.audit_log` (fermé à l'API, 1 an) | ✅ (décisions, paiements, échecs de jobs) | conformité |
+| file `private.jobs` (`push`, `refund`, `storage.delete`) | ✅ | toute action externe future (emails, webhooks sortants) |

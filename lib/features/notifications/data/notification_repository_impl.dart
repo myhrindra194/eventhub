@@ -39,10 +39,8 @@ class NotificationRepositoryImpl implements NotificationRepository {
   }) => guard(() => _remote.markRead(userId, notificationId));
 
   @override
-  AsyncResult<void> markAllRead({
-    required String userId,
-    required List<String> notificationIds,
-  }) => guard(() => _remote.markAllRead(userId, notificationIds));
+  AsyncResult<void> markAllRead({required String userId}) =>
+      guard(() => _remote.markAllRead(userId));
 
   @override
   AsyncResult<void> deleteNotification({

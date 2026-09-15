@@ -1,7 +1,7 @@
 /// What a user agreed to be notified about.
 ///
-/// Stored in `users/{uid}/private/notifications` and read by the Cloud
-/// Functions before every send, so switching a toggle off takes effect on the
+/// Stored in `public.notification_preferences` and read by `private.notify`
+/// before every notification, so switching a toggle off takes effect on the
 /// very next push — nothing is cached server-side.
 ///
 /// Defaults are "on": reminders and booking alerts are transactional (a seat

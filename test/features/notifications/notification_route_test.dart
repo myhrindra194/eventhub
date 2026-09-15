@@ -85,6 +85,29 @@ void main() {
     );
   });
 
+  test('reads the data map sent by the worker (uuids, empty when absent)', () {
+    const eventId = '6f1c2b0e-8a4d-4c7e-9b1a-2d3e4f5a6b7c';
+    const reservationId = 'a2b3c4d5-e6f7-4801-9a2b-3c4d5e6f7a8b';
+    expect(
+      NotificationRoute.locationFor({
+        'type': 'paymentConfirmed',
+        'notificationId': '0b9d2c1e-1111-4222-8333-444455556666',
+        'eventId': eventId,
+        'reservationId': reservationId,
+      }),
+      AppRoutes.ticketPath(reservationId),
+    );
+    expect(
+      NotificationRoute.locationFor({
+        'type': 'booking',
+        'notificationId': '0b9d2c1e-1111-4222-8333-444455556666',
+        'eventId': '',
+        'reservationId': '',
+      }),
+      isNull,
+    );
+  });
+
   test('unknown or incomplete payloads open nothing', () {
     expect(NotificationRoute.locationFor({}), isNull);
     expect(NotificationRoute.locationFor({'type': 'promo'}), isNull);

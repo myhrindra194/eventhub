@@ -3,7 +3,8 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 /// Called by FCM in a background isolate when a message arrives while the
 /// app is not in the foreground.
 ///
-/// Every message the Cloud Functions send carries a `notification` block,
+/// Every message the `worker` Edge Function sends carries a `notification`
+/// block,
 /// which Android and iOS display themselves in that state — so there is
 /// nothing to render here. The handler must still exist and be registered
 /// (see `bootstrap.dart`), otherwise data-only messages are dropped.
@@ -48,7 +49,7 @@ class PushMessagingDataSource {
 
   /// Invalidates this device's token. Called on sign-out so the next person
   /// signing in on the same phone never receives the previous user's pushes:
-  /// the server's next send to the old token fails and the Cloud Function
-  /// deletes the stale device document.
+  /// the next send to the old token is answered `UNREGISTERED` and the worker
+  /// deletes the stale `devices` row (`devices_forget_tokens`).
   Future<void> deleteToken() => _messaging.deleteToken();
 }

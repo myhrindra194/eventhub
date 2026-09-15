@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Changement d'adresse · EventHub</title>
+</head>
+<body style="margin:0;padding:0;background:#faf9fc;font-family:system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif;color:#14121f;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#faf9fc;">
+    <tr>
+      <td align="center" style="padding:32px 16px;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;">
+          <tr>
+            <td style="padding:0 0 24px;font-weight:700;font-size:15px;letter-spacing:.02em;">EventHub</td>
+          </tr>
+          <tr>
+            <td style="border-top:1px solid #e6e4ee;padding:28px 0 0;">
+              <p style="margin:0;color:#5b4ff5;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;">Sécurité du compte</p>
+              <h1 style="margin:6px 0 16px;font-size:26px;line-height:1.2;">Confirmez la nouvelle adresse.</h1>
+              <p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:#5d5a6e;">
+                L'adresse de votre compte EventHub va passer de <strong style="color:#14121f;">{{ .Email }}</strong>
+                à <strong style="color:#14121f;">{{ .NewEmail }}</strong>. Le changement n'a lieu qu'après confirmation.
+              </p>
+              <table role="presentation" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td style="border-radius:6px;background:#5b4ff5;">
+                    <a href="{{ .ConfirmationURL }}" style="display:inline-block;padding:14px 22px;color:#ffffff;font-weight:600;font-size:15px;text-decoration:none;border-radius:6px;">Confirmer le changement</a>
+                  </td>
+                </tr>
+              </table>
+              <p style="margin:24px 0 0;padding-left:12px;border-left:3px solid #e6e4ee;font-size:13px;line-height:1.6;color:#5d5a6e;">
+                Vous n'êtes pas à l'origine de cette demande ? Ignorez cet email et changez votre mot de passe dans
+                l'application : l'adresse actuelle reste en place.
+              </p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:32px 0 0;font-size:12px;color:#a3a0b5;">EventHub · découvrir, réserver, organiser.</td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

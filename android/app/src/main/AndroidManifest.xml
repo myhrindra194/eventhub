@@ -1,6 +1,13 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Supabase (data, auth, storage, functions) and FCM. The debug manifest
+         adds it implicitly; a release build without it never reaches the
+         backend. -->
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- Android 13+: push notifications are opt-in, asked after sign-in. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+
     <application
-        android:label="eventhub"
+        android:label="EventHub"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
@@ -24,7 +31,49 @@
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
+            <!-- App Links: https://eventhub-d411f.web.app/e/{id} opens the
+                 event in the app (route /e/:eventId). Verified against
+                 hosting/public/.well-known/assetlinks.json — add the release
+                 signing fingerprint there before publishing. -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="https"/>
+                <data android:host="eventhub-d411f.web.app"/>
+                <data android:host="eventhub-d411f.firebaseapp.com"/>
+                <data android:pathPrefix="/e/"/>
+                <!-- Return from Stripe Checkout (F-11). -->
+                <data android:pathPrefix="/pay/"/>
+            </intent-filter>
+            <!-- Supabase Auth returns here: email confirmation and password
+                 reset links (PKCE code exchanged by supabase_flutter). Must
+                 match AppConfig.authRedirectUrl and
+                 supabase/config.toml additional_redirect_urls. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="eventhub" android:host="auth-callback"/>
+            </intent-filter>
         </activity>
+
+        <!-- Channel used by pushes received while the app is in background.
+             Created by the app at startup (LocalNotificationDataSource) and
+             targeted by the `worker` Edge Function (ANDROID_CHANNEL). -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="eventhub_default" />
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_icon"
+            android:resource="@mipmap/ic_launcher" />
+
+        <!-- Analytics collects nothing until the user consents
+             (AnalyticsConsent → setAnalyticsCollectionEnabled). -->
+        <meta-data
+            android:name="firebase_analytics_collection_enabled"
+            android:value="false" />
+
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data

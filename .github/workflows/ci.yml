@@ -1,0 +1,123 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    name: Analyze & test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: 3.47.0
+          cache: true
+
+      # The real options are versioned; the placeholder only covers a fork
+      # or a checkout where the file was removed.
+      - name: Firebase options fallback
+        run: test -f lib/firebase_options.dart || cp lib/firebase_options.dart.example lib/firebase_options.dart
+
+      - run: flutter pub get
+      - run: dart run build_runner build --delete-conflicting-outputs
+      - run: dart format --output=none --set-exit-if-changed lib test
+      - run: flutter analyze --no-pub
+      - run: flutter test --coverage
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage
+          path: coverage/lcov.info
+
+  database:
+    name: Database (migrations, RLS, RPCs)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: supabase/tests/package-lock.json
+      # Every migration applied in order on PGlite (Postgres 17), then the
+      # integration suite under the real roles: no Docker, no secret, runs on
+      # forks too.
+      - run: npm --prefix supabase/tests ci
+      - run: npm --prefix supabase/tests test
+
+  edge-functions:
+    name: Edge Functions (type-check)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - name: deno check
+        working-directory: supabase/functions
+        run: deno check */index.ts
+
+  # Runs on pull requests too: the Firebase options and env/dev.json are
+  # versioned, so every PR produces an installable APK wired to the dev
+  # Supabase project (downloadable from the run's artifacts).
+  android:
+    name: Build APK (dev)
+    needs: [quality, database, edge-functions]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: 3.47.0
+          cache: true
+
+      # Firebase (push, Crashlytics, Analytics) and Supabase come from
+      # secrets; without them the APK builds and shows the configuration
+      # error screen.
+      - name: Write backend config
+        env:
+          FIREBASE_OPTIONS_DART: ${{ secrets.FIREBASE_OPTIONS_DART }}
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          # Versioned lib/firebase_options.dart and env/dev.json are used as
+          # they are; repository secrets only override them when defined.
+          if [ -n "$FIREBASE_OPTIONS_DART" ]; then
+            echo "$FIREBASE_OPTIONS_DART" | base64 -d > lib/firebase_options.dart
+            echo "$GOOGLE_SERVICES_JSON" | base64 -d > android/app/google-services.json
+          elif [ ! -f lib/firebase_options.dart ]; then
+            cp lib/firebase_options.dart.example lib/firebase_options.dart
+          fi
+          if [ -n "$SUPABASE_URL" ]; then
+            mkdir -p env
+            printf '{"SUPABASE_URL":"%s","SUPABASE_ANON_KEY":"%s"}\n' "$SUPABASE_URL" "$SUPABASE_ANON_KEY" > env/dev.json
+          fi
+
+      - run: flutter pub get
+      - run: dart run build_runner build --delete-conflicting-outputs
+      - run: flutter build apk --debug --dart-define=FLAVOR=dev --dart-define-from-file=env/dev.json
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: app-dev-debug.apk
+          path: build/app/outputs/flutter-apk/app-debug.apk

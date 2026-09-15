@@ -1,45 +1,86 @@
-# Miscellaneous
-*.class
-*.log
-*.pyc
-*.swp
-.DS_Store
-.atom/
-.build/
-.buildlog/
-.history
-.svn/
-.swiftpm/
-migrate_working_dir/
-
-# IntelliJ related
-*.iml
-*.ipr
-*.iws
-.idea/
-
-# The .vscode folder contains launch configuration and tasks you configure in
-# VS Code which you may wish to be included in version control, so this line
-# is commented out by default.
-#.vscode/
-
-# Flutter/Dart/Pub related
-**/doc/api/
-**/ios/Flutter/.last_build_id
+# Flutter / Dart
 .dart_tool/
+.packages
+build/
+.flutter-plugins
 .flutter-plugins-dependencies
-.pub-cache/
-.pub/
-/build/
-/coverage/
+*.iml
+.idea/
+.vscode/settings.json
+pubspec_overrides.yaml
 
-# Symbolication related
-app.*.symbols
+# Generated code is committed on purpose for CI reproducibility? No: regenerate.
+# Uncomment the two lines below if the team decides NOT to commit generated files.
+# *.g.dart
+# *.freezed.dart
 
-# Obfuscation related
-app.*.map.json
+# Firebase (local config). lib/firebase_options.dart is versioned on purpose:
+# it only holds the client keys already embedded in every build of the app.
+android/app/google-services.json
+ios/Runner/GoogleService-Info.plist
+macos/Runner/GoogleService-Info.plist
+.firebase/
+firebase-debug.log
+*.env
+.env.*
+!supabase/functions/.env.example
 
-# Android Studio will place build artifacts here
-/android/app/debug
-/android/app/profile
-/android/app/release
+# OS
+.DS_Store
+Thumbs.db
+
+# Android
+android/.gradle/
+android/local.properties
+android/key.properties
+**/*.keystore
+**/*.jks
+
+# iOS
+ios/Pods/
+ios/.symlinks/
+ios/Flutter/ephemeral/
+**/Flutter/ephemeral/
+
+# Coverage
+coverage/
+
+# Local documents (the product spec is versioned for the team)
+*.pdf
+!EVENTHUB*Cahier des charges MVP.pdf
+*.jpeg
+*.jpg
+!assets/**
+
+# Local credential files (FCM service account, OAuth…) — never committed.
+# Exception: secrets/smtp.env is versioned as a commented template. The
+# repository is public: never write the SMTP password in it — set it in the
+# Supabase dashboard (Authentication → SMTP) instead.
+secrets/*
+!secrets/smtp.env
+
+# Build-time keys per flavor (Supabase URL/anon key, Google client id).
+# env/dev.json is versioned: it only holds public client values (project URL,
+# publishable key). Never put a secret in env/*.json.
+env/*.json
+!env/example.json
+!env/dev.json
+
+# Supabase: database test suite dependencies.
+# supabase/functions/.env is versioned as a commented template. The repository
+# is public: never write a real key in it — use
+# `npx supabase secrets set KEY=value` so values never touch a file.
+supabase/tests/node_modules/
+!supabase/functions/.env
+
+# Firebase CLI (Hosting deploys)
+firebase-debug.log
+
+# Claude Code local worktrees
+.claude/worktrees/
+
+# Artefacts locaux de l'outil de design (hors projet Flutter)
+/uploads/
+/screenshots/
+/.thumbnail
+/support.js

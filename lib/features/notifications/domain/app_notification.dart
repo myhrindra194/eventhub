@@ -1,5 +1,5 @@
-/// One entry of `users/{uid}/notifications`, written by the Cloud Functions
-/// each time a push is sent (TTL 30 days on `expiresAt`).
+/// One row of `public.notifications`, written by the database each time a
+/// push is due (purged 30 days later, on `expires_at`).
 ///
 /// The history exists because a push is ephemeral: dismissed from the system
 /// tray, it is gone. The in-app list is where "who booked yesterday?" and

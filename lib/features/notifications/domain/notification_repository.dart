@@ -4,8 +4,9 @@ import 'package:eventhub/features/notifications/domain/notification_preferences.
 
 /// Persistence of what the push pipeline needs on the server side — where to
 /// send (devices) and whether to send (preferences) — and of the in-app
-/// history the server writes. Sending itself is not here: it is a Cloud
-/// Functions concern (`functions/src/index.ts`).
+/// history the server writes. Sending itself is not here: the database
+/// enqueues a push job per notification and the `worker` Edge Function
+/// delivers it through FCM.
 abstract interface class NotificationRepository {
   Stream<NotificationPreferences> watchPreferences(String userId);
 
@@ -14,8 +15,8 @@ abstract interface class NotificationRepository {
     required NotificationPreferences preferences,
   });
 
-  /// Upserts the device document for this FCM [token]. Idempotent: called
-  /// on every sign-in and on every token refresh.
+  /// Upserts this installation's device row with the FCM [token].
+  /// Idempotent: called on every sign-in and on every token refresh.
   AsyncResult<void> registerDevice({
     required String userId,
     required String token,
@@ -30,11 +31,9 @@ abstract interface class NotificationRepository {
     required String notificationId,
   });
 
-  /// One batched write, however many ids.
-  AsyncResult<void> markAllRead({
-    required String userId,
-    required List<String> notificationIds,
-  });
+  /// Marks every unread notification of [userId] as read, in one statement
+  /// on the server — including entries older than the bounded feed.
+  AsyncResult<void> markAllRead({required String userId});
 
   AsyncResult<void> deleteNotification({
     required String userId,

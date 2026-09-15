@@ -34,7 +34,12 @@ export async function freshDb() {
 
 let sequence = 0;
 
-/** An Auth user, and its profile when [role] is given (written as that user). */
+/**
+ * An Auth user, and its profile when [role] is given — created the way a real
+ * account is: a participant profile written as that user, then, for an
+ * organizer, `become_organizer` (which needs a confirmed email, so an
+ * unverified organizer is confirmed for the upgrade and unconfirmed after).
+ */
 export async function createUser(db, { name, role, email, verified = true }) {
   sequence += 1;
   const address = email ?? `user${sequence}@eventhub.test`;
@@ -48,9 +53,14 @@ export async function createUser(db, { name, role, email, verified = true }) {
     await asUser(db, user.id, (tx) =>
       tx.query(
         'insert into public.profiles (id, name, email, role) values ($1, $2, $3, $4)',
-        [user.id, name, 'forged@elsewhere.test', role],
+        [user.id, name, 'forged@elsewhere.test', 'participant'],
       ),
     );
+  }
+  if (role === 'organizer') {
+    if (!verified) await db.query('update auth.users set email_confirmed_at = now() where id = $1', [user.id]);
+    await asUser(db, user.id, (tx) => rpc(tx, 'become_organizer'));
+    if (!verified) await db.query('update auth.users set email_confirmed_at = null where id = $1', [user.id]);
   }
   return user.id;
 }

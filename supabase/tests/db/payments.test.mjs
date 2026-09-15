@@ -46,7 +46,7 @@ describe('payments', () => {
 
     await rejects(asUser(db, soa, (tx) => rpc(tx, 'reserve_seat', { p_event_id: eventId, p_tier_id: standard })), { rule: 'paymentPending' });
     await rejects(hold(soa, eventId, standard), { status: 409 });
-    await rejects(hold(organizer, eventId, vip), { status: 403 });
+    await rejects(hold(organizer, eventId, vip), { status: 409, rule: 'actionRefused' });
   });
 
   it('confirms through the webhook once, and refuses a direct cancellation', async () => {

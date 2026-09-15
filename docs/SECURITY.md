@@ -1,24 +1,19 @@
 # EventHub — Modèle de sécurité
 
-> **La base de données est le seul contrôle qui s'exécute réellement.**
-> L'application Flutter est une commodité : la clé `anon` est publique par
-> construction, et n'importe quel compte peut appeler l'API REST de Supabase
-> avec une charge utile fabriquée à la main. Ce document explique ce que le
-> serveur garantit, comment, où c'est testé — et ce qu'il ne garantit pas.
-
-Fichiers concernés :
+> **Les règles Firestore sont le seul contrôle qui s'exécute réellement.**
+> Sur le plan Spark, il n'y a aucun code serveur : l'application Flutter est
+> une commodité. Les identifiants Firebase sont dans chaque build, et
+> n'importe qui peut créer un compte puis appeler Firestore directement avec
+> une charge utile fabriquée. Ce document explique ce que les règles
+> garantissent, comment, où c'est testé — et, surtout, **ce qu'elles ne
+> peuvent pas garantir**.
 
 | Fichier | Rôle |
 |---|---|
-| `supabase/migrations/20260914120000_foundation.sql` | schéma `private`, enums, erreurs typées, audit, limitation de débit |
-| `supabase/migrations/20260914120100_schema.sql` | tables, contraintes `CHECK` / `UNIQUE` / clés étrangères |
-| `supabase/migrations/20260914120200_security.sql` | droits par colonne, RLS, middleware de requête |
-| `supabase/migrations/20260914120300_triggers.sql` | invariants maintenus quel que soit l'auteur de l'écriture |
-| `supabase/migrations/20260914120400_api.sql` · `…500_payments.sql` | fonctions métier et paiements |
-| `supabase/migrations/20260914120600_jobs_and_schedules.sql` | file de jobs, tâches planifiées |
-| `supabase/migrations/20260914120700_storage_realtime_grants.sql` | Storage, Realtime, droits d'exécution des fonctions |
-| `supabase/functions/_shared/http.ts` | middleware des Edge Functions |
-| `supabase/tests/db/*.test.mjs` | preuves : la suite exécute les attaques sous les vrais rôles |
+| `firebase/firestore.rules` | droits, formes des documents, invariants inter-documents |
+| `firebase/firestore.indexes.json` | index composites, TTL des notifications |
+| `firebase/tests/*.rules.test.js` | preuves : chaque attaque est rejouée contre l'émulateur |
+| `lib/core/firebase/firestore_paths.dart` | identifiants déterministes reconstruits par les règles |
 
 ---
 
@@ -26,325 +21,272 @@ Fichiers concernés :
 
 | Attaquant | Capacité | Contre-mesure |
 |---|---|---|
-| Visiteur anonyme | possède la clé `anon` (elle est dans l'APK) | le rôle `anon` n'a **aucun** droit sur aucune table ni fonction métier |
-| Utilisateur curieux | appelle PostgREST avec son propre jeton | RLS : il ne voit que ses lignes, ou celles de l'équipe d'un événement dont il fait partie |
-| Utilisateur malveillant | fabrique n'importe quelle requête, colonne, filtre | droits **par colonne**, écritures sensibles uniquement par fonctions qui revérifient tout |
-| Script d'abus | boucle d'écritures, comptes jetables | limitation de débit par compte (middleware + par fonction), email confirmé obligatoire pour se connecter |
-| Client rétro-conçu | contourne toute validation de l'interface | chaque politique du domaine Dart est réécrite en SQL, dans la transaction |
-| Compte suspendu | garde un jeton d'accès valide jusqu'à une heure | refus immédiat par le middleware, sessions révoquées, bannissement Auth |
-| Fuite de la clé `service_role` | contournerait la RLS | la clé n'existe que dans l'environnement des Edge Functions, jamais dans l'app ni dans Git |
-| Faux webhook Stripe | poste un `checkout.session.completed` inventé | signature vérifiée sur le corps brut, sinon 400 |
+| Visiteur anonyme | possède la clé API (elle est dans l'APK et sur le site) | n'obtient qu'un `get` d'événement par identifiant ; tout le reste exige un compte, puis un droit |
+| Utilisateur curieux | lit avec son propre jeton | profils privés, `list` refusé sur `users`, `admins`, `organizerEmails` ; requêtes bornées qui doivent épingler le filtre prouvant le droit |
+| Utilisateur malveillant | écrit n'importe quel champ, identifiant, batch | `keys().hasOnly`, bornes et types sur chaque champ ; identifiants reconstruits ; **preuves** `getAfter` / `existsAfter` sur tout compteur |
+| Client rétro-conçu | ignore toute validation de l'interface | chaque politique du domaine Dart est réécrite dans les règles |
+| Compte suspendu | garde un jeton valide jusqu'à une heure | `isActive()` relit `users/{uid}.suspended` à chaque écriture concernée : refus immédiat |
+| Élévation de privilège | tente de devenir admin ou organisateur | `admins/*` : `write: if false` ; rôle `participant` imposé à la création, passage organisateur sens unique, email vérifié, batch complet |
+| Spam de notifications | écrit dans la boîte d'autrui | type connu, acteur = appelant, identifiant déterministe par fait, fait prouvé |
+| Scraper / épuisement de quota | boucle de lectures pour épuiser les 50 000 lectures/jour | `list` bornés et authentifiés ; **App Check recommandé** (§8) ; limite non couverte par les règles (§7) |
 
 ---
 
-## 2. Trois couches qui se superposent
+## 2. Identité
 
-```
-   requête REST / Realtime (jeton de l'utilisateur)
-            │
-            ▼
- ┌──────────────────────────────┐
- │ 0. middleware de requête     │  api_pre_request : compte suspendu → 403,
- │                              │  écritures > 240/min → 429
- ├──────────────────────────────┤
- │ 1. droits (GRANT)            │  quelles colonnes un rôle peut insérer / modifier ;
- │                              │  quelles fonctions il peut exécuter
- ├──────────────────────────────┤
- │ 2. Row Level Security        │  quelles lignes il voit et touche
- ├──────────────────────────────┤
- │ 3. fonctions et triggers     │  toutes les règles métier, en transaction,
- │                              │  verrous dans un ordre unique
- └──────────────────────────────┘
-```
-
-Chaque couche est suffisante pour son propre périmètre : une colonne non
-accordée est refusée **avant** que la RLS soit évaluée ; une ligne hors
-politique est invisible **même** si la colonne est accordée ; une réservation
-n'existe **que** par une fonction qui verrouille l'événement. Aucune ne compte
-sur une autre pour être correcte.
+* **Rôle** : `users/{uid}.role`. Création forcée à `participant` (modèle
+  Eventbrite/Airbnb : un compte, deux espaces). Passage `organizer` : sens
+  unique, email vérifié, **dans le batch** qui crée `organizers/{uid}` et
+  `organizerEmails/{hash}`. Un organisateur garde tous les droits participant.
+* **Administrateur** : existence de `admins/{uid}`. **Aucune écriture client**
+  ne peut le créer (`allow write: if false`) : il se crée dans la console
+  Firebase (Firestore → Données). Chacun peut demander « suis-je admin ? »
+  sur **son** uid seulement (le `get` d'un document inexistant est autorisé et
+  ne révèle rien) ; seul un admin liste la collection.
+* **Suspension** : `users/{uid}.suspended`, écrit par un admin, jamais sur
+  lui-même. Un compte suspendu lit encore, mais toute écriture qui passe par
+  `isActive()` est refusée.
+* **Email vérifié** : `request.auth.token.email_verified == true`, exigé pour
+  devenir organisateur, publier, laisser un avis, s'inscrire dans
+  `organizerEmails`.
 
 ---
 
-## 3. Invariants garantis
+## 3. Parcours des règles, collection par collection
 
-| # | Invariant | Mécanisme | Test |
-|---|---|---|---|
-| 1 | Le **rôle** d'un compte est choisi une fois et ne change jamais | colonne `role` non accordée en `UPDATE` + trigger `profiles_before_update` (même pour le code serveur) | `accounts` |
-| 2 | L'**email** du profil est celui d'Auth, jamais celui envoyé par le client | trigger `profiles_before_insert` (lit `auth.users`), synchronisé à la confirmation d'un changement | `accounts` |
-| 3 | Seul un organisateur **vérifié** publie ; seule l'équipe modifie ; seul le principal supprime, et seulement sans place prise | `save_event`, `delete_event` | `events` |
-| 4 | `available_places ∈ [0, capacity]`, et **aucune survente**, même avec des réservations simultanées | `CHECK` + verrou `FOR UPDATE` sur l'événement dans `reserve_seat` / `payments_hold_seat` | `reservations` |
-| 5 | La capacité ne descend jamais sous les places vendues ; un type de billet vendu ne se supprime pas ; le mode (capacité unique / types) et la devise se figent après la première vente | `save_event` | `events`, `payments` |
-| 6 | Avec des types de billets, les totaux de l'événement sont **exactement** leurs sommes | trigger `event_tiers_sync_totals` dans la même instruction | `events` |
-| 7 | **Une réservation par participant et par événement** | contrainte `UNIQUE (event_id, user_id)` | `reservations` |
-| 8 | Aucun client ne crée une place tenue, ne confirme un paiement, n'écrit un montant | tables en lecture seule pour `authenticated` ; fonctions `payments_*` exécutables par `service_role` seulement | `accounts`, `payments` |
-| 9 | Un billet ne sert **qu'une fois** à la porte, même scanné par deux téléphones au même instant | `check_in_ticket` : `INSERT … ON CONFLICT DO NOTHING` sur la clé primaire | `reservations` |
-| 10 | La liste des participants ne sort **jamais** de l'équipe de l'événement | politique `reservations_select` : propriétaire de la ligne, `is_event_team`, ou admin | `reservations` |
-| 11 | Un signalement par compte et par contenu ; un avis masqué ne réapparaît pas par le seuil après une décision humaine | `UNIQUE (target_type, target_id, reporter_id)` + `moderated_at` | `moderation` |
-| 12 | Aucun pouvoir d'administration ne s'obtient par une écriture client | table `administrators` sans aucun droit d'écriture ; `set_admin_role` exige d'être admin ; premier admin par connexion de confiance seulement | `accounts` |
-| 13 | L'historique survit : un billet reste prouvable après la suppression de l'événement ou du compte | clés étrangères `ON DELETE SET NULL` + colonnes instantanées, anonymisation | `team, account deletion` |
-| 14 | Tout ce qui n'est pas accordé est refusé | `REVOKE ALL` sur `public` pour `anon` / `authenticated`, `REVOKE EXECUTE` par défaut, puis droits explicites | `accounts` |
+### `users/{uid}`
+* `get` : soi ou admin. `list` : **jamais**, admins compris (pas d'annuaire).
+* `create` : soi, clés exactes, `email` = celui du jeton, `role = participant`,
+  `createdAt` serveur.
+* `update` : trois branches exclusives — présentation (nom, bio, `welcomedAt`
+  posé une fois) ; passage organisateur prouvé par `existsAfter(organizers/uid)` ;
+  suspension par un admin (`onlyChanged(['suspended','updatedAt'])`).
+* `delete` : soi (suppression de compte).
+* Sous-collections `private`, `devices`, `favorites` : propriétaire seul,
+  formes strictes (`private/notifications` est le seul document autorisé).
+* `following/{organizerId}` : privé ; création/suppression **seulement** si
+  `followerCount` de l'organisateur bouge de ±1 dans le même batch ; pas de
+  suivi de soi-même.
+* `notifications` : lecture et suppression par le destinataire ; création par
+  l'acteur sous preuve (8 types : bienvenue, réservation, annulation, liste
+  d'attente, invitation, arrivée / retrait d'équipe, modération) ; seule mise à
+  jour possible : `readAt` posé une fois à l'heure serveur.
+
+### `admins/{uid}`
+Lecture de soi, liste par les admins, **aucune écriture**.
+
+### `organizers/{uid}`
+* Lecture : comptes connectés.
+* Création : par soi, email vérifié, compteurs à **zéro**, rôle `organizer`
+  et entrée `organizerEmails` présents après le batch.
+* Mise à jour : cinq branches — nom/bio alignés sur `users` ; `followerCount ±1`
+  prouvé par le document `following` de l'appelant ; `eventCount ±1` prouvé
+  par `lastEventId` (créé ou supprimé dans ce batch, par son propriétaire) ;
+  note prouvée par `lastReviewId` (écrit, modifié, supprimé, masqué ou rétabli
+  dans ce batch) ; `suspended` par un admin.
+
+### `organizerEmails/{sha256}`
+`get` d'un hash exact par un organisateur ; `list` interdit ; création
+uniquement du hash de **sa propre** adresse vérifiée.
+
+### `events/{id}`
+* `get` : **public** (page `/e/{id}`). `list` : connecté, `limit ≤ 200`.
+* `create` : organisateur actif et vérifié, forme valide, `availablePlaces =
+  capacity`, équipe vide, date future, `eventCount + 1` sur sa page dans le
+  même batch.
+* `update` : contenu par l'équipe (capacité jamais sous les places prises,
+  `organizerId`, `createdAt`, `staffIds` intouchables) ; **une** place prise ou
+  rendue par un non-membre de l'équipe, prouvée par sa réservation et, avec
+  des types de billets, par le type exact ; entrée ou sortie d'équipe prouvée
+  par l'invitation acceptée (≤ 10 membres).
+* `delete` : propriétaire si aucune place prise (et `eventCount - 1`), ou admin.
+* `waitlist` : inscription seulement si complet et à venir, hors équipe ;
+  `notifiedAt` posé une fois quand une place s'est libérée.
+* `checkins` : équipe, ajout seul, réservation confirmée **du même événement**.
+* `invitations` : créées par le propriétaire pour un organisateur existant,
+  retrouvé par le hash de son email ; réponse (acceptée/refusée) par l'invité.
+* `attendees` : clé = `sha256(uid)`, nom court, **seulement** si la
+  réservation de l'appelant est confirmée après le batch.
+
+### `reservations/{eventId}_{uid}`
+* `get` : un document inexistant n'est sondable que sur **son propre** id
+  (« ai-je réservé ? ») ; sinon participant, organisateur, équipe, admin.
+* `list` : `limit ≤ 500` et filtre prouvant le droit.
+* `create` / re-réservation : id = `eventId_uid`, email du jeton, copie
+  conforme de l'événement, type gratuit, hors équipe, place libre, date
+  future, `reservedAt` récent, **`availablePlaces - 1` dans la même
+  transaction**. `pricePaid` doit valoir 0.
+* Annulation : par le participant, `cancelledAt` récent, place rendue dans la
+  transaction (sauf événement déjà supprimé).
+* Anonymisation (suppression de compte) et annulation de masse par la
+  modération : branches dédiées.
+* `delete` : **jamais** (l'historique survit).
+
+### `reviews/{eventId}_{uid}`
+Création par un présent (réservation confirmée, événement commencé), email
+vérifié, note 1–5, `hidden = false`, **note de l'organisateur mise à jour dans
+le batch**. Les avis masqués ne sont visibles que de leur auteur et de la
+modération ; masquer/rétablir fait suivre la note.
+
+### `reports` et `moderationQueue`
+Signalement en écriture seule, un par personne et par contenu, pas sur soi ni
+sur son propre avis, motif fermé (précisions obligatoires pour « Autre ») ; le
+dossier de modération est ouvert ou incrémenté **dans le même batch**. Seuls
+les admins lisent et décident ; les décisions sont un journal en ajout seul.
+
+### Filet final
+`match /{document=**} { allow read, write: if false; }` : tout chemin non
+déclaré est refusé.
 
 ---
 
-## 4. Identité et rôles
+## 4. Ce que les règles prouvent
 
-- **Rôle métier** (`participant` / `organizer`) : colonne de `profiles`, lue par
-  `private.my_role()`. Recopiée dans `app_metadata.role` du jeton — non
-  modifiable par l'utilisateur — pour que l'app la connaisse dès la connexion,
-  mais la base ne se fie **jamais** au jeton pour autoriser : elle relit la
-  ligne (lecture par clé primaire, évaluée une fois par requête).
-- **Administrateur** : présence dans `public.administrators`, lue par
-  `private.is_admin()`. Recopiée dans `app_metadata.admin` pour l'affichage de
-  l'entrée « Modération ». Le premier administrateur se crée dans l'éditeur SQL
-  (`supabase/snippets/grant_admin.sql`) : `private.grant_admin` n'est exécutable
-  par aucun rôle de l'API. Un administrateur ne peut pas retirer son propre
-  rôle : le dernier ne peut pas verrouiller le projet.
-- **Profil à l'inscription** : la confirmation d'email est obligatoire, il n'y a
-  donc pas de session pour écrire le profil. Le nom et le rôle voyagent en
-  métadonnées et `private.handle_new_auth_user` crée le profil dans la
-  transaction qui crée le compte, **après revalidation** : un rôle inventé
-  (`admin`) ou un nom invalide ne crée rien, et l'écran « Compléter le profil »
-  prend le relais.
-- **Email vérifié** : exigé pour publier un événement et pour laisser un avis
-  (`private.is_verified()` lit `auth.users.email_confirmed_at`).
-
----
-
-## 5. Fonctions `SECURITY DEFINER` : règles d'écriture
-
-Une fonction `SECURITY DEFINER` s'exécute avec les droits de son propriétaire :
-c'est ce qui lui permet de verrouiller un événement que l'appelant ne peut pas
-modifier. C'est aussi la surface la plus dangereuse. Règles appliquées sans
-exception :
-
-1. `set search_path = ''` et **tous** les objets qualifiés (`public.events`,
-   `auth.uid()`, `extensions.digest`) : un appelant ne peut pas masquer une
-   table ou un opérateur par un objet de son propre schéma.
-2. Droit `EXECUTE` **retiré par défaut** (`alter default privileges`), puis
-   accordé fonction par fonction dans la migration 8/8 : `authenticated`
-   n'exécute que l'API de l'application ; `service_role` seul exécute les
-   paiements, la file de jobs et l'instantané public.
-3. Les helpers vivent dans le schéma `private`, **non exposé** par PostgREST :
-   ils sont appelables depuis une politique RLS, jamais par `/rpc/…`.
-4. Chaque fonction de l'API commence par établir l'appelant
-   (`private.require_user()`), puis revérifie **toutes** les règles, même celles
-   que l'app a déjà vérifiées.
-5. Aucune fonction ne reçoit un identifiant d'utilisateur de la part d'un
-   client : il vient de `auth.uid()`. Les fonctions `payments_*` reçoivent
-   `p_user_id`, mais seule une Edge Function qui a elle-même vérifié le jeton
-   peut les appeler.
-
----
-
-## 6. Portée des lectures
-
-| Table | Qui voit quoi |
-|---|---|
-| `profiles` | sa propre ligne ; les administrateurs (dossiers de modération) |
-| `notification_preferences`, `devices`, `favorites`, `follows`, `notifications` | le propriétaire seulement — qui suit qui n'est public pour personne, organisateur compris |
-| `organizers` | tout compte connecté (page publique, compteurs calculés par triggers) |
-| `events`, `event_tiers`, `event_staff` | tout compte connecté (le catalogue est le produit) |
-| `staff_invitations` | l'invité et l'équipe de l'événement |
-| `reservations` | le participant ; l'équipe de l'événement ; les administrateurs |
-| `checkins` | l'équipe de l'événement |
-| `waitlist_entries` | la personne en attente ; l'équipe de l'événement |
-| `reviews` | tout compte connecté, **sauf les avis masqués** : visibles par leur auteur et la modération seulement |
-| `reports`, `moderation_queue`, `moderation_decisions`, `administrators` | administrateurs |
-| `private.*` (jobs, audit, limites) | personne via l'API |
-
-Les politiques utilisent `(select auth.uid())` : la valeur est calculée une
-fois par requête (init plan), pas une fois par ligne.
-
-## 7. Écritures possibles depuis un client
-
-| Table | Écriture directe autorisée | Tout le reste passe par |
+| # | Invariant | Mécanisme |
 |---|---|---|
-| `profiles` | `INSERT (id, name, email, role, bio, photo_url)` sur sa ligne ; `UPDATE (name, bio, photo_url)` | trigger (email réel, horodatages) |
-| `notification_preferences` | `UPDATE` des trois préférences | — |
-| `devices` | `DELETE` de ses appareils | `register_device` (un jeton n'appartient qu'à un compte) |
-| `follows` · `favorites` | `INSERT (organizer_id)` · `INSERT (event_id)`, `DELETE` des siennes | triggers (compteurs) |
-| `reviews` | `INSERT (event_id, rating, comment)` si présent à un événement commencé et email vérifié ; `UPDATE (rating, comment)` des siens ; `DELETE` des siens | triggers (auteur, nom, note de l'organisateur) |
-| `reports` | `INSERT (target_type, target_id, reason, details)` | trigger (signaleur, contenu existant, pas le sien, seuil) |
-| `notifications` | `UPDATE (read_at)` (horodaté par le serveur, jamais « non lu » à nouveau), `DELETE` | — |
-| `events`, `event_tiers` | **aucune** | `save_event`, `delete_event` |
-| `reservations`, `checkins`, `waitlist_entries` | **aucune** | `reserve_seat`, `cancel_reservation`, `check_in_ticket`, `join_waitlist`, `leave_waitlist`, Edge Functions de paiement |
-| `event_staff`, `staff_invitations` | **aucune** | `invite_co_organizer`, `respond_to_staff_invite`, `remove_co_organizer` |
-| `moderation_*`, `administrators` | **aucune** | `moderate_content`, `set_admin_role` |
+| 1 | Aucune survente, même en simultané | transaction + `getAfter(events).availablePlaces == avant - 1` ; la transaction concurrente est rejouée et échoue |
+| 2 | Une réservation, un avis, un signalement par personne | identifiants déterministes reconstruits |
+| 3 | Aucun compteur public (abonnés, événements, note) ne bouge sans sa cause | `lastEventId`, `lastReviewId`, document `following` exigés dans le batch |
+| 4 | Aucun pouvoir d'administration par une écriture client | `admins/*` sans écriture |
+| 5 | Personne ne s'inscrit directement organisateur ; le passage exige un email vérifié | création `participant`, branche de mise à jour dédiée |
+| 6 | La liste des participants ne sort jamais de l'équipe | `get`/`list` des réservations |
+| 7 | Un billet ne sert qu'une fois à la porte | `checkins/{reservationId}` en création seule : le second scan est une mise à jour, refusée |
+| 8 | Une notification par fait, prouvé | identifiant déterministe + preuve par type |
+| 9 | L'historique survit à la suppression | `reservations` sans `delete`, anonymisation encadrée |
+| 10 | Rien n'est payant sans serveur | `pricePaid == 0`, types gratuits seuls |
 
 ---
 
-## 8. Middleware de requête
-
-`public.api_pre_request()` est déclaré comme `pgrst.db_pre_request` : PostgREST
-l'exécute **avant chaque requête** de l'API.
-
-- **Compte suspendu → 403 immédiat.** Un jeton d'accès reste valable jusqu'à
-  une heure après une suspension ; la base ne l'attend pas.
-- **Écritures limitées à 240 par minute par compte** (fenêtre fixe, table non
-  journalisée `private.rate_limits`). Les transactions en lecture seule ne
-  comptent pas.
-- Limites plus fines dans les fonctions sensibles : réserver 20/min, publier ou
-  modifier un événement 30/min, inviter 30/min, scanner 240/min, enregistrer un
-  appareil 20/min ; modifier un avis au plus une fois par seconde.
-
-La connexion et l'inscription sont limitées en amont par Supabase Auth
-(`[auth.rate_limit]` de `config.toml`).
-
-## 9. Erreurs : informatives pour l'utilisateur, muettes pour l'attaquant
-
-Toute erreur métier est levée avec `SQLSTATE PTnnn` (PostgREST en fait le
-statut HTTP `nnn`), un `hint` égal à la règle (`eventFull`, `tiersLocked`…)
-et un message français. Les erreurs de validation portent le détail par champ.
-Rien d'autre ne sort : ni nom de contrainte, ni requête. Les Edge Functions
-renvoient la même forme et **masquent** toute erreur inattendue derrière un
-message générique (`500 unexpected`), la cause restant dans les journaux avec
-l'identifiant de requête.
-
----
-
-## 10. Concurrence
-
-- **Ordre de verrouillage unique** : événement → réservation → type de billet,
-  dans toutes les fonctions (réserver, annuler, tenir une place, confirmer,
-  libérer, rembourser, modifier l'événement). Un seul ordre, pas d'interblocage.
-- **Survente impossible** : la vérification des places et leur décrément se
-  font sous le verrou de la ligne de l'événement.
-- **Contrôle d'entrée** : la décision et l'enregistrement sont une seule
-  instruction ; deux portes produisent un « entrée validée » et un « déjà
-  scanné », jamais deux entrées.
-- **Liste d'attente** : `FOR UPDATE SKIP LOCKED` ; chaque place libérée prévient
-  une personne, une seule fois (`notified_at`).
-- **Idempotence** : libérer une place déjà libérée, confirmer un paiement déjà
-  confirmé, rembourser deux fois ne change rien (fonctions de paiement testées
-  en rejouant les appels).
-
-## 11. Paiements (F-11)
-
-| Surface | Garantie |
-|---|---|
-| Montant | lu par `payments_hold_seat` dans le type de billet verrouillé, transmis à Stripe par l'Edge Function : **jamais** fourni par l'app |
-| Données de carte | page Stripe Checkout hébergée : rien ne transite par l'app ni par EventHub (périmètre PCI SAQ A) |
-| Place pendant le paiement | tenue en transaction (statut `pending`) ; relâchée par abandon, expiration Stripe ou balayage toutes les 10 minutes, avec une marge de 5 minutes après l'expiration de la session |
-| Confirmation | **seul le webhook** confirme : signature `Stripe-Signature` vérifiée sur le corps brut (Web Crypto) ; le retour navigateur `/pay/success` n'est pas une preuve |
-| Paiement tardif | si la place a été relâchée, elle est reprise s'il en reste, **sinon le paiement est remboursé** : jamais de débit sans billet |
-| Remboursement demandé | Stripe rembourse **d'abord**, la place est libérée ensuite : un échec laisse le billet à son détenteur |
-| Remboursements de masse (retrait d'un événement, suppression de compte) | mis en file, retentés 8 fois avec délai croissant, puis `refund_failed` et journal d'audit pour un humain |
-| Clés d'idempotence Stripe | session : `checkout:<réservation>:<expiration>` ; remboursement : `refund:<réservation>:<paiement>` |
-| Secrets | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` en secrets des Edge Functions, jamais dans Git |
-
-## 12. Edge Functions
-
-Toutes passent par `serve()` (`_shared/http.ts`) :
-
-1. identifiant de requête, préflight CORS, méthode HTTP vérifiée ;
-2. authentification selon la fonction :
-   - **jeton utilisateur** vérifié auprès de Supabase Auth, compte banni refusé ;
-   - **secret du worker** comparé en temps constant ;
-   - **public** pour le webhook (signature) et l'instantané d'un événement ;
-3. corps JSON plafonné (16 Ko par défaut), objet exigé ;
-4. validation des identifiants (UUID) avant tout appel ;
-5. erreurs au format de l'API, erreurs inattendues masquées, une ligne de
-   journal JSON par requête (statut, durée, utilisateur, règle).
-
-`verify_jwt = false` n'est déclaré que pour `stripe-webhook`, `worker` et
-`public-event` (`supabase/config.toml`), chacune ayant sa propre
-authentification.
-
-## 13. File de jobs
-
-Les effets hors base (push FCM, remboursements, suppression de fichiers) sont
-écrits dans `private.jobs` **dans la transaction métier** : une réservation
-annulée par un rollback n'envoie jamais de notification. `pg_net` réveille le
-worker **après le commit** ; `pg_cron` le relance chaque minute. Les jobs sont
-pris avec `FOR UPDATE SKIP LOCKED` (deux exécutions ne traitent jamais le même
-job), verrouillés deux minutes (un worker mort n'immobilise rien), retentés avec
-délai exponentiel. L'URL et le secret du worker sont dans **Vault**, jamais dans
-une migration (`supabase/snippets/wire_worker.sql`).
-
-## 14. Storage
-
-- Buckets `event-covers` (5 Mo) et `avatars` (2 Mo) **publics par conception** :
-  ce sont des images promotionnelles. Taille et types MIME sont imposés par le
-  bucket lui-même, avant toute politique. **SVG exclu** (balisage exécutable).
-- Propriété par le chemin : `<uid>/<fichier>`, un seul niveau, nom
-  `[A-Za-z0-9._-]{1,128}`, pas de `..`. Seul un organisateur écrit dans
-  `event-covers`.
-- Conséquence à retenir : ne jamais stocker de contenu confidentiel dans ces
-  buckets. Un export privé irait dans un bucket privé servi par URL signée.
-- Les fichiers d'un événement retiré ou d'un compte supprimé sont effacés par le
-  worker via l'API Storage.
-
-## 15. Realtime
-
-Realtime applique la RLS de l'abonné à chaque changement diffusé : un
-participant abonné à `reservations` ne reçoit que ses billets. Pour les
-suppressions, Realtime n'envoie que la clé primaire de l'ancienne ligne sur une
-table protégée par RLS : aucune donnée ne fuit par un `DELETE`.
-
-## 16. Données personnelles
+## 5. Données personnelles
 
 | Donnée | Traitement |
 |---|---|
-| Email, rôle | `profiles`, privé ; jamais copiés sur `organizers` |
-| Nom d'un participant visible par d'autres | réduit à « Prénom I. », entrées indexées par un SHA-256 tronqué de l'uid (`event_attendance`) : aucun uid publié |
-| Signaleur | invisible pour tous sauf la modération, qui ne voit qu'une clé courte |
-| Suppression de compte | `delete_my_account` : places à venir libérées (payées remboursées), réservations et avis anonymisés (« Compte supprimé »), fichiers mis en file, compte Auth supprimé — une seule transaction |
-| Journal d'audit | `private.audit_log`, illisible par l'API, conservé un an |
-| Notifications | supprimées après 30 jours |
-| Outils Firebase | Crashlytics et Analytics ne reçoivent que l'uid et le rôle ; Analytics seulement après consentement |
+| Email, rôle | `users/{uid}`, privé ; jamais copiés sur `organizers` |
+| Email d'un participant | copié sur sa réservation, visible de l'**équipe** de l'événement (liste d'invités, export CSV) : besoin métier explicite |
+| Recherche d'un co-organisateur | `organizerEmails/{sha256(email)}`. Un hash d'email se devine par dictionnaire : contrepartie acceptée, car seul un organisateur peut faire un `get`, un hash à la fois, sans jamais lister |
+| Preuve sociale | `attendees/{sha256(uid)}` + nom court : aucun uid publié |
+| Événement public | `get` anonyme autorisé ; le document contient `organizerId` et `staffIds` (des uid). Un uid n'est pas un secret et ne donne aucun droit ; la page `/e/{id}` applique un masque de champs par sobriété |
+| Notifications | purgées par TTL (`expiresAt`, 30 jours) |
+| Suppression de compte | places libérées, historique anonymisé, sous-collections, page organisateur et compte Auth supprimés (`ARCHITECTURE.md` §5.6) |
+| Crashlytics · Analytics | uid technique ; Analytics seulement après consentement |
 
 ---
 
-## 17. Tester la sécurité
+## 6. Tester la sécurité
 
-```bash
-make db-setup   # une fois : npm ci dans supabase/tests
-make test-db    # toutes les migrations + la suite, sur Postgres 17 (PGlite)
+```sh
+make rules-setup   # une fois : npm ci (inclut la CLI Firebase), Java 21 requis
+make rules-test    # émulateur Firestore + suite complète
 ```
 
-La suite applique **les migrations réelles, dans l'ordre**, sur PGlite (Postgres
-17 compilé en WebAssembly : ni Docker ni projet distant), avec des remplaçants
-minimaux de ce que fournit un projet Supabase (`supabase/tests/stubs.sql` :
-rôles et leurs droits par défaut, `auth.users`, `auth.uid()`, Storage, Vault,
-`pg_net`, `pg_cron`). Chaque test agit **sous le rôle réel** (`anon`,
-`authenticated` avec un `sub`, `service_role`) et fabrique ses requêtes à la
-main, exactement comme un attaquant : RLS, droits par colonne et fonctions sont
-éprouvés indépendamment de l'application censée les respecter.
+La suite (`node:test` + `@firebase/rules-unit-testing`) charge **le vrai
+fichier de règles** dans l'émulateur, projet `demo-eventhub` (aucune
+connexion au cloud, aucun identifiant). Chaque test agit sous une identité
+(`as(env, 'p1')`, anonyme, email non vérifié) et fabrique ses écritures à la
+main, exactement comme un attaquant : batch amputé d'une moitié, compteur
+gonflé à 5 000, identifiant forgé, adresse d'autrui, second scan, etc. Les
+fixtures sont posées règles désactivées (`seed`).
 
-Couvert, entre autres : changement de rôle et suspension refusés, profils
-privés, API fermée à `anon`, fonctions serveur inaccessibles aux comptes,
-suspension immédiate, jeton déplacé entre comptes, premier administrateur,
-publication réservée aux organisateurs vérifiés, erreurs par champ, types de
-billets et ventes protégées, survente impossible, liste des participants
-limitée à l'équipe, liste d'attente, verdict d'entrée atomique, prénoms courts,
-rappels uniques, push en file, place tenue et reprise, webhook rejoué, paiement
-tardif re-placé ou remboursé, balayage, remboursement, verrou de devise, avis
-réservés aux présents, signalement unique et seuil, décision humaine
-prioritaire, suspension et réintégration, retrait d'un événement payé, équipe,
-suppression de compte, file de jobs et tâches planifiées.
+| Fichier | Couvre |
+|---|---|
+| `accounts.rules.test.js` | profils, passage organisateur, `organizerEmails`, sous-collections privées, `admins` |
+| `events.rules.test.js` | publication, édition, suppression, types de billets, équipe, invitations |
+| `reservations.rules.test.js` | réserver, annuler, re-réserver, survente, liste d'attente, entrée, anonymisation |
+| `social.rules.test.js` | abonnements, avis et note, signalements, modération, notifications, preuve sociale |
 
-Elle tourne en CI (job `database`) sans aucun secret.
+Elle tourne en CI (job `firestore-rules`) sans aucun secret. **Toute
+modification des règles arrive avec son test** (cas autorisé et attaque
+refusée).
 
 ---
 
-## 18. Limites connues
+## 7. Ce que les règles ne peuvent pas garantir
 
-- **Pas d'App Check.** Supabase n'a pas d'équivalent : un client non officiel
-  est limité par la RLS, les fonctions et la limitation de débit, pas bloqué.
-  Un CAPTCHA à l'inscription (`[auth.captcha]`, hCaptcha ou Turnstile) est la
-  prochaine marche si des inscriptions automatisées apparaissent.
-- **La suspension est immédiate pour l'API REST et les fonctions**, pas pour
-  Storage et Realtime, qui n'exécutent pas le middleware : là, le jeton d'accès
-  en cours reste valable jusqu'à son expiration (une heure au plus). Les
-  sessions étant supprimées et le compte banni, il ne peut pas être renouvelé.
-- **Limitation de débit par compte, pas par adresse IP**, côté base ; l'IP est
-  limitée par Supabase Auth pour la connexion et l'inscription.
-- **Aperçus de liens** : Supabase ne sert pas de HTML depuis une Edge Function
-  sur `*.supabase.co`. La page `/e/<id>` est rendue dans le navigateur ; les
-  robots d'aperçu (WhatsApp, Slack) voient un titre générique tant qu'un domaine
-  personnalisé n'est pas configuré pour les fonctions.
-- **Les suites de tests tournent sur PGlite**, pas sur l'image Postgres de
-  Supabase : `pg_net`, `pg_cron`, Vault, Storage et Auth sont remplacés par des
-  stubs. Leur comportement réel se vérifie après `make db-push` sur le projet.
-- **Hors ligne** : sans le cache Firestore, les données déjà affichées restent à
-  l'écran mais une ouverture à froid sans réseau n'a rien à montrer.
+Les règles décident « oui / non » pour **une** requête. Tout ce qui demande de
+la mémoire entre requêtes, un secret ou une action sortante leur échappe.
+
+| Limite | Conséquence | Atténuation actuelle | Solution avec serveur (Blaze) |
+|---|---|---|---|
+| **Limitation de débit** | un compte peut enchaîner des écritures valides (favori/défavori en boucle) et consommer le quota de 20 000 écritures/jour | identifiants déterministes (pas de multiplication de documents), App Check, alertes d'usage | compteur par compte dans une Cloud Function / Firestore côté serveur |
+| **Épuisement des quotas Spark** | un scraper authentifié peut épuiser 50 000 lectures/jour : l'app devient indisponible jusqu'à minuit (heure du Pacifique) | `list` bornés, App Check | passage Blaze (facturation au-delà, plus d'arrêt) + alertes budgétaires |
+| **Envoi d'emails** | seuls les emails de Firebase Auth (vérification, réinitialisation, changement d'adresse) partent | modèles personnalisés dans la console | extension *Trigger Email* ou fonction |
+| **Push app fermée** | aucune notification système quand l'app est fermée | centre de notifications, rappels J-1 locaux | Cloud Function + FCM HTTP v1 |
+| **Paiements** | aucun encaissement : un secret Stripe et un webhook signé ne peuvent pas vivre dans le client | types payants non réservables (`pricePaid == 0`) | Cloud Functions Stripe (F-11) |
+| **Contenu des URL d'images** | une URL https peut pointer vers une image inappropriée ou changer après validation | signalement + retrait par la modération | upload Cloud Storage + contrôle |
+| **Désactivation Auth d'un compte suspendu** | le compte suspendu peut encore se connecter et **lire** | écritures refusées par `isActive()` | Admin SDK (`disabled: true`, révocation des jetons) ; manuellement : console → Authentication → Désactiver |
+| **Atomicité des effets secondaires** | une notification best-effort peut manquer si l'app meurt entre deux commits | identifiant déterministe, nouvelle tentative sûre | trigger `onDocumentWritten` |
+| **Suppression de compte interrompue** | des données peuvent rester si l'app est tuée en cours | étapes idempotentes, relançables tant que le compte Auth existe | fonction `onUserDeleted` |
+| **Écritures de ses propres sous-collections par un compte suspendu** | favoris, préférences, `readAt` restent possibles (vérifient `isSelf` seulement) | impact limité à ses propres données | — (choix : ne pas payer une lecture de profil de plus sur ces écritures) |
+
+---
+
+## 8. App Check (recommandé)
+
+**Pourquoi.** App Check atteste que la requête vient de **votre** app sur un
+appareil ou un navigateur réel (Play Integrity sur Android, App Attest /
+DeviceCheck sur iOS, reCAPTCHA Enterprise sur le web). C'est la seule parade,
+sans serveur, contre un script qui réutilise la clé API pour scraper ou
+épuiser les quotas. Il n'exige pas le plan Blaze (quotas gratuits de Play
+Integrity et reCAPTCHA Enterprise à surveiller).
+
+**Déploiement conseillé, en deux temps :**
+
+1. intégrer `firebase_app_check` (fournisseur *debug* en développement et sur
+   les émulateurs), publier, puis observer **plusieurs jours** les métriques
+   *App Check → Firestore* (requêtes vérifiées / non vérifiées) ;
+2. activer l'**application** (enforcement) pour Firestore et Auth quand les
+   vieilles versions de l'app ont disparu.
+
+**Contreparties à connaître.**
+
+* Une fois l'enforcement actif sur Firestore, la page publique `e.html`
+  (API REST + clé seule) sera **refusée** : il faudra qu'elle obtienne un
+  jeton App Check web (SDK JS Firebase + reCAPTCHA), donc charger un script
+  supplémentaire servi par Hosting.
+* Windows et macOS n'ont pas de fournisseur natif équivalent dans FlutterFire :
+  ces builds utiliseraient un jeton debug (réservé au développement) ou
+  resteraient hors enforcement — à trancher avant d'activer.
+* Un appareil rooté ou un émulateur échoue à l'attestation.
+
+---
+
+## 9. Politique des secrets
+
+**Rien de secret n'est dans le dépôt, et rien ne doit l'être** (dépôt public).
+
+| Élément | Statut | Pourquoi |
+|---|---|---|
+| `lib/firebase_options.dart` | **versionné, public par conception** | `apiKey`, `appId`, `projectId` identifient le projet ; ils sont extraits de n'importe quel APK ou page web. Ils n'autorisent rien : les règles et App Check le font |
+| `hosting/public/eventhub-config.js` | public | mêmes identifiants que l'entrée `web` |
+| `env/dev.json`, `env/example.json` | versionnés | interrupteur d'émulateur, client OAuth *web*, clé VAPID **publique** |
+| `android/app/google-services.json`, `GoogleService-Info.plist` | ignorés | régénérables par `flutterfire configure`, inutiles au build Flutter |
+| `android/key.properties`, keystores | **secrets**, ignorés | signature release |
+| comptes de service, clés Admin SDK | **interdits** dans le dépôt et dans l'app | un compte de service contourne toutes les règles |
+| `secrets/` | ignoré en entier | fichiers d'identifiants locaux |
+
+Bonnes pratiques complémentaires :
+
+* **Restreindre les clés API** dans Google Cloud Console → *API et services →
+  Identifiants* : restrictions d'application (empreintes Android, bundle iOS,
+  référents HTTP `eventhub-d411f.web.app/*` et `localhost` pour le web) et
+  restriction aux API Firebase utilisées (Identity Toolkit, Token Service,
+  Firestore, FCM, Installations, Crashlytics, Analytics). Ne pas restreindre
+  la clé web au point de casser `e.html` (même domaine : autorisé).
+* La CI n'a **besoin d'aucun secret**. Les secrets facultatifs
+  `FIREBASE_OPTIONS_DART` / `GOOGLE_SERVICES_JSON` ne servent qu'à viser un
+  autre projet.
+* Un secret commité par erreur est **révoqué**, pas seulement supprimé de
+  l'historique.
+
+---
+
+## 10. Limites connues (hors règles)
+
+* **Aperçus de liens** : la page `/e/{id}` est rendue dans le navigateur ; les
+  robots d'aperçu voient un titre générique (rendu Open Graph = serveur).
+* **L'émulateur n'est pas le cloud** : il n'exige pas les index composites et
+  applique les limites de lectures des règles de façon approchée. Vérifier
+  après `make deploy-rules` sur le projet réel.
+* **Heure de l'appareil** : les dates connues du client (`reservedAt`,
+  `cancelledAt`) sont tolérées entre −5 et +2 minutes de l'heure serveur ; un
+  appareil très déréglé voit ses réservations refusées.

@@ -169,4 +169,16 @@ describe('private sub-collections', () => {
     await assertSucceeds(getDoc(doc(as(env, 'a1').firestore(), 'admins/a1')));
     await assertFails(setDoc(doc(as(env, 'a1').firestore(), 'admins/p1'), { email: 'p1@example.com' }));
   });
+
+  test('a member asks "am I an administrator?" about themself only, and never lists admins', async () => {
+    await seedUser(env, 'p1');
+    await seedAdmin(env, 'a1');
+    const db = as(env, 'p1').firestore();
+    // The marker does not exist: the read is allowed and simply finds nothing.
+    await assertSucceeds(getDoc(doc(db, 'admins/p1')));
+    await assertFails(getDoc(doc(db, 'admins/a1')));
+    await assertFails(getDocs(query(collection(db, 'admins'), limit(5))));
+    await assertFails(getDoc(doc(asAnonymous(env).firestore(), 'admins/p1')));
+    await assertSucceeds(getDocs(query(collection(as(env, 'a1').firestore(), 'admins'), limit(5))));
+  });
 });

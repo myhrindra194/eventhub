@@ -61,6 +61,9 @@ supabase/functions/.env
 # Firebase CLI (Hosting deploys)
 firebase-debug.log
 
+# Claude Code local worktrees
+.claude/worktrees/
+
 # Artefacts locaux de l'outil de design (hors projet Flutter)
 /uploads/
 /screenshots/

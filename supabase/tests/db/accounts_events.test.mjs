@@ -82,6 +82,34 @@ describe('accounts', () => {
     assert.deepEqual(owners.map((r) => r.user_id), [b]);
   });
 
+  it('welcomes an account once, at its first device, worded for its role, with a push queued', async () => {
+    const soa = await createUser(db, { name: 'Soa Rakoto', role: 'participant' });
+    const register = (deviceId, token) => asUser(db, soa, (tx) => call(tx, 'register_device', {
+      p_device_id: deviceId, p_token: token, p_platform: 'android', p_locale: 'fr_FR',
+    }));
+    assert.equal(await one(db, "select 1 from public.notifications where user_id = $1 and type = 'welcome'", [soa]), undefined);
+
+    await register('phone-1', 'welcome-token-0001');
+    await register('phone-1', 'welcome-token-0002');
+    await register('tablet-1', 'welcome-token-0003');
+
+    const welcomes = await all(db, "select id, title, body from public.notifications where user_id = $1 and type = 'welcome'", [soa]);
+    assert.equal(welcomes.length, 1);
+    assert.equal(welcomes[0].title, 'Bienvenue sur EventHub, Soa');
+    assert.match(welcomes[0].body, /^Inscription confirmée : vous êtes connecté\. Découvrez/);
+    assert.ok((await one(db, 'select welcomed_at from public.profiles where id = $1', [soa])).welcomed_at);
+    const push = await one(db, "select 1 from private.jobs where kind = 'push' and payload->>'notification_id' = $1", [welcomes[0].id]);
+    assert.ok(push, 'the welcome is pushed to the device just registered');
+
+    const org = await createUser(db, { name: 'Mirindra Rabe', role: 'organizer' });
+    await asUser(db, org, (tx) => call(tx, 'register_device', {
+      p_device_id: 'org-phone', p_token: 'welcome-token-0004', p_platform: 'android', p_locale: 'fr_FR',
+    }));
+    const orgWelcome = await one(db, "select body from public.notifications where user_id = $1 and type = 'welcome'", [org]);
+    assert.match(orgWelcome.body, /en organisateur\. Publiez votre premier événement/);
+    await rejects(asUser(db, soa, (tx) => tx.query('update public.profiles set welcomed_at = null where id = $1', [soa])), { code: '42501' });
+  });
+
   it('grants the first administrator from a trusted connection, then from the app', async () => {
     const first = await createUser(db, { name: 'Admin One', role: 'participant', email: 'admin1@eventhub.test' });
     const second = await createUser(db, { name: 'Admin Two', role: 'organizer', email: 'admin2@eventhub.test' });

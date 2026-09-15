@@ -35,6 +35,11 @@ abstract final class NotificationRoute {
   static const paymentConfirmed = 'paymentConfirmed';
   static const paymentRefunded = 'paymentRefunded';
 
+  /// Sent once, when the account registers its first device (right after
+  /// the first sign-in): opens the welcome screen, which leads to the home
+  /// of the account's role.
+  static const welcome = 'welcome';
+
   static String? locationFor(Map<String, Object?> data) {
     final eventId = _nonEmpty(data['eventId']);
     final reservationId = _nonEmpty(data['reservationId']);
@@ -58,6 +63,7 @@ abstract final class NotificationRoute {
       reminder when reservationId != null => AppRoutes.ticketPath(
         reservationId,
       ),
+      welcome => AppRoutes.welcome,
       _ => null,
     };
   }

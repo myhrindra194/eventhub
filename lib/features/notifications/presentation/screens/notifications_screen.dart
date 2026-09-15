@@ -180,6 +180,7 @@ class _NotificationRow extends ConsumerWidget {
         Icons.visibility_off_outlined,
         AppTone.warning,
       ),
+      NotificationRoute.welcome => (Icons.waving_hand_outlined, AppTone.brand),
       _ => (Icons.notifications_rounded, AppTone.neutral),
     };
     final colors = t.resolve(tone);

@@ -435,6 +435,12 @@ rôles : [`docs/SECURITY.md`](docs/SECURITY.md).
 | Demain : … | participant | `pg_cron` → `send_event_reminders` (horaire, un rappel par billet) | billet | `event_reminders` |
 | Une place s'est libérée | participant en attente | trigger `events_after_update` | fiche de l'événement | `event_reminders` |
 | « Mirindra publie un événement » | abonnés de l'organisateur | trigger `events_after_insert` (événement à venir) | fiche de l'événement | `followed_organizers` |
+| « Bienvenue sur EventHub, Soa » (inscription confirmée, texte selon le rôle) | le nouveau compte, **une seule fois** | `register_device` au premier appareil enregistré, c'est-à-dire juste après la première connexion (`profiles.welcomed_at`) | écran de bienvenue → accueil du rôle | — (transactionnel) |
+
+> Pourquoi pas au moment de l'inscription ? Un push vise un **appareil
+> rattaché au compte**, et ce rattachement n'existe qu'une fois connecté ; avec
+> la confirmation d'email obligatoire, il n'y a pas de session à l'inscription.
+> L'email couvre l'inscription, le push de bienvenue la première connexion.
 
 Chaque notification est une ligne de `notifications` (centre de notifications,
 30 jours), écrite dans la transaction qui la cause. Un trigger met en file un

@@ -52,8 +52,12 @@ coverage/
 *.jpg
 !assets/**
 
-# Local credential files (FCM service account, SMTP, OAuth) — never committed
-secrets/
+# Local credential files (FCM service account, OAuth…) — never committed.
+# Exception: secrets/smtp.env is versioned as a commented template. The
+# repository is public: never write the SMTP password in it — set it in the
+# Supabase dashboard (Authentication → SMTP) instead.
+secrets/*
+!secrets/smtp.env
 
 # Build-time keys per flavor (Supabase URL/anon key, Google client id).
 # env/dev.json is versioned: it only holds public client values (project URL,
@@ -62,9 +66,12 @@ env/*.json
 !env/example.json
 !env/dev.json
 
-# Supabase: database test suite dependencies, local function secrets
+# Supabase: database test suite dependencies.
+# supabase/functions/.env is versioned as a commented template. The repository
+# is public: never write a real key in it — use
+# `npx supabase secrets set KEY=value` so values never touch a file.
 supabase/tests/node_modules/
-supabase/functions/.env
+!supabase/functions/.env
 
 # Firebase CLI (Hosting deploys)
 firebase-debug.log

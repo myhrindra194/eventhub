@@ -133,7 +133,7 @@ Source de vérité : les blocs de commentaires de `firebase/firestore.rules`.
 
 | Chemin | Champs | Lecture | Écriture |
 |---|---|---|---|
-| `users/{uid}` | `name` 2–80 · `email` (= jeton) · `role` `participant`\|`organizer` · `bio?` ≤ 500 · `suspended?` · `welcomedAt?` · `createdAt` · `updatedAt?` | soi, administrateurs ; **jamais listé** | création `participant` par soi ; nom/bio par soi ; passage `organizer` (sens unique) ; `suspended` par un admin |
+| `users/{uid}` | `name` 2–80 · `email` (= jeton) · `role` `participant`\|`organizer` · `bio?` ≤ 500 · `photoUrl?` ≤ 140 000 · `coverUrl?` ≤ 280 000 · `suspended?` · `welcomedAt?` · `createdAt` · `updatedAt?` | soi, administrateurs ; **jamais listé** | création `participant` par soi ; nom, bio et photos par soi ; passage `organizer` (sens unique) ; `suspended` par un admin |
 | `users/{uid}/private/notifications` | `eventReminders` · `bookingAlerts` · `followedOrganizers` (bool) · `updatedAt?` | soi | soi |
 | `users/{uid}/devices/{deviceId}` | `token` · `platform` · `updatedAt` | soi | soi |
 | `users/{uid}/favorites/{eventId}` | `eventId` · `createdAt` | soi | soi |
@@ -145,7 +145,7 @@ Source de vérité : les blocs de commentaires de `firebase/firestore.rules`.
 
 | Chemin | Champs | Notes |
 |---|---|---|
-| `organizers/{uid}` | `name` · `bio` · `memberSince` · `followerCount` · `eventCount` · `ratingSum` · `ratingCount` · `lastEventId?` · `lastReviewId?` · `suspended?` | page publique (comptes connectés). Compteurs **prouvés** : chaque variation cite le document qui la justifie (`lastEventId`, `lastReviewId`, le document `following` de l'appelant) |
+| `organizers/{uid}` | `name` · `bio` · `photoUrl?` · `memberSince` · `followerCount` · `eventCount` · `ratingSum` · `ratingCount` · `lastEventId?` · `lastReviewId?` · `suspended?` | page publique (comptes connectés). Compteurs **prouvés** : chaque variation cite le document qui la justifie (`lastEventId`, `lastReviewId`, le document `following` de l'appelant). `photoUrl` est le miroir exact de celle du profil privé, exigé par la règle : c'est le seul moyen pour les autres comptes de voir le visage d'un organisateur |
 | `organizerEmails/{sha256(email)}` | `uid` | un organisateur retrouve un compte à inviter par `get` d'**un** hash ; `list` interdit |
 
 « Devenir organisateur » est **un batch** : `users/{uid}.role = organizer` +

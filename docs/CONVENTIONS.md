@@ -123,6 +123,9 @@ refusée en entier.
 | `reviews` | `limit ≤ 200` | `hidden == false` (sauf auteur / modération) |
 | `events/{id}/waitlist` | `limit ≤ 20` | — (tête de file, ordre `createdAt`) |
 | `invitations` (collection group) | — | `userId == uid` |
+| `events/{id}/invitations` | — | `status == 'pending'`, tri `createdAt` (équipe de l'événement) |
+| `users/{uid}/notifications` | `limit ≤ 100` par l'app | — (sous-collection privée) ; « tout marquer comme lu » épingle `readAt == null` |
+| `reports` · `moderationQueue` · `admins` | `limit ≤ 100` par l'app | — : lecture réservée aux administrateurs, refusée à tout autre compte |
 
 Toute requête a un `.limit()`. La pagination se fait par curseur
 (`startAfterDocument`) sur un ordre stable, jamais par `offset` (facturé en

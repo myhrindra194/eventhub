@@ -162,6 +162,8 @@ tout le vocabulaire.
 | `AppSurface` | **La** primitive conteneur. Cartes, tuiles, panneaux, lignes de liste |
 | `GlassPanel` | Panneau translucide flouté. Réservé à ce qui doit laisser voir dessous — le flou coûte cher |
 | `AppNavBar` | Barre de navigation flottante : pastille dégradée sur l'onglet actif, label uniquement sur l'actif, retour haptique |
+| `AdaptiveNavigation` | Choisit la navigation selon la largeur : `AppNavBar` en bas < 600 px, rail latéral d'icônes de 600 à 1023 px, rail étendu avec libellés ≥ 1024 px. Mêmes destinations, même pastille, même haptique |
+| `AppTopBar` | L'unique barre supérieure, en deux formes : `.root` pour une destination de navigation (titre, ligne de contexte, actions) et `.subPage` pour un écran empilé, qui porte **toujours** le même retour — le disque accentué de `CircleBackButton`. Fond transparent, aucune élévation |
 
 ### Contenu
 | Composant | Rôle |
@@ -197,6 +199,15 @@ objet qui bouge* plutôt que quatre objets qui clignotent.
 
 **La barre de navigation flotte au lieu de coller au bord.**
 Le contenu défile visiblement dessous : l'application paraît stratifiée.
+
+**Au-delà de 600 px, la navigation passe sur le côté.**
+La barre du bas est un idiome de téléphone : dans une fenêtre de 1200 px elle
+place la navigation principale aussi loin que possible du pointeur et laisse
+inutilisé l'espace latéral que toute application de bureau utilise pour ça. Le
+rail est le même objet tourné d'un quart de tour — mêmes destinations, même
+pastille dégradée — et à partir de 1024 px il affiche ses libellés, qui ne
+coûtent alors plus rien. Passer de l'un à l'autre est un changement de
+disposition, jamais de modèle : le shell garde sa pile de navigation.
 
 **Le libellé de formulaire est au-dessus du champ, jamais dedans.**
 Un label-placeholder disparaît dès la première frappe — l'utilisateur perd la

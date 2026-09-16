@@ -76,3 +76,9 @@ env/*.json
 
 # Node tooling (Firestore rules tests)
 node_modules/
+# Android Studio will place build artifacts here
+/android/app/debug
+/android/app/profile
+/android/app/release
+
+.env

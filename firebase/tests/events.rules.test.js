@@ -63,6 +63,14 @@ describe('publishing', () => {
     await assertFails(publish(db, 'e3', eventData({ staffIds: ['o2'] })));
     await assertFails(publish(db, 'e4', eventData({ imageUrl: 'http://insecure.example/cover.png' })));
   });
+
+  test('the cover is a Cloudinary image, never a third-party link', async () => {
+    const db = as(env, 'o1').firestore();
+    await assertSucceeds(publish(db, 'e1', eventData({
+      imageUrl: 'https://res.cloudinary.com/n9urnfhj/image/upload/v1/eventhub/event-covers/e1.jpg',
+    })));
+    await assertFails(publish(db, 'e2', eventData({ imageUrl: 'https://images.example.com/cover.jpg' })));
+  });
 });
 
 describe('reading', () => {
@@ -83,6 +91,13 @@ describe('editing', () => {
   test('the owner edits content and capacity keeps sold seats', async () => {
     const db = as(env, 'o1').firestore();
     await assertSucceeds(updateDoc(doc(db, 'events/e1'), { title: 'Nouveau titre', capacity: 20, availablePlaces: 16 }));
+    // Remplacer l'affiche par un lien tiers est refusé, même à l'édition.
+    await assertFails(updateDoc(doc(db, 'events/e1'), { imageUrl: 'https://images.example.com/cover.jpg' }));
+  });
+
+  test('a legacy pasted cover survives an unrelated edit', async () => {
+    await seed(env, [['events/e2', eventData({ imageUrl: 'https://images.example.com/legacy.jpg' })]]);
+    await assertSucceeds(updateDoc(doc(as(env, 'o1').firestore(), 'events/e2'), { title: 'Titre revu' }));
   });
 
   test('capacity cannot drop below the seats sold', async () => {

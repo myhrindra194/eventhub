@@ -3,6 +3,7 @@ import 'package:eventhub/app/theme/app_palette.dart';
 import 'package:eventhub/app/theme/app_spacing.dart';
 import 'package:eventhub/app/theme/app_tokens.dart';
 import 'package:eventhub/app/theme/app_typography.dart';
+import 'package:eventhub/app/theme/appearance.dart';
 import 'package:flutter/cupertino.dart' show CupertinoPageTransitionsBuilder;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -15,15 +16,20 @@ import 'package:flutter/services.dart';
 /// configurés exhaustivement — un écran ne devrait presque jamais avoir à
 /// styler localement un bouton, un champ ou un chip.
 abstract final class AppTheme {
-  static ThemeData light() => _build(AppTokens.light);
+  /// [appearance] applique le modèle de couleurs et la police choisis dans
+  /// Profil ; sa valeur par défaut rend exactement le thème d'origine.
+  static ThemeData light({Appearance appearance = const Appearance()}) =>
+      _build(appearance.template.apply(AppTokens.light), appearance.font);
 
-  static ThemeData dark() => _build(AppTokens.dark);
+  static ThemeData dark({Appearance appearance = const Appearance()}) =>
+      _build(appearance.template.apply(AppTokens.dark), appearance.font);
 
-  static ThemeData _build(AppTokens t) {
+  static ThemeData _build(AppTokens t, FontChoice font) {
     final scheme = _scheme(t);
     final text = AppTypography.textTheme(
       primary: t.textPrimary,
       secondary: t.textSecondary,
+      font: font,
     );
 
     return ThemeData(

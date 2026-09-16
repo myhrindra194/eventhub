@@ -32,7 +32,33 @@ describe('users', () => {
     }));
   });
 
-  test('nobody signs up straight into the organizer role', async () => {
+  test('the role chosen at sign-up is remembered and cannot be rewritten', async () => {
+    const db = as(env, 'p1').firestore();
+    await assertSucceeds(setDoc(doc(db, 'users/p1'), {
+      name: 'Soa Rakoto', email: 'p1@example.com', role: 'participant', intendedRole: 'participant', createdAt: serverTimestamp(),
+    }));
+    // Une valeur inconnue est refusée, et le rôle demandé ne se réécrit pas.
+    const other = as(env, 'p2').firestore();
+    await assertFails(setDoc(doc(other, 'users/p2'), {
+      name: 'Soa Rakoto', email: 'p2@example.com', role: 'participant', intendedRole: 'admin', createdAt: serverTimestamp(),
+    }));
+    await assertFails(updateDoc(doc(db, 'users/p1'), { intendedRole: 'organizer' }));
+  });
+
+  test('an organizer signs up with the public page in the same batch, verified or not', async () => {
+    const db = as(env, 'o9', { verified: false }).firestore();
+    const batch = writeBatch(db);
+    batch.set(doc(db, 'users/o9'), {
+      name: 'Soa Rakoto', email: 'o9@example.com', role: 'organizer', intendedRole: 'organizer', createdAt: serverTimestamp(),
+    });
+    batch.set(doc(db, 'organizers/o9'), {
+      name: 'Soa Rakoto', bio: '', memberSince: serverTimestamp(),
+      followerCount: 0, eventCount: 0, ratingSum: 0, ratingCount: 0,
+    });
+    await assertSucceeds(batch.commit());
+  });
+
+  test('an organizer role without its public page is refused', async () => {
     const db = as(env, 'p1').firestore();
     await assertFails(setDoc(doc(db, 'users/p1'), {
       name: 'Soa Rakoto', email: 'p1@example.com', role: 'organizer', createdAt: serverTimestamp(),
@@ -91,24 +117,22 @@ describe('users', () => {
 });
 
 describe('organizer space', () => {
-  test('a verified participant turns the organizer space on in one batch', async () => {
+  test('a participant never becomes an organizer', async () => {
     await seedUser(env, 'p1');
-    await assertSucceeds(becomeOrganizer(as(env, 'p1').firestore(), 'p1'));
+    const db = as(env, 'p1').firestore();
+    // Ni avec le batch complet de l'ancien « Devenir organisateur »…
+    await assertFails(becomeOrganizer(db, 'p1'));
+    // … ni en se fabriquant d'abord une page publique.
+    await assertFails(setDoc(doc(db, 'organizers/p1'), {
+      name: 'Name p1', bio: '', memberSince: serverTimestamp(),
+      followerCount: 0, eventCount: 0, ratingSum: 0, ratingCount: 0,
+    }));
   });
 
-  test('an unverified address cannot become an organizer', async () => {
-    await seedUser(env, 'p1');
-    await assertFails(becomeOrganizer(as(env, 'p1', { verified: false }).firestore(), 'p1'));
-  });
-
-  test('the role cannot change without the public page', async () => {
-    await seedUser(env, 'p1');
-    await assertFails(becomeOrganizer(as(env, 'p1').firestore(), 'p1', { withPage: false }));
-  });
-
-  test('the page requires the e-mail lookup entry', async () => {
-    await seedUser(env, 'p1');
-    await assertFails(becomeOrganizer(as(env, 'p1').firestore(), 'p1', { withEmailKey: false }));
+  test('a verified organizer registers the e-mail lookup entry later', async () => {
+    await seedUser(env, 'o1', { role: 'organizer' });
+    const db = as(env, 'o1').firestore();
+    await assertSucceeds(setDoc(doc(db, `organizerEmails/${emailKey('o1@example.com')}`), { uid: 'o1' }));
   });
 
   test('a page cannot start with inflated counters', async () => {
@@ -148,32 +172,47 @@ describe('organizer space', () => {
 });
 
 describe('photos de profil', () => {
-  /** Une URL `data:` de la longueur voulue — le contenu importe peu ici. */
+  /** Un lien de livraison Cloudinary, la seule forme qu'écrit l'app. */
+  const cloudinary = (name) => `https://res.cloudinary.com/n9urnfhj/image/upload/v1/eventhub/avatars/${name}.jpg`;
+  /** Une URL `data:` héritée d'avant Cloudinary. */
   const dataUrl = (length) => `data:image/jpeg;base64,${'A'.repeat(length)}`;
 
   test('le propriétaire pose sa photo et sa couverture', async () => {
     await seedUser(env, 'p1');
     await assertSucceeds(updateDoc(doc(as(env, 'p1').firestore(), 'users/p1'), {
-      photoUrl: dataUrl(1000),
-      coverUrl: 'https://example.com/cover.jpg',
+      photoUrl: cloudinary('p1'),
+      coverUrl: cloudinary('p1-cover'),
     }));
   });
 
-  test('une image hors gabarit, ou qui n\'en est pas une, est refusée', async () => {
+  test('une image qui ne vient pas de Cloudinary est refusée', async () => {
     await seedUser(env, 'p1');
     const db = as(env, 'p1').firestore();
-    // Au-delà du plafond : un document Firestore ne dépasse pas 1 Mio.
-    await assertFails(updateDoc(doc(db, 'users/p1'), { photoUrl: dataUrl(140001) }));
-    await assertFails(updateDoc(doc(db, 'users/p1'), { coverUrl: dataUrl(280001) }));
-    // Ni https ni data:image — le champ ne sert qu'à afficher une image.
+    // Un serveur tiers verrait passer l'adresse IP de chaque lecteur.
+    await assertFails(updateDoc(doc(db, 'users/p1'), { photoUrl: 'https://tracker.example/pixel.jpg' }));
+    // Une image embarquée ne s'écrit plus : elle alourdissait chaque lecture.
+    await assertFails(updateDoc(doc(db, 'users/p1'), { photoUrl: dataUrl(1000) }));
     await assertFails(updateDoc(doc(db, 'users/p1'), { photoUrl: 'javascript:alert(1)' }));
-    await assertFails(updateDoc(doc(db, 'users/p1'), { photoUrl: 'data:text/html;base64,AAAA' }));
+    // Un autre compte Cloudinary, hors de portée de la modération.
+    await assertFails(updateDoc(doc(db, 'users/p1'), { photoUrl: 'https://res.cloudinary.com/someone-else/image/upload/v1/a.jpg' }));
+    // Le bon hôte, mais pas une image livrée.
+    await assertFails(updateDoc(doc(db, 'users/p1'), { photoUrl: 'https://res.cloudinary.com/n9urnfhj/raw/upload/x.html' }));
+    await assertFails(updateDoc(doc(db, 'users/p1'), {
+      photoUrl: cloudinary('a'.repeat(2048)),
+    }));
+  });
+
+  test('une photo héritée survit à la modification du reste du profil', async () => {
+    await seedUser(env, 'p1', { fields: { photoUrl: dataUrl(1000), coverUrl: 'https://example.com/cover.jpg' } });
+    const db = as(env, 'p1').firestore();
+    await assertSucceeds(updateDoc(doc(db, 'users/p1'), { name: 'Nouveau nom' }));
+    await assertSucceeds(updateDoc(doc(db, 'users/p1'), { photoUrl: cloudinary('p1') }));
   });
 
   test('la page publique porte exactement la photo du profil', async () => {
     await seedUser(env, 'o1', { role: 'organizer' });
     const db = as(env, 'o1').firestore();
-    const photo = dataUrl(500);
+    const photo = cloudinary('o1');
 
     const batch = writeBatch(db);
     batch.update(doc(db, 'users/o1'), { name: 'Name o1', photoUrl: photo });
@@ -182,15 +221,15 @@ describe('photos de profil', () => {
 
     // Une photo publiée que le profil ne porte pas : refusée.
     const forged = writeBatch(db);
-    forged.update(doc(db, 'organizers/o1'), { name: 'Name o1', bio: '', photoUrl: dataUrl(600) });
+    forged.update(doc(db, 'organizers/o1'), { name: 'Name o1', bio: '', photoUrl: cloudinary('other') });
     await assertFails(forged.commit());
   });
 
-  test('personne ne pose une photo sur le profil d\'autrui', async () => {
+  test("personne ne pose une photo sur le profil d'autrui", async () => {
     await seedUser(env, 'p1');
     await seedUser(env, 'p2');
     await assertFails(updateDoc(doc(as(env, 'p2').firestore(), 'users/p1'), {
-      photoUrl: dataUrl(100),
+      photoUrl: cloudinary('p2'),
     }));
   });
 });

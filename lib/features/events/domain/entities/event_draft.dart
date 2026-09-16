@@ -25,9 +25,9 @@ abstract class EventDraft with _$EventDraft {
     /// somme.
     required int capacity,
 
-    /// Image de couverture, sous forme de lien `https://` vers une image
-    /// hébergée ailleurs (le plan gratuit n’offre pas d’envoi de fichier).
-    /// Vide signifie aucune : l’événement conserve son visuel généré.
+    /// Image de couverture : le lien `https://` rendu par Cloudinary après
+    /// l’import (Cloud Storage exigerait le plan Blaze). Vide signifie
+    /// aucune : l’événement conserve son visuel généré.
     String? imageUrl,
 
     /// Types de billets (F-12). Vide : un unique pool gratuit de
@@ -45,9 +45,13 @@ abstract class EventDraft with _$EventDraft {
   static const maxImageUrlLength = 2048;
 
   /// `null` quand [value] est vide ou constitue un lien de couverture
-  /// exploitable, sinon la phrase à afficher sous le champ. Seul `https`
-  /// est accepté : les règles refusent tout le reste, et une image servie
-  /// en http simple serait de toute façon bloquée sur le web et sur iOS.
+  /// exploitable, sinon la phrase à afficher sous le champ.
+  ///
+  /// Le lien vient désormais de l’import, plus d’une saisie : ce contrôle est
+  /// un filet contre un état incohérent, pas une aide à la frappe. Il reste
+  /// volontairement plus large que les règles (qui n’acceptent qu’un
+  /// nouveau lien Cloudinary) pour qu’un événement dont la couverture est un
+  /// ancien lien collé puisse encore être modifié sans la perdre.
   static String? imageUrlError(String? value) {
     final url = value?.trim() ?? '';
     if (url.isEmpty) return null;
@@ -59,7 +63,7 @@ abstract class EventDraft with _$EventDraft {
         uri.scheme != 'https' ||
         uri.host.isEmpty ||
         url.contains(RegExp(r'\s'))) {
-      return 'Collez un lien d’image commençant par https://';
+      return 'Le lien de l’image est invalide. Importez-la de nouveau.';
     }
     return null;
   }

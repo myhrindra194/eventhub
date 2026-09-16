@@ -148,15 +148,17 @@ Source de vérité : les blocs de commentaires de `firebase/firestore.rules`.
 | `organizers/{uid}` | `name` · `bio` · `photoUrl?` · `memberSince` · `followerCount` · `eventCount` · `ratingSum` · `ratingCount` · `lastEventId?` · `lastReviewId?` · `suspended?` | page publique (comptes connectés). Compteurs **prouvés** : chaque variation cite le document qui la justifie (`lastEventId`, `lastReviewId`, le document `following` de l'appelant). `photoUrl` est le miroir exact de celle du profil privé, exigé par la règle : c'est le seul moyen pour les autres comptes de voir le visage d'un organisateur |
 | `organizerEmails/{sha256(email)}` | `uid` | un organisateur retrouve un compte à inviter par `get` d'**un** hash ; `list` interdit |
 
-« Devenir organisateur » est **un batch** : `users/{uid}.role = organizer` +
-`organizers/{uid}` (compteurs à zéro) + `organizerEmails/{hash}`. Email vérifié
-exigé ; chaque document exige la présence des deux autres (`existsAfter`).
+Un compte organisateur naît **en un batch** : `users/{uid}` avec
+`role: organizer` + `organizers/{uid}` (compteurs à zéro). La règle exige la
+page (`existsAfter`) et n'accepte la page que si le compte n'existait pas
+encore (`!exists`) : un participant ne peut pas se fabriquer un rôle
+organisateur. `organizerEmails/{hash}` suit à la confirmation de l'adresse.
 
 ### 4.3 Événements
 
 | Chemin | Champs |
 |---|---|
-| `events/{eventId}` | `title` 3–120 · `description` 1–5000 · `category` (liste fermée) · `startsAt` · `location` · `capacity` 1–100 000 · `availablePlaces` 0–capacity · `organizerId` (immuable) · `organizerName` · `imageUrl?` (https) · `staffIds` ≤ 10 · `tiers?` ≤ 6 `{id: {name, description, price, capacity, available, order}}` · `currency?` EUR\|USD\|MGA · `createdAt` · `updatedAt?` |
+| `events/{eventId}` | `title` 3–120 · `description` 1–5000 · `category` (liste fermée) · `startsAt` · `location` · `capacity` 1–100 000 · `availablePlaces` 0–capacity · `organizerId` (immuable) · `organizerName` · `imageUrl?` (lien Cloudinary) · `staffIds` ≤ 10 · `tiers?` ≤ 6 `{id: {name, description, price, capacity, available, order}}` · `currency?` EUR\|USD\|MGA · `createdAt` · `updatedAt?` |
 | `events/{id}/waitlist/{uid}` | `userId` · `createdAt` · `notifiedAt?` — FIFO par `createdAt` |
 | `events/{id}/checkins/{reservationId}` | `reservationId` · `scannedBy` · `scannedAt` — ajout seul, par l'équipe |
 | `events/{id}/invitations/{inviteeId}` | `eventId` · `userId` · `email` · `name` · `invitedBy` · `invitedByName` · `eventTitle` · `eventStartsAt` · `status` pending\|accepted\|declined · `createdAt` · `respondedAt?` |
@@ -254,12 +256,48 @@ onglet fermé). Préférence : `eventReminders`.
 
 ### 5.5 Push
 
-Les jetons FCM sont enregistrés dans `users/{uid}/devices` et les messages
-reçus au premier plan sont affichés, mais **aucun serveur n'envoie de push**
-quand l'app est fermée : envoyer un message FCM exige un compte de service,
-donc un backend. Le centre de notifications (Firestore, temps réel) couvre
-l'app ouverte. Les jetons sont conservés pour un futur émetteur Blaze
-(`ROADMAP.md` §6).
+Envoyer un message FCM exige la clé d'un compte de service, qui ne peut pas
+vivre dans l'app. Cloud Functions exigeant Blaze, l'émetteur est un **Worker
+Cloudflare** (`workers/api/`, plan gratuit) appelé par l'auteur de la
+notification juste après l'avoir écrite :
+
+```
+client (auteur)                      Worker eventhub-api                 Google
+───────────────                      ────────────────────                 ──────
+1. écrit users/{r}/notifications/{n}
+   (règles : fait prouvé, actorId)
+2. POST /v1/dispatch ───────────────► 3. vérifie l'ID token (RS256, aud,
+   Bearer <ID token>                    iss, exp) avec les clés publiques
+   {recipientId, notificationId}     4. lit la notification (REST) ─────► Firestore
+                                        · actorId == appelant
+                                        · créée il y a < 10 min
+                                     5. crée pushReceipts/{r}:{n} ──────► (échoue si déjà envoyée)
+                                     6. lit private/notifications ──────► préférences
+                                     7. lit devices, envoie ────────────► FCM HTTP v1
+                                     8. supprime les jetons UNREGISTERED ► Firestore
+```
+
+* **Sécurité.** Le Worker ne crée rien : il relaie une notification que les
+  règles ont déjà acceptée. Un client forgé ne peut pas pousser un texte
+  arbitraire, ni rejouer une ancienne notification, ni déclencher le push
+  d'un fait provoqué par quelqu'un d'autre.
+* **Idempotence.** Le reçu `pushReceipts/{recipientId}:{notificationId}` est
+  créé avec la sémantique « échoue s'il existe » : deux appels simultanés ne
+  produisent qu'un push. Un reçu ne vit que 15 minutes (au-delà, le contrôle
+  d'âge suffit) ; les politiques TTL de Firestore exigeant la facturation,
+  c'est une tâche planifiée du Worker (`crons`, toutes les heures) qui les
+  supprime.
+* **Côté app.** `PushDispatcher` (`features/notifications/data/`) est injecté
+  dans les trois écrivains (réservations, équipe, modération). Il ne lève
+  jamais, n'est jamais attendu, et plafonne à 4 appels simultanés (une
+  décision de modération peut viser 200 personnes). Sans `API_WORKER_URL`,
+  c'est `NoPushDispatcher` : rien ne part, le centre in-app reste la source.
+* **Contrepartie assumée.** Pas de déclencheur : si l'app meurt entre
+  l'écriture et l'appel, la notification existe mais le push ne part pas. Le
+  centre de notifications la montre quand même à la prochaine ouverture.
+* **Réception.** Bloc `notification` pour l'affichage app fermée, clés `data`
+  (`type`, `eventId`, `reservationId`) lues par `NotificationRoute` au toucher,
+  canal Android `eventhub_default`.
 
 ### 5.6 Suppression de compte côté client
 
@@ -285,9 +323,32 @@ avant.
 
 ### 5.7 Images
 
-Pas de Cloud Storage : l'organisateur saisit une **URL https** (validée par
-`isHttpsUrl` dans les règles, 2048 caractères max). Contrepartie : l'image
-peut disparaître ou changer chez son hébergeur ; aucun contrôle de contenu.
+Cloud Storage exigeant Blaze, les images vivent sur **Cloudinary** ; Firestore
+ne stocke que leur lien (`users.photoUrl`, `users.coverUrl`,
+`events.imageUrl`). Le module `lib/core/media/` porte toute la chaîne :
+
+```
+DeviceImagePicker ──► ImageUploadFlow ──► CloudinaryImageUploader ──► secure_url
+ (image_picker,        (choisir puis         (multipart non signé :        │
+  compression,          envoyer : renoncer,   preset, dossier,             ▼
+  plafond 10 Mo)        refus, succès)        étiquettes, context uid)  Firestore
+                                                                       (lien seul)
+
+EventImage / AppAvatar ──► CloudinaryUrl.sized(url, width) ──► variante WebP au palier
+```
+
+* **Envoi** : dès que l'image est choisie, pour montrer l'image hébergée avant
+  d'enregistrer. Le lien n'entre dans Firestore qu'à l'enregistrement du
+  formulaire ; un abandon laisse une image orpheline dans la médiathèque.
+* **Affichage** : l'URL d'origine est réécrite à la volée
+  (`c_limit,w_<palier>,f_webp,q_auto`, ou `c_fill,g_face` pour un avatar).
+  Les paliers (160 → 1920 px physiques) gardent le cache utile.
+* **Règles** : `isCloudinaryImage` n'accepte qu'un lien
+  `https://res.cloudinary.com/<cloud>/image/upload/…` ; une valeur déjà en
+  place (ancien lien collé, image `data:` d'avant la migration) reste acceptée
+  tant qu'elle n'est pas modifiée (`validImageField`).
+* **Sans configuration** (`CLOUDINARY_*` vides), l'import est masqué : l'app
+  reste utilisable et les événements gardent leur visuel généré.
 
 ### 5.8 Pagination et limites
 
@@ -314,14 +375,32 @@ et un webhook signé : impossible sans serveur (`ROADMAP.md` F-11).
 * **Session** : `authStateChanges()` → document `users/{uid}` écouté en temps
   réel ; un délai de grâce (`profileGracePeriod`, 3 s) couvre l'écart entre
   création du compte et création du profil.
-* **Inscription** : compte Auth, puis `users/{uid}` avec `role: participant`
-  (la règle refuse tout autre rôle), puis `sendEmailVerification()`. Les
-  e-mails (vérification, réinitialisation) sont envoyés **par Firebase Auth**,
-  avec ses modèles personnalisables dans la console — aucun SMTP à gérer.
-* **Vérification d'email** : exigée pour publier, laisser un avis et devenir
-  organisateur (`request.auth.token.email_verified`). Après avoir cliqué le
-  lien, l'app force `user.reload()` puis `getIdToken(true)` pour que le jeton
-  porte la nouvelle valeur.
+* **Inscription** : le formulaire demande le rôle (Participant ou
+  Organisateur, sans valeur par défaut). Compte Auth, puis **une seule
+  écriture** du profil (partagée avec le flux de session, qui voit le compte
+  avant la fin de `signUp`) : `users/{uid}` avec le rôle choisi et
+  `intendedRole`, plus, pour un organisateur, sa page `organizers/{uid}` dans
+  le même batch — la règle refuse un rôle organisateur sans elle.
+  L'entrée `organizerEmails` (invitations de co-organisateurs) suppose une
+  adresse vérifiée : elle est écrite à la confirmation. Un compte ancien
+  resté participant malgré `intendedRole: organizer` est promu à sa session
+  suivante. L'app demande ensuite au
+  Worker `eventhub-api` le **mail de bienvenue** (`POST /v1/welcome`, une fois
+  par compte, adresse lue dans le jeton). **Aucun lien de vérification ne part
+  à l'inscription.** Une première connexion Google reprend le rôle choisi sur
+  l'écran d'inscription.
+* **Vérification d'email, au moment où elle sert** : exigée par les règles
+  pour publier un événement et laisser un avis
+  (`request.auth.token.email_verified`). Le bandeau `EmailVerificationBanner`
+  n'apparaît que là : dans Profil pour un compte inscrit comme organisateur,
+  dans la fiche d'un événement quand seule l'adresse bloque l'avis. Il
+  envoie le lien à la demande (Firebase Auth), puis « C'est fait » force
+  `user.reload()` et `getIdToken(true)` ; pour un inscrit organisateur, la
+  confirmation enchaîne sur l'ouverture de l'espace.
+* **Emails transactionnels** : bienvenue et « Nous contacter » partent du
+  Worker via l'API Brevo (clé en secret Cloudflare). Le contact écrit à
+  `COMPANY_EMAIL` avec l'adresse du compte en « répondre à », limité à un
+  message toutes les deux minutes par compte (`contactThrottle/{uid}`).
 * **Google** : web par popup Firebase ; iOS par `GIDClientID` (Info.plist) ;
   Android par `google_sign_in` avec `GOOGLE_SERVER_CLIENT_ID` (sinon bouton
   masqué) ; pas de fournisseur Google sur desktop dans FlutterFire.

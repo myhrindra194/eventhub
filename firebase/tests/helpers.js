@@ -47,9 +47,9 @@ export async function seed(env, writes) {
   });
 }
 
-export async function seedUser(env, uid, { role = 'participant', name = `Name ${uid}`, suspended } = {}) {
+export async function seedUser(env, uid, { role = 'participant', name = `Name ${uid}`, suspended, fields = {} } = {}) {
   const writes = [[`users/${uid}`, {
-    name, email: `${uid}@example.com`, role, createdAt: Timestamp.now(), ...(suspended ? { suspended: true } : {}),
+    name, email: `${uid}@example.com`, role, createdAt: Timestamp.now(), ...(suspended ? { suspended: true } : {}), ...fields,
   }]];
   if (role === 'organizer') {
     writes.push([`organizers/${uid}`, {

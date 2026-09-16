@@ -289,6 +289,105 @@ final class CanReviewEventFamily extends $Family
   String toString() => r'canReviewEventProvider';
 }
 
+/// Vrai quand seule l'adresse non confirmée empêche de laisser un avis : la
+/// fiche affiche alors le bandeau qui envoie le lien, au lieu de masquer le
+/// bouton sans explication.
+
+@ProviderFor(reviewBlockedByVerification)
+final reviewBlockedByVerificationProvider =
+    ReviewBlockedByVerificationFamily._();
+
+/// Vrai quand seule l'adresse non confirmée empêche de laisser un avis : la
+/// fiche affiche alors le bandeau qui envoie le lien, au lieu de masquer le
+/// bouton sans explication.
+
+final class ReviewBlockedByVerificationProvider
+    extends $FunctionalProvider<bool, bool, bool>
+    with $Provider<bool> {
+  /// Vrai quand seule l'adresse non confirmée empêche de laisser un avis : la
+  /// fiche affiche alors le bandeau qui envoie le lien, au lieu de masquer le
+  /// bouton sans explication.
+  ReviewBlockedByVerificationProvider._({
+    required ReviewBlockedByVerificationFamily super.from,
+    required String super.argument,
+  }) : super(
+         retry: null,
+         name: r'reviewBlockedByVerificationProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
+
+  @override
+  String debugGetCreateSourceHash() => _$reviewBlockedByVerificationHash();
+
+  @override
+  String toString() {
+    return r'reviewBlockedByVerificationProvider'
+        ''
+        '($argument)';
+  }
+
+  @$internal
+  @override
+  $ProviderElement<bool> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  bool create(Ref ref) {
+    final argument = this.argument as String;
+    return reviewBlockedByVerification(ref, argument);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(bool value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<bool>(value),
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is ReviewBlockedByVerificationProvider &&
+        other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
+  }
+}
+
+String _$reviewBlockedByVerificationHash() =>
+    r'5fc3f6f1d83c71b05f7341fd18c6d1e7f70ae045';
+
+/// Vrai quand seule l'adresse non confirmée empêche de laisser un avis : la
+/// fiche affiche alors le bandeau qui envoie le lien, au lieu de masquer le
+/// bouton sans explication.
+
+final class ReviewBlockedByVerificationFamily extends $Family
+    with $FunctionalFamilyOverride<bool, String> {
+  ReviewBlockedByVerificationFamily._()
+    : super(
+        retry: null,
+        name: r'reviewBlockedByVerificationProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
+
+  /// Vrai quand seule l'adresse non confirmée empêche de laisser un avis : la
+  /// fiche affiche alors le bandeau qui envoie le lien, au lieu de masquer le
+  /// bouton sans explication.
+
+  ReviewBlockedByVerificationProvider call(String eventId) =>
+      ReviewBlockedByVerificationProvider._(argument: eventId, from: this);
+
+  @override
+  String toString() => r'reviewBlockedByVerificationProvider';
+}
+
 @ProviderFor(ReviewController)
 final reviewControllerProvider = ReviewControllerProvider._();
 

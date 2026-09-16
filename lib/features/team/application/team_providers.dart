@@ -4,6 +4,7 @@ import 'package:eventhub/core/firebase/firebase_providers.dart';
 import 'package:eventhub/core/result/result.dart';
 import 'package:eventhub/features/auth/application/auth_providers.dart';
 import 'package:eventhub/features/events/application/event_providers.dart';
+import 'package:eventhub/features/notifications/application/push_dispatcher_provider.dart';
 import 'package:eventhub/features/team/data/team_remote_data_source.dart';
 import 'package:eventhub/features/team/data/team_repository_impl.dart';
 import 'package:eventhub/features/team/domain/team.dart';
@@ -17,6 +18,7 @@ TeamRepository teamRepository(Ref ref) => TeamRepositoryImpl(
   TeamRemoteDataSource(
     ref.watch(firestoreProvider),
     ref.watch(firebaseAuthProvider),
+    push: ref.watch(pushDispatcherProvider),
   ),
 );
 

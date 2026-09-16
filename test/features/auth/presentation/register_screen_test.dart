@@ -32,6 +32,8 @@ class _MockAuthRepository extends Mock implements AuthRepository {}
 void main() {
   late _MockAuthRepository repo;
 
+  setUpAll(() => registerFallbackValue(UserRole.participant));
+
   setUp(() {
     repo = _MockAuthRepository();
     when(repo.watchSession).thenAnswer((_) => Stream.value(const SignedOut()));
@@ -68,8 +70,13 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  /// Champs dans l'ordre de déclaration : nom, prénom, adresse, mot de passe.
-  Future<void> fillValidForm(WidgetTester tester) async {
+  /// Le rôle d'abord, puis les champs dans l'ordre de déclaration : nom,
+  /// prénom, adresse, mot de passe.
+  Future<void> fillValidForm(
+    WidgetTester tester, {
+    UserRole role = UserRole.participant,
+  }) async {
+    await tapVisible(tester, find.text(role.label));
     final fields = find.byType(TextFormField);
     await tester.enterText(fields.at(0), 'Rakoto');
     await tester.enterText(fields.at(1), 'Elie');
@@ -86,6 +93,7 @@ void main() {
       name: any(named: 'name'),
       email: any(named: 'email'),
       password: any(named: 'password'),
+      intendedRole: any(named: 'intendedRole'),
     ),
   );
 
@@ -134,6 +142,7 @@ void main() {
         name: any(named: 'name'),
         email: any(named: 'email'),
         password: any(named: 'password'),
+        intendedRole: any(named: 'intendedRole'),
       ),
     ).thenAnswer(
       (_) async => const Ok(
@@ -157,6 +166,60 @@ void main() {
         name: 'Elie Rakoto',
         email: 'elie@example.com',
         password: 'secret123',
+        intendedRole: UserRole.participant,
+      ),
+    ).called(1);
+  });
+
+  testWidgets('sans rôle choisi, rien n’est envoyé', (tester) async {
+    await pumpPhone(tester);
+    final fields = find.byType(TextFormField);
+    await tester.enterText(fields.at(0), 'Rakoto');
+    await tester.enterText(fields.at(1), 'Elie');
+    await tester.enterText(fields.at(2), 'elie@example.com');
+    await tester.enterText(fields.at(3), 'secret123');
+    await tapVisible(tester, find.byType(AppCheckbox));
+
+    await tapVisible(tester, submit());
+
+    expectNoSignUp();
+    // Le toast et le message sous les tuiles disent la même chose.
+    expect(find.text(AppStrings.roleRequired), findsWidgets);
+  });
+
+  testWidgets('le rôle organisateur part avec l’inscription', (tester) async {
+    when(
+      () => repo.signUp(
+        name: any(named: 'name'),
+        email: any(named: 'email'),
+        password: any(named: 'password'),
+        intendedRole: any(named: 'intendedRole'),
+      ),
+    ).thenAnswer(
+      (_) async => const Ok(
+        AppUser(
+          id: 'u1',
+          name: 'Elie Rakoto',
+          email: 'elie@example.com',
+          role: UserRole.participant,
+          intendedRole: UserRole.organizer,
+        ),
+      ),
+    );
+
+    await pumpPhone(tester);
+    await fillValidForm(tester, role: UserRole.organizer);
+    expect(find.text(AppStrings.roleOrganizerNote), findsOneWidget);
+    await tapVisible(tester, find.byType(AppCheckbox));
+
+    await tapVisible(tester, submit());
+
+    verify(
+      () => repo.signUp(
+        name: 'Elie Rakoto',
+        email: 'elie@example.com',
+        password: 'secret123',
+        intendedRole: UserRole.organizer,
       ),
     ).called(1);
   });
@@ -169,6 +232,7 @@ void main() {
         name: any(named: 'name'),
         email: any(named: 'email'),
         password: any(named: 'password'),
+        intendedRole: any(named: 'intendedRole'),
       ),
     ).thenAnswer(
       (_) async => const Err(

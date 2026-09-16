@@ -1,5 +1,3 @@
-import 'dart:ui';
-
 import 'package:eventhub/app/theme/theme.dart';
 import 'package:flutter/material.dart';
 
@@ -73,14 +71,10 @@ class SectionHeader extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
                 visualDensity: VisualDensity.compact,
               ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(actionLabel!),
-                  const SizedBox(width: 2),
-                  const Icon(Icons.arrow_forward_rounded, size: 15),
-                ],
-              ),
+              // Libellé seul : les boutons du produit ne portent pas
+              // d'icône. La flèche doublait le sens de « Tout voir » sans
+              // rien ajouter, et c'était le dernier bouton à en garder une.
+              child: Text(actionLabel!),
             ),
         ],
       ),
@@ -171,22 +165,16 @@ class FrostedSliverAppBar extends StatelessWidget {
       pinned: true,
       elevation: 0,
       scrolledUnderElevation: 0,
-      backgroundColor: Colors.transparent,
+      // Même surface opaque et même filet que AppTopBar et la barre
+      // d'onglets. Opaque sur l'AppBar elle-même : un fond transparent est
+      // composé en noir par certains GPU Android (voir AppTopBar).
+      backgroundColor: t.surface,
       surfaceTintColor: Colors.transparent,
+      shadowColor: Colors.transparent,
+      shape: Border(bottom: BorderSide(color: t.border, width: 0.5)),
       leading: leading,
       actions: actions,
       title: Text(title, overflow: TextOverflow.ellipsis),
-      flexibleSpace: ClipRect(
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              color: t.glass,
-              border: Border(bottom: BorderSide(color: t.borderSubtle)),
-            ),
-          ),
-        ),
-      ),
     );
   }
 }

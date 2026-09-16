@@ -58,7 +58,7 @@ class _EventSearchFieldState extends ConsumerState<EventSearchField> {
   Widget build(BuildContext context) {
     final query = ref.watch(eventSearchQueryProvider);
     // Garde le champ synchronisé quand la requête est vidée depuis ailleurs
-    // (bouton de l’état vide, réinitialisation de la feuille de filtres).
+    // (bouton de l’état vide, réinitialisation depuis le menu de filtres).
     if (_controller.text != query) {
       _controller.value = TextEditingValue(
         text: query,
@@ -119,7 +119,7 @@ class EventSearchBar extends StatelessWidget {
           ),
         ),
         const SizedBox(width: AppSpacing.sm),
-        const FilterButton(compact: true),
+        const FilterButton(),
       ],
     );
   }
@@ -131,16 +131,48 @@ class EventSearchBar extends StatelessWidget {
 /// que la couleur de marque : au bout de deux usages, la couleur *est* la
 /// catégorie, et les utilisateurs visent la couleur au lieu de lire le
 /// libellé.
+///
+/// Deux modes :
+///  * **lié** (par défaut) — le rail pilote le filtre global
+///    [eventCategoryFilterProvider], celui de l'accueil ;
+///  * **contrôlé** — quand [onSelected] est fourni, le rail affiche
+///    [selected] et remonte le choix à son parent sans toucher au filtre
+///    global. C'est le mode de « Tous les événements », dont la catégorie
+///    est propre à l'écran (initialisée depuis l'URL) : choisir « Concert »
+///    là-bas ne doit pas replier l'accueil en mode filtré au retour.
 class CategoryFilterRail extends ConsumerWidget {
-  const CategoryFilterRail({super.key, this.padding});
+  const CategoryFilterRail({
+    super.key,
+    this.padding,
+    this.selected,
+    this.onSelected,
+  });
 
   final EdgeInsetsGeometry? padding;
 
+  /// Catégorie affichée en mode contrôlé (`null` = « Tous »). Ignorée en
+  /// mode lié.
+  final EventCategory? selected;
+
+  /// Active le mode contrôlé.
+  final ValueChanged<EventCategory?>? onSelected;
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final selected = ref.watch(eventCategoryFilterProvider);
-    final notifier = ref.read(eventCategoryFilterProvider.notifier);
+    final controlled = onSelected;
+    final selected = controlled == null
+        ? ref.watch(eventCategoryFilterProvider)
+        : this.selected;
     final t = context.tokens;
+
+    void select(EventCategory? category) => controlled == null
+        ? ref.read(eventCategoryFilterProvider.notifier).select(category)
+        : controlled(category);
+
+    // Un second appui sur la pastille active revient à « Tous », dans les
+    // deux modes.
+    void toggle(EventCategory category) =>
+        select(selected == category ? null : category);
 
     return SizedBox(
       height: 40,
@@ -155,7 +187,7 @@ class CategoryFilterRail extends ConsumerWidget {
             icon: Icons.grid_view_rounded,
             color: t.brand,
             selected: selected == null,
-            onTap: () => notifier.select(null),
+            onTap: () => select(null),
           ),
           for (final category in EventCategory.values) ...[
             const SizedBox(width: AppSpacing.sm),
@@ -164,7 +196,7 @@ class CategoryFilterRail extends ConsumerWidget {
               icon: category.icon,
               color: category.color(context),
               selected: selected == category,
-              onTap: () => notifier.toggle(category),
+              onTap: () => toggle(category),
             ),
           ],
         ],
@@ -235,252 +267,433 @@ class _Pill extends StatelessWidget {
   }
 }
 
-/// Ouvre la feuille de filtres avancés, avec le nombre de filtres actifs.
+/// Libellés propres au menu de filtres.
 ///
-/// En mode [compact], c'est un carré de la hauteur exacte du champ de
-/// recherche, à côté duquel il se pose ; le compteur devient une pastille sur
-/// l'icône. C'est une commande à icône seule, comme une action de barre — pas
-/// un bouton à libellé, qui lui reste toujours en texte seul.
-class FilterButton extends ConsumerWidget {
-  const FilterButton({super.key, this.compact = false});
+/// Gardés privés ici plutôt que dans `AppStrings` : ils n'existent que pour
+/// cette commande, et le catalogue de chaînes partagé est édité en parallèle
+/// par ailleurs — un conflit de fusion sur une chaîne locale ne vaut pas la
+/// centralisation.
+abstract final class _FilterCopy {
+  static const availability = 'Disponibilité';
+  static const openHint = 'Ouvre le menu des filtres';
 
-  final bool compact;
+  /// Libellé lu par un lecteur d'écran : « Filtres, 2 actifs » se comprend
+  /// à l'oreille, alors que le point médian visuel serait prononcé ou avalé
+  /// selon le moteur de synthèse.
+  static String semantic(int count) => count == 0
+      ? AppStrings.filters
+      : '${AppStrings.filters}, $count ${count > 1 ? 'actifs' : 'actif'}';
+
+  static String results(int count) =>
+      '$count ${AppStrings.results.toLowerCase()}';
+}
+
+/// Commande « Filtres » posée à côté du champ de recherche, qui déploie un
+/// menu ancré juste en dessous.
+///
+/// **Pourquoi un menu ancré et non plus une bottom sheet.** Les réglages
+/// sont courts (une période, un tri, un interrupteur) : les monter dans une
+/// feuille modale masquait toute la liste qu'ils sont censés affiner, et
+/// sur le web ou un bureau une feuille qui surgit du bas d'une fenêtre de
+/// 1 400 dp se lit comme un portage mobile. Eventbrite et Airbnb ont fait le
+/// même choix sur grand écran : le menu reste attaché à ce qui l'a ouvert,
+/// l'œil ne fait pas d'aller-retour. [MenuAnchor] apporte en prime la
+/// navigation au clavier (flèches, Échap), la gestion du focus et la
+/// fermeture au clic extérieur, qu'une surface maison aurait dû réécrire.
+///
+/// **Le compromis accepté.** Sur un téléphone de 320 dp, le menu occupe
+/// presque toute la largeur et une bonne part de la hauteur — il reste
+/// défilable par [MenuAnchor] si l'écran est trop court, mais il n'a pas la
+/// place généreuse d'une feuille. C'est acceptable parce que chaque réglage
+/// s'applique **en direct** : l'utilisateur ne perd rien à le refermer.
+///
+/// **Le bouton lui-même.** Texte seul, hauteur exacte du champ de recherche
+/// pour que les deux se lisent comme une seule barre ; « Filtres · 2 »
+/// quand des filtres sont actifs, ce qui explique d'un coup d'œil pourquoi
+/// une liste paraît courte. L'état actif passe par la teinte de marque et
+/// un filet coloré, jamais par une ombre.
+class FilterButton extends ConsumerStatefulWidget {
+  const FilterButton({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<FilterButton> createState() => _FilterButtonState();
+}
+
+class _FilterButtonState extends ConsumerState<FilterButton> {
+  final _controller = MenuController();
+
+  /// Suivi local de l'ouverture : le `builder` de [MenuAnchor] n'est pas
+  /// garanti d'être reconstruit à chaque bascule, or le bouton doit refléter
+  /// l'état ouvert (filet renforcé, `expanded` en sémantique) sans délai.
+  bool _open = false;
+
+  /// Le garde `mounted` n'est pas décoratif : [MenuAnchor] referme son menu
+  /// quand il est démonté (changement d'onglet, navigation), et `onClose`
+  /// peut alors tomber sur un état déjà détruit.
+  // ignore: avoid_positional_boolean_parameters
+  void _setOpen(bool open) {
+    if (mounted && _open != open) setState(() => _open = open);
+  }
+
+  void _toggle() =>
+      _controller.isOpen ? _controller.close() : _controller.open();
+
+  @override
+  Widget build(BuildContext context) {
     final count = ref.watch(activeFilterCountProvider);
     final t = context.tokens;
     final active = count > 0;
-    final foreground = active ? t.textOnBrand : t.textSecondary;
+    final screenWidth = MediaQuery.sizeOf(context).width;
 
-    return Material(
-      color: active ? t.brand : t.surface,
-      borderRadius: AppRadius.brSm,
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: () => showEventFilterSheet(context),
-        child: Container(
-          width: compact ? AppSizes.inputHeight : null,
-          height: compact ? AppSizes.inputHeight : null,
-          alignment: compact ? Alignment.center : null,
-          padding: compact
-              ? null
-              : const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.md,
-                  vertical: AppSpacing.sm,
-                ),
-          decoration: BoxDecoration(
-            borderRadius: AppRadius.brSm,
-            border: Border.all(color: active ? t.brand : t.border),
+    // Largeur du menu par bande d'écran. Sur téléphone, il épouse la
+    // colonne de contenu (écran moins les deux gouttières), plafonné à
+    // 360 dp pour ne pas s'étirer sur un pliable en mode portrait. Au-delà,
+    // une largeur fixe : un menu qui grandirait avec la fenêtre deviendrait
+    // un panneau, et perdrait la lecture « liste de choix » qui le rend
+    // rapide à parcourir.
+    final menuWidth = context.isExpandedScreen
+        ? 340.0
+        : (screenWidth - 2 * context.gutter).clamp(240.0, 360.0);
+
+    final foreground = active ? t.brand : t.textPrimary;
+    final borderColor = active
+        ? t.brand
+        : _open
+        ? t.borderStrong
+        : t.border;
+
+    return MenuAnchor(
+      controller: _controller,
+      onOpen: () => _setOpen(true),
+      onClose: () => _setOpen(false),
+      // Le menu s'aligne sur le bord droit du bouton (point d'ancrage en
+      // bas à droite, puis décalage de toute sa largeur) : le bouton vit en
+      // bout de ligne, et un menu qui partirait vers la droite serait aussitôt
+      // repoussé par le bord de l'écran. Les 6 dp verticaux décollent le
+      // menu du filet du bouton sans casser le lien visuel.
+      alignmentOffset: Offset(-menuWidth, AppSpacing.xs + 2),
+      // Réserve les gouttières de l'écran : sur téléphone, le menu recalé
+      // à l'intérieur de l'écran s'aligne alors exactement sur la colonne de
+      // contenu au lieu de coller au bord à 8 dp.
+      reservedPadding: EdgeInsets.symmetric(
+        horizontal: context.gutter,
+        vertical: AppSpacing.sm,
+      ),
+      style: MenuStyle(
+        alignment: AlignmentDirectional.bottomEnd,
+        backgroundColor: WidgetStatePropertyAll(t.surface),
+        surfaceTintColor: const WidgetStatePropertyAll(Colors.transparent),
+        // Aucune ombre : la séparation d'avec la page tient au filet et au
+        // contraste de la surface, conformément au reste du produit.
+        elevation: const WidgetStatePropertyAll(0),
+        shadowColor: const WidgetStatePropertyAll(Colors.transparent),
+        shape: WidgetStatePropertyAll(
+          RoundedRectangleBorder(
+            borderRadius: AppRadius.brButton,
+            side: BorderSide(color: t.border),
           ),
-          child: compact
-              ? Stack(
-                  clipBehavior: Clip.none,
+        ),
+        padding: const WidgetStatePropertyAll(EdgeInsets.all(AppSpacing.xs)),
+        minimumSize: WidgetStatePropertyAll(Size(menuWidth, 0)),
+        maximumSize: WidgetStatePropertyAll(Size(menuWidth, double.infinity)),
+      ),
+      menuChildren: [_FilterMenu(onDone: _controller.close)],
+      builder: (context, controller, _) => Semantics(
+        button: true,
+        expanded: _open,
+        label: _FilterCopy.semantic(count),
+        hint: _FilterCopy.openHint,
+        excludeSemantics: true,
+        child: Material(
+          color: active ? t.brandSoft : t.surface,
+          shape: RoundedRectangleBorder(
+            borderRadius: AppRadius.brButton,
+            side: BorderSide(color: borderColor),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: _toggle,
+            child: Container(
+              height: AppSizes.inputHeight,
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+              alignment: Alignment.center,
+              child: Text.rich(
+                TextSpan(
+                  text: AppStrings.filters,
                   children: [
-                    Icon(Icons.tune_rounded, size: 20, color: foreground),
                     if (active)
-                      Positioned(
-                        top: -6,
-                        right: -8,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 5),
-                          decoration: BoxDecoration(
-                            color: t.accent,
-                            borderRadius: AppRadius.brButton,
-                          ),
-                          child: Text(
-                            '$count',
-                            style: Theme.of(context).textTheme.labelSmall
-                                ?.copyWith(
-                                  color: Colors.white,
-                                  letterSpacing: 0,
-                                ),
-                          ),
+                      // Le compteur est en chiffres tabulaires et en graisse
+                      // plus forte : il change sous le doigt, et ne doit ni
+                      // faire tressauter la largeur du bouton ni se fondre
+                      // dans le libellé.
+                      TextSpan(
+                        text: ' · $count',
+                        style: AppTypography.tabular.copyWith(
+                          fontWeight: FontWeight.w800,
                         ),
                       ),
-                  ],
-                )
-              : Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.tune_rounded, size: 16, color: foreground),
-                    const SizedBox(width: AppSpacing.sm),
-                    Text(
-                      AppStrings.filters,
-                      style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                        color: active ? t.textOnBrand : t.textPrimary,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    if (active) ...[
-                      const SizedBox(width: AppSpacing.sm),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.25),
-                          borderRadius: AppRadius.brButton,
-                        ),
-                        child: Text(
-                          '$count',
-                          style: Theme.of(context).textTheme.labelSmall
-                              ?.copyWith(
-                                color: t.textOnBrand,
-                                letterSpacing: 0,
-                              ),
-                        ),
-                      ),
-                    ],
                   ],
                 ),
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  color: foreground,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ),
         ),
       ),
     );
   }
 }
 
-/// Filtres avancés : période, tri, disponibilité.
+/// Contenu du menu : période, tri, disponibilité, puis un pied d'actions.
 ///
-/// Appliqués **en direct** tant que la feuille est ouverte : le nombre de
-/// résultats se met à jour au fur et à mesure des réglages. Il n’y a pas
-/// d’« Appliquer » qu’on pourrait oublier — le bouton principal ne fait que
-/// refermer la feuille.
-Future<void> showEventFilterSheet(BuildContext context) => showAppSheet<void>(
-  context: context,
-  builder: (context) => const _FilterSheet(),
-);
+/// Les choix s'appliquent **en direct** et ne referment pas le menu
+/// (`closeOnActivate: false`) : régler une période puis un tri est un seul
+/// geste, et le compteur de résultats de l'en-tête sert de retour immédiat.
+/// Il n'y a donc pas d'« Appliquer » qu'on pourrait oublier ; l'action de
+/// droite du pied ne fait que refermer le menu.
+class _FilterMenu extends ConsumerWidget {
+  const _FilterMenu({required this.onDone});
 
-class _FilterSheet extends ConsumerWidget {
-  const _FilterSheet();
+  final VoidCallback onDone;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final period = ref.watch(eventPeriodFilterProvider);
     final sort = ref.watch(eventSortOrderProvider);
     final hideSoldOut = ref.watch(hideSoldOutProvider);
-    final count = ref.watch(filteredEventsProvider).value?.length ?? 0;
+    final activeCount = ref.watch(activeFilterCountProvider);
+    final results = ref.watch(filteredEventsProvider).value?.length;
     final t = context.tokens;
+    final text = Theme.of(context).textTheme;
 
-    return AppSheet(
-      title: AppStrings.filters,
-      subtitle: '$count ${AppStrings.results.toLowerCase()}',
-      actions: [
-        AppButton.primary(
-          label: AppStrings.applyFilters,
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-        const SizedBox(height: AppSpacing.md),
-        AppButton.ghost(
-          label: AppStrings.resetFilters,
-          expand: true,
-          onPressed: () => ref.resetEventFilters(),
-        ),
-      ],
-      child: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const SectionLabel(AppStrings.period),
-            const SizedBox(height: AppSpacing.md),
-            Wrap(
-              spacing: AppSpacing.sm,
-              runSpacing: AppSpacing.sm,
-              children: [
-                for (final p in EventPeriod.values)
-                  _Choice(
-                    label: p.label,
-                    selected: p == period,
-                    onTap: () =>
-                        ref.read(eventPeriodFilterProvider.notifier).select(p),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // En-tête non focalisable : le titre répète « Filtres » pour les
+        // lecteurs d'écran qui arrivent dans le menu sans avoir vu le bouton,
+        // et le nombre de résultats rend visible l'effet de chaque réglage.
+        Padding(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.lg,
+            AppSpacing.md,
+            AppSpacing.lg,
+            AppSpacing.sm,
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
+            children: [
+              Text(AppStrings.filters, style: text.titleMedium),
+              const Spacer(),
+              if (results != null)
+                Semantics(
+                  liveRegion: true,
+                  child: Text(
+                    _FilterCopy.results(results),
+                    style: text.bodySmall
+                        ?.merge(AppTypography.tabular)
+                        .copyWith(color: t.textSecondary),
                   ),
-              ],
-            ),
-            const SizedBox(height: AppSpacing.xxl),
-            const SectionLabel(AppStrings.sortBy),
-            const SizedBox(height: AppSpacing.md),
-            Wrap(
-              spacing: AppSpacing.sm,
-              runSpacing: AppSpacing.sm,
-              children: [
-                for (final s in EventSort.values)
-                  _Choice(
-                    label: s.label,
-                    selected: s == sort,
-                    onTap: () =>
-                        ref.read(eventSortOrderProvider.notifier).select(s),
+                ),
+            ],
+          ),
+        ),
+        const _Hairline(),
+        const _SectionTitle(AppStrings.period),
+        for (final p in EventPeriod.values)
+          _MenuChoice(
+            label: p.label,
+            selected: p == period,
+            exclusive: true,
+            onPressed: () =>
+                ref.read(eventPeriodFilterProvider.notifier).select(p),
+          ),
+        const _Hairline(),
+        const _SectionTitle(AppStrings.sortBy),
+        for (final s in EventSort.values)
+          _MenuChoice(
+            label: s.label,
+            selected: s == sort,
+            exclusive: true,
+            onPressed: () =>
+                ref.read(eventSortOrderProvider.notifier).select(s),
+          ),
+        const _Hairline(),
+        const _SectionTitle(_FilterCopy.availability),
+        _MenuChoice(
+          label: AppStrings.onlyAvailable,
+          selected: hideSoldOut,
+          exclusive: false,
+          onPressed: () => ref.read(hideSoldOutProvider.notifier).toggle(),
+        ),
+        const _Hairline(),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
+          child: Row(
+            children: [
+              // « Réinitialiser » n'apparaît que s'il y a quelque chose à
+              // réinitialiser : une action sans effet posée en permanence
+              // apprend à l'œil à l'ignorer le jour où elle servirait.
+              //
+              // Chaque action est enveloppée d'un `IntrinsicWidth` : un
+              // MenuItemButton étire sa ligne interne sur toute la largeur
+              // offerte, et posé tel quel dans une Row il recevrait une
+              // largeur non bornée. La mesure intrinsèque lui impose la
+              // largeur de son libellé, et le `Spacer` pousse l'action de
+              // clôture sur le bord droit. Le coût (une passe de mesure en
+              // plus) est négligeable pour deux libellés courts.
+              if (activeCount > 0)
+                IntrinsicWidth(
+                  child: _MenuTextAction(
+                    label: AppStrings.resetFilters,
+                    color: t.textSecondary,
+                    closeOnActivate: false,
+                    onPressed: ref.resetEventFilters,
                   ),
-              ],
-            ),
-            const SizedBox(height: AppSpacing.xl),
-            AppSurface(
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.lg,
-                vertical: AppSpacing.sm,
-              ),
-              color: t.surfaceSunken,
-              child: SwitchListTile.adaptive(
-                contentPadding: EdgeInsets.zero,
-                value: hideSoldOut,
-                onChanged: (_) =>
-                    ref.read(hideSoldOutProvider.notifier).toggle(),
-                title: Text(
-                  AppStrings.onlyAvailable,
-                  style: Theme.of(context).textTheme.titleSmall,
+                ),
+              const Spacer(),
+              IntrinsicWidth(
+                child: _MenuTextAction(
+                  label: AppStrings.applyFilters,
+                  color: t.brand,
+                  closeOnActivate: true,
+                  onPressed: onDone,
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Filet d'un pixel entre deux sections — la seule séparation du menu,
+/// puisqu'il n'a ni ombre ni fonds alternés.
+class _Hairline extends StatelessWidget {
+  const _Hairline();
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
+    child: Divider(height: 1, thickness: 1, color: context.tokens.borderSubtle),
+  );
+}
+
+/// Intitulé de section, en petites capitales espacées : il se lit comme une
+/// étiquette de rangement, pas comme une option qu'on pourrait activer.
+class _SectionTitle extends StatelessWidget {
+  const _SectionTitle(this.label);
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.fromLTRB(
+      AppSpacing.lg,
+      AppSpacing.sm,
+      AppSpacing.lg,
+      AppSpacing.xs,
+    ),
+    child: Semantics(header: true, child: SectionLabel(label)),
+  );
+}
+
+/// Une option du menu, cochée quand elle est active.
+///
+/// La coche est en fin de ligne, et une réserve de même largeur la remplace
+/// quand l'option est inactive : les libellés restent alignés sur une seule
+/// verticale, et rien ne se décale quand la sélection change. [exclusive]
+/// distingue un choix parmi plusieurs (période, tri) d'un interrupteur
+/// (complets masqués) — la différence est portée jusqu'à la sémantique, pour
+/// qu'un lecteur d'écran annonce « sélectionné » dans un groupe exclusif et
+/// « coché » pour une case.
+class _MenuChoice extends StatelessWidget {
+  const _MenuChoice({
+    required this.label,
+    required this.selected,
+    required this.exclusive,
+    required this.onPressed,
+  });
+
+  final String label;
+  final bool selected;
+  final bool exclusive;
+  final VoidCallback onPressed;
+
+  static const _checkSize = 18.0;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    return Semantics(
+      selected: exclusive ? selected : null,
+      checked: selected,
+      inMutuallyExclusiveGroup: exclusive ? true : null,
+      child: MenuItemButton(
+        closeOnActivate: false,
+        onPressed: onPressed,
+        style: _menuItemStyle(context),
+        trailingIcon: selected
+            ? Icon(Icons.check_rounded, size: _checkSize, color: t.brand)
+            : const SizedBox.square(dimension: _checkSize),
+        child: Text(
+          label,
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+            color: selected ? t.textPrimary : t.textSecondary,
+            fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+          ),
         ),
       ),
     );
   }
 }
 
-class _Choice extends StatelessWidget {
-  const _Choice({
+/// Action textuelle du pied de menu — texte seul, sans icône, comme tous
+/// les boutons du produit.
+class _MenuTextAction extends StatelessWidget {
+  const _MenuTextAction({
     required this.label,
-    required this.selected,
-    required this.onTap,
+    required this.color,
+    required this.closeOnActivate,
+    required this.onPressed,
   });
 
   final String label;
-  final bool selected;
-  final VoidCallback onTap;
+  final Color color;
+  final bool closeOnActivate;
+  final VoidCallback onPressed;
 
   @override
-  Widget build(BuildContext context) {
-    final t = context.tokens;
-    return Material(
-      color: selected ? t.brandSoft : t.surfaceSunken,
-      borderRadius: AppRadius.brButton,
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.lg,
-            vertical: AppSpacing.md,
-          ),
-          decoration: BoxDecoration(
-            borderRadius: AppRadius.brButton,
-            border: Border.all(color: selected ? t.brand : t.border),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (selected) ...[
-                Icon(Icons.check_rounded, size: 15, color: t.brand),
-                const SizedBox(width: AppSpacing.sm),
-              ],
-              Text(
-                label,
-                style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  color: selected ? t.brand : t.textSecondary,
-                ),
-              ),
-            ],
-          ),
-        ),
+  Widget build(BuildContext context) => MenuItemButton(
+    closeOnActivate: closeOnActivate,
+    onPressed: onPressed,
+    style: _menuItemStyle(context),
+    child: Text(
+      label,
+      style: Theme.of(context).textTheme.labelLarge?.copyWith(
+        color: color,
+        fontWeight: FontWeight.w700,
       ),
-    );
-  }
+    ),
+  );
+}
+
+/// Style commun des lignes du menu : arête à 6 px, survol et focus teintés
+/// par un fond discret plutôt que par l'encre Material par défaut, qui
+/// paraissait délavée sur la surface claire.
+ButtonStyle _menuItemStyle(BuildContext context) {
+  final t = context.tokens;
+  return MenuItemButton.styleFrom(
+    shape: const RoundedRectangleBorder(borderRadius: AppRadius.brButton),
+    padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+    minimumSize: const Size(0, 44),
+    overlayColor: t.surfaceSunken,
+    foregroundColor: t.textPrimary,
+    iconColor: t.brand,
+  );
 }

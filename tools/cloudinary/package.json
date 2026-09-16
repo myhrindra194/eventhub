@@ -1,0 +1,17 @@
+{
+  "name": "eventhub-cloudinary-tools",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Outils d'administration Cloudinary pour EventHub, exécutés sur le poste d'un mainteneur : ils détiennent le secret API, qui ne doit jamais entrer dans l'application Flutter.",
+  "type": "module",
+  "engines": {
+    "node": ">=20.6"
+  },
+  "scripts": {
+    "setup-preset": "node --env-file=.env setup-preset.mjs",
+    "ping": "node --env-file=.env -e \"import('cloudinary').then(({v2}) => v2.api.ping()).then(r => console.log(r))\""
+  },
+  "dependencies": {
+    "cloudinary": "^2.11.0"
+  }
+}

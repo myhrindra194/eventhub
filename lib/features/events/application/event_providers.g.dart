@@ -1026,3 +1026,237 @@ final class TrendingEventsProvider
 }
 
 String _$trendingEventsHash() => r'6a2c343649e6f9262b702c49ee8098e03af9058c';
+
+/// Le catalogue regroupé par activité, dans l'ordre de l'énumération
+/// [EventCategory] — le même que celui du rail de catégories, pour que l'œil
+/// retrouve les sections là où il a vu les pastilles.
+///
+/// Les catégories vides sont omises : une section « Sport — 0 événement »
+/// ne sert qu'à dire que le produit est pauvre. Le groupement se fait en une
+/// passe sur ce qui est déjà chargé, sans requête Firestore de plus.
+
+@ProviderFor(categorySections)
+final categorySectionsProvider = CategorySectionsProvider._();
+
+/// Le catalogue regroupé par activité, dans l'ordre de l'énumération
+/// [EventCategory] — le même que celui du rail de catégories, pour que l'œil
+/// retrouve les sections là où il a vu les pastilles.
+///
+/// Les catégories vides sont omises : une section « Sport — 0 événement »
+/// ne sert qu'à dire que le produit est pauvre. Le groupement se fait en une
+/// passe sur ce qui est déjà chargé, sans requête Firestore de plus.
+
+final class CategorySectionsProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<List<CategorySection>>,
+          AsyncValue<List<CategorySection>>,
+          AsyncValue<List<CategorySection>>
+        >
+    with $Provider<AsyncValue<List<CategorySection>>> {
+  /// Le catalogue regroupé par activité, dans l'ordre de l'énumération
+  /// [EventCategory] — le même que celui du rail de catégories, pour que l'œil
+  /// retrouve les sections là où il a vu les pastilles.
+  ///
+  /// Les catégories vides sont omises : une section « Sport — 0 événement »
+  /// ne sert qu'à dire que le produit est pauvre. Le groupement se fait en une
+  /// passe sur ce qui est déjà chargé, sans requête Firestore de plus.
+  CategorySectionsProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'categorySectionsProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$categorySectionsHash();
+
+  @$internal
+  @override
+  $ProviderElement<AsyncValue<List<CategorySection>>> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  AsyncValue<List<CategorySection>> create(Ref ref) {
+    return categorySections(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(AsyncValue<List<CategorySection>> value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<AsyncValue<List<CategorySection>>>(
+        value,
+      ),
+    );
+  }
+}
+
+String _$categorySectionsHash() => r'47acfc289f782bfe66f3031d766964aacd60b8c8';
+
+/// Le catalogue de l'écran « Tous les événements », pour une [category]
+/// donnée (`null` = toutes).
+///
+/// Il applique les **mêmes** réglages globaux que [filteredEvents] — période,
+/// tri, masquage des complets — pour que le menu « Filtres » ait le même
+/// effet partout. Deux écarts délibérés :
+///  * la catégorie est un paramètre et non le filtre global : ouvrir « Tout
+///    voir » sur la section Concert ne doit pas replier l'accueil en mode
+///    filtré au retour ;
+///  * la requête texte est ignorée : elle appartient à l'onglet Recherche, et
+///    un mot tapé là-bas ne doit pas vider silencieusement ce catalogue.
+///
+/// Contrepartie assumée : le compteur de résultats du menu « Filtres » lit
+/// [filteredEvents], et peut donc différer de cette liste quand la catégorie
+/// locale n'est pas la catégorie globale.
+
+@ProviderFor(browsableEvents)
+final browsableEventsProvider = BrowsableEventsFamily._();
+
+/// Le catalogue de l'écran « Tous les événements », pour une [category]
+/// donnée (`null` = toutes).
+///
+/// Il applique les **mêmes** réglages globaux que [filteredEvents] — période,
+/// tri, masquage des complets — pour que le menu « Filtres » ait le même
+/// effet partout. Deux écarts délibérés :
+///  * la catégorie est un paramètre et non le filtre global : ouvrir « Tout
+///    voir » sur la section Concert ne doit pas replier l'accueil en mode
+///    filtré au retour ;
+///  * la requête texte est ignorée : elle appartient à l'onglet Recherche, et
+///    un mot tapé là-bas ne doit pas vider silencieusement ce catalogue.
+///
+/// Contrepartie assumée : le compteur de résultats du menu « Filtres » lit
+/// [filteredEvents], et peut donc différer de cette liste quand la catégorie
+/// locale n'est pas la catégorie globale.
+
+final class BrowsableEventsProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<List<Event>>,
+          AsyncValue<List<Event>>,
+          AsyncValue<List<Event>>
+        >
+    with $Provider<AsyncValue<List<Event>>> {
+  /// Le catalogue de l'écran « Tous les événements », pour une [category]
+  /// donnée (`null` = toutes).
+  ///
+  /// Il applique les **mêmes** réglages globaux que [filteredEvents] — période,
+  /// tri, masquage des complets — pour que le menu « Filtres » ait le même
+  /// effet partout. Deux écarts délibérés :
+  ///  * la catégorie est un paramètre et non le filtre global : ouvrir « Tout
+  ///    voir » sur la section Concert ne doit pas replier l'accueil en mode
+  ///    filtré au retour ;
+  ///  * la requête texte est ignorée : elle appartient à l'onglet Recherche, et
+  ///    un mot tapé là-bas ne doit pas vider silencieusement ce catalogue.
+  ///
+  /// Contrepartie assumée : le compteur de résultats du menu « Filtres » lit
+  /// [filteredEvents], et peut donc différer de cette liste quand la catégorie
+  /// locale n'est pas la catégorie globale.
+  BrowsableEventsProvider._({
+    required BrowsableEventsFamily super.from,
+    required EventCategory? super.argument,
+  }) : super(
+         retry: null,
+         name: r'browsableEventsProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
+
+  @override
+  String debugGetCreateSourceHash() => _$browsableEventsHash();
+
+  @override
+  String toString() {
+    return r'browsableEventsProvider'
+        ''
+        '($argument)';
+  }
+
+  @$internal
+  @override
+  $ProviderElement<AsyncValue<List<Event>>> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  AsyncValue<List<Event>> create(Ref ref) {
+    final argument = this.argument as EventCategory?;
+    return browsableEvents(ref, argument);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(AsyncValue<List<Event>> value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<AsyncValue<List<Event>>>(value),
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is BrowsableEventsProvider && other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
+  }
+}
+
+String _$browsableEventsHash() => r'ab4e7ed41853453326f050b9fc643aacb8a1ca00';
+
+/// Le catalogue de l'écran « Tous les événements », pour une [category]
+/// donnée (`null` = toutes).
+///
+/// Il applique les **mêmes** réglages globaux que [filteredEvents] — période,
+/// tri, masquage des complets — pour que le menu « Filtres » ait le même
+/// effet partout. Deux écarts délibérés :
+///  * la catégorie est un paramètre et non le filtre global : ouvrir « Tout
+///    voir » sur la section Concert ne doit pas replier l'accueil en mode
+///    filtré au retour ;
+///  * la requête texte est ignorée : elle appartient à l'onglet Recherche, et
+///    un mot tapé là-bas ne doit pas vider silencieusement ce catalogue.
+///
+/// Contrepartie assumée : le compteur de résultats du menu « Filtres » lit
+/// [filteredEvents], et peut donc différer de cette liste quand la catégorie
+/// locale n'est pas la catégorie globale.
+
+final class BrowsableEventsFamily extends $Family
+    with $FunctionalFamilyOverride<AsyncValue<List<Event>>, EventCategory?> {
+  BrowsableEventsFamily._()
+    : super(
+        retry: null,
+        name: r'browsableEventsProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
+
+  /// Le catalogue de l'écran « Tous les événements », pour une [category]
+  /// donnée (`null` = toutes).
+  ///
+  /// Il applique les **mêmes** réglages globaux que [filteredEvents] — période,
+  /// tri, masquage des complets — pour que le menu « Filtres » ait le même
+  /// effet partout. Deux écarts délibérés :
+  ///  * la catégorie est un paramètre et non le filtre global : ouvrir « Tout
+  ///    voir » sur la section Concert ne doit pas replier l'accueil en mode
+  ///    filtré au retour ;
+  ///  * la requête texte est ignorée : elle appartient à l'onglet Recherche, et
+  ///    un mot tapé là-bas ne doit pas vider silencieusement ce catalogue.
+  ///
+  /// Contrepartie assumée : le compteur de résultats du menu « Filtres » lit
+  /// [filteredEvents], et peut donc différer de cette liste quand la catégorie
+  /// locale n'est pas la catégorie globale.
+
+  BrowsableEventsProvider call(EventCategory? category) =>
+      BrowsableEventsProvider._(argument: category, from: this);
+
+  @override
+  String toString() => r'browsableEventsProvider';
+}

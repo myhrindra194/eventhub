@@ -17,9 +17,9 @@ mixin _$EventDraft {
 
  String get title; String get description; EventCategory get category; DateTime get startsAt; String get location;/// Ignorée quand [tiers] n’est pas vide : la capacité est alors leur
 /// somme.
- int get capacity;/// Image de couverture, sous forme de lien `https://` vers une image
-/// hébergée ailleurs (le plan gratuit n’offre pas d’envoi de fichier).
-/// Vide signifie aucune : l’événement conserve son visuel généré.
+ int get capacity;/// Image de couverture : le lien `https://` rendu par Cloudinary après
+/// l’import (Cloud Storage exigerait le plan Blaze). Vide signifie
+/// aucune : l’événement conserve son visuel généré.
  String? get imageUrl;/// Types de billets (F-12). Vide : un unique pool gratuit de
 /// [capacity] places.
  List<EventTierDraft> get tiers;/// Obligatoire dès qu’un type de billet est payant.
@@ -239,9 +239,9 @@ class _EventDraft extends EventDraft {
 /// Ignorée quand [tiers] n’est pas vide : la capacité est alors leur
 /// somme.
 @override final  int capacity;
-/// Image de couverture, sous forme de lien `https://` vers une image
-/// hébergée ailleurs (le plan gratuit n’offre pas d’envoi de fichier).
-/// Vide signifie aucune : l’événement conserve son visuel généré.
+/// Image de couverture : le lien `https://` rendu par Cloudinary après
+/// l’import (Cloud Storage exigerait le plan Blaze). Vide signifie
+/// aucune : l’événement conserve son visuel généré.
 @override final  String? imageUrl;
 /// Types de billets (F-12). Vide : un unique pool gratuit de
 /// [capacity] places.

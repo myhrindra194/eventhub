@@ -1,9 +1,8 @@
 import 'package:eventhub/app/theme/theme.dart';
-import 'package:eventhub/core/config/app_links.dart';
 import 'package:eventhub/core/extensions/context_x.dart';
 import 'package:eventhub/core/widgets/design_system.dart';
+import 'package:eventhub/routes/routes.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 
 /// Mise en page éditoriale partagée par les pages aide, confidentialité et à
@@ -252,14 +251,10 @@ class _FaqTileState extends State<_FaqTile> {
 }
 
 /// « Toujours bloqué ? » — la porte de sortie d’une page d’aide qui n’a pas
-/// aidé.
+/// aidé. Elle mène au formulaire « Nous contacter », qui envoie un vrai email
+/// à l'équipe, plutôt qu'à une adresse à recopier.
 class SupportContactCard extends StatelessWidget {
   const SupportContactCard({super.key});
-
-  Future<void> _copy(BuildContext context) async {
-    await Clipboard.setData(const ClipboardData(text: AppLinks.supportEmail));
-    if (context.mounted) context.showSuccess('Adresse copiée.');
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -276,22 +271,19 @@ class SupportContactCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text('Toujours bloqué ?', style: text.titleMedium),
-                Text(
-                  '${AppLinks.supportEmail} · réponse sous 48 h ouvrées',
-                  style: text.bodySmall,
-                ),
+                Text('Réponse sous 48 h ouvrées', style: text.bodySmall),
               ],
             ),
           ),
           TextButton(
-            onPressed: () => _copy(context),
+            onPressed: () => context.push(AppRoutes.contact),
             style: TextButton.styleFrom(
               foregroundColor: t.brand,
               shape: const RoundedRectangleBorder(
                 borderRadius: AppRadius.brButton,
               ),
             ),
-            child: const Text('Copier'),
+            child: const Text('Écrire'),
           ),
         ],
       ),

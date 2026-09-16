@@ -5,6 +5,7 @@ import 'package:eventhub/core/l10n/app_strings.dart';
 import 'package:eventhub/core/utils/date_formats.dart';
 import 'package:eventhub/core/widgets/design_system.dart';
 import 'package:eventhub/features/auth/application/auth_providers.dart';
+import 'package:eventhub/features/auth/presentation/widgets/email_verification_banner.dart';
 import 'package:eventhub/features/events/domain/entities/event.dart';
 import 'package:eventhub/features/moderation/domain/report.dart';
 import 'package:eventhub/features/moderation/presentation/widgets/report_sheet.dart';
@@ -32,6 +33,9 @@ class ReviewsSection extends ConsumerWidget {
         ref.watch(eventReviewsProvider(event.id)).value ?? const <Review>[];
     final mine = ref.watch(myReviewProvider(event.id)).value;
     final canReview = ref.watch(canReviewEventProvider(event.id));
+    final needsVerification = ref.watch(
+      reviewBlockedByVerificationProvider(event.id),
+    );
     final now = ref.watch(clockProvider)();
     if (!event.hasStarted(now) && reviews.isEmpty) {
       return const SizedBox.shrink();
@@ -95,6 +99,11 @@ class ReviewsSection extends ConsumerWidget {
               ),
             ),
           ],
+          if (needsVerification)
+            const EmailVerificationBanner(
+              padding: EdgeInsets.only(top: AppSpacing.lg),
+              purpose: VerificationPurpose.review,
+            ),
           if (canReview) ...[
             const SizedBox(height: AppSpacing.lg),
             AppButton.secondary(

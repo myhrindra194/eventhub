@@ -48,7 +48,7 @@ final class TeamRepositoryProvider
   }
 }
 
-String _$teamRepositoryHash() => r'1c179404d1fb7b6d06a74bdf4ad6c74e1adee8b0';
+String _$teamRepositoryHash() => r'8f0a6f50944894ae3e86a0ca734ddb8d945080a6';
 
 @ProviderFor(eventPendingInvitations)
 final eventPendingInvitationsProvider = EventPendingInvitationsFamily._();

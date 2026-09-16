@@ -53,9 +53,9 @@ describe('booking a free seat', () => {
     await assertSucceeds(book(as(env, 'p1').firestore()));
   });
 
-  test('an organizer account books too (one account, two spaces)', async () => {
+  test('an organizer account does not book: the two roles are exclusive', async () => {
     await seedUser(env, 'o2', { role: 'organizer' });
-    await assertSucceeds(book(as(env, 'o2').firestore(), { userId: 'o2' }));
+    await assertFails(book(as(env, 'o2').firestore(), { userId: 'o2' }));
   });
 
   test('a booking that does not take the seat is refused', async () => {

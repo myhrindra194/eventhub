@@ -38,6 +38,11 @@ abstract class AppUser with _$AppUser {
     /// accès à l’espace de modération ; le serveur revérifie le claim à
     /// chaque appel.
     @Default(false) bool isAdmin,
+
+    /// Le rôle coché dans le formulaire d'inscription, conservé tel quel.
+    /// Égal à [role] pour tout compte récent — les deux rôles sont fixés à
+    /// l'inscription — ; `null` pour les comptes créés avant la question.
+    UserRole? intendedRole,
   }) = _AppUser;
 
   bool get isOrganizer => role == UserRole.organizer;

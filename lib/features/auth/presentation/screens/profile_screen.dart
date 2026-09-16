@@ -1,15 +1,16 @@
 import 'package:eventhub/app/theme/theme.dart';
 import 'package:eventhub/core/config/app_config.dart';
+import 'package:eventhub/core/config/app_links.dart';
 import 'package:eventhub/core/extensions/context_x.dart';
 import 'package:eventhub/core/l10n/app_strings.dart';
 import 'package:eventhub/core/result/result.dart';
 import 'package:eventhub/core/utils/date_formats.dart';
+import 'package:eventhub/core/widgets/appearance_settings.dart';
 import 'package:eventhub/core/widgets/design_system.dart';
 import 'package:eventhub/features/admin/application/moderation_providers.dart';
 import 'package:eventhub/features/auth/application/auth_controller.dart';
 import 'package:eventhub/features/auth/application/auth_providers.dart';
 import 'package:eventhub/features/auth/domain/entities/app_user.dart';
-import 'package:eventhub/features/auth/presentation/widgets/become_organizer_sheet.dart';
 import 'package:eventhub/features/auth/presentation/widgets/email_verification_banner.dart';
 import 'package:eventhub/features/events/application/event_providers.dart';
 import 'package:eventhub/features/reservations/application/reservation_providers.dart';
@@ -71,11 +72,20 @@ class ProfileScreen extends ConsumerWidget {
           ),
           children: [
             _IdentityCard(user: user),
+            // Seulement pour un organisateur dont l'adresse n'est pas encore
+            // confirmée : c'est ce qui conditionne la publication.
             const EmailVerificationBanner(
               padding: EdgeInsets.only(top: AppSpacing.lg),
             ),
             const SizedBox(height: AppSpacing.xl),
             _Stats(user: user),
+            const SizedBox(height: AppSpacing.xxl),
+            // L'apparence en évidence, pas au fond d'un menu : mode, couleur
+            // et police, pour l'espace participant comme organisateur (le même
+            // écran de profil sert les deux), appliqués à l'instant.
+            const SectionLabel('Apparence'),
+            const SizedBox(height: AppSpacing.md),
+            const AppearanceSettings(),
             const SizedBox(height: AppSpacing.xxl),
             const SectionLabel(AppStrings.account),
             const SizedBox(height: AppSpacing.md),
@@ -96,23 +106,7 @@ class ProfileScreen extends ConsumerWidget {
                   label: AppStrings.notifications,
                   onTap: () => context.push(AppRoutes.notificationsCenter),
                 ),
-                // « Un compte, deux espaces » : tant que l'espace
-                // organisateur n'est pas ouvert, c'est ici qu'on l'ouvre —
-                // et une fois ouvert, c'est ici qu'on passe de l'un à
-                // l'autre. Sans cette entrée, la méthode d'activation
-                // existait dans le code sans qu'aucun écran ne l'appelle.
-                if (user.isParticipant)
-                  _MenuItem(
-                    icon: Icons.workspace_premium_outlined,
-                    label: AppStrings.becomeOrganizer,
-                    onTap: () => showBecomeOrganizerSheet(context),
-                  ),
-                if (user.isOrganizer) ...[
-                  _MenuItem(
-                    icon: Icons.swap_horiz_rounded,
-                    label: AppStrings.switchToParticipantSpace,
-                    onTap: () => context.go(AppRoutes.events),
-                  ),
+                if (user.isOrganizer)
                   _MenuItem(
                     icon: Icons.storefront_outlined,
                     label: AppStrings.publicProfile,
@@ -120,7 +114,6 @@ class ProfileScreen extends ConsumerWidget {
                       AppRoutes.organizerPublicProfilePath(user.id),
                     ),
                   ),
-                ],
                 _MenuItem(
                   icon: Icons.person_add_alt_outlined,
                   label: AppStrings.followingTitle,
@@ -150,6 +143,12 @@ class ProfileScreen extends ConsumerWidget {
                   icon: Icons.help_outline_rounded,
                   label: AppStrings.helpCenter,
                   onTap: () => context.push(AppRoutes.help),
+                ),
+                _MenuItem(
+                  icon: Icons.mail_outline_rounded,
+                  label: 'Nous contacter',
+                  onTap: () => context.push(AppRoutes.contact),
+                  trailing: const _ContactAddress(),
                 ),
                 _MenuItem(
                   icon: Icons.shield_outlined,
@@ -396,6 +395,31 @@ class _ModerationBadge extends ConsumerWidget {
         const SizedBox(width: AppSpacing.xs),
         Icon(Icons.chevron_right_rounded, color: context.tokens.textTertiary),
       ],
+    );
+  }
+}
+
+/// L'adresse de l'équipe en valeur de ligne, quand elle existe : on sait à
+/// qui l'on écrit avant même d'ouvrir le formulaire.
+class _ContactAddress extends StatelessWidget {
+  const _ContactAddress();
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    if (AppLinks.supportEmail.isEmpty) {
+      return Icon(Icons.chevron_right_rounded, color: t.textTertiary);
+    }
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 160),
+      child: Text(
+        AppLinks.supportEmail,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: Theme.of(
+          context,
+        ).textTheme.bodySmall?.copyWith(color: t.textSecondary),
+      ),
     );
   }
 }

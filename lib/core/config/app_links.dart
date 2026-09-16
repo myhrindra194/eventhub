@@ -6,7 +6,12 @@
 /// App Links (voir AndroidManifest.xml et hosting/public/.well-known).
 abstract final class AppLinks {
   static const webHost = 'eventhub-d411f.web.app';
-  static const supportEmail = 'support@eventhub.app';
+
+  /// Boîte de l'entreprise (`--dart-define=SUPPORT_EMAIL=…`), affichée dans
+  /// « Nous contacter » et destinataire des messages envoyés depuis l'app.
+  /// Vide tant que l'entreprise n'en a pas : l'app affiche alors « bientôt
+  /// disponible » plutôt qu'une adresse inventée qui ne répondrait jamais.
+  static const supportEmail = String.fromEnvironment('SUPPORT_EMAIL');
 
   /// Page publique d’un événement, p. ex.
   /// `https://eventhub-d411f.web.app/e/abc123`.

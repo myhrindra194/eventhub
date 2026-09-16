@@ -16,6 +16,7 @@ Future<PhotoChoice?> showPhotoSourceSheet(
   BuildContext context, {
   required bool cover,
   required bool hasImage,
+  bool canUpload = true,
 }) => showAppSheet<PhotoChoice>(
   context: context,
   builder: (sheetContext) => AppSheet(
@@ -25,16 +26,19 @@ Future<PhotoChoice?> showPhotoSourceSheet(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _Option(
-          icon: Icons.photo_library_outlined,
-          label: AppStrings.photoFromGallery,
-          onTap: () => Navigator.of(sheetContext).pop(PhotoChoice.gallery),
-        ),
-        _Option(
-          icon: Icons.photo_camera_outlined,
-          label: AppStrings.photoFromCamera,
-          onTap: () => Navigator.of(sheetContext).pop(PhotoChoice.camera),
-        ),
+        // Sans hébergement configuré, seul le retrait garde un sens.
+        if (canUpload) ...[
+          _Option(
+            icon: Icons.photo_library_outlined,
+            label: AppStrings.photoFromGallery,
+            onTap: () => Navigator.of(sheetContext).pop(PhotoChoice.gallery),
+          ),
+          _Option(
+            icon: Icons.photo_camera_outlined,
+            label: AppStrings.photoFromCamera,
+            onTap: () => Navigator.of(sheetContext).pop(PhotoChoice.camera),
+          ),
+        ],
         if (hasImage)
           _Option(
             icon: Icons.delete_outline_rounded,
@@ -102,6 +106,8 @@ class ProfileImagesEditor extends StatelessWidget {
     required this.onEditPhoto,
     required this.onEditCover,
     super.key,
+    this.uploadingPhoto = false,
+    this.uploadingCover = false,
   });
 
   final String name;
@@ -109,6 +115,11 @@ class ProfileImagesEditor extends StatelessWidget {
   final String? coverUrl;
   final VoidCallback onEditPhoto;
   final VoidCallback onEditCover;
+
+  /// Une image part vers l'hébergement : on la voile d'un indicateur plutôt
+  /// que de bloquer tout l'écran, le reste du formulaire restant éditable.
+  final bool uploadingPhoto;
+  final bool uploadingCover;
 
   static const _coverHeight = 104.0;
   static const _avatarSize = 84.0;
@@ -132,7 +143,7 @@ class ProfileImagesEditor extends StatelessWidget {
             left: 0,
             right: 0,
             child: GestureDetector(
-              onTap: onEditCover,
+              onTap: uploadingCover ? null : onEditCover,
               child: Container(
                 height: _coverHeight,
                 clipBehavior: Clip.antiAlias,
@@ -152,6 +163,14 @@ class ProfileImagesEditor extends StatelessWidget {
               ),
             ),
           ),
+          if (uploadingCover)
+            const Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              height: _coverHeight,
+              child: _UploadVeil(shape: BoxShape.rectangle),
+            ),
           Positioned(
             top: AppSpacing.sm,
             right: AppSpacing.sm,
@@ -162,13 +181,13 @@ class ProfileImagesEditor extends StatelessWidget {
                   : AppStrings.changeCover,
               size: 34,
               background: t.glass,
-              onPressed: onEditCover,
+              onPressed: uploadingCover ? null : onEditCover,
             ),
           ),
           Positioned(
             bottom: 0,
             child: GestureDetector(
-              onTap: onEditPhoto,
+              onTap: uploadingPhoto ? null : onEditPhoto,
               child: Stack(
                 clipBehavior: Clip.none,
                 children: [
@@ -184,6 +203,10 @@ class ProfileImagesEditor extends StatelessWidget {
                       size: _avatarSize,
                     ),
                   ),
+                  if (uploadingPhoto)
+                    const Positioned.fill(
+                      child: _UploadVeil(shape: BoxShape.circle),
+                    ),
                   Positioned(
                     right: 0,
                     bottom: 2,
@@ -208,6 +231,39 @@ class ProfileImagesEditor extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Voile posé sur une image pendant son envoi.
+///
+/// Un indicateur fin sur un voile translucide plutôt qu'un squelette : l'image
+/// précédente reste visible dessous, l'utilisateur sait donc ce qu'il est en
+/// train de remplacer.
+class _UploadVeil extends StatelessWidget {
+  const _UploadVeil({required this.shape});
+
+  final BoxShape shape;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    return Semantics(
+      label: AppStrings.imageUploading,
+      liveRegion: true,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          shape: shape,
+          borderRadius: shape == BoxShape.circle ? null : AppRadius.brButton,
+          color: t.canvas.withValues(alpha: 0.6),
+        ),
+        child: Center(
+          child: SizedBox.square(
+            dimension: 20,
+            child: CircularProgressIndicator(strokeWidth: 2, color: t.brand),
+          ),
+        ),
       ),
     );
   }

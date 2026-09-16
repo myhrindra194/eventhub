@@ -1,4 +1,5 @@
 import 'package:eventhub/features/auth/domain/entities/user_role.dart';
+import 'package:eventhub/features/events/domain/entities/event_category.dart';
 
 /// Registre central des routes.
 ///
@@ -27,6 +28,7 @@ abstract final class AppRoutes {
   static const help = '/help';
   static const privacyPolicy = '/privacy';
   static const about = '/about';
+  static const contact = '/contact';
   static const notificationsCenter = '/notifications';
   static const notificationsCenterName = 'notifications';
 
@@ -34,6 +36,7 @@ abstract final class AppRoutes {
   static const helpName = 'help';
   static const privacyPolicyName = 'privacy';
   static const aboutName = 'about';
+  static const contactName = 'contact';
 
   // Administration — tous rôles, claim `admin` requis (voir RouteGuard).
   static const adminPrefix = '/admin';
@@ -79,6 +82,17 @@ abstract final class AppRoutes {
   static const settings = '/profile/settings';
   static const changePassword = '/change-password';
   static const eventDetail = '/events/:eventId';
+
+  /// Catalogue complet, filtrable par activité (`?category=concert`).
+  ///
+  /// Déclaré **dans** la branche Explorer du shell, donc résolu avant la
+  /// route racine `/events/:eventId` : `all` n'est jamais pris pour un
+  /// identifiant d'événement (et un identifiant Firestore auto-généré, de
+  /// vingt caractères, ne vaudra jamais `all`). Rester dans le shell garde la
+  /// barre d'onglets visible, comme le « Tout afficher » d'Airbnb.
+  static const allEvents = '/events/all';
+  static const allEventsName = 'all-events';
+  static const categoryParam = 'category';
   static const reservationConfirmation =
       '/reservations/:reservationId/confirmation';
   static const ticket = '/reservations/:reservationId/ticket';
@@ -145,6 +159,13 @@ abstract final class AppRoutes {
   static String eventDetailPath(String eventId) =>
       '/events/${Uri.encodeComponent(eventId)}';
 
+  /// `/events/all`, ou `/events/all?category=concert` pour ouvrir le
+  /// catalogue sur une activité.
+  static String allEventsPath({EventCategory? category}) => Uri(
+    path: allEvents,
+    queryParameters: category == null ? null : {categoryParam: category.name},
+  ).toString();
+
   static String reservationConfirmationPath(String reservationId) =>
       '/reservations/${Uri.encodeComponent(reservationId)}/confirmation';
 
@@ -202,6 +223,7 @@ abstract final class AppRoutes {
     help,
     privacyPolicy,
     about,
+    contact,
     notificationsCenter,
     following,
   };

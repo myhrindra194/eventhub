@@ -80,7 +80,7 @@ contiennent jamais de `_` : le **dernier** `_` sépare la paire.
 | Situation | Outil | Exemple |
 |---|---|---|
 | Un seul document, aucune dépendance | `set` / `update` | préférences, favori |
-| Plusieurs documents dont les valeurs sont **connues** d'avance | `WriteBatch` | « Devenir organisateur » : `users/{uid}.role` + `organizers/{uid}` + `organizerEmails/{hash}` |
+| Plusieurs documents dont les valeurs sont **connues** d'avance | `WriteBatch` | inscription d'un organisateur : `users/{uid}` + `organizers/{uid}` |
 | Une valeur **dépend d'une lecture** (compteur, places) | `runTransaction` | réserver : lire l'événement, écrire `availablePlaces - 1` **et** la réservation |
 
 Règle d'or : **tout ce que les règles vérifient avec `getAfter()` /

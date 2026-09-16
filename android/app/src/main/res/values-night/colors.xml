@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Canvas sombre de l'app (AppPalette.neutral1000). -->
+    <color name="launch_background">#090C12</color>
+</resources>

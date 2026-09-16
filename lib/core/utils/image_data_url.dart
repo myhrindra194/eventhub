@@ -1,48 +1,25 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
-/// Images embarquées directement dans un document Firestore, sous forme
-/// d'URL `data:`.
+/// Lecture des images **héritées** embarquées dans un document Firestore
+/// sous forme d'URL `data:`.
 ///
-/// **Pourquoi pas Cloud Storage.** Déposer un fichier dans un bucket exige le
-/// plan Blaze, donc une carte bancaire : c'est précisément ce que le projet
-/// refuse (voir `docs/ROADMAP.md`). Firestore, lui, tient sur le plan Spark.
-/// Une photo de profil compressée y entre sans difficulté, à condition de la
-/// borner — et c'est tout l'objet de ce fichier.
+/// Avant Cloudinary, faute de Cloud Storage sur le plan Spark, la photo et
+/// la couverture d'un profil voyageaient en base64 dans `users/{uid}`.
+/// L'application n'en produit plus : chaque nouvelle image part vers
+/// Cloudinary et seul son lien est stocké. Mais les profils existants en
+/// portent encore, et les règles les laissent en place tant que leur
+/// propriétaire ne les remplace pas. Ce décodeur existe donc pour une seule
+/// raison : qu'une photo d'avant la migration continue de s'afficher.
 ///
-/// **Le coût assumé.** Un document Firestore ne peut pas dépasser 1 Mio, et
-/// l'encodage base64 gonfle les octets d'un tiers. Chaque lecture du profil
-/// retélécharge l'image, là où un bucket la servirait derrière un CDN avec un
-/// cache HTTP. Les bornes ci-dessous sont donc choisies pour que le document
-/// reste petit devant la limite : une photo de profil pèse moins qu'une page
-/// de texte, et la couverture reste sous le quart du document.
-///
-/// Le jour où Blaze est activé, seul le producteur de ces chaînes change :
-/// tout ce qui les affiche reçoit déjà une URL, `https:` ou `data:`.
+/// Le jour où plus aucun document n'en contient, ce fichier se supprime avec
+/// les deux branches `isDataUrl` des widgets d'affichage.
 abstract final class ImageDataUrl {
   static const _prefix = 'data:';
 
-  /// Taille maximale des **octets d'image** d'un avatar, avant encodage.
-  ///
-  /// 96 Kio : à 512 px de côté et en JPEG de qualité moyenne, une photo de
-  /// visage tient largement dessous.
-  static const maxAvatarBytes = 96 * 1024;
-
-  /// Idem pour une couverture, plus large donc plus lourde.
-  static const maxCoverBytes = 192 * 1024;
-
-  /// Longueur maximale de la chaîne stockée, reprise telle quelle par les
-  /// règles de sécurité : base64 gonfle de 4/3, plus l'en-tête du préfixe.
-  static int maxEncodedLength(int rawBytes) => (rawBytes * 4 / 3).ceil() + 64;
-
   static bool isDataUrl(String? url) => url != null && url.startsWith(_prefix);
 
-  /// Encode [bytes] en URL `data:`. [mimeType] doit décrire le contenu réel :
-  /// c'est lui que le décodeur d'images utilisera.
-  static String encode(Uint8List bytes, {String mimeType = 'image/jpeg'}) =>
-      '$_prefix$mimeType;base64,${base64Encode(bytes)}';
-
-  /// Décode une URL `data:` produite par [encode].
+  /// Décode une URL `data:image/…;base64,…`.
   ///
   /// Renvoie `null` plutôt que de lever pour une chaîne malformée : une image
   /// illisible doit dégrader vers le repli visuel du composant, jamais faire

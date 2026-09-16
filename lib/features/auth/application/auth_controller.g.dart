@@ -42,7 +42,7 @@ final class AuthControllerProvider
   AuthController create() => AuthController();
 }
 
-String _$authControllerHash() => r'3312ef6fb5d272037030c9dbec0753b487bc3e46';
+String _$authControllerHash() => r'bee6e849dce24eb57ab5b9aa1daea2f414d25e4a';
 
 /// Pilote les actions d’authentification depuis l’UI. `state` reflète
 /// l’action en cours (chargement / erreur), tandis que la session réelle,

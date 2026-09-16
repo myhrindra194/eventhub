@@ -161,8 +161,8 @@ tout le vocabulaire.
 | `FrostedBar` | Barre floutée collée en bas (actions persistantes) |
 | `AppSurface` | **La** primitive conteneur. Cartes, tuiles, panneaux, lignes de liste |
 | `GlassPanel` | Panneau translucide flouté. Réservé à ce qui doit laisser voir dessous — le flou coûte cher |
-| `AppNavBar` | Barre de navigation flottante : pastille dégradée sur l'onglet actif, label uniquement sur l'actif, retour haptique |
-| `AdaptiveNavigation` | Choisit la navigation selon la largeur : `AppNavBar` en bas < 600 px, rail latéral d'icônes de 600 à 1023 px, rail étendu avec libellés ≥ 1024 px. Mêmes destinations, même pastille, même haptique |
+| `AppNavBar` | Barre d'onglets façon iOS : bord à bord, fond `glass` flouté, filet d'un demi-point, icône au-dessus d'un libellé de 10,5 pt sur chaque onglet, sélection par la teinte `brand` seule, retour haptique |
+| `AdaptiveNavigation` | Choisit la navigation selon la largeur : `AppNavBar` en bas < 600 px, rail latéral d'icônes de 600 à 1023 px, rail étendu avec libellés ≥ 1024 px. Mêmes destinations, même matière `glass`, sélection par la teinte |
 | `AppTopBar` | L'unique barre supérieure, en deux formes : `.root` pour une destination de navigation (titre, ligne de contexte, actions) et `.subPage` pour un écran empilé, qui porte **toujours** le même retour — le disque accentué de `CircleBackButton`. Fond transparent, aucune élévation |
 
 ### Contenu
@@ -197,8 +197,17 @@ Il apparaît là où l'œil se trouve déjà, et la barre reste lisible à quatr
 destinations. Un seul conteneur animé se déplace, ce qui se lit comme *un
 objet qui bouge* plutôt que quatre objets qui clignotent.
 
-**La barre de navigation flotte au lieu de coller au bord.**
-Le contenu défile visiblement dessous : l'application paraît stratifiée.
+**Les barres du haut et du bas sont une seule matière.**
+`AppTopBar`, `FrostedSliverAppBar` et `AppNavBar` partagent le fond `glass`
+flouté et un filet d'un demi-point côté contenu : le contenu est encadré d'une
+seule couleur, comme la barre de navigation et la barre d'onglets d'iOS. La
+barre d'onglets est la seule surface sans les 6 px : elle appartient au cadre
+de l'écran, pas au contenu.
+
+**Les choix légers s'ouvrent en menu déroulant, pas en feuille modale.**
+Filtres du catalogue, apparence : un `MenuAnchor` ancré au contrôle, sans
+ombre (filet + surface), coches sur les options actives. Une feuille modale
+reste réservée aux formulaires et aux confirmations.
 
 **Au-delà de 600 px, la navigation passe sur le côté.**
 La barre du bas est un idiome de téléphone : dans une fenêtre de 1200 px elle
@@ -323,3 +332,21 @@ assumé ; l'alternative est d'ignorer complètement le réglage d'accessibilité
 5. L'exporter depuis `design_system.dart`.
 6. Documenter la décision non évidente en commentaire — le *pourquoi*, jamais
    le *quoi*.
+
+---
+
+## Apparence personnalisable
+
+`lib/app/theme/appearance.dart` — choisie dans Profil → Apparence et dans
+Paramètres, mémorisée sur l'appareil (`AppearanceController`), appliquée par
+`AppTheme.light/dark(appearance:)`.
+
+| Réglage | Valeurs | Ce qui change | Ce qui ne change jamais |
+|---|---|---|---|
+| Mode | Automatique · Clair · Sombre | jeu de tokens complet | — |
+| Modèle de couleurs | Iris (défaut) · Océan · Forêt · Corail · Graphite | `brand`, `brandStrong`, `brandSoft`, `brandGradient`, `bloomPrimary` — chacun en version claire et sombre | neutres, couleurs d'état (succès, alerte, erreur), accent orange |
+| Police | Moderne (Plus Jakarta Sans · Inter, défaut) · Sobre (Inter) · Géométrique (Poppins · DM Sans) · Arrondie (Nunito) · Éditoriale (Fraunces · Source Sans 3) | familles des titres et du texte | échelle, graisses, tracking — aucune mise en page ne bouge |
+
+Iris + Moderne reproduisent exactement le thème d'origine : les goldens restent
+la référence de l'apparence par défaut.
+

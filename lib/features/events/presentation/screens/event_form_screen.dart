@@ -78,7 +78,14 @@ class _EventFormState extends ConsumerState<_EventForm> {
   late final _capacity = TextEditingController(
     text: widget.initial?.capacity.toString() ?? '50',
   );
-  late final _imageUrl = TextEditingController(text: widget.initial?.imageUrl);
+
+  /// Lien de la couverture hébergée ; `null` : l'événement garde son visuel
+  /// généré.
+  late String? _imageUrl = widget.initial?.imageUrl;
+
+  /// Vrai pendant l'envoi de la couverture : publier à ce moment-là
+  /// enregistrerait l'événement sans l'image que l'organisateur attend.
+  bool _coverUploading = false;
 
   // Types de billets (F-12).
   late bool _useTiers = widget.initial?.hasTiers ?? false;
@@ -115,7 +122,6 @@ class _EventFormState extends ConsumerState<_EventForm> {
     _description.dispose();
     _location.dispose();
     _capacity.dispose();
-    _imageUrl.dispose();
     for (final tier in _tiers) {
       tier.dispose();
     }
@@ -148,6 +154,11 @@ class _EventFormState extends ConsumerState<_EventForm> {
     if (!_formKey.currentState!.validate()) return;
     FocusScope.of(context).unfocus();
 
+    if (_coverUploading) {
+      context.showToast(AppStrings.waitForImageUpload);
+      return;
+    }
+
     if (_useTiers && _tiers.isEmpty) {
       context.showToast(AppStrings.ticketTypesRequired);
       return;
@@ -160,7 +171,7 @@ class _EventFormState extends ConsumerState<_EventForm> {
       startsAt: _startsAt,
       location: _location.text,
       capacity: int.tryParse(_capacity.text.trim()) ?? 0,
-      imageUrl: _imageUrl.text,
+      imageUrl: _imageUrl,
       currency: _useTiers ? _currency : null,
       tiers: !_useTiers
           ? const []
@@ -245,9 +256,12 @@ class _EventFormState extends ConsumerState<_EventForm> {
           children: [
             LabeledField(
               label: AppStrings.eventBanner,
-              hint: 'Lien https vers une image paysage (16:9), facultatif',
+              hint: 'Image paysage (16:9), facultative',
               child: EventCoverField(
-                controller: _imageUrl,
+                imageUrl: _imageUrl,
+                onChanged: (url) => setState(() => _imageUrl = url),
+                onUploadingChanged: (value) =>
+                    setState(() => _coverUploading = value),
                 seed: widget.initial?.id ?? 'new-event',
                 errorText: _fieldError('imageUrl'),
               ),

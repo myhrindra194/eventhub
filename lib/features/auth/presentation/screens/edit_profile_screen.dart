@@ -1,13 +1,16 @@
 import 'package:eventhub/app/theme/theme.dart';
-import 'package:eventhub/core/errors/failure_exception.dart';
 import 'package:eventhub/core/extensions/context_x.dart';
 import 'package:eventhub/core/l10n/app_strings.dart';
+import 'package:eventhub/core/media/camera_access_prompt.dart';
+import 'package:eventhub/core/media/camera_permission.dart';
+import 'package:eventhub/core/media/device_image_picker.dart';
+import 'package:eventhub/core/media/image_kind.dart';
+import 'package:eventhub/core/media/media_providers.dart';
 import 'package:eventhub/core/result/result.dart';
 import 'package:eventhub/core/utils/validators.dart';
 import 'package:eventhub/core/widgets/design_system.dart';
 import 'package:eventhub/features/auth/application/auth_controller.dart';
 import 'package:eventhub/features/auth/application/auth_providers.dart';
-import 'package:eventhub/features/auth/data/datasources/profile_photo_picker.dart';
 import 'package:eventhub/features/auth/presentation/widgets/auth_scaffold.dart';
 import 'package:eventhub/features/auth/presentation/widgets/profile_images_editor.dart';
 import 'package:flutter/material.dart';
@@ -40,12 +43,21 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   late final TextEditingController _name;
   late final TextEditingController _bio;
 
-  /// Les images telles qu'elles seront enregistrées. Elles ne partent qu'au
-  /// moment du « Enregistrer », comme le nom : choisir une photo ne doit pas
-  /// écrire dans la base avant que l'utilisateur ait validé sa page.
+  /// Les liens des images tels qu'ils seront enregistrés.
+  ///
+  /// Le fichier part vers Cloudinary dès qu'il est choisi — c'est ce qui
+  /// permet d'afficher la vraie image hébergée avant d'enregistrer — mais le
+  /// lien n'entre dans Firestore qu'au « Enregistrer », comme le nom :
+  /// renoncer à la page ne doit rien changer au profil. Le prix de ce choix
+  /// est une image orpheline dans la médiathèque quand l'utilisateur
+  /// abandonne, que l'envoi non signé ne peut pas supprimer.
   String? _photoUrl;
   String? _coverUrl;
   bool _photosChanged = false;
+  bool _uploadingPhoto = false;
+  bool _uploadingCover = false;
+
+  bool get _uploading => _uploadingPhoto || _uploadingCover;
 
   @override
   void initState() {
@@ -76,42 +88,79 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
 
   /// Choisit, remplace ou retire une des deux images.
   ///
-  /// Le sélecteur peut refuser une image trop lourde (aucun Cloud Storage
-  /// sur le plan Spark, l'image voyage dans le document) : ce refus porte
-  /// déjà sa phrase, il suffit de la montrer.
+  /// Les refus — image trop lourde, envoi échoué, réseau coupé — portent déjà
+  /// leur phrase : il suffit de la montrer, l'image précédente restant en
+  /// place.
   Future<void> _editImage({required bool cover}) async {
+    final flow = ref.read(imageUploadFlowProvider);
     final current = cover ? _coverUrl : _photoUrl;
+    final hasImage = current != null && current.isNotEmpty;
+    if (!flow.isAvailable && !hasImage) {
+      context.showToast(AppStrings.imageUploadUnavailable);
+      return;
+    }
+
     final choice = await showPhotoSourceSheet(
       context,
       cover: cover,
-      hasImage: current != null && current.isNotEmpty,
+      hasImage: hasImage,
+      canUpload: flow.isAvailable,
     );
     if (choice == null || !mounted) return;
 
-    final picker = ref.read(profilePhotoPickerProvider);
-    try {
-      String? encoded;
-      if (choice != PhotoChoice.remove) {
-        final source = choice == PhotoChoice.camera
-            ? PhotoSource.camera
-            : PhotoSource.gallery;
-        encoded = cover
-            ? await picker.pickCover(source)
-            : await picker.pickAvatar(source);
-        // L'utilisateur a refermé la galerie sans rien choisir.
-        if (encoded == null) return;
-      }
-      if (!mounted) return;
+    if (choice == PhotoChoice.remove) {
       setState(() {
         if (cover) {
-          _coverUrl = encoded;
+          _coverUrl = null;
         } else {
-          _photoUrl = encoded;
+          _photoUrl = null;
         }
         _photosChanged = true;
       });
-    } on FailureException catch (error) {
-      if (mounted) context.showFailure(error.failure);
+      return;
+    }
+
+    final user = ref.read(currentUserProvider);
+    if (user == null) return;
+
+    // La permission est réglée *avant* d'afficher l'indicateur d'envoi : sinon
+    // l'avatar tournerait derrière la feuille d'explication, comme si un envoi
+    // était déjà parti. La galerie n'y passe pas — `image_picker` s'appuie sur
+    // le sélecteur système, qui n'exige aucune permission de l'application.
+    if (choice == PhotoChoice.camera) {
+      final allowed = await ensureCameraAccess(
+        context,
+        ref.read(cameraAccessGateProvider),
+      );
+      if (!allowed || !mounted) return;
+    }
+
+    setState(() => cover ? _uploadingCover = true : _uploadingPhoto = true);
+    final result = await flow.run(
+      kind: cover ? ImageKind.profileCover : ImageKind.avatar,
+      source: choice == PhotoChoice.camera
+          ? PhotoSource.camera
+          : PhotoSource.gallery,
+      ownerId: user.id,
+    );
+    if (!mounted) return;
+    setState(() => cover ? _uploadingCover = false : _uploadingPhoto = false);
+
+    switch (result) {
+      // L'utilisateur a refermé la galerie sans rien choisir.
+      case null:
+        return;
+      case Ok(:final value):
+        setState(() {
+          if (cover) {
+            _coverUrl = value.url;
+          } else {
+            _photoUrl = value.url;
+          }
+          _photosChanged = true;
+        });
+      case Err(:final failure):
+        context.showFailure(failure);
     }
   }
 
@@ -130,6 +179,11 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
     FocusScope.of(context).unfocus();
+
+    if (_uploading) {
+      context.showToast(AppStrings.waitForImageUpload);
+      return;
+    }
 
     if (!_isDirty) {
       context.showToast(AppStrings.nameUnchanged);
@@ -173,6 +227,8 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
         coverUrl: _coverUrl,
         onEditPhoto: () => _editImage(cover: false),
         onEditCover: () => _editImage(cover: true),
+        uploadingPhoto: _uploadingPhoto,
+        uploadingCover: _uploadingCover,
       ),
       onBack: () => context.pop(),
       children: [
@@ -271,7 +327,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
           label: AppStrings.save,
           loadingLabel: 'Enregistrement…',
           isLoading: isLoading,
-          onPressed: _isDirty ? _submit : null,
+          onPressed: _isDirty && !_uploading ? _submit : null,
         ),
       ],
     );

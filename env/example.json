@@ -2,5 +2,9 @@
   "USE_FIREBASE_EMULATOR": false,
   "FIREBASE_EMULATOR_HOST": "localhost",
   "GOOGLE_SERVER_CLIENT_ID": "<OAuth web client id>.apps.googleusercontent.com",
-  "FIREBASE_WEB_VAPID_KEY": "<Firebase console → Cloud Messaging → Web Push certificates>"
+  "FIREBASE_WEB_VAPID_KEY": "<Firebase console → Cloud Messaging → Web Push certificates>",
+  "CLOUDINARY_CLOUD_NAME": "<Cloudinary → Dashboard → Cloud name>",
+  "CLOUDINARY_UPLOAD_PRESET": "<Cloudinary → Settings → Upload → preset non signé>",
+  "API_WORKER_URL": "<https://eventhub-api.<compte>.workers.dev, après npm run deploy dans workers/api>",
+  "SUPPORT_EMAIL": "<adresse de la boîte de l’entreprise, ex. contact@tondomaine.com>"
 }

@@ -34,10 +34,12 @@
 
 ## 2. Identité
 
-* **Rôle** : `users/{uid}.role`. Création forcée à `participant` (modèle
-  Eventbrite/Airbnb : un compte, deux espaces). Passage `organizer` : sens
-  unique, email vérifié, **dans le batch** qui crée `organizers/{uid}` et
-  `organizerEmails/{hash}`. Un organisateur garde tous les droits participant.
+* **Rôle** : `users/{uid}.role`, `participant` ou `organizer`, choisi à la
+  création et **définitif** (aucune branche d'update ne le modifie). Un
+  organisateur naît avec `organizers/{uid}` dans le même batch ; la page
+  n'est acceptée que pour un compte qui n'existait pas encore. Les rôles sont
+  exclusifs : réservation, liste d'attente et avis exigent `isParticipant()`,
+  publication `isOrganizer()` + adresse vérifiée.
 * **Administrateur** : existence de `admins/{uid}`. **Aucune écriture client**
   ne peut le créer (`allow write: if false`) : il se crée dans la console
   Firebase (Firestore → Données). Chacun peut demander « suis-je admin ? »
@@ -62,12 +64,12 @@
   `welcomedAt` posé une fois) ; passage organisateur prouvé par
   `existsAfter(organizers/uid)` ; suspension par un admin
   (`onlyChanged(['suspended','updatedAt'])`).
-* **Photos** : `photoUrl` et `coverUrl` acceptent une URL `https://` ou une
-  image embarquée `data:image/(jpeg|png|webp);base64,…`, bornée à 140 000 et
-  280 000 caractères. Deux raisons à cette forme : Cloud Storage exige le plan
-  Blaze, et un document Firestore plafonne à 1 Mio — une image non bornée
-  rendrait le profil illisible. Tout ce qui n'est ni https ni `data:image`
-  (un `javascript:` par exemple) est refusé.
+* **Photos** : `photoUrl` et `coverUrl` n'acceptent qu'un lien de livraison
+  Cloudinary (`isCloudinaryImage`, 2048 caractères max), ou la valeur déjà
+  enregistrée laissée intacte (`validImageField`). Restreindre l'hôte évite
+  qu'un profil fasse charger à chaque lecteur une image posée sur un serveur
+  tiers, qui verrait passer leurs adresses IP. Les images `data:` d'avant
+  Cloudinary restent lisibles mais ne peuvent plus être écrites. Voir §11.
 * `delete` : soi (suppression de compte).
 * Sous-collections `private`, `devices`, `favorites` : propriétaire seul,
   formes strictes (`private/notifications` est le seul document autorisé).
@@ -220,9 +222,11 @@ la mémoire entre requêtes, un secret ou une action sortante leur échappe.
 | **Limitation de débit** | un compte peut enchaîner des écritures valides (favori/défavori en boucle) et consommer le quota de 20 000 écritures/jour | identifiants déterministes (pas de multiplication de documents), App Check, alertes d'usage | compteur par compte dans une Cloud Function / Firestore côté serveur |
 | **Épuisement des quotas Spark** | un scraper authentifié peut épuiser 50 000 lectures/jour : l'app devient indisponible jusqu'à minuit (heure du Pacifique) | `list` bornés, App Check | passage Blaze (facturation au-delà, plus d'arrêt) + alertes budgétaires |
 | **Envoi d'emails** | seuls les emails de Firebase Auth (vérification, réinitialisation, changement d'adresse) partent | modèles personnalisés dans la console | extension *Trigger Email* ou fonction |
-| **Push app fermée** | aucune notification système quand l'app est fermée | centre de notifications, rappels J-1 locaux | Cloud Function + FCM HTTP v1 |
+| **Push app fermée** | envoyé par le Worker Cloudflare, sur appel de l'auteur : perdu si l'app meurt entre l'écriture et l'appel | le Worker ne relaie qu'une notification existante, écrite par l'appelant, de moins de 10 min, une seule fois (§12) | déclencheur `onDocumentCreated` |
 | **Paiements** | aucun encaissement : un secret Stripe et un webhook signé ne peuvent pas vivre dans le client | types payants non réservables (`pricePaid == 0`) | Cloud Functions Stripe (F-11) |
-| **Contenu des URL d'images** | une URL https peut pointer vers une image inappropriée ou changer après validation | signalement + retrait par la modération | upload Cloud Storage + contrôle |
+| **Contenu des images** | une image inappropriée peut être importée : l'envoi non signé ne passe par aucun contrôle | signalement + retrait par la modération ; `context uid` et étiquettes pour retrouver les images d'un compte dans Cloudinary | modération Cloudinary ou fonction de contrôle |
+| **Envoi non signé** | le nom du cloud et le preset sont publics : un tiers peut déposer des images sur le compte et consommer le quota gratuit | preset restrictif (§11) ; rien n'est affiché qui n'ait été écrit par un compte légitime | envoi signé par une fonction détentrice du secret |
+| **Images orphelines** | une image remplacée ou abandonnée reste dans la médiathèque | nettoyage manuel par dossier et étiquette | suppression par l'API d'administration depuis une fonction |
 | **Désactivation Auth d'un compte suspendu** | le compte suspendu peut encore se connecter et **lire** | écritures refusées par `isActive()` | Admin SDK (`disabled: true`, révocation des jetons) ; manuellement : console → Authentication → Désactiver |
 | **Atomicité des effets secondaires** | une notification best-effort peut manquer si l'app meurt entre deux commits | identifiant déterministe, nouvelle tentative sûre | trigger `onDocumentWritten` |
 | **Suppression de compte interrompue** | des données peuvent rester si l'app est tuée en cours | étapes idempotentes, relançables tant que le compte Auth existe | fonction `onUserDeleted` |
@@ -300,3 +304,105 @@ Bonnes pratiques complémentaires :
 * **Heure de l'appareil** : les dates connues du client (`reservedAt`,
   `cancelledAt`) sont tolérées entre −5 et +2 minutes de l'heure serveur ; un
   appareil très déréglé voit ses réservations refusées.
+
+---
+
+## 11. Images : Cloudinary en envoi non signé
+
+**Pourquoi Cloudinary.** Cloud Storage exige le plan Blaze. Cloudinary offre
+un hébergement d'images gratuit avec CDN et redimensionnement à la volée, et
+accepte des envois directement depuis un client.
+
+**Pourquoi non signé.** Un envoi signé exige la clé secrète du compte, qui ne
+peut vivre que sur un serveur — il n'y en a pas. L'app n'embarque donc que
+deux valeurs publiques : `CLOUDINARY_CLOUD_NAME` et
+`CLOUDINARY_UPLOAD_PRESET`. **La clé API et le secret Cloudinary ne doivent
+jamais apparaître dans le dépôt ni dans `env/*.json`.**
+
+**Réglages du preset** (*Settings → Upload → Upload presets*). Chacun borne ce
+qu'un tiers pourrait faire avec ces valeurs publiques :
+
+| Réglage | Valeur | Ce qu'il empêche |
+|---|---|---|
+| Signing mode | **Unsigned** | — (mode imposé par l'absence de serveur) |
+| Asset folder | `eventhub` | dispersion des fichiers dans la médiathèque |
+| Overwrite | **désactivé**, `unique_filename` activé | remplacer l'image d'un autre compte en réutilisant son `public_id` |
+| Allowed formats | `jpg, png, webp, heic` | dépôt de PDF, de SVG (qui peut porter du script) ou de vidéos |
+| Max file size | 10 Mo (plafond de l'offre gratuite, repris par l'app) | épuisement du quota par de gros fichiers |
+| Incoming transformation | `c_limit,w_2048,h_2048` | stockage d'images démesurées : la version stockée est déjà réduite |
+| Moderation (facultatif) | *Manual* | publication d'une image avant contrôle |
+
+**Défense côté Firestore.** Les règles (`isCloudinaryImage`) n'acceptent
+qu'un lien `https://res.cloudinary.com/n9urnfhj/image/upload/…`. Le nom du
+cloud y est figé parce que les règles ne lisent pas la configuration de build :
+changer de compte Cloudinary impose de modifier cette ligne en même temps que
+`CLOUDINARY_CLOUD_NAME`, puis `make deploy-rules`.
+
+**Le preset est du code.** `tools/cloudinary/setup-preset.mjs` crée ou remet
+en conformité le preset `eventhub_unsigned` par l'API d'administration
+(`cd tools/cloudinary && npm install && npm run setup-preset`). Ce script est
+le **seul** endroit où le secret API sert : il le lit dans
+`tools/cloudinary/.env` (`CLOUDINARY_URL=cloudinary://<clé>:<secret>@<cloud>`),
+fichier ignoré par git. Le paquet npm `cloudinary` n'a rien à faire dans
+l'application Flutter. Si le secret a circulé ailleurs (message, capture,
+ticket), le régénérer : console Cloudinary → *Settings → API Keys*, puis
+mettre à jour ce `.env`.
+
+**Retrouver les images d'un compte.** Chaque envoi porte les étiquettes
+`eventhub` et le type d'image (`avatar`, `profileCover`, `eventCover`), ainsi
+que le contexte `uid=<uid Firebase>` : depuis la console Cloudinary, une
+recherche sur ce contexte liste tout ce qu'un compte signalé a importé.
+
+---
+
+## 12. Push FCM : le Worker `eventhub-api`
+
+**Le secret.** Le Worker détient le JSON d'un compte de service Firebase
+(`FIREBASE_SERVICE_ACCOUNT`, secret Cloudflare posé par `wrangler secret put`).
+Ce compte contourne les règles Firestore : sa clé ne doit jamais entrer dans le
+dépôt, dans `env/*.json` ni dans l'app. S'il fuit, le révoquer dans Google Cloud
+→ *IAM → Comptes de service → Clés*, en générer un autre et le reposer.
+
+**Ce que le Worker vérifie avant d'envoyer**, dans l'ordre :
+
+| Contrôle | Ce qu'il empêche |
+|---|---|
+| ID token Firebase valide (signature RS256, `aud` = projet, `iss`, `exp`, `iat`, `sub`) | un appel anonyme, ou avec un jeton d'un autre projet |
+| identifiants sans `/`, 400 caractères au plus | sortir de `users/{uid}/notifications` |
+| la notification existe | pousser un texte arbitraire |
+| `actorId` == appelant | déclencher le push d'un fait provoqué par quelqu'un d'autre |
+| créée il y a moins de 10 minutes | rejouer une ancienne notification |
+| reçu `pushReceipts` créé une seule fois | envoyer deux fois la même notification |
+| préférence du destinataire (`bookingAlerts`, `eventReminders`, `followedOrganizers`) | un push que le destinataire a coupé |
+
+**CORS.** Seules les origines de `ALLOWED_ORIGINS` (`wrangler.toml`) reçoivent
+les en-têtes CORS ; les apps mobiles n'en ont pas besoin. Le CORS n'est pas
+une protection : c'est l'ID token qui en est une.
+
+**Ce qu'il ne garantit pas.** Le push n'est pas déclenché par Firestore : si
+l'app meurt entre l'écriture et l'appel, la notification reste dans le centre
+in-app mais ne part pas en push. Le Worker ne limite pas le débit par compte :
+le nombre de notifications qu'un compte peut écrire est déjà borné par les
+règles (une par fait prouvé).
+
+---
+
+## 13. Emails transactionnels (Brevo, par le Worker)
+
+**Secrets.** `BREVO_API_KEY` est un secret Cloudflare : la clé permet d'écrire
+à n'importe qui au nom de l'entreprise, elle n'entre jamais dans l'app ni dans
+le dépôt. `COMPANY_EMAIL` est une variable publique, vérifiée dans Brevo comme
+expéditeur.
+
+| Route | Contrôle | Ce qu'il empêche |
+|---|---|---|
+| `POST /v1/welcome` | adresse lue dans l'ID token, jamais dans le corps ; reçu `mailReceipts/welcome:{uid}` créé une seule fois | faire écrire l'entreprise à une adresse choisie ; renvoyer le mail en boucle |
+| `POST /v1/contact` | ID token ; objet 3–120 et message 10–5 000 caractères ; un message par compte toutes les 2 min (`contactThrottle/{uid}`) ; texte échappé avant insertion en HTML ; `replyTo` = adresse du jeton | transformer le formulaire en canon à spam ; injecter des liens dans la boîte de l'équipe |
+
+`mailReceipts` et `contactThrottle` sont fermés à tout client par les règles
+(un reçu forgé bloquerait le mail d'autrui ou contournerait la limite).
+
+**Limite connue.** Un compte créé avec l'adresse d'un tiers déclenche un mail
+de bienvenue vers ce tiers, une seule fois — le même risque que l'email de
+vérification de Firebase Auth, et sans lien à cliquer.
+

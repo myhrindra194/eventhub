@@ -1,6 +1,10 @@
 {
   "USE_FIREBASE_EMULATOR": false,
   "FIREBASE_EMULATOR_HOST": "localhost",
-  "GOOGLE_SERVER_CLIENT_ID": "",
-  "FIREBASE_WEB_VAPID_KEY": ""
+  "GOOGLE_SERVER_CLIENT_ID": "930281380072-kbo8usgr7ehmeberq4jrhc4lenu7oslr.apps.googleusercontent.com",
+  "FIREBASE_WEB_VAPID_KEY": "",
+  "CLOUDINARY_CLOUD_NAME": "n9urnfhj",
+  "CLOUDINARY_UPLOAD_PRESET": "eventhub_unsigned",
+  "API_WORKER_URL": "",
+  "SUPPORT_EMAIL": ""
 }

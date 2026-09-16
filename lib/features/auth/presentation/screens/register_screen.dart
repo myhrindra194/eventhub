@@ -5,19 +5,26 @@ import 'package:eventhub/core/result/result.dart';
 import 'package:eventhub/core/utils/validators.dart';
 import 'package:eventhub/core/widgets/design_system.dart';
 import 'package:eventhub/features/auth/application/auth_controller.dart';
+import 'package:eventhub/features/auth/domain/entities/user_role.dart';
 import 'package:eventhub/features/auth/presentation/widgets/auth_scaffold.dart';
 import 'package:eventhub/features/auth/presentation/widgets/google_sign_in_button.dart';
+import 'package:eventhub/features/auth/presentation/widgets/role_choice.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 /// Inscription, en une seule carte.
 ///
-/// Aucun rôle à choisir : comme chez Eventbrite ou Airbnb, tout compte
-/// démarre en participant et ouvre plus tard son espace organisateur, depuis
-/// le profil, une fois qu’il a quelque chose à publier. Quatre champs
-/// familiers, puis l’application — le router fait atterrir le nouveau compte
-/// sur l’écran de bienvenue.
+/// Le rôle est demandé d'emblée — « Vous êtes participant ou
+/// organisateur ? » —, puis les quatre champs familiers. Ce que le rôle
+/// change réellement :
+///  * **participant** : le compte est prêt, il découvre et réserve ;
+///  * **organisateur** : l'espace organisateur est ouvert dès l'inscription,
+///    et le compte garde l'espace participant (un compte, deux espaces). Seule
+///    la publication attend une adresse confirmée — les règles l'exigent.
+///
+/// Aucun lien à cliquer n'est envoyé ici : le mail reçu est un mail de
+/// bienvenue. La confirmation d'adresse est demandée au moment où elle sert.
 class RegisterScreen extends ConsumerStatefulWidget {
   const RegisterScreen({super.key});
 
@@ -33,6 +40,23 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _password = TextEditingController();
   bool _terms = false;
 
+  /// Aucun rôle présélectionné : voir [RoleChoice].
+  UserRole? _role;
+  bool _showRoleError = false;
+
+  /// Commun au bouton « Créer mon compte » et à « Continuer avec Google » :
+  /// les deux créent un compte, les deux ont besoin du rôle.
+  bool _ensureRole() {
+    if (_role != null) return true;
+    setState(() => _showRoleError = true);
+    context.showToast(
+      AppStrings.roleRequired,
+      tone: AppTone.warning,
+      icon: Icons.info_outline_rounded,
+    );
+    return false;
+  }
+
   @override
   void dispose() {
     _firstName.dispose();
@@ -43,7 +67,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   }
 
   Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) return;
+    final formValid = _formKey.currentState!.validate();
+    if (!_ensureRole() || !formValid) return;
     if (!_terms) {
       context.showToast(
         AppStrings.acceptTermsRequired,
@@ -59,21 +84,20 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           name: '${_firstName.text.trim()} ${_lastName.text.trim()}',
           email: _email.text.trim(),
           password: _password.text,
+          intendedRole: _role!,
         );
     if (!mounted) return;
     switch (result) {
       case Err(:final failure):
         context.showFailure(failure);
-      // Déjà connecté ; le bandeau de vérification suit la personne jusqu’à
-      // ce qu’elle ouvre le lien.
-      case Ok(:final value) when !value.emailVerified:
+      // Déjà connecté : le router emmène le compte dans l'app ; ce message
+      // annonce seulement le mail de bienvenue.
+      case Ok(:final value):
         context.showToast(
-          AppStrings.confirmEmailSent(value.email),
+          AppStrings.welcomeEmailSent(value.email),
           tone: AppTone.success,
           icon: Icons.mark_email_read_outlined,
         );
-      case Ok():
-        break;
     }
   }
 
@@ -97,6 +121,29 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              Text(
+                AppStrings.roleSignUpTitle,
+                style: text.labelLarge?.copyWith(color: t.textSecondary),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              RoleChoice(
+                value: _role,
+                errorText: _showRoleError && _role == null
+                    ? AppStrings.roleRequired
+                    : null,
+                onChanged: (role) => setState(() => _role = role),
+              ),
+              if (_role == UserRole.organizer) ...[
+                const SizedBox(height: AppSpacing.sm),
+                Text(
+                  AppStrings.roleOrganizerNote,
+                  style: text.bodySmall?.copyWith(
+                    color: t.textSecondary,
+                    height: 1.45,
+                  ),
+                ),
+              ],
+              const SizedBox(height: AppSpacing.xl),
               FieldGroup(
                 children: [
                   FieldRow(
@@ -159,7 +206,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 isLoading: isLoading,
                 onPressed: _submit,
               ),
-              const GoogleSignInButton(),
+              GoogleSignInButton(
+                intendedRole: _role,
+                beforeSignIn: _ensureRole,
+              ),
             ],
           ),
         ),

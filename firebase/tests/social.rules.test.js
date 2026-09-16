@@ -281,3 +281,20 @@ describe('reports and moderation', () => {
     await assertFails(updateDoc(doc(as(env, 'p1').firestore(), 'moderationQueue/event_e1'), { status: 'resolved' }));
   });
 });
+
+describe('push receipts', () => {
+  test('no client reads or forges a push receipt', async () => {
+    await seedUser(env, 'p1');
+    const db = as(env, 'p1').firestore();
+    await assertFails(setDoc(doc(db, 'pushReceipts/o1:booking_e1_p1_1'), { recipientId: 'o1' }));
+    await assertFails(getDoc(doc(db, 'pushReceipts/o1:booking_e1_p1_1')));
+  });
+
+  test('mail receipts and the contact throttle belong to the server', async () => {
+    await seedUser(env, 'p1');
+    const db = as(env, 'p1').firestore();
+    await assertFails(setDoc(doc(db, 'mailReceipts/welcome:p1'), { kind: 'welcome' }));
+    await assertFails(setDoc(doc(db, 'contactThrottle/p1'), { sentAt: Timestamp.now() }));
+    await assertFails(getDoc(doc(db, 'contactThrottle/p1')));
+  });
+});

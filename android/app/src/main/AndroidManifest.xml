@@ -4,6 +4,15 @@
     <uses-permission android:name="android.permission.INTERNET"/>
     <!-- Android 13+: push notifications are opt-in, asked after sign-in. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <!-- Appareil photo : photo de profil ou de couverture, et scan des billets
+         à l'entrée. mobile_scanner l'apporte déjà par fusion de manifeste, mais
+         le profil en dépend désormais aussi : on le déclare ici pour ne pas
+         perdre la permission le jour où le scanner serait retiré ou remplacé.
+         Déclarée seule, la permission rendrait la caméra obligatoire aux yeux
+         du Play Store et masquerait l'app sur les appareils sans caméra
+         (tablettes, Chromebooks) : d'où `required="false"`. -->
+    <uses-permission android:name="android.permission.CAMERA"/>
+    <uses-feature android:name="android.hardware.camera" android:required="false"/>
 
     <application
         android:label="EventHub"

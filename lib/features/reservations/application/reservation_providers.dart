@@ -6,6 +6,7 @@ import 'package:eventhub/core/result/result.dart';
 import 'package:eventhub/features/auth/application/auth_providers.dart';
 import 'package:eventhub/features/auth/domain/entities/app_user.dart';
 import 'package:eventhub/features/events/application/event_providers.dart';
+import 'package:eventhub/features/notifications/application/push_dispatcher_provider.dart';
 import 'package:eventhub/features/reservations/data/datasources/reservation_remote_data_source.dart';
 import 'package:eventhub/features/reservations/data/repositories/reservation_repository_impl.dart';
 import 'package:eventhub/features/reservations/domain/entities/checkout.dart';
@@ -22,6 +23,7 @@ ReservationRepository reservationRepository(Ref ref) =>
       ReservationRemoteDataSource(
         ref.watch(firestoreProvider),
         ref.watch(firebaseAuthProvider),
+        push: ref.watch(pushDispatcherProvider),
       ),
       clock: ref.watch(clockProvider),
     );

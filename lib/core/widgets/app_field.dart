@@ -37,15 +37,18 @@ class LabeledField extends StatelessWidget {
           padding: const EdgeInsets.only(left: AppSpacing.xs),
           child: Row(
             children: [
-              Text(
-                label,
-                style: text.titleSmall?.copyWith(color: t.textPrimary),
-              ),
-              if (isRequired)
-                Text(
-                  ' *',
-                  style: text.titleSmall?.copyWith(color: t.danger.fg),
+              // Pas d'astérisque rouge : il crie « formulaire administratif »
+              // sur chaque ligne. Un champ obligatoire se signale par son
+              // message de validation, et les lecteurs d'écran l'annoncent
+              // grâce au libellé sémantique ci-dessous.
+              Semantics(
+                label: isRequired ? '$label, obligatoire' : label,
+                excludeSemantics: true,
+                child: Text(
+                  label,
+                  style: text.titleSmall?.copyWith(color: t.textPrimary),
                 ),
+              ),
               const Spacer(),
               if (trailing != null) trailing!,
             ],

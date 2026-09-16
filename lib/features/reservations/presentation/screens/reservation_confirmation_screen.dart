@@ -125,8 +125,9 @@ class _Body extends ConsumerWidget {
           ),
           const Spacer(flex: 2),
           AppButton.primary(
-            label: AppStrings.viewMyTickets,
-            onPressed: () => context.go(AppRoutes.reservations),
+            label: AppStrings.showMyTicket,
+            onPressed: () =>
+                context.pushReplacement(AppRoutes.ticketPath(reservation.id)),
           ),
           const SizedBox(height: AppSpacing.md),
           AppButton.ghost(

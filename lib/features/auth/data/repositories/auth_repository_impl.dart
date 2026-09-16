@@ -33,6 +33,13 @@ class AuthRepositoryImpl implements AuthRepository {
   final Duration _profileGracePeriod;
   final DateTime Function() _clock;
 
+  /// Comptes dont le profil manquant est déjà en cours de création.
+  ///
+  /// Le flux de profil ré-émet `null` à chaque passage tant que le document
+  /// n'existe pas ; sans ce garde-fou, chaque émission relancerait une
+  /// écriture concurrente pour le même compte.
+  final _pendingProfiles = <String>{};
+
   static const _suspended = AuthFailure(
     code: AuthFailureCode.userDisabled,
     message: 'Ce compte est suspendu par la modération.',
@@ -77,9 +84,22 @@ class AuthRepositoryImpl implements AuthRepository {
       if (dto != null) {
         return Stream.value(SignedIn(_toUser(user, dto, isAdmin: admin)));
       }
-      // Une inscription par mot de passe écrit son profil juste après le
-      // compte ; une première connexion Google n’en a pas encore. On laisse
-      // au document un instant pour apparaître, puis on réclame un nom.
+      // Le compte existe, son profil non : première connexion Google, ou
+      // inscription interrompue avant l'écriture du document.
+      //
+      // On ne réclame rien à l'utilisateur. Tout ce qu'un écran de complétion
+      // lui ferait taper, Firebase le sait déjà — c'est d'ailleurs pourquoi
+      // cet écran pré-remplissait le champ avant de demander de le valider.
+      // On écrit donc le profil nous-mêmes et la connexion se poursuit vers
+      // l'application ; enrichir son profil reste une démarche volontaire,
+      // depuis l'écran de profil.
+      unawaited(_createMissingProfile(user));
+
+      // Filet de sécurité, pas parcours nominal : si l'écriture échoue
+      // (hors ligne, règles refusées), la session bascule en `ProfileMissing`
+      // au bout du délai de grâce et l'écran de rattrapage prend le relais.
+      // Une écriture réussie fait émettre le document à `watch`, ce qui
+      // annule ce minuteur avant son terme.
       return TimerStream(
         ProfileMissing(
           uid: user.uid,
@@ -98,6 +118,36 @@ class AuthRepositoryImpl implements AuthRepository {
   static String? _displayName(User user) {
     final name = user.displayName?.trim();
     return (name == null || name.isEmpty) ? null : name;
+  }
+
+  /// Écrit le profil d'un compte qui n'en a pas, sans rien demander.
+  ///
+  /// Un échec n'est pas remonté : l'utilisateur n'a rien demandé, donc rien
+  /// à réparer. Le compte est simplement retiré des créations en cours pour
+  /// qu'une émission suivante puisse retenter, et le délai de grâce finira
+  /// par exposer l'écran de rattrapage si le problème persiste.
+  Future<void> _createMissingProfile(User user) async {
+    if (!_pendingProfiles.add(user.uid)) return;
+    try {
+      await _users.create(
+        user.uid,
+        name: _initialName(user),
+        email: user.email ?? '',
+      );
+    } on Object {
+      _pendingProfiles.remove(user.uid);
+    }
+  }
+
+  /// Le meilleur nom disponible sans poser de question : celui du compte
+  /// Google, sinon la partie locale de l'adresse. Le repli n'est pas une
+  /// coquetterie — les règles imposent un nom d'au moins deux caractères, et
+  /// une adresse de la forme `a@…` n'en fournirait qu'un.
+  static String _initialName(User user) {
+    final declared = _displayName(user);
+    if (declared != null) return declared;
+    final local = (user.email ?? '').split('@').first.trim();
+    return local.length >= 2 ? local : 'Participant';
   }
 
   @override

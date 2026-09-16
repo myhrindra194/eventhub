@@ -163,7 +163,7 @@ void main() {
       'capacity': 120,
       'availablePlaces': 118,
       'currency': 'MGA',
-      // A pending serverTimestamp reads as null in the local snapshot.
+      // Un `serverTimestamp` en attente se lit `null` dans le snapshot local.
       'createdAt': null,
       'tiers': ?tiers,
       'staffIds': ?staffIds,
@@ -255,7 +255,7 @@ void main() {
       tiers: tiers,
     );
 
-    // The exact key set of `allow create` in firestore.rules.
+    // Exactement le jeu de clés d'`allow create` dans firestore.rules.
     const allowedKeys = {
       'title',
       'description',

@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart' show Timestamp;
 import 'package:eventhub/features/notifications/data/device_id_store.dart';
 import 'package:eventhub/features/notifications/data/notification_dto.dart';
 import 'package:eventhub/features/notifications/domain/notification_preferences.dart';
@@ -5,7 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
-  group('NotificationPreferences.fromMap', () {
+  group('NotificationPreferences', () {
     test('defaults every switch to on when the document is missing', () {
       expect(
         NotificationPreferences.fromMap(null),
@@ -30,35 +31,64 @@ void main() {
       );
       expect(NotificationPreferences.fromMap(prefs.toMap()), prefs);
     });
+
+    test('writes exactly the three keys the rules accept', () {
+      expect(const NotificationPreferences().toMap().keys.toSet(), {
+        'eventReminders',
+        'bookingAlerts',
+        'followedOrganizers',
+      });
+    });
   });
 
-  group('NotificationPreferencesDto', () {
-    test('reads the row of public.notification_preferences', () {
-      final prefs = NotificationPreferencesDto.fromJson({
-        'user_id': 'f0e1d2c3-b4a5-4697-8879-6a5b4c3d2e1f',
-        'event_reminders': false,
-        'booking_alerts': true,
-        'followed_organizers': false,
-        'updated_at': '2026-09-14T08:30:00+00:00',
-      }).toDomain();
+  group('NotificationDto', () {
+    test('reads a notice document, id apart', () {
+      final notification = NotificationDto.fromJson({
+        'type': 'booking',
+        'title': 'Nouvelle réservation',
+        'body': 'Soa a réservé une place.',
+        'eventId': 'evt-1',
+        'reservationId': 'evt-1_user-1',
+        'createdAt': Timestamp.fromDate(DateTime(2026, 9, 14, 8)),
+        'readAt': null,
+        'expiresAt': Timestamp.fromDate(DateTime(2026, 10, 14, 8)),
+      }).toDomain('n1');
+
+      expect(notification.id, 'n1');
+      expect(notification.createdAt, DateTime(2026, 9, 14, 8));
+      expect(notification.isRead, isFalse);
+      expect(notification.routeData, {
+        'type': 'booking',
+        'eventId': 'evt-1',
+        'reservationId': 'evt-1_user-1',
+      });
+    });
+
+    test('a pending server timestamp still renders, dated now', () {
+      final before = DateTime.now();
+      final notification = NotificationDto.fromJson({
+        'type': 'welcome',
+        'title': 'Bienvenue',
+        'body': 'Bon événement.',
+      }).toDomain('welcome');
       expect(
-        prefs,
-        const NotificationPreferences(
-          eventReminders: false,
-          followedOrganizers: false,
+        notification.createdAt.isBefore(
+          before.subtract(const Duration(seconds: 1)),
         ),
+        isFalse,
       );
     });
 
-    test('writes exactly the three columns granted for update', () {
-      final json = NotificationPreferencesDto.fromDomain(
-        const NotificationPreferences(bookingAlerts: false),
-      ).toJson();
-      expect(json, {
-        'event_reminders': true,
-        'booking_alerts': false,
-        'followed_organizers': true,
-      });
+    test('a read notice carries its date', () {
+      final notification = NotificationDto.fromJson({
+        'type': 'reminder',
+        'title': 'Demain',
+        'body': 'Rendez-vous à 18:30.',
+        'createdAt': Timestamp.fromDate(DateTime(2026, 9, 13)),
+        'readAt': Timestamp.fromDate(DateTime(2026, 9, 14)),
+      }).toDomain('n2');
+      expect(notification.isRead, isTrue);
+      expect(notification.readAt, DateTime(2026, 9, 14));
     });
   });
 
@@ -69,7 +99,8 @@ void main() {
       final first = await DeviceIdStore().read(token: 'token-a:APA91b');
       expect(first, matches(RegExp(r'^[0-9a-f]{32}$')));
 
-      // A fresh store (new app launch) with a rotated token: same row.
+      // Un magasin neuf — nouveau lancement de l'application — avec un jeton
+      // renouvelé : c'est le même document qui doit revenir.
       final again = await DeviceIdStore().read(token: 'token-b:APA91b');
       expect(again, first);
     });

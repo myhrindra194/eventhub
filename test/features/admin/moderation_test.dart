@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart' show Timestamp;
 import 'package:eventhub/core/result/result.dart';
 import 'package:eventhub/features/admin/data/moderation_dtos.dart';
 import 'package:eventhub/features/admin/data/moderation_remote_data_source.dart';
@@ -6,7 +7,7 @@ import 'package:eventhub/features/moderation/domain/report.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  const reviewId = '6f1c9a52-3b7e-4d0a-9c1e-2b8f0d4e7a11';
+  const reviewId = 'evt-1_user-9';
 
   group('ModerationPolicy.actionsFor', () {
     test('offers hide or restore for a review depending on its state', () {
@@ -37,7 +38,7 @@ void main() {
       },
     );
 
-    test('wire values match the moderation_action enum', () {
+    test('every action has a wire value the decisions history can store', () {
       expect(ModerationAction.values.map((a) => a.wire).toSet(), {
         'hide',
         'restore',
@@ -49,7 +50,7 @@ void main() {
     });
   });
 
-  group('ModerationPolicy validation', () {
+  group('ModerationPolicy.validateNote', () {
     test('requires a note when a person loses something', () {
       expect(
         ModerationPolicy.validateNote(ModerationAction.removeEvent, '  '),
@@ -68,35 +69,10 @@ void main() {
         isA<Err<void>>(),
       );
     });
-
-    test('checks the email of a new administrator', () {
-      expect(ModerationPolicy.validateEmail('a@b.co'), isA<Ok<void>>());
-      expect(ModerationPolicy.validateEmail('pas-un-email'), isA<Err<void>>());
-    });
-
-    test('derives suspension from the last decision on an account', () {
-      ModerationEntry entry(ModerationAction? decision) => ModerationEntry(
-        id: 'user_u1',
-        target: ReportTarget.user,
-        targetId: 'u1',
-        reportCount: 2,
-        status: ModerationStatus.resolved,
-        decision: decision,
-      );
-      expect(
-        ModerationPolicy.isSuspended(entry(ModerationAction.suspend)),
-        isTrue,
-      );
-      expect(
-        ModerationPolicy.isSuspended(entry(ModerationAction.reinstate)),
-        isFalse,
-      );
-      expect(ModerationPolicy.isSuspended(null), isFalse);
-    });
   });
 
   group('ModerationEntry ids', () {
-    test('compose and parse the id stamped by the database', () {
+    test('compose and parse the id the rules rebuild', () {
       final id = ModerationEntry.composeId(ReportTarget.review, reviewId);
       expect(id, 'review_$reviewId');
       expect(ModerationEntry.parseId(id), (ReportTarget.review, reviewId));
@@ -110,29 +86,26 @@ void main() {
     });
   });
 
-  group('row mapping', () {
-    test('maps a moderation_queue row', () {
-      final entry = ModerationRemoteDataSource.entryFromRow({
-        'target_type': 'review',
-        'target_id': reviewId,
-        'id': 'review_$reviewId',
-        'report_count': 3,
-        'last_reason': 'harassment',
+  group('document mapping', () {
+    test('maps a moderationQueue document, id apart', () {
+      final entry = ModerationRemoteDataSource.entryFrom('review_$reviewId', {
+        'targetType': 'review',
+        'targetId': reviewId,
+        'reportCount': 3,
+        'lastReason': 'harassment',
         'status': 'resolved',
-        'auto_hidden': true,
         'decision': 'hide',
-        'decision_note': 'Insultes.',
-        'decided_by': '11111111-2222-4333-8444-555555555555',
-        'decided_at': '2026-09-14T09:30:00+00:00',
-        'created_at': '2026-09-13T20:00:00+00:00',
-        'updated_at': DateTime(2026, 9, 14).toUtc().toIso8601String(),
+        'decisionNote': 'Insultes.',
+        'decidedBy': 'admin-1',
+        'decidedAt': Timestamp.fromDate(DateTime(2026, 9, 14, 9, 30)),
+        'updatedAt': Timestamp.fromDate(DateTime(2026, 9, 14)),
       });
+
       expect(entry, isNotNull);
       expect(entry!.id, 'review_$reviewId');
       expect(entry.target, ReportTarget.review);
       expect(entry.targetId, reviewId);
       expect(entry.lastReason, ReportReason.harassment);
-      expect(entry.autoHidden, isTrue);
       expect(entry.status, ModerationStatus.resolved);
       expect(entry.decision, ModerationAction.hide);
       expect(entry.decisionNote, 'Insultes.');
@@ -142,31 +115,31 @@ void main() {
 
     test('skips a target type the app does not know', () {
       expect(
-        ModerationRemoteDataSource.entryFromRow({
-          'target_type': 'comment',
-          'target_id': 'x',
-          'id': 'comment_x',
+        ModerationRemoteDataSource.entryFrom('comment_x', {
+          'targetType': 'comment',
+          'targetId': 'x',
         }),
         isNull,
       );
     });
 
-    test('never exposes the reporter uuid, only its first group', () {
-      final report = ModerationRemoteDataSource.reportFromRow({
-        'id': '0f0e0d0c-0b0a-4908-8706-050403020100',
-        'target_type': 'review',
-        'target_id': reviewId,
-        'reason': 'spam',
-        'details': 'Liens répétés',
-        'reporter_id': 'a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d',
-        'created_at': '2026-09-14T08:00:00+00:00',
-      });
+    test('never exposes the reporter id, only its first characters', () {
+      final report = ModerationRemoteDataSource.reportFrom(
+        'review_${reviewId}_a1b2c3d4e5f6',
+        {
+          'targetType': 'review',
+          'targetId': reviewId,
+          'reason': 'spam',
+          'details': 'Liens répétés',
+          'reporterId': 'a1b2c3d4e5f6g7h8',
+          'createdAt': Timestamp.fromDate(DateTime(2026, 9, 14, 8)),
+        },
+      );
       expect(report.reporterKey, 'a1b2c3d4');
       expect(report.reason, ReportReason.spam);
       expect(
-        ModerationRemoteDataSource.reportFromRow({
-          'id': 'r2',
-          'reporter_id': null,
+        ModerationRemoteDataSource.reportFrom('r2', {
+          'reporterId': null,
         }).reporterKey,
         '',
       );
@@ -174,27 +147,41 @@ void main() {
 
     test('maps a decision and an administrator', () {
       final decision = ModerationDecisionDto.fromJson({
-        'id': 42,
-        'target_type': 'user',
-        'target_id': 'u1',
         'action': 'suspend',
         'note': 'Fraude.',
-        'decided_by': 'admin-uuid',
-        'decided_at': '2026-09-14T08:00:00+00:00',
+        'by': 'admin-1',
+        'at': Timestamp.fromDate(DateTime(2026, 9, 14, 8)),
       }).toDomain();
       expect(decision.action, ModerationAction.suspend);
-      expect(decision.by, 'admin-uuid');
+      expect(decision.by, 'admin-1');
 
-      final admin = AdminAccountDto.fromJson({
-        'user_id': 'admin-uuid',
+      final admin = AdminAccountDto.fromFirestore('admin-1', {
         'email': 'admin@eventhub.test',
         'name': 'Admin',
-        'granted_by': null,
-        'granted_at': '2026-09-01T08:00:00+00:00',
+        'grantedAt': Timestamp.fromDate(DateTime(2026, 9)),
       }).toDomain();
-      expect(admin.id, 'admin-uuid');
+      expect(admin.id, 'admin-1');
       expect(admin.email, 'admin@eventhub.test');
-      expect(admin.grantedBy, isNull);
+      expect(admin.grantedAt, DateTime(2026, 9));
+    });
+
+    test('reads the suspension from the account itself', () {
+      final account = ReportedAccountDto.fromFirestore('user-1', {
+        'name': 'Soa',
+        'email': 'soa@example.com',
+        'role': 'organizer',
+        'suspended': true,
+        'createdAt': Timestamp.fromDate(DateTime(2026, 8)),
+      }).toDomain();
+      expect(account.suspended, isTrue);
+      expect(account.role, 'organizer');
+
+      final active = ReportedAccountDto.fromFirestore('user-2', {
+        'name': 'Hery',
+        'email': 'hery@example.com',
+        'role': 'participant',
+      }).toDomain();
+      expect(active.suspended, isFalse);
     });
   });
 }

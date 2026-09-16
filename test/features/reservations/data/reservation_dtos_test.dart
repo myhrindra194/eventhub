@@ -46,8 +46,8 @@ void main() {
       expect(booking.copiedFields, {
         'organizerId': 'o1',
         'eventTitle': 'Flutter Meetup Antananarivo',
-        // The very Timestamp, nanoseconds included: a DateTime round trip
-        // would make `eventStartsAt == event.startsAt` false.
+        // Le Timestamp lui-même, nanosecondes comprises : un aller-retour par
+        // DateTime rendrait `eventStartsAt == event.startsAt` faux.
         'eventStartsAt': same(startsAt),
         'eventLocation': 'Antananarivo',
       });

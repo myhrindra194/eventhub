@@ -3,13 +3,14 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-/// Largest share of pixels a golden may differ by and still pass.
+/// La part maximale de pixels dont un golden peut différer tout en passant.
 ///
-/// The reference images are generated on the developers' machines (Windows)
-/// while CI renders on Linux: text anti-aliasing and sub-pixel glyph
-/// placement differ between the two, which moved 0.04–0.75 % of the pixels
-/// with no visual change. 1 % absorbs that noise; a real regression — a
-/// missing block, an overflow, a different layout — changes far more.
+/// Les images de référence sont produites sur les machines des développeurs
+/// (Windows) alors que la CI rend sous Linux : l'anticrénelage du texte et le
+/// placement sous-pixel des glyphes diffèrent entre les deux, ce qui déplaçait
+/// 0,04 à 0,75 % des pixels sans le moindre changement visible. 1 % absorbe ce
+/// bruit ; une vraie régression — un bloc manquant, un débordement, une autre
+/// mise en page — en change bien davantage.
 const double goldenTolerance = 0.01;
 
 /// Applied by `flutter test` to every test file under `test/`.
@@ -24,8 +25,9 @@ Future<void> testExecutable(FutureOr<void> Function() testMain) async {
   await testMain();
 }
 
-/// A [LocalFileComparator] that accepts differences up to [tolerance]
-/// (a fraction of the image) and otherwise fails with the usual diff images.
+/// Un [LocalFileComparator] qui accepte les écarts jusqu'à [tolerance] — une
+/// fraction de l'image — et échoue sinon avec les images de différence
+/// habituelles.
 class TolerantGoldenComparator extends LocalFileComparator {
   TolerantGoldenComparator(super.testFile, {required this.tolerance});
 

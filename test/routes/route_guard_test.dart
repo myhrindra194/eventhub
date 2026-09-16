@@ -5,9 +5,10 @@ import 'package:eventhub/routes/app_routes.dart';
 import 'package:eventhub/routes/route_guard.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-/// The navigation policy is a pure function, so it is tested as one — no
-/// widget tree, no router, no pumping. Every rule of `RouteGuard` gets an
-/// explicit case, which is what makes it safe to change later.
+/// La politique de navigation est une fonction pure : elle est donc testée
+/// comme telle — sans arbre de widgets, sans router, sans pump. Chaque règle
+/// de `RouteGuard` a son cas explicite, et c'est précisément ce qui rendra
+/// son évolution sans danger plus tard.
 void main() {
   const participant = AppUser(
     id: 'u1',
@@ -100,15 +101,17 @@ void main() {
       );
     });
 
-    test('keeps each role inside its own area', () {
+    // Un compte, deux espaces (le modèle Eventbrite / Airbnb) : le verrou est
+    // à sens unique. L'espace organisateur reste fermé tant qu'il n'est pas
+    // activé, mais un organisateur demeure un participant — il navigue,
+    // réserve et détient des billets comme tout le monde — si bien que rien
+    // ne le chasse de l'espace participant.
+    test('gates the organizer area, and only it', () {
       expect(
         redirect(signedIn(participant), AppRoutes.organizerEvents),
         AppRoutes.events,
       );
-      expect(
-        redirect(signedIn(organizer), AppRoutes.events),
-        AppRoutes.organizerEvents,
-      );
+      expect(redirect(signedIn(organizer), AppRoutes.events), isNull);
     });
 
     test('lets a role browse its own area', () {
@@ -148,23 +151,20 @@ void main() {
       }
     });
 
-    test('favourites belong to participants, door check-in to organizers', () {
+    test('the door check-in is the organizer’s; favourites are everyone’s', () {
       expect(redirect(signedIn(participant), AppRoutes.favorites), isNull);
-      expect(
-        redirect(signedIn(organizer), AppRoutes.favorites),
-        AppRoutes.organizerEvents,
-      );
+      expect(redirect(signedIn(organizer), AppRoutes.favorites), isNull);
       final checkIn = AppRoutes.organizerEventCheckInPath('e1');
       expect(checkIn, '/organizer/events/e1/checkin');
       expect(redirect(signedIn(organizer), checkIn), isNull);
       expect(redirect(signedIn(participant), checkIn), AppRoutes.events);
     });
 
-    test('keeps tickets inside the participant area', () {
+    test('a ticket opens for whoever holds it, organizer included', () {
       final ticket = AppRoutes.ticketPath('evt_u1');
       expect(ticket, '/reservations/evt_u1/ticket');
       expect(redirect(signedIn(participant), ticket), isNull);
-      expect(redirect(signedIn(organizer), ticket), AppRoutes.organizerEvents);
+      expect(redirect(signedIn(organizer), ticket), isNull);
     });
 
     test('routes the end of the sign-up funnel to the welcome screen', () {
@@ -217,7 +217,7 @@ void main() {
       );
     });
 
-    test('resumes the link once signed in, within role confinement', () {
+    test('resumes the link once signed in, whichever space the user is in', () {
       final link = AppRoutes.publicEventLinkPath('e1');
       expect(
         RouteGuard.redirect(
@@ -227,8 +227,12 @@ void main() {
         ),
         link,
       );
+      // Un événement partagé est un écran participant, et un organisateur
+      // réserve comme les autres : le lien s'ouvre donc pour les deux, au lieu
+      // de renvoyer au tableau de bord — c'est bien ce qui faisait l'intérêt
+      // de partager ce lien.
       expect(redirect(signedIn(participant), link), isNull);
-      expect(redirect(signedIn(organizer), link), AppRoutes.organizerEvents);
+      expect(redirect(signedIn(organizer), link), isNull);
     });
 
     test('ignores a from parameter that is not a deep-link target', () {
@@ -252,21 +256,15 @@ void main() {
   });
 
   group('payments', () {
-    test(
-      'the Stripe return link reaches a participant, never an organizer',
-      () {
-        expect(AppRoutes.paymentPath('e1_u1'), '/reservations/e1_u1/payment');
-        expect(redirect(signedIn(participant), AppRoutes.paySuccess), isNull);
-        expect(
-          redirect(signedIn(organizer), AppRoutes.paySuccess),
-          AppRoutes.organizerEvents,
-        );
-        expect(
-          redirect(signedIn(participant), AppRoutes.paymentPath('e1_u1')),
-          isNull,
-        );
-      },
-    );
+    test('the Stripe return link reaches whoever booked, in either space', () {
+      expect(AppRoutes.paymentPath('e1_u1'), '/reservations/e1_u1/payment');
+      expect(redirect(signedIn(participant), AppRoutes.paySuccess), isNull);
+      expect(redirect(signedIn(organizer), AppRoutes.paySuccess), isNull);
+      expect(
+        redirect(signedIn(participant), AppRoutes.paymentPath('e1_u1')),
+        isNull,
+      );
+    });
   });
 
   group('administration', () {

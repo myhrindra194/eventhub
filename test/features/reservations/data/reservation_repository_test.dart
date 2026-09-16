@@ -13,8 +13,9 @@ import '../../../helpers/fixtures.dart';
 
 class _MockRemote extends Mock implements ReservationRemoteDataSource {}
 
-/// Plays the transaction: hands the data source's check what it "read",
-/// and throws its refusal the way the real data source does.
+/// Joue le rôle de la transaction : remet au contrôle de la source de données
+/// ce qu'elle est censée avoir « lu », et lève son refus exactement comme le
+/// ferait la vraie source.
 void _stubReserve(
   _MockRemote remote, {
   required Event event,

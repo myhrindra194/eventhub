@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart' show Timestamp;
 import 'package:eventhub/features/notifications/application/notification_route.dart';
 import 'package:eventhub/features/notifications/data/notification_dto.dart';
 import 'package:eventhub/features/notifications/data/notification_remote_data_source.dart';
@@ -5,12 +6,11 @@ import 'package:eventhub/routes/app_routes.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  const eventId = '6f1c2b0e-8a4d-4c7e-9b1a-2d3e4f5a6b7c';
-  const reservationId = 'a2b3c4d5-e6f7-4801-9a2b-3c4d5e6f7a8b';
-  final created = DateTime.utc(2026, 9, 14, 8, 30);
+  const eventId = 'evt-1';
+  const reservationId = 'evt-1_user-1';
+  final created = DateTime(2026, 9, 14, 8, 30);
 
-  Map<String, dynamic> row({
-    String id = '0b9d2c1e-1111-4222-8333-444455556666',
+  Map<String, dynamic> notice({
     String type = 'reminder',
     Object? createdAt,
     Object? readAt,
@@ -18,27 +18,25 @@ void main() {
     String? event = eventId,
     String? reservation = reservationId,
   }) => {
-    'id': id,
-    'user_id': 'f0e1d2c3-b4a5-4697-8879-6a5b4c3d2e1f',
     'type': type,
     'title': 'Demain : Flutter Meetup',
     'body': 'Rendez-vous à 18:30',
-    'event_id': event,
-    'reservation_id': reservation,
-    'created_at': createdAt ?? created.toIso8601String(),
-    'read_at': readAt,
-    'expires_at':
-        expiresAt ?? created.add(const Duration(days: 30)).toIso8601String(),
+    'eventId': event,
+    'reservationId': reservation,
+    'actorId': 'user-1',
+    'createdAt': createdAt ?? Timestamp.fromDate(created),
+    'readAt': readAt,
+    'expiresAt':
+        expiresAt ?? Timestamp.fromDate(created.add(const Duration(days: 30))),
   };
 
   group('NotificationDto', () {
-    test('parses a PostgREST / Realtime row with snake_case keys', () {
-      final n = NotificationDto.fromJson(row()).toDomain();
+    test('parses a notice document, its id coming from the snapshot', () {
+      final n = NotificationDto.fromJson(notice()).toDomain('n1');
 
-      expect(n.id, '0b9d2c1e-1111-4222-8333-444455556666');
+      expect(n.id, 'n1');
       expect(n.type, 'reminder');
-      expect(n.createdAt.isAtSameMomentAs(created), isTrue);
-      expect(n.createdAt.isUtc, isFalse, reason: 'shown in local time');
+      expect(n.createdAt, created);
       expect(n.eventId, eventId);
       expect(n.reservationId, reservationId);
       expect(n.isRead, isFalse);
@@ -48,60 +46,81 @@ void main() {
       );
     });
 
-    test('a read row with no event or reservation routes nothing', () {
+    test('a read notice with no event or reservation routes nothing', () {
       final n = NotificationDto.fromJson(
-        row(
+        notice(
           type: 'booking',
-          readAt: '2026-09-14T09:00:00+00:00',
+          readAt: Timestamp.fromDate(created.add(const Duration(hours: 1))),
           event: null,
           reservation: null,
         ),
-      ).toDomain();
+      ).toDomain('n2');
       expect(n.isRead, isTrue);
       expect(NotificationRoute.locationFor(n.routeData), isNull);
     });
 
-    test('keeps a type the app does not know yet', () {
-      final n = NotificationDto.fromJson(row(type: 'promo')).toDomain();
+    test('keeps a type this build does not know yet', () {
+      final n = NotificationDto.fromJson(notice(type: 'promo')).toDomain('n3');
       expect(n.type, 'promo');
       expect(NotificationRoute.locationFor(n.routeData), isNull);
     });
+
+    test('a moderation notice opens the event it is about', () {
+      final n = NotificationDto.fromJson(
+        notice(type: 'reviewRestored', reservation: null),
+      ).toDomain('n4');
+      expect(
+        NotificationRoute.locationFor(n.routeData),
+        AppRoutes.eventDetailPath(eventId),
+      );
+    });
   });
 
-  group('notificationsFromRows', () {
+  group('notificationsFrom', () {
     final now = created.add(const Duration(days: 1));
 
-    test('sorts most recent first and skips malformed rows', () {
-      final list = NotificationRemoteDataSource.notificationsFromRows([
-        row(id: 'old', createdAt: '2026-09-13T08:00:00Z'),
-        {'id': 'broken', 'title': 42},
-        row(id: 'new', createdAt: '2026-09-14T10:00:00Z'),
+    test('keeps the order of the snapshot, most recent first by query', () {
+      final list = NotificationRemoteDataSource.notificationsFrom([
+        ('new', notice(createdAt: Timestamp.fromDate(now))),
+        ('old', notice(createdAt: Timestamp.fromDate(created))),
       ], now: now);
       expect(list.map((n) => n.id), ['new', 'old']);
     });
 
-    test('hides rows past their expiry while the purge has not run', () {
-      final list = NotificationRemoteDataSource.notificationsFromRows([
-        row(id: 'expired', expiresAt: '2026-09-14T12:00:00Z'),
-        row(id: 'live'),
+    test('skips a malformed document instead of emptying the screen', () {
+      final list = NotificationRemoteDataSource.notificationsFrom([
+        // `title` n'est pas une chaîne : `fromJson` lève sur ce document-là,
+        // et sur lui seul.
+        ('broken', {'type': 'booking', 'title': 42}),
+        ('live', notice()),
       ], now: now);
       expect(list.map((n) => n.id), ['live']);
     });
 
-    test('is bounded', () {
-      final rows = [
-        for (var i = 0; i < 150; i++)
-          row(
-            id: 'n$i',
-            createdAt: created.add(Duration(minutes: i)).toIso8601String(),
+    test('hides a notice past its expiry while the TTL has not swept', () {
+      final list = NotificationRemoteDataSource.notificationsFrom([
+        (
+          'expired',
+          notice(
+            expiresAt: Timestamp.fromDate(
+              now.subtract(const Duration(hours: 1)),
+            ),
           ),
-      ];
-      final list = NotificationRemoteDataSource.notificationsFromRows(
-        rows,
-        now: now,
-      );
-      expect(list, hasLength(NotificationRemoteDataSource.maxNotifications));
-      expect(list.first.id, 'n149');
+        ),
+        ('live', notice()),
+      ], now: now);
+      expect(list.map((n) => n.id), ['live']);
+    });
+
+    test('a notice without expiry is kept', () {
+      // Les règles exigent `expiresAt`, mais un document plus ancien ou écrit
+      // à la main peut en être dépourvu : on l'affiche alors, plutôt que de
+      // l'écarter en silence.
+      final undated = {...notice()}..remove('expiresAt');
+      final list = NotificationRemoteDataSource.notificationsFrom([
+        ('n1', undated),
+      ], now: now);
+      expect(list, hasLength(1));
     });
   });
 }

@@ -7,13 +7,14 @@ import 'package:flutter/material.dart';
 
 /// Organizer's view of one of their events.
 ///
-/// The participant sees an invitation; the organizer needs an instrument
-/// panel. Same photo, different information hierarchy: lifecycle badge
-/// first (en ligne / complet / terminé), then the two numbers that decide
-/// what to do next (remplissage, date), then the actions.
+/// Le participant voit une invitation ; l'organisateur, lui, a besoin d'un
+/// tableau de bord. Même photo, hiérarchie de l'information différente : le
+/// badge de cycle de vie d'abord (en ligne / complet / terminé), puis les
+/// deux chiffres qui décident de la suite — remplissage, date — puis les
+/// actions.
 ///
-/// A co-organized event (F-16) carries a "Co-organisé" mark and no delete
-/// action: only the owner may delete.
+/// Un événement co-organisé (F-16) porte la mention « Co-organisé » et aucune
+/// action de suppression : seul le propriétaire peut supprimer.
 class OrganizerEventTile extends StatelessWidget {
   const OrganizerEventTile({
     required this.event,
@@ -32,7 +33,7 @@ class OrganizerEventTile extends StatelessWidget {
   final VoidCallback onEdit;
   final VoidCallback onTeam;
 
-  /// `null` hides the action (co-organized events).
+  /// `null` masque l'action — c'est le cas des événements co-organisés.
   final VoidCallback? onDelete;
   final bool coOrganized;
 
@@ -53,7 +54,6 @@ class OrganizerEventTile extends StatelessWidget {
         : const LiveBadge(label: AppStrings.live);
 
     return AppSurface.bare(
-      elevation: SurfaceElevation.medium,
       onTap: onParticipants,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,

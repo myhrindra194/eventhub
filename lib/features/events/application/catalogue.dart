@@ -1,12 +1,13 @@
 import 'package:eventhub/features/events/domain/entities/event.dart';
 
-/// Merges the live first page of the catalogue with older pages loaded on
-/// demand.
+/// Fusionne la première page du catalogue, suivie en temps réel, avec les
+/// pages plus anciennes chargées à la demande.
 ///
-/// The live page wins for any event present in both (it is fresher), the
-/// result is deduplicated and in catalogue order (`startsAt`, then id), and
-/// an event that moved out of the upcoming window in the live page is not
-/// resurrected from a stale older page.
+/// La page temps réel l’emporte pour tout événement présent dans les deux
+/// (elle est plus fraîche), le résultat est dédoublonné et dans l’ordre du
+/// catalogue (`startsAt`, puis id), et un événement sorti de la fenêtre
+/// « à venir » dans la page temps réel n’est pas ressuscité par une page
+/// ancienne périmée.
 List<Event> mergeCatalogue(List<Event> live, List<Event> older) {
   final byId = <String, Event>{for (final e in older) e.id: e};
   for (final e in live) {
@@ -20,7 +21,7 @@ List<Event> mergeCatalogue(List<Event> live, List<Event> older) {
   return List.unmodifiable(merged);
 }
 
-/// Older pages of the catalogue.
+/// Pages plus anciennes du catalogue.
 class CataloguePages {
   const CataloguePages({
     this.events = const [],

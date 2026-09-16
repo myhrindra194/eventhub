@@ -1,6 +1,7 @@
 import 'package:eventhub/app/theme/theme.dart';
 import 'package:eventhub/core/config/app_config.dart';
 import 'package:eventhub/core/extensions/context_x.dart';
+import 'package:eventhub/core/firebase/firebase_providers.dart';
 import 'package:eventhub/core/l10n/app_strings.dart';
 import 'package:eventhub/core/widgets/design_system.dart';
 import 'package:eventhub/features/support/presentation/widgets/support_page.dart';
@@ -9,11 +10,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-/// About EventHub.
+/// À propos d’EventHub.
 ///
-/// Three principles instead of a marketing paragraph — each one is a
-/// behaviour the user can check in the app — then the technical facts a
-/// support conversation starts with (version, environment).
+/// Trois principes plutôt qu’un paragraphe marketing — chacun est un
+/// comportement que l’utilisateur peut vérifier dans l’application — puis les
+/// faits techniques par lesquels commence une conversation avec le support
+/// (version, environnement).
 class AboutScreen extends ConsumerWidget {
   const AboutScreen({super.key});
 
@@ -62,7 +64,7 @@ class AboutScreen extends ConsumerWidget {
             _Row(label: 'Environnement', value: config.flavor.name),
             _Row(
               label: 'Données',
-              value: Uri.tryParse(config.supabaseUrl)?.host ?? 'Supabase',
+              value: ref.watch(firestoreProvider).app.options.projectId,
             ),
           ],
         ),
@@ -94,7 +96,6 @@ class _Rows extends StatelessWidget {
   @override
   Widget build(BuildContext context) => AppSurface(
     padding: EdgeInsets.zero,
-    elevation: SurfaceElevation.flat,
     child: Column(
       children: [
         for (var i = 0; i < children.length; i++) ...[
@@ -106,7 +107,8 @@ class _Rows extends StatelessWidget {
   );
 }
 
-/// A label with either a value (fact) or a chevron (link) — never both.
+/// Un libellé avec soit une valeur (un fait), soit un chevron (un lien) —
+/// jamais les deux.
 class _Row extends StatelessWidget {
   const _Row({required this.label, this.value, this.onTap});
 

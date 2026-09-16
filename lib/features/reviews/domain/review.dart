@@ -1,10 +1,10 @@
-/// A post-event review: `reviews/{eventId}_{authorId}`.
+/// Un avis publié après l’événement : `reviews/{eventId}_{authorId}`.
 ///
-/// One review per person per event holds because the id is deterministic
-/// (`DocIds.review`): there is only one document to write, and the rules
-/// rebuild the same id to prove the author attended. Writing, editing or
-/// removing a review moves the organizer's public rating in the same
-/// transaction.
+/// La règle « un avis par personne et par événement » tient parce que l’id
+/// est déterministe (`DocIds.review`) : il n’y a qu’un seul document à
+/// écrire, et les règles reconstruisent ce même id pour prouver que l’auteur
+/// a bien participé. Écrire, modifier ou supprimer un avis déplace la note
+/// publique de l’organisateur dans la même transaction.
 class Review {
   const Review({
     required this.id,
@@ -22,11 +22,11 @@ class Review {
   final String id;
   final String eventId;
 
-  /// The organizer whose rating this review counts in, copied from the
-  /// event at creation.
+  /// L’organisateur dans la note duquel cet avis compte, copié depuis
+  /// l’événement à la création.
   final String organizerId;
 
-  /// Empty once the author's account is deleted (the review stays).
+  /// Vide une fois le compte de l’auteur supprimé (l’avis demeure).
   final String authorId;
   final String authorName;
 
@@ -36,13 +36,14 @@ class Review {
   final DateTime createdAt;
   final DateTime? updatedAt;
 
-  /// Set by moderation, never by the author. A hidden review is left out of
-  /// lists and of the organizer's rating; its author still sees it, with a
-  /// notice.
+  /// Posé par la modération, jamais par l’auteur. Un avis masqué est écarté
+  /// des listes et de la note de l’organisateur ; son auteur continue de le
+  /// voir, accompagné d’un avertissement.
   final bool hidden;
 }
 
-/// Average and distribution of a set of reviews, for the event detail.
+/// Moyenne et distribution d’un ensemble d’avis, pour le détail de
+/// l’événement.
 class ReviewSummary {
   const ReviewSummary({
     required this.count,
@@ -70,6 +71,6 @@ class ReviewSummary {
   final int count;
   final double average;
 
-  /// Index 0 = one star, index 4 = five stars.
+  /// Index 0 = une étoile, index 4 = cinq étoiles.
   final List<int> distribution;
 }

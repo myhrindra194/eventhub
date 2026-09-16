@@ -6,12 +6,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-/// Participant shell: Explorer · Recherche · Billets · Profil.
+/// Coquille participant : Explorer · Recherche · Billets · Profil.
 ///
-/// The "Billets" destination carries a dot as soon as the user holds an
-/// upcoming ticket — a passive reminder that costs no screen space and
-/// answers the question people actually open the app for ("c'est quand
-/// déjà ?").
+/// La destination « Billets » porte une pastille dès que l’utilisateur
+/// détient un billet à venir — un rappel passif qui ne coûte aucune place à
+/// l’écran et répond à la question pour laquelle les gens ouvrent vraiment
+/// l’application (« c’est quand déjà ? »).
 class ParticipantShell extends ConsumerWidget {
   const ParticipantShell({required this.navigationShell, super.key});
 
@@ -29,42 +29,39 @@ class ParticipantShell extends ConsumerWidget {
           orElse: () => 0,
         );
 
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      extendBody: true,
-      body: navigationShell,
-      bottomNavigationBar: AppNavBar(
-        selectedIndex: navigationShell.currentIndex,
-        onSelected: (index) => navigationShell.goBranch(
-          index,
-          // Tapping the active tab pops its stack back to the root — the
-          // behaviour every large app implements and users expect.
-          initialLocation: index == navigationShell.currentIndex,
-        ),
-        destinations: [
-          const NavDestination(
-            icon: Icons.explore_outlined,
-            selectedIcon: Icons.explore_rounded,
-            label: AppStrings.explore,
-          ),
-          const NavDestination(
-            icon: Icons.search_rounded,
-            selectedIcon: Icons.search_rounded,
-            label: AppStrings.search,
-          ),
-          NavDestination(
-            icon: Icons.confirmation_number_outlined,
-            selectedIcon: Icons.confirmation_number_rounded,
-            label: AppStrings.tickets,
-            badgeCount: upcoming,
-          ),
-          const NavDestination(
-            icon: Icons.person_outline_rounded,
-            selectedIcon: Icons.person_rounded,
-            label: AppStrings.profile,
-          ),
-        ],
+    return AdaptiveNavigation(
+      selectedIndex: navigationShell.currentIndex,
+      onSelected: (index) => navigationShell.goBranch(
+        index,
+        // Taper l’onglet actif dépile sa pile jusqu’à la racine — le
+        // comportement qu’implémentent toutes les grandes applications et
+        // que les utilisateurs attendent.
+        initialLocation: index == navigationShell.currentIndex,
       ),
+      destinations: [
+        const NavDestination(
+          icon: Icons.explore_outlined,
+          selectedIcon: Icons.explore_rounded,
+          label: AppStrings.explore,
+        ),
+        const NavDestination(
+          icon: Icons.search_rounded,
+          selectedIcon: Icons.search_rounded,
+          label: AppStrings.search,
+        ),
+        NavDestination(
+          icon: Icons.confirmation_number_outlined,
+          selectedIcon: Icons.confirmation_number_rounded,
+          label: AppStrings.tickets,
+          badgeCount: upcoming,
+        ),
+        const NavDestination(
+          icon: Icons.person_outline_rounded,
+          selectedIcon: Icons.person_rounded,
+          label: AppStrings.profile,
+        ),
+      ],
+      child: navigationShell,
     );
   }
 }

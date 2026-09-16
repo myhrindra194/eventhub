@@ -8,14 +8,14 @@ part of 'recommendation_providers.dart';
 
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // ignore_for_file: type=lint, type=warning
-/// "Pour vous" (F-18). Empty until the catalogue is loaded, and for
-/// organizers — they do not book.
+/// « Pour vous » (F-18). Vide tant que le catalogue n’est pas chargé, et
+/// vide pour les organisateurs — ils ne réservent pas.
 
 @ProviderFor(recommendedEvents)
 final recommendedEventsProvider = RecommendedEventsProvider._();
 
-/// "Pour vous" (F-18). Empty until the catalogue is loaded, and for
-/// organizers — they do not book.
+/// « Pour vous » (F-18). Vide tant que le catalogue n’est pas chargé, et
+/// vide pour les organisateurs — ils ne réservent pas.
 
 final class RecommendedEventsProvider
     extends
@@ -25,8 +25,8 @@ final class RecommendedEventsProvider
           List<Recommendation>
         >
     with $Provider<List<Recommendation>> {
-  /// "Pour vous" (F-18). Empty until the catalogue is loaded, and for
-  /// organizers — they do not book.
+  /// « Pour vous » (F-18). Vide tant que le catalogue n’est pas chargé, et
+  /// vide pour les organisateurs — ils ne réservent pas.
   RecommendedEventsProvider._()
     : super(
         from: null,

@@ -4,14 +4,16 @@ import 'package:eventhub/core/extensions/context_x.dart';
 import 'package:eventhub/core/widgets/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:go_router/go_router.dart';
 
-/// Editorial layout shared by the help, privacy and about pages.
+/// Mise en page éditoriale partagée par les pages aide, confidentialité et à
+/// propos.
 ///
-/// These are pages people *read*, so they are set like an article rather
-/// than like a settings list: a coloured eyebrow, a headline that makes a
-/// claim, a lead paragraph, a hairline rule, then the body. Left-aligned,
-/// no cards around paragraphs — a card per paragraph turns prose into a
-/// dashboard.
+/// Ce sont des pages que l’on *lit* : elles sont donc composées comme un
+/// article plutôt que comme une liste de réglages — un surtitre coloré, un
+/// titre qui affirme quelque chose, un chapô, un filet, puis le corps de
+/// texte. Alignées à gauche, sans cartes autour des paragraphes : une carte
+/// par paragraphe transforme de la prose en tableau de bord.
 class SupportPage extends StatelessWidget {
   const SupportPage({
     required this.title,
@@ -22,7 +24,7 @@ class SupportPage extends StatelessWidget {
     this.eyebrow,
   });
 
-  /// App bar title — the name of the page.
+  /// Titre de l’app bar — le nom de la page.
   final String title;
   final String? eyebrow;
   final String headline;
@@ -36,7 +38,7 @@ class SupportPage extends StatelessWidget {
 
     return AppScaffold(
       dense: true,
-      appBar: AppBar(title: Text(title)),
+      appBar: AppTopBar.subPage(title: title, onBack: () => context.pop()),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(
           AppSpacing.gutter,
@@ -71,8 +73,9 @@ class SupportPage extends StatelessWidget {
   }
 }
 
-/// `01  Title` / body — a numbered paragraph. The number sits in its own
-/// column so titles align on a common edge, like a printed contents page.
+/// `01  Titre` / corps — un paragraphe numéroté. Le numéro occupe sa propre
+/// colonne pour que les titres s’alignent sur un bord commun, comme sur une
+/// page de sommaire imprimée.
 class NumberedSection extends StatelessWidget {
   const NumberedSection({
     required this.number,
@@ -138,8 +141,9 @@ class FaqEntry {
   final String answer;
 }
 
-/// Questions between hairlines, one open at a time per tap. No box around
-/// the group: the rules above and below are enough to hold it together.
+/// Des questions entre filets, une seule ouverte à la fois par appui. Pas de
+/// cadre autour du groupe : les filets au-dessus et en dessous suffisent à le
+/// tenir.
 class FaqGroup extends StatelessWidget {
   const FaqGroup({required this.entries, super.key});
 
@@ -205,8 +209,8 @@ class _FaqTileState extends State<_FaqTile> {
                     ),
                   ),
                   const SizedBox(width: AppSpacing.lg),
-                  // A plus that turns into a cross: the glyph states what the
-                  // next tap will do.
+                  // Un plus qui se change en croix : le glyphe annonce ce que
+                  // fera le prochain appui.
                   AnimatedRotation(
                     turns: _open ? 0.125 : 0,
                     duration: AppMotion.short,
@@ -247,7 +251,8 @@ class _FaqTileState extends State<_FaqTile> {
   }
 }
 
-/// "Toujours bloqué ?" — the way out of a help page that did not help.
+/// « Toujours bloqué ? » — la porte de sortie d’une page d’aide qui n’a pas
+/// aidé.
 class SupportContactCard extends StatelessWidget {
   const SupportContactCard({super.key});
 
@@ -262,7 +267,6 @@ class SupportContactCard extends StatelessWidget {
     final text = context.textTheme;
 
     return AppSurface(
-      elevation: SurfaceElevation.flat,
       child: Row(
         children: [
           const IconTile(icon: Icons.mail_outline_rounded, size: 40),

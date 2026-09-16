@@ -1,7 +1,8 @@
 import 'package:eventhub/features/events/domain/entities/event.dart';
 import 'package:eventhub/features/events/domain/entities/event_category.dart';
 
-/// Why an event is suggested — shown to the user, so it must be true.
+/// Pourquoi un événement est suggéré — le motif est montré à
+/// l’utilisateur, il doit donc être vrai.
 enum RecommendationReason { followedOrganizer, sameCategory }
 
 class Recommendation {
@@ -16,19 +17,22 @@ class Recommendation {
   final double score;
 }
 
-/// "Pour vous" (F-18): a transparent heuristic, computed on the device from
-/// what the user already did — no profiling server, nothing sent anywhere.
+/// « Pour vous » (F-18) : une heuristique transparente, calculée sur
+/// l’appareil à partir de ce que l’utilisateur a déjà fait — aucun serveur
+/// de profilage, rien n’est envoyé nulle part.
 ///
-/// Signals, strongest first:
-///  * the event is by an organizer the user follows (+4);
-///  * its category matches events the user booked (+3 each) or starred
-///    (+2 each), looked up in the loaded catalogue;
-///  * a small tie-breaker on how full it is (0..1): popular events first.
+/// Signaux, du plus fort au plus faible :
+///  * l’événement est d’un organisateur que l’utilisateur suit (+4) ;
+///  * sa catégorie recoupe celle des événements qu’il a réservés (+3
+///    chacun) ou mis en favori (+2 chacun), retrouvés dans le catalogue
+///    chargé ;
+///  * un léger départage sur le taux de remplissage (0..1) : les
+///    événements populaires d’abord.
 ///
-/// An event with no personal signal is never suggested — the other rails
-/// already cover "popular". Events that started, are sold out, already
-/// booked or already starred are excluded: suggesting what the user has is
-/// noise.
+/// Un événement sans aucun signal personnel n’est jamais suggéré — les
+/// autres rails couvrent déjà « populaire ». Les événements commencés,
+/// complets, déjà réservés ou déjà en favori sont exclus : suggérer à
+/// l’utilisateur ce qu’il a déjà, c’est du bruit.
 abstract final class Recommender {
   static const maxResults = 10;
   static const followWeight = 4.0;

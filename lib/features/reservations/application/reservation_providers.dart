@@ -26,7 +26,7 @@ ReservationRepository reservationRepository(Ref ref) =>
       clock: ref.watch(clockProvider),
     );
 
-/// Reservations of the signed-in account (its participant space).
+/// Réservations du compte connecté (son espace participant).
 @riverpod
 Stream<List<Reservation>> myReservations(Ref ref) {
   final user = ref.watch(currentUserProvider);
@@ -34,7 +34,7 @@ Stream<List<Reservation>> myReservations(Ref ref) {
   return ref.watch(reservationRepositoryProvider).watchByUser(user.id);
 }
 
-/// The signed-in account's reservation for [eventId], if any.
+/// La réservation du compte connecté pour [eventId], s’il y en a une.
 @riverpod
 Stream<Reservation?> myReservationForEvent(Ref ref, String eventId) {
   final user = ref.watch(currentUserProvider);
@@ -44,8 +44,9 @@ Stream<Reservation?> myReservationForEvent(Ref ref, String eventId) {
       .watchForEvent(eventId: eventId, userId: user.id);
 }
 
-/// Confirmed reservations of an event the signed-in organizer owns or
-/// co-organizes. The rules refuse the query to anyone outside the team.
+/// Réservations confirmées d’un événement dont l’organisateur connecté est
+/// propriétaire ou co-organisateur. Les règles refusent la requête à
+/// quiconque n’appartient pas à l’équipe.
 @riverpod
 Stream<List<Reservation>> eventParticipants(Ref ref, String eventId) {
   final user = ref.watch(currentUserProvider);
@@ -62,9 +63,10 @@ class ReservationController extends _$ReservationController {
   @override
   FutureOr<void> build() {}
 
-  /// [ReservationPolicy] runs first on what the screen already shows (the
-  /// event and the seat), for an answer without a round trip; the
-  /// transaction evaluates it again on fresh reads, and the rules decide.
+  /// [ReservationPolicy] s’exécute d’abord sur ce que l’écran affiche déjà
+  /// (l’événement et la place), pour une réponse sans aller-retour ; la
+  /// transaction la réévalue ensuite sur des lectures fraîches, et les
+  /// règles tranchent.
   Future<Result<Reservation>> reserve(String eventId, {String? tierId}) async {
     final result = await _run<Reservation>((user) async {
       final event = ref.read(eventByIdProvider(eventId)).value;
@@ -88,8 +90,8 @@ class ReservationController extends _$ReservationController {
     return result;
   }
 
-  /// A paid seat (F-11): not available without a payment server, the
-  /// repository says so.
+  /// Une place payante (F-11) : indisponible sans serveur de paiement, et
+  /// le repository le dit.
   Future<Result<CheckoutStart>> startCheckout({
     required String eventId,
     required String tierId,
@@ -111,7 +113,8 @@ class ReservationController extends _$ReservationController {
         .cancelPendingCheckout(eventId: eventId),
   );
 
-  /// Refund of a paid ticket (F-11), waiting for a payment server.
+  /// Remboursement d’un billet payé (F-11), en attente d’un serveur de
+  /// paiement.
   Future<Result<void>> refund(String eventId) async {
     final result = await _run(
       (_) => ref.read(reservationRepositoryProvider).refund(eventId: eventId),

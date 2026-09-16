@@ -1,13 +1,15 @@
-/// What a user agreed to be notified about.
+/// Ce pour quoi un utilisateur a accepté d’être notifié.
 ///
-/// Stored in `public.notification_preferences` and read by `private.notify`
-/// before every notification, so switching a toggle off takes effect on the
-/// very next push — nothing is cached server-side.
+/// Stockées dans `public.notification_preferences` et lues par
+/// `private.notify` avant chaque notification, si bien que désactiver un
+/// interrupteur prend effet dès le push suivant — rien n’est mis en cache côté
+/// serveur.
 ///
-/// Defaults are "on": reminders and booking alerts are transactional (a seat
-/// you booked, a booking on your own event), and following an organizer is an
-/// explicit request to hear from them. A missing or malformed document
-/// therefore behaves like a fresh account.
+/// Les valeurs par défaut sont « activé » : les rappels et les alertes de
+/// réservation sont transactionnels (une place que l’on a réservée, une
+/// réservation sur son propre événement), et suivre un organisateur est une
+/// demande explicite d’avoir de ses nouvelles. Un document absent ou malformé
+/// se comporte donc comme un compte tout neuf.
 class NotificationPreferences {
   const NotificationPreferences({
     this.eventReminders = true,
@@ -31,14 +33,15 @@ class NotificationPreferences {
   static const bookingAlertsKey = 'bookingAlerts';
   static const followedOrganizersKey = 'followedOrganizers';
 
-  /// Participant: a push the day before an event they hold a ticket for, and
-  /// when a seat opens on an event they wait for.
+  /// Participant : un push la veille d’un événement pour lequel il détient un
+  /// billet, et quand une place se libère sur un événement qu’il attend.
   final bool eventReminders;
 
-  /// Organizer: a push for every booking or cancellation on their events.
+  /// Organisateur : un push à chaque réservation ou annulation sur ses
+  /// événements.
   final bool bookingAlerts;
 
-  /// Anyone: a push when an organizer they follow publishes an event.
+  /// Tout le monde : un push quand un organisateur suivi publie un événement.
   final bool followedOrganizers;
 
   Map<String, Object> toMap() => {

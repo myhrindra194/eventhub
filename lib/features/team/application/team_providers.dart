@@ -1,7 +1,7 @@
 import 'package:eventhub/core/config/app_config.dart';
 import 'package:eventhub/core/errors/failure.dart';
+import 'package:eventhub/core/firebase/firebase_providers.dart';
 import 'package:eventhub/core/result/result.dart';
-import 'package:eventhub/core/supabase/supabase_providers.dart';
 import 'package:eventhub/features/auth/application/auth_providers.dart';
 import 'package:eventhub/features/events/application/event_providers.dart';
 import 'package:eventhub/features/team/data/team_remote_data_source.dart';
@@ -13,8 +13,12 @@ import 'package:riverpod_annotation/riverpod_annotation.dart' hide AsyncResult;
 part 'team_providers.g.dart';
 
 @Riverpod(keepAlive: true)
-TeamRepository teamRepository(Ref ref) =>
-    TeamRepositoryImpl(TeamRemoteDataSource(ref.watch(supabaseClientProvider)));
+TeamRepository teamRepository(Ref ref) => TeamRepositoryImpl(
+  TeamRemoteDataSource(
+    ref.watch(firestoreProvider),
+    ref.watch(firebaseAuthProvider),
+  ),
+);
 
 @riverpod
 Stream<List<StaffInvitation>> eventPendingInvitations(
@@ -22,7 +26,7 @@ Stream<List<StaffInvitation>> eventPendingInvitations(
   String eventId,
 ) => ref.watch(teamRepositoryProvider).watchPendingForEvent(eventId);
 
-/// Invitations waiting for the signed-in organizer's answer.
+/// Invitations en attente de la réponse de l’organisateur connecté.
 @riverpod
 Stream<List<StaffInvitation>> myStaffInvitations(Ref ref) {
   final user = ref.watch(currentUserProvider);

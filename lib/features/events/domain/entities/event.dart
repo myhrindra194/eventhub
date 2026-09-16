@@ -6,11 +6,12 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 
 part 'event.freezed.dart';
 
-/// Published event.
+/// Événement publié.
 ///
-/// The spec lists `date` and `time` separately; they are stored as a single
-/// [startsAt] instant so that ordering, "upcoming" queries and the
-/// "already started" rule are exact. [date] / [time] remain as views.
+/// Le cahier des charges liste `date` et `time` séparément ; ils sont
+/// stockés ici en un unique instant [startsAt], pour que le tri, les
+/// requêtes « à venir » et la règle « déjà commencé » soient exacts.
+/// [date] et [time] subsistent comme vues.
 @freezed
 abstract class Event with _$Event {
   const Event._();
@@ -30,16 +31,18 @@ abstract class Event with _$Event {
     DateTime? createdAt,
     DateTime? updatedAt,
 
-    /// Co-organizers (F-16): organizers who accepted an invitation. They
-    /// manage the content, the guest list and the door; only the owner
-    /// ([organizerId]) composes the team and may delete the event.
+    /// Co-organisateurs (F-16) : les organisateurs ayant accepté une
+    /// invitation. Ils gèrent le contenu, la liste des participants et
+    /// l’accueil ; seul le propriétaire ([organizerId]) compose l’équipe
+    /// et peut supprimer l’événement.
     @Default(<String>[]) List<String> staffIds,
 
-    /// Ticket types (F-12), in display order. Empty for a simple event with
-    /// one free pool of [capacity] seats.
+    /// Types de billets (F-12), dans l’ordre d’affichage. Vide pour un
+    /// événement simple, doté d’un unique pool gratuit de [capacity]
+    /// places.
     @Default(<EventTier>[]) List<EventTier> tiers,
 
-    /// ISO code of the paid types' prices (`EUR`, `USD`, `MGA`).
+    /// Code ISO de la devise des types payants (`EUR`, `USD`, `MGA`).
     String? currency,
   }) = _Event;
 
@@ -55,15 +58,16 @@ abstract class Event with _$Event {
   bool isOwnedBy(String userId) => organizerId == userId;
   bool isStaff(String userId) => staffIds.contains(userId);
 
-  /// Owner or co-organizer.
+  /// Propriétaire ou co-organisateur.
   bool isManagedBy(String userId) => isOwnedBy(userId) || isStaff(userId);
 
   bool get hasTiers => tiers.isNotEmpty;
 
-  /// Free to attend: no ticket type, or only free ones.
+  /// Participation gratuite : aucun type de billet, ou uniquement des
+  /// types gratuits.
   bool get isFree => tiers.every((t) => t.isFree);
 
-  /// Cheapest paid ticket, `null` when nothing is paid.
+  /// Billet payant le moins cher, `null` quand rien n’est payant.
   int? get minPrice {
     final paid = tiers.where((t) => !t.isFree).map((t) => t.price);
     return paid.isEmpty ? null : paid.reduce(math.min);
@@ -81,7 +85,8 @@ abstract class Event with _$Event {
   }
 }
 
-/// Flutter-free time-of-day value so the domain stays framework-agnostic.
+/// Valeur d’heure sans dépendance à Flutter, pour que le domaine reste
+/// agnostique du framework.
 @freezed
 abstract class TimeOfDayValue with _$TimeOfDayValue {
   const factory TimeOfDayValue({required int hour, required int minute}) =

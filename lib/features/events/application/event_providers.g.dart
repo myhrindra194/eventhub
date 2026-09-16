@@ -51,14 +51,14 @@ final class EventRepositoryProvider
 
 String _$eventRepositoryHash() => r'e2fe9819abf84eaf0a027fecbbe49a3419790d8c';
 
-/// First page of upcoming events, live (today's events stay visible until
-/// midnight).
+/// Première page des événements à venir, en temps réel (ceux du jour
+/// restent visibles jusqu’à minuit).
 
 @ProviderFor(upcomingEvents)
 final upcomingEventsProvider = UpcomingEventsProvider._();
 
-/// First page of upcoming events, live (today's events stay visible until
-/// midnight).
+/// Première page des événements à venir, en temps réel (ceux du jour
+/// restent visibles jusqu’à minuit).
 
 final class UpcomingEventsProvider
     extends
@@ -68,8 +68,8 @@ final class UpcomingEventsProvider
           Stream<List<Event>>
         >
     with $FutureModifier<List<Event>>, $StreamProvider<List<Event>> {
-  /// First page of upcoming events, live (today's events stay visible until
-  /// midnight).
+  /// Première page des événements à venir, en temps réel (ceux du jour
+  /// restent visibles jusqu’à minuit).
   UpcomingEventsProvider._()
     : super(
         from: null,
@@ -98,15 +98,18 @@ final class UpcomingEventsProvider
 
 String _$upcomingEventsHash() => r'747d1ccbb4f1d42f60e1233fa611f39b640c5be7';
 
-/// Older catalogue pages, loaded when the user reaches the end of the list.
+/// Pages plus anciennes du catalogue, chargées quand l’utilisateur atteint
+/// la fin de la liste.
 
 @ProviderFor(CatalogueExtraPages)
 final catalogueExtraPagesProvider = CatalogueExtraPagesProvider._();
 
-/// Older catalogue pages, loaded when the user reaches the end of the list.
+/// Pages plus anciennes du catalogue, chargées quand l’utilisateur atteint
+/// la fin de la liste.
 final class CatalogueExtraPagesProvider
     extends $NotifierProvider<CatalogueExtraPages, CataloguePages> {
-  /// Older catalogue pages, loaded when the user reaches the end of the list.
+  /// Pages plus anciennes du catalogue, chargées quand l’utilisateur atteint
+  /// la fin de la liste.
   CatalogueExtraPagesProvider._()
     : super(
         from: null,
@@ -137,7 +140,8 @@ final class CatalogueExtraPagesProvider
 String _$catalogueExtraPagesHash() =>
     r'b4d775562b93f12f67be0358bc65c1d81d9f7085';
 
-/// Older catalogue pages, loaded when the user reaches the end of the list.
+/// Pages plus anciennes du catalogue, chargées quand l’utilisateur atteint
+/// la fin de la liste.
 
 abstract class _$CatalogueExtraPages extends $Notifier<CataloguePages> {
   CataloguePages build();
@@ -157,12 +161,14 @@ abstract class _$CatalogueExtraPages extends $Notifier<CataloguePages> {
   }
 }
 
-/// Everything loaded so far: live first page + older pages.
+/// Tout ce qui est chargé à ce stade : la première page temps réel plus
+/// les pages plus anciennes.
 
 @ProviderFor(catalogue)
 final catalogueProvider = CatalogueProvider._();
 
-/// Everything loaded so far: live first page + older pages.
+/// Tout ce qui est chargé à ce stade : la première page temps réel plus
+/// les pages plus anciennes.
 
 final class CatalogueProvider
     extends
@@ -172,7 +178,8 @@ final class CatalogueProvider
           AsyncValue<List<Event>>
         >
     with $Provider<AsyncValue<List<Event>>> {
-  /// Everything loaded so far: live first page + older pages.
+  /// Tout ce qui est chargé à ce stade : la première page temps réel plus
+  /// les pages plus anciennes.
   CatalogueProvider._()
     : super(
         from: null,
@@ -209,17 +216,17 @@ final class CatalogueProvider
 
 String _$catalogueHash() => r'c862c70a5cb079599e04bfda52fcc748cda49e58';
 
-/// A "load more" makes sense only once the live page is full.
+/// Un « charger plus » n’a de sens qu’une fois la page temps réel pleine.
 
 @ProviderFor(canLoadMoreEvents)
 final canLoadMoreEventsProvider = CanLoadMoreEventsProvider._();
 
-/// A "load more" makes sense only once the live page is full.
+/// Un « charger plus » n’a de sens qu’une fois la page temps réel pleine.
 
 final class CanLoadMoreEventsProvider
     extends $FunctionalProvider<bool, bool, bool>
     with $Provider<bool> {
-  /// A "load more" makes sense only once the live page is full.
+  /// Un « charger plus » n’a de sens qu’une fois la page temps réel pleine.
   CanLoadMoreEventsProvider._()
     : super(
         from: null,
@@ -330,12 +337,12 @@ final class OrganizerEventsFamily extends $Family
   String toString() => r'organizerEventsProvider';
 }
 
-/// Events the signed-in organizer co-organizes (F-16).
+/// Événements co-organisés par l’organisateur connecté (F-16).
 
 @ProviderFor(coOrganizedEvents)
 final coOrganizedEventsProvider = CoOrganizedEventsFamily._();
 
-/// Events the signed-in organizer co-organizes (F-16).
+/// Événements co-organisés par l’organisateur connecté (F-16).
 
 final class CoOrganizedEventsProvider
     extends
@@ -345,7 +352,7 @@ final class CoOrganizedEventsProvider
           Stream<List<Event>>
         >
     with $FutureModifier<List<Event>>, $StreamProvider<List<Event>> {
-  /// Events the signed-in organizer co-organizes (F-16).
+  /// Événements co-organisés par l’organisateur connecté (F-16).
   CoOrganizedEventsProvider._({
     required CoOrganizedEventsFamily super.from,
     required String super.argument,
@@ -392,7 +399,7 @@ final class CoOrganizedEventsProvider
 
 String _$coOrganizedEventsHash() => r'8c8e3702166901f72b2f350ac173c3b8b439a313';
 
-/// Events the signed-in organizer co-organizes (F-16).
+/// Événements co-organisés par l’organisateur connecté (F-16).
 
 final class CoOrganizedEventsFamily extends $Family
     with $FunctionalFamilyOverride<Stream<List<Event>>, String> {
@@ -405,7 +412,7 @@ final class CoOrganizedEventsFamily extends $Family
         isAutoDispose: true,
       );
 
-  /// Events the signed-in organizer co-organizes (F-16).
+  /// Événements co-organisés par l’organisateur connecté (F-16).
 
   CoOrganizedEventsProvider call(String userId) =>
       CoOrganizedEventsProvider._(argument: userId, from: this);
@@ -692,17 +699,20 @@ abstract class _$EventSortOrder extends $Notifier<EventSort> {
   }
 }
 
-/// When true, sold-out events are hidden. Off by default: seeing a full
-/// event is useful information (it signals a popular organizer).
+/// Quand vrai, les événements complets sont masqués. Désactivé par défaut :
+/// voir un événement complet est une information utile (cela signale un
+/// organisateur populaire).
 
 @ProviderFor(HideSoldOut)
 final hideSoldOutProvider = HideSoldOutProvider._();
 
-/// When true, sold-out events are hidden. Off by default: seeing a full
-/// event is useful information (it signals a popular organizer).
+/// Quand vrai, les événements complets sont masqués. Désactivé par défaut :
+/// voir un événement complet est une information utile (cela signale un
+/// organisateur populaire).
 final class HideSoldOutProvider extends $NotifierProvider<HideSoldOut, bool> {
-  /// When true, sold-out events are hidden. Off by default: seeing a full
-  /// event is useful information (it signals a popular organizer).
+  /// Quand vrai, les événements complets sont masqués. Désactivé par défaut :
+  /// voir un événement complet est une information utile (cela signale un
+  /// organisateur populaire).
   HideSoldOutProvider._()
     : super(
         from: null,
@@ -732,8 +742,9 @@ final class HideSoldOutProvider extends $NotifierProvider<HideSoldOut, bool> {
 
 String _$hideSoldOutHash() => r'2e567223b0132f834593cf2bde94bb4e58709637';
 
-/// When true, sold-out events are hidden. Off by default: seeing a full
-/// event is useful information (it signals a popular organizer).
+/// Quand vrai, les événements complets sont masqués. Désactivé par défaut :
+/// voir un événement complet est une information utile (cela signale un
+/// organisateur populaire).
 
 abstract class _$HideSoldOut extends $Notifier<bool> {
   bool build();
@@ -753,19 +764,22 @@ abstract class _$HideSoldOut extends $Notifier<bool> {
   }
 }
 
-/// Number of *non-default* filters, shown as a counter on the filter button
-/// so the user always knows why a list looks empty.
+/// Nombre de filtres *hors valeur par défaut*, affiché en compteur sur le
+/// bouton de filtres pour que l’utilisateur sache toujours pourquoi une
+/// liste paraît vide.
 
 @ProviderFor(activeFilterCount)
 final activeFilterCountProvider = ActiveFilterCountProvider._();
 
-/// Number of *non-default* filters, shown as a counter on the filter button
-/// so the user always knows why a list looks empty.
+/// Nombre de filtres *hors valeur par défaut*, affiché en compteur sur le
+/// bouton de filtres pour que l’utilisateur sache toujours pourquoi une
+/// liste paraît vide.
 
 final class ActiveFilterCountProvider extends $FunctionalProvider<int, int, int>
     with $Provider<int> {
-  /// Number of *non-default* filters, shown as a counter on the filter button
-  /// so the user always knows why a list looks empty.
+  /// Nombre de filtres *hors valeur par défaut*, affiché en compteur sur le
+  /// bouton de filtres pour que l’utilisateur sache toujours pourquoi une
+  /// liste paraît vide.
   ActiveFilterCountProvider._()
     : super(
         from: null,
@@ -848,12 +862,14 @@ final class FilteredEventsProvider
 
 String _$filteredEventsHash() => r'd5bb7450d4506a36cec7ce8c525825cf1798666a';
 
-/// Editorial selection: the soonest events that still have seats.
+/// Sélection éditoriale : les événements les plus proches ayant encore des
+/// places.
 
 @ProviderFor(featuredEvents)
 final featuredEventsProvider = FeaturedEventsProvider._();
 
-/// Editorial selection: the soonest events that still have seats.
+/// Sélection éditoriale : les événements les plus proches ayant encore des
+/// places.
 
 final class FeaturedEventsProvider
     extends
@@ -863,7 +879,8 @@ final class FeaturedEventsProvider
           AsyncValue<List<Event>>
         >
     with $Provider<AsyncValue<List<Event>>> {
-  /// Editorial selection: the soonest events that still have seats.
+  /// Sélection éditoriale : les événements les plus proches ayant encore des
+  /// places.
   FeaturedEventsProvider._()
     : super(
         from: null,
@@ -900,12 +917,12 @@ final class FeaturedEventsProvider
 
 String _$featuredEventsHash() => r'8c70cadcea4ab17770c5e6095111e9bade398ca0';
 
-/// Everything happening in the next seven days.
+/// Tout ce qui se passe dans les sept prochains jours.
 
 @ProviderFor(weekEvents)
 final weekEventsProvider = WeekEventsProvider._();
 
-/// Everything happening in the next seven days.
+/// Tout ce qui se passe dans les sept prochains jours.
 
 final class WeekEventsProvider
     extends
@@ -915,7 +932,7 @@ final class WeekEventsProvider
           AsyncValue<List<Event>>
         >
     with $Provider<AsyncValue<List<Event>>> {
-  /// Everything happening in the next seven days.
+  /// Tout ce qui se passe dans les sept prochains jours.
   WeekEventsProvider._()
     : super(
         from: null,
@@ -952,14 +969,16 @@ final class WeekEventsProvider
 
 String _$weekEventsHash() => r'2d9a980bf1f0ebe89b9f46042fbd004e50475b59';
 
-/// Scarcity-driven rail: events at least 60 % full but not sold out, most
-/// filled first. It is the strongest conversion surface of the home screen.
+/// Rail fondé sur la rareté : les événements remplis à au moins 60 % mais
+/// pas complets, du plus rempli au moins rempli. C’est la surface de
+/// conversion la plus forte de l’écran d’accueil.
 
 @ProviderFor(trendingEvents)
 final trendingEventsProvider = TrendingEventsProvider._();
 
-/// Scarcity-driven rail: events at least 60 % full but not sold out, most
-/// filled first. It is the strongest conversion surface of the home screen.
+/// Rail fondé sur la rareté : les événements remplis à au moins 60 % mais
+/// pas complets, du plus rempli au moins rempli. C’est la surface de
+/// conversion la plus forte de l’écran d’accueil.
 
 final class TrendingEventsProvider
     extends
@@ -969,8 +988,9 @@ final class TrendingEventsProvider
           AsyncValue<List<Event>>
         >
     with $Provider<AsyncValue<List<Event>>> {
-  /// Scarcity-driven rail: events at least 60 % full but not sold out, most
-  /// filled first. It is the strongest conversion surface of the home screen.
+  /// Rail fondé sur la rareté : les événements remplis à au moins 60 % mais
+  /// pas complets, du plus rempli au moins rempli. C’est la surface de
+  /// conversion la plus forte de l’écran d’accueil.
   TrendingEventsProvider._()
     : super(
         from: null,

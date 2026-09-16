@@ -4,12 +4,13 @@ import 'package:eventhub/core/widgets/design_system.dart';
 import 'package:eventhub/features/support/presentation/widgets/support_page.dart';
 import 'package:flutter/material.dart';
 
-/// Help centre.
+/// Centre d’aide.
 ///
-/// Grouped by the moment a question comes up — booking, organising, the
-/// account — rather than alphabetically. Every answer describes what the
-/// product *does* (the rules live in `ReservationPolicy` / `EventPolicy`),
-/// so this page has to change when those policies do.
+/// Regroupé selon le moment où la question se pose — réserver, organiser, le
+/// compte — plutôt que par ordre alphabétique. Chaque réponse décrit ce que le
+/// produit *fait* (les règles vivent dans `ReservationPolicy` /
+/// `EventPolicy`) : cette page doit donc changer quand ces politiques
+/// changent.
 class HelpCenterScreen extends StatelessWidget {
   const HelpCenterScreen({super.key});
 

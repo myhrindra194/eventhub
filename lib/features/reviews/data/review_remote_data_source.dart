@@ -5,21 +5,21 @@ import 'package:eventhub/features/auth/domain/entities/app_user.dart';
 import 'package:eventhub/features/reviews/data/review_dto.dart';
 import 'package:eventhub/features/reviews/domain/review.dart';
 
-/// `reviews/{eventId}_{authorId}` and the rating it feeds on
+/// `reviews/{eventId}_{authorId}` et la note qu’il alimente sur
 /// `organizers/{organizerId}` (`ratingSum`, `ratingCount`, `lastReviewId`).
 ///
-/// The rules accept a rating change only in the commit that writes the
-/// review justifying it, by exactly the visible difference. Each write below
-/// is therefore a transaction that first reads the review: the step is
-/// computed from the stored rating and hidden flag, not from what a possibly
-/// stale screen showed, and a concurrent edit makes the transaction retry
-/// instead of being refused.
+/// Les règles n’acceptent une variation de note que dans le commit qui écrit
+/// l’avis qui la justifie, et exactement de l’écart visible. Chaque écriture
+/// ci-dessous est donc une transaction qui lit d’abord l’avis : le pas est
+/// calculé à partir de la note et du drapeau `hidden` stockés, et non de ce
+/// qu’un écran peut-être périmé affichait, et une modification concurrente
+/// fait rejouer la transaction au lieu de la faire refuser.
 class ReviewRemoteDataSource {
   const ReviewRemoteDataSource(this._db);
 
   final FirebaseFirestore _db;
 
-  /// The event detail shows the latest reviews, not an archive.
+  /// Le détail d’un événement montre les derniers avis, pas une archive.
   static const maxPageSize = 100;
 
   CollectionReference<Map<String, dynamic>> get _reviews =>
@@ -28,8 +28,9 @@ class ReviewRemoteDataSource {
   DocumentReference<Map<String, dynamic>> _organizer(String organizerId) =>
       _db.collection(Collections.organizers).doc(organizerId);
 
-  /// Most recent first. `hidden == false` is part of the query because the
-  /// rules refuse a list that could return a hidden review of someone else.
+  /// Les plus récents d’abord. `hidden == false` fait partie de la requête
+  /// parce que les règles refusent une liste susceptible de renvoyer l’avis
+  /// masqué de quelqu’un d’autre.
   Stream<List<Review>> watchEventReviews(String eventId) => _reviews
       .where('eventId', isEqualTo: eventId)
       .where('hidden', isEqualTo: false)
@@ -43,7 +44,7 @@ class ReviewRemoteDataSource {
       )
       .resilient('event-reviews');
 
-  /// The author's review, hidden or not: a missing document is readable.
+  /// L’avis de l’auteur, masqué ou non : un document absent reste lisible.
   Stream<Review?> watchReview({
     required String eventId,
     required String authorId,
@@ -58,12 +59,12 @@ class ReviewRemoteDataSource {
       })
       .resilient('review:$reviewId');
 
-  /// Creates the review of [author], or edits it when it already exists (a
-  /// second device, a stream not caught up): what the person meant either
-  /// way.
+  /// Crée l’avis de [author], ou le modifie s’il existe déjà (un second
+  /// appareil, un flux pas encore à jour) : dans les deux cas, c’est ce que
+  /// la personne voulait.
   ///
-  /// [organizerId] is the event's, as copied on the author's reservation —
-  /// the rules compare it with the event.
+  /// [organizerId] est celui de l’événement, tel que copié sur la
+  /// réservation de l’auteur — les règles le comparent à l’événement.
   Future<void> save({
     required String eventId,
     required String organizerId,
@@ -100,8 +101,9 @@ class ReviewRemoteDataSource {
       'comment': comment,
       'updatedAt': FieldValue.serverTimestamp(),
     });
-    // A hidden review counts for nothing: editing it moves no rating. An
-    // unchanged note moves nothing either, and needs no organizer write.
+    // Un avis masqué ne compte pour rien : le modifier ne déplace aucune
+    // note. Une note inchangée n’en déplace pas davantage, et n’exige
+    // aucune écriture sur l’organisateur.
     if (current['hidden'] != true && rating != previous) {
       tx.update(_organizer(current['organizerId'] as String), {
         'ratingSum': FieldValue.increment(rating - previous),
@@ -110,8 +112,8 @@ class ReviewRemoteDataSource {
     }
   });
 
-  /// Removes [authorId]'s review and, unless moderation had hidden it, its
-  /// share of the rating. A no-op when there is none.
+  /// Supprime l’avis de [authorId] et, sauf si la modération l’avait masqué,
+  /// sa part dans la note. Sans effet s’il n’y en a pas.
   Future<void> delete({required String eventId, required String authorId}) =>
       _db.runTransaction((tx) async {
         final ref = _reviews.doc(DocIds.review(eventId, authorId));

@@ -1,15 +1,19 @@
 import 'dart:math' as math;
 
-/// "Who's going" — the social-proof sentence on the event detail (F-07).
+/// « Qui y va » — la phrase de preuve sociale du détail d’un événement
+/// (F-07).
 ///
-/// The head count comes from the event itself (`capacity - availablePlaces`,
-/// transactional and exact); the names come from the `event_attendance`
-/// database function as "Prénom I." — never a full name, never an email.
+/// Le décompte vient de l’événement lui-même (`capacity - availablePlaces`,
+/// transactionnel et exact) ; les noms viennent de la fonction de base de
+/// données `event_attendance`, au format « Prénom I. » — jamais un nom
+/// complet, jamais un e-mail.
 abstract final class Attendance {
-  /// Names spelled out in the sentence; the avatars may show a few more.
+  /// Noms cités dans la phrase ; les avatars peuvent en montrer
+  /// quelques-uns de plus.
   static const namesInSentence = 2;
 
-  /// `null` when nobody booked: an empty strip is worse than no strip.
+  /// `null` quand personne n’a réservé : un bandeau vide est pire qu’un
+  /// bandeau absent.
   ///
   /// * 1, no names → « 1 personne y va »
   /// * 12, no names → « 12 personnes y vont »

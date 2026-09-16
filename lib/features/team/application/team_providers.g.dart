@@ -48,7 +48,7 @@ final class TeamRepositoryProvider
   }
 }
 
-String _$teamRepositoryHash() => r'ede39aabc5486672beb096cabc6a8c0c794d41dc';
+String _$teamRepositoryHash() => r'1c179404d1fb7b6d06a74bdf4ad6c74e1adee8b0';
 
 @ProviderFor(eventPendingInvitations)
 final eventPendingInvitationsProvider = EventPendingInvitationsFamily._();
@@ -129,12 +129,12 @@ final class EventPendingInvitationsFamily extends $Family
   String toString() => r'eventPendingInvitationsProvider';
 }
 
-/// Invitations waiting for the signed-in organizer's answer.
+/// Invitations en attente de la réponse de l’organisateur connecté.
 
 @ProviderFor(myStaffInvitations)
 final myStaffInvitationsProvider = MyStaffInvitationsProvider._();
 
-/// Invitations waiting for the signed-in organizer's answer.
+/// Invitations en attente de la réponse de l’organisateur connecté.
 
 final class MyStaffInvitationsProvider
     extends
@@ -146,7 +146,7 @@ final class MyStaffInvitationsProvider
     with
         $FutureModifier<List<StaffInvitation>>,
         $StreamProvider<List<StaffInvitation>> {
-  /// Invitations waiting for the signed-in organizer's answer.
+  /// Invitations en attente de la réponse de l’organisateur connecté.
   MyStaffInvitationsProvider._()
     : super(
         from: null,

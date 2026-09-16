@@ -4,7 +4,6 @@ import 'package:eventhub/core/config/app_config.dart';
 import 'package:eventhub/core/errors/failure.dart';
 import 'package:eventhub/core/firebase/firebase_providers.dart';
 import 'package:eventhub/core/result/result.dart';
-import 'package:eventhub/core/supabase/supabase_providers.dart';
 import 'package:eventhub/core/utils/app_logger.dart';
 import 'package:eventhub/features/auth/application/auth_providers.dart';
 import 'package:eventhub/features/auth/domain/entities/app_user.dart';
@@ -26,7 +25,7 @@ part 'notification_providers.g.dart';
 @Riverpod(keepAlive: true)
 NotificationRepository notificationRepository(Ref ref) =>
     NotificationRepositoryImpl(
-      NotificationRemoteDataSource(ref.watch(supabaseClientProvider)),
+      NotificationRemoteDataSource(ref.watch(firestoreProvider)),
     );
 
 @Riverpod(keepAlive: true)
@@ -37,7 +36,7 @@ PushMessagingDataSource pushMessaging(Ref ref) =>
 LocalNotificationDataSource localNotifications(Ref ref) =>
     LocalNotificationDataSource();
 
-/// Preferences of the signed-in user; defaults while signed out.
+/// Préférences de l’utilisateur connecté ; valeurs par défaut hors session.
 @riverpod
 Stream<NotificationPreferences> notificationPreferences(Ref ref) {
   final user = ref.watch(currentUserProvider);
@@ -69,7 +68,7 @@ class NotificationPreferencesController
   }
 }
 
-/// In-app history of the signed-in user, most recent first.
+/// Historique in-app de l’utilisateur connecté, le plus récent d’abord.
 @riverpod
 Stream<List<AppNotification>> notificationFeed(Ref ref) {
   final user = ref.watch(currentUserProvider);
@@ -77,7 +76,7 @@ Stream<List<AppNotification>> notificationFeed(Ref ref) {
   return ref.watch(notificationRepositoryProvider).watchNotifications(user.id);
 }
 
-/// Drives the dot on every bell button.
+/// Pilote la pastille de tous les boutons cloche.
 @riverpod
 int unreadNotificationCount(Ref ref) =>
     ref.watch(notificationFeedProvider).value?.where((n) => !n.isRead).length ??
@@ -100,8 +99,9 @@ class NotificationFeedController extends _$NotificationFeedController {
   Future<Result<void>> markAllRead() async {
     final user = ref.read(currentUserProvider);
     if (user == null) return const Err(AuthFailure.notSignedIn());
-    // Nothing unread in the feed: skip the round trip. The server statement
-    // itself does not depend on the ids shown (see the repository).
+    // Rien de non lu dans le fil : on évite l’aller-retour. L’instruction
+    // serveur, elle, ne dépend pas des identifiants affichés (voir le
+    // repository).
     final feed = ref.read(notificationFeedProvider).value;
     if (feed != null && feed.every((n) => n.isRead)) return const Ok(null);
     return ref
@@ -118,27 +118,32 @@ class NotificationFeedController extends _$NotificationFeedController {
   }
 }
 
-/// The push pipeline on the device, driven by the session.
+/// Le pipeline push sur l’appareil, piloté par la session.
 ///
-/// * signed in → ask permission, register the FCM token under the user
-///   (`public.register_device`), keep it registered on refresh;
-/// * signed out → invalidate the token (see
-///   [PushMessagingDataSource.deleteToken]);
-/// * foreground message → shown as a local notification;
-/// * tap (foreground, background or cold start) → [NotificationRoute].
+/// * connecté → demander la permission, enregistrer le jeton FCM sous le
+///   compte et le maintenir enregistré à chaque rafraîchissement ;
+/// * déconnecté → invalider le jeton (voir
+///   [PushMessagingDataSource.deleteToken]) ;
+/// * message reçu au premier plan → affiché en notification locale ;
+/// * appui (premier plan, arrière-plan ou démarrage à froid) →
+///   [NotificationRoute].
 ///
-/// Why sign-out does not delete the `devices` row: this provider learns of
-/// the sign-out from [currentUserProvider], i.e. once the session is already
-/// gone, and RLS refuses an anonymous delete. Invalidating the token needs no
-/// session and is enough on its own: FCM answers `UNREGISTERED` to the next
-/// send and the worker forgets the row (`devices_forget_tokens`). If the
-/// device is offline and the invalidation fails, the next account signing in
-/// on the phone gets the same token, and `register_device` moves it away from
-/// the previous account. The row is keyed by installation, so the same
-/// person signing in again replaces the dead token in place.
+/// Sur le plan Spark, rien n’émet vers ces jetons — un émetteur, c’est du code
+/// serveur — ce pipeline ne porte donc que les messages reçus au premier plan
+/// et les appuis. L’enregistrement est conservé parce que c’est ce qu’une
+/// future Cloud Function irait lire, et qu’il ne coûte qu’un document par
+/// installation.
 ///
-/// Watched once by `EventHubApp`; kept alive for the app's lifetime. Web is
-/// excluded on purpose: web push needs a VAPID key and a service worker.
+/// Pourquoi la déconnexion ne supprime pas le document de l’appareil : ce
+/// provider apprend la déconnexion par [currentUserProvider], c’est-à-dire une
+/// fois la session déjà perdue, et les règles refusent une suppression
+/// anonyme. Invalider le jeton ne demande aucune session et suffit : le
+/// document est indexé sur l’installation, donc le prochain compte qui se
+/// connecte sur ce téléphone remplace le jeton mort sur place.
+///
+/// Observé une seule fois par `EventHubApp` ; maintenu en vie pendant toute la
+/// durée de l’application. Le web est exclu volontairement : le push web exige
+/// une clé VAPID et un service worker.
 @Riverpod(keepAlive: true)
 class PushNotifications extends _$PushNotifications {
   final _subscriptions = <StreamSubscription<Object?>>[];
@@ -147,9 +152,9 @@ class PushNotifications extends _$PushNotifications {
 
   @override
   void build() {
-    // Web push needs a VAPID key (Firebase console → Cloud Messaging → Web
-    // Push certificates) and web/firebase-messaging-sw.js. Without the key,
-    // the web build simply does not register for pushes.
+    // Le push web exige une clé VAPID (console Firebase → Cloud Messaging →
+    // Web Push certificates) et web/firebase-messaging-sw.js. Sans cette clé,
+    // le build web ne s’enregistre tout simplement pas pour les pushs.
     if (kIsWeb && ref.read(appConfigProvider).webPushVapidKey.isEmpty) return;
     ref.onDispose(() {
       for (final s in _subscriptions) {
@@ -161,8 +166,9 @@ class PushNotifications extends _$PushNotifications {
     final messaging = ref.read(pushMessagingProvider);
     final local = ref.read(localNotificationsProvider);
 
-    // On the web the browser shows foreground pushes only through the
-    // service worker; the in-app history covers them instead.
+    // Sur le web, le navigateur n’affiche les pushs reçus au premier plan
+    // qu’à travers le service worker ; l’historique in-app les couvre à la
+    // place.
     if (!kIsWeb) {
       unawaited(local.initialize(onTap: _open));
       _subscriptions.add(messaging.onMessage.listen(local.show));
@@ -205,7 +211,8 @@ class PushNotifications extends _$PushNotifications {
         (token) => unawaited(_register(user.id, token)),
       );
     } catch (error, stack) {
-      // Push is a convenience: a failure here must never break sign-in.
+      // Le push est un confort : un échec ici ne doit jamais casser la
+      // connexion.
       AppLogger.error('Push setup failed', error: error, stackTrace: stack);
     }
   }
@@ -216,7 +223,7 @@ class PushNotifications extends _$PushNotifications {
         .registerDevice(
           userId: userId,
           token: token,
-          // Values of the Postgres enum `device_platform`.
+          // L’une des plateformes que les règles acceptent.
           platform: kIsWeb
               ? 'web'
               : defaultTargetPlatform == TargetPlatform.iOS

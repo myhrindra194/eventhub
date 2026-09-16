@@ -11,13 +11,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-/// Moderation queue — one line per reported target.
+/// File de modération — une ligne par cible signalée.
 ///
-/// Built for triage, not for reading: the most reported first, the reason
-/// and the count on the line, a "masqué auto" mark where the threshold
-/// already acted. Two segments (to handle / handled) and a filter by type;
-/// the decision itself happens on the entry screen, with the content and the
-/// reports side by side.
+/// Conçue pour le tri, pas pour la lecture : les plus signalées d’abord, le
+/// motif et le compteur sur la ligne, une mention « masqué auto » là où le
+/// seuil a déjà agi. Deux segments (à traiter / traités) et un filtre par
+/// type ; la décision elle-même se prend sur l’écran du dossier, avec le
+/// contenu et les signalements côte à côte.
 class ModerationQueueScreen extends ConsumerStatefulWidget {
   const ModerationQueueScreen({super.key});
 
@@ -37,15 +37,15 @@ class _ModerationQueueScreenState extends ConsumerState<ModerationQueueScreen> {
 
     return AppScaffold(
       dense: true,
-      appBar: AppBar(
-        title: const Text(AppStrings.moderationTitle),
+      appBar: AppTopBar.subPage(
+        title: AppStrings.moderationTitle,
+        onBack: () => context.pop(),
         actions: [
           IconButton(
             tooltip: AppStrings.adminRolesTitle,
             icon: const Icon(Icons.admin_panel_settings_outlined),
             onPressed: () => context.push(AppRoutes.adminRoles),
           ),
-          const SizedBox(width: AppSpacing.xs),
         ],
       ),
       body: Column(
@@ -308,14 +308,6 @@ class _EntryRow extends StatelessWidget {
                 ],
               ),
             ),
-            if (entry.autoHidden && entry.isOpen) ...[
-              const SizedBox(width: AppSpacing.sm),
-              const AppBadge(
-                label: AppStrings.autoHiddenShort,
-                tone: AppTone.warning,
-                dense: true,
-              ),
-            ],
             if (entry.isOpen) ...[
               const SizedBox(width: AppSpacing.sm),
               Text(

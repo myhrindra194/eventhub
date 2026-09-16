@@ -7,8 +7,9 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 
 part 'event_draft.freezed.dart';
 
-/// User input for creating or editing an event. Server-owned fields
-/// (id, organizer, availablePlaces, timestamps) are deliberately absent.
+/// Saisie utilisateur pour créer ou modifier un événement. Les champs qui
+/// appartiennent au serveur (id, organizer, availablePlaces, horodatages)
+/// en sont délibérément absents.
 @freezed
 abstract class EventDraft with _$EventDraft {
   const EventDraft._();
@@ -20,31 +21,33 @@ abstract class EventDraft with _$EventDraft {
     required DateTime startsAt,
     required String location,
 
-    /// Ignored when [tiers] is not empty: the capacity is then their sum.
+    /// Ignorée quand [tiers] n’est pas vide : la capacité est alors leur
+    /// somme.
     required int capacity,
 
-    /// Cover image, as an `https://` link to an image hosted elsewhere
-    /// (there is no upload on the free plan). Blank means none: the event
-    /// keeps its generated visual.
+    /// Image de couverture, sous forme de lien `https://` vers une image
+    /// hébergée ailleurs (le plan gratuit n’offre pas d’envoi de fichier).
+    /// Vide signifie aucune : l’événement conserve son visuel généré.
     String? imageUrl,
 
-    /// Ticket types (F-12). Empty: one free pool of [capacity] seats.
+    /// Types de billets (F-12). Vide : un unique pool gratuit de
+    /// [capacity] places.
     @Default(<EventTierDraft>[]) List<EventTierDraft> tiers,
 
-    /// Required as soon as one type is paid.
+    /// Obligatoire dès qu’un type de billet est payant.
     String? currency,
   }) = _EventDraft;
 
   static const titleMinLength = 3;
   static const maxCapacity = 100000;
 
-  /// Same ceiling as the rules (`isHttpsUrl`).
+  /// Même plafond que les règles de sécurité (`isHttpsUrl`).
   static const maxImageUrlLength = 2048;
 
-  /// `null` when [value] is blank or a usable cover link, else the sentence
-  /// to show under the field. Only `https` is accepted: the rules refuse
-  /// anything else, and a plain-http image would be blocked on the web and
-  /// on iOS anyway.
+  /// `null` quand [value] est vide ou constitue un lien de couverture
+  /// exploitable, sinon la phrase à afficher sous le champ. Seul `https`
+  /// est accepté : les règles refusent tout le reste, et une image servie
+  /// en http simple serait de toute façon bloquée sur le web et sur iOS.
   static String? imageUrlError(String? value) {
     final url = value?.trim() ?? '';
     if (url.isEmpty) return null;
@@ -66,7 +69,7 @@ abstract class EventDraft with _$EventDraft {
 
   bool get hasPaidTier => tiers.any((t) => t.price > 0);
 
-  /// Domain validation, independent from any form widget.
+  /// Validation métier, indépendante de tout widget de formulaire.
   Result<EventDraft> validate({required DateTime now}) {
     final errors = <String, String>{};
     if (title.trim().length < titleMinLength) {

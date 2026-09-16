@@ -15,13 +15,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-/// The state of a paid purchase, read live from the reservation (F-11).
+/// L’état d’un achat payant, lu en direct depuis la réservation (F-11).
 ///
-/// The Stripe redirect never decides anything: this screen follows the
-/// document the webhook updates. Pending — the seat is held, with its
-/// deadline, the page can be reopened or the purchase abandoned. Confirmed —
-/// the ticket. Expired or cancelled — nothing was charged. Refunded — when
-/// to expect the money.
+/// La redirection Stripe ne décide jamais de rien : cet écran suit le
+/// document que met à jour le webhook. Pending — la place est retenue, avec
+/// son échéance, la page peut être rouverte ou l’achat abandonné.
+/// Confirmed — le billet. Expired ou cancelled — rien n’a été débité.
+/// Refunded — quand attendre l’argent.
 class PaymentScreen extends ConsumerWidget {
   const PaymentScreen({required this.reservationId, super.key});
 
@@ -33,7 +33,10 @@ class PaymentScreen extends ConsumerWidget {
 
     return AppScaffold(
       dense: true,
-      appBar: AppBar(title: const Text(AppStrings.paymentTitle)),
+      appBar: AppTopBar.subPage(
+        title: AppStrings.paymentTitle,
+        onBack: () => context.pop(),
+      ),
       body: AsyncValueWidget(
         value: reservation,
         onRetry: () => ref.invalidate(reservationByIdProvider(reservationId)),
@@ -58,7 +61,8 @@ class _Body extends ConsumerStatefulWidget {
 }
 
 class _BodyState extends ConsumerState<_Body> {
-  /// Keeps the hold deadline honest while the user looks at the screen.
+  /// Maintient l’échéance de la place retenue exacte tant que
+  /// l’utilisateur regarde l’écran.
   late final Timer _tick = Timer.periodic(
     const Duration(seconds: 30),
     (_) => setState(() {}),
@@ -120,8 +124,9 @@ class _BodyState extends ConsumerState<_Body> {
           r.holdExpiresAt == null
               ? '—'
               : AppDateFormats.time(
-                  // The server keeps a short grace period after Stripe's own
-                  // expiry; announce Stripe's deadline.
+                  // Le serveur garde un court délai de grâce après
+                  // l’expiration propre à Stripe ; on annonce l’échéance
+                  // de Stripe.
                   r.holdExpiresAt!.subtract(const Duration(minutes: 5)),
                 ),
         ),
@@ -218,27 +223,23 @@ class _BodyState extends ConsumerState<_Body> {
         if (r.isPending) ...[
           AppButton.primary(
             label: AppStrings.resumePayment,
-            elevated: false,
             onPressed: busy || r.checkoutUrl == null ? null : _resume,
           ),
           const SizedBox(height: AppSpacing.md),
           AppButton.secondary(
             label: AppStrings.cancelPurchase,
-            elevated: false,
             isLoading: busy,
             onPressed: busy ? null : _abandon,
           ),
         ] else if (r.isActive)
           AppButton.primary(
             label: AppStrings.viewTicket,
-            elevated: false,
             onPressed: () =>
                 context.pushReplacement(AppRoutes.ticketPath(r.id)),
           )
         else
           AppButton.secondary(
             label: AppStrings.backToEvent,
-            elevated: false,
             onPressed: () =>
                 context.pushReplacement(AppRoutes.eventDetailPath(r.eventId)),
           ),

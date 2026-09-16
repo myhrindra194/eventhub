@@ -21,7 +21,8 @@ OrganizerDirectoryRepository organizerDirectoryRepository(Ref ref) =>
 Stream<OrganizerProfile?> organizerProfile(Ref ref, String organizerId) =>
     ref.watch(organizerDirectoryRepositoryProvider).watchProfile(organizerId);
 
-/// Organizers the signed-in user follows (either role may follow).
+/// Les organisateurs suivis par le compte connecté — les deux rôles peuvent
+/// s'abonner, un organisateur reste un participant.
 @riverpod
 Stream<List<String>> followingIds(Ref ref) {
   final user = ref.watch(currentUserProvider);
@@ -40,8 +41,9 @@ class FollowController extends _$FollowController {
   @override
   FutureOr<void> build() {}
 
-  /// The button flips when the transaction commits and the `following`
-  /// listener sees the document; the public counter moves in the same commit.
+  /// Le bouton ne bascule qu'une fois la transaction validée et le document
+  /// `following` vu par son écouteur ; le compteur public, lui, bouge dans ce
+  /// même commit — jamais après coup.
   Future<Result<void>> toggle(String organizerId) async {
     final user = ref.read(currentUserProvider);
     if (user == null) return const Err(AuthFailure.notSignedIn());

@@ -15,12 +15,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-/// One moderation file: what was reported, by how many people and why, what
-/// was already decided — and the decisions available now, pinned at the
-/// bottom.
+/// Un dossier de modération : ce qui a été signalé, par combien de personnes
+/// et pour quel motif, ce qui a déjà été décidé — et les décisions ouvertes
+/// maintenant, épinglées en bas.
 ///
-/// The content is shown as its author wrote it (a hidden review included),
-/// because a moderator judges the content, not a summary of it.
+/// Le contenu est montré tel que son auteur l’a écrit (avis masqué compris),
+/// parce qu’un modérateur juge le contenu, pas un résumé de celui-ci.
 class ModerationEntryScreen extends ConsumerWidget {
   const ModerationEntryScreen({required this.entryId, super.key});
 
@@ -33,7 +33,10 @@ class ModerationEntryScreen extends ConsumerWidget {
     return AppScaffold(
       dense: true,
       extendBody: false,
-      appBar: AppBar(title: const Text(AppStrings.moderationEntryTitle)),
+      appBar: AppTopBar.subPage(
+        title: AppStrings.moderationEntryTitle,
+        onBack: () => context.pop(),
+      ),
       bottomBar: switch (entry.value) {
         final e? => _DecisionBar(entry: e),
         null => null,
@@ -104,11 +107,9 @@ class _Header extends StatelessWidget {
         ),
         const SizedBox(height: AppSpacing.xxs),
         Text(
-          [
-            if (entry.lastReason != null)
-              '${AppStrings.lastReason} : ${entry.lastReason!.label}',
-            if (entry.autoHidden) AppStrings.autoHidden,
-          ].join(' · '),
+          entry.lastReason == null
+              ? ''
+              : '${AppStrings.lastReason} : ${entry.lastReason!.label}',
           style: text.bodySmall,
         ),
         if (entry.decision != null) ...[
@@ -137,7 +138,7 @@ class _Header extends StatelessWidget {
   }
 }
 
-/// The reported thing, read live from its own collection.
+/// La chose signalée, lue en direct depuis sa propre collection.
 class _TargetPreview extends ConsumerWidget {
   const _TargetPreview({required this.entry});
 
@@ -256,7 +257,6 @@ class _TargetPreview extends ConsumerWidget {
         final profile = ref
             .watch(organizerProfileProvider(entry.targetId))
             .value;
-        final suspended = ModerationPolicy.isSuspended(entry);
         return account.when(
           loading: loading,
           error: (_, __) => gone(),
@@ -276,7 +276,7 @@ class _TargetPreview extends ConsumerWidget {
                           ],
                         ),
                       ),
-                      if (suspended)
+                      if (a.suspended)
                         const AppBadge(
                           label: AppStrings.suspendedBadge,
                           tone: AppTone.danger,
@@ -435,10 +435,17 @@ class _DecisionBar extends ConsumerWidget {
         entry.target == ReportTarget.review &&
         (ref.watch(moderatedReviewProvider(entry.targetId)).value?.hidden ??
             false);
+    // Le drapeau propre au compte, pas une déduction tirée de la dernière
+    // décision : c’est ce que lisent les règles, donc ce que les boutons
+    // doivent refléter.
+    final accountSuspended =
+        entry.target == ReportTarget.user &&
+        (ref.watch(reportedAccountProvider(entry.targetId)).value?.suspended ??
+            false);
     final actions = ModerationPolicy.actionsFor(
       entry.target,
       reviewHidden: reviewHidden,
-      accountSuspended: ModerationPolicy.isSuspended(entry),
+      accountSuspended: accountSuspended,
     );
 
     return FrostedBar(
@@ -461,7 +468,6 @@ class _DecisionBar extends ConsumerWidget {
                     ? AppButtonVariant.secondary
                     : AppButtonVariant.primary,
                 size: AppButtonSize.medium,
-                elevated: false,
                 onPressed: () => showModerationDecisionSheet(
                   context,
                   entry: entry,

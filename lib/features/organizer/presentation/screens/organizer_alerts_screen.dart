@@ -12,16 +12,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-/// "Alertes" — what moved on the organizer's events.
+/// « Alertes » — ce qui a bougé sur les événements de l'organisateur.
 ///
-/// Two blocks with two different jobs. *À surveiller* is a to-do list
-/// computed from the current state (an event starting tomorrow, the last two
-/// seats); it disappears on its own when the situation resolves. *Activité*
-/// is a journal — bookings and cancellations, grouped by day like a bank
-/// statement, because "who signed up since yesterday" is read by day.
+/// Deux blocs, deux rôles distincts. *À surveiller* est une liste de choses à
+/// faire, calculée depuis l'état courant — un événement qui commence demain,
+/// les deux dernières places — et qui disparaît d'elle-même quand la
+/// situation se résout. *Activité* est un journal : réservations et
+/// annulations groupées par jour, comme un relevé bancaire, parce que « qui
+/// s'est inscrit depuis hier ? » se lit par jour.
 ///
-/// No "unread" state: that needs a per-device read marker, which belongs to
-/// the push-notification work (ROADMAP F-02), not to a derived feed.
+/// Pas d'état « non lu » : cela demanderait un marqueur de lecture par
+/// appareil, qui relève du chantier des notifications push (ROADMAP F-02) et
+/// non d'un fil calculé.
 class OrganizerAlertsScreen extends ConsumerWidget {
   const OrganizerAlertsScreen({super.key});
 
@@ -34,18 +36,16 @@ class OrganizerAlertsScreen extends ConsumerWidget {
     return AppScaffold(
       constrainWidth: false,
       dense: true,
+      appBar: const AppTopBar.root(
+        title: AppStrings.alertsTitle,
+        subtitle: AppStrings.alertsSubtitle,
+        actions: [NotificationBellButton()],
+      ),
       body: SafeArea(
         bottom: false,
         child: CustomScrollView(
           slivers: [
-            const SliverToBoxAdapter(
-              child: ScreenHeader(
-                eyebrow: AppStrings.organizer,
-                title: AppStrings.alertsTitle,
-                subtitle: AppStrings.alertsSubtitle,
-                trailing: NotificationBellButton(),
-              ),
-            ),
+            const SliverToBoxAdapter(child: SizedBox(height: AppSpacing.sm)),
             AsyncValueWidget(
               value: activity,
               sliver: true,
@@ -99,7 +99,7 @@ class OrganizerAlertsScreen extends ConsumerWidget {
     );
   }
 
-  /// Rows interleaved with a day heading each time the calendar day changes.
+  /// Les lignes, entrecoupées d'un intertitre à chaque changement de jour.
   static List<Widget> _journal(List<OrganizerAlert> items, DateTime now) {
     final widgets = <Widget>[];
     DateTime? day;
@@ -122,9 +122,10 @@ class OrganizerAlertsScreen extends ConsumerWidget {
   }
 }
 
-/// One bordered block, a coloured rule on the left of each row carrying the
-/// reason. The rule, not a filled card, is what makes three different tones
-/// sit together without turning the list into a traffic light.
+/// Un seul bloc bordé, avec un trait coloré à gauche de chaque ligne pour en
+/// porter le motif. C'est ce trait, et non une carte en aplat, qui permet à
+/// trois teintes différentes de cohabiter sans transformer la liste en feu
+/// tricolore.
 class _Watchlist extends StatelessWidget {
   const _Watchlist({required this.alerts, required this.now});
 
@@ -255,8 +256,8 @@ class _DayHeading extends StatelessWidget {
   );
 }
 
-/// "Hanta Ravelo a réservé" — sentence first, because that is how the
-/// organizer will repeat it to someone else.
+/// « Hanta Ravelo a réservé » — la phrase d'abord, parce que c'est sous cette
+/// forme que l'organisateur la répétera à quelqu'un d'autre.
 class _ActivityRow extends StatelessWidget {
   const _ActivityRow({required this.alert});
 

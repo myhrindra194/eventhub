@@ -11,7 +11,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-/// Write or edit a review. [existing] pre-fills the form and adds "delete".
+/// Écrire ou modifier un avis. [existing] pré-remplit le formulaire et
+/// ajoute « supprimer ».
 Future<void> showReviewSheet(
   BuildContext context, {
   required String eventId,
@@ -98,7 +99,6 @@ class _ReviewSheetState extends ConsumerState<_ReviewSheet> {
         AppButton.primary(
           label: AppStrings.publishReview,
           isLoading: busy,
-          elevated: false,
           onPressed: _rating == 0 ? null : _publish,
         ),
         if (widget.existing != null) ...[

@@ -3,14 +3,15 @@ import 'dart:math';
 import 'package:eventhub/core/utils/app_logger.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// Identifier of this app installation, the `device_id` half of the
-/// `devices` primary key `(user_id, device_id)`.
+/// Identifiant de cette installation de l’application, la moitié `device_id`
+/// de la clé primaire `(user_id, device_id)` de `devices`.
 ///
-/// Why an installation id rather than one derived from the FCM token: a token
-/// rotates (refresh, `deleteToken` on sign-out, restore on a new phone). Keyed
-/// by the token, each rotation would leave the previous row behind until the
-/// worker learns from FCM that it is dead; keyed by the installation, the
-/// upsert in `public.register_device` replaces the token in place.
+/// Pourquoi un identifiant d’installation plutôt qu’un identifiant dérivé du
+/// jeton FCM : un jeton tourne (rafraîchissement, `deleteToken` à la
+/// déconnexion, restauration sur un nouveau téléphone). Indexée sur le jeton,
+/// chaque rotation laisserait la ligne précédente derrière elle jusqu’à ce que
+/// le worker apprenne de FCM qu’elle est morte ; indexée sur l’installation,
+/// l’upsert de `public.register_device` remplace le jeton sur place.
 class DeviceIdStore {
   DeviceIdStore({Future<SharedPreferences> Function()? preferences})
     : _preferences = preferences ?? SharedPreferences.getInstance;
@@ -20,9 +21,10 @@ class DeviceIdStore {
 
   static const storageKey = 'push.installationId';
 
-  /// Returns the stored id, creating it on first use. If local storage is
-  /// unavailable, falls back to an id derived from [token]: still stable for
-  /// that token, which is all the server needs to upsert.
+  /// Renvoie l’identifiant stocké, en le créant à la première utilisation. Si
+  /// le stockage local est indisponible, se rabat sur un identifiant dérivé de
+  /// [token] : toujours stable pour ce jeton, ce qui suffit au serveur pour
+  /// faire son upsert.
   Future<String> read({required String token}) async {
     if (_cached case final id?) return id;
     try {
@@ -38,7 +40,8 @@ class DeviceIdStore {
     }
   }
 
-  /// 128 random bits as 32 hex characters (the column accepts up to 128).
+  /// 128 bits aléatoires en 32 caractères hexadécimaux (la colonne en accepte
+  /// jusqu’à 128).
   static String _randomId() {
     final random = Random.secure();
     return [
@@ -47,10 +50,11 @@ class DeviceIdStore {
     ].join();
   }
 
-  /// Stable id derived from the token, used only as a fallback.
+  /// Identifiant stable dérivé du jeton, utilisé uniquement en repli.
   ///
-  /// Two FNV-1a passes with different offsets give 64 bits without
-  /// `dart:ffi`-only integer tricks, so the result is identical on the web.
+  /// Deux passes FNV-1a avec des bases d’amorçage différentes donnent 64 bits
+  /// sans recourir aux astuces sur entiers propres à `dart:ffi`, si bien que
+  /// le résultat est identique sur le web.
   static String deviceIdFor(String token) {
     int fnv(int seed) {
       var hash = seed;

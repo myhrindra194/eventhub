@@ -11,12 +11,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-/// Booking confirmation.
+/// Confirmation de réservation.
 ///
-/// A deliberate full screen rather than a toast: the moment a reservation
-/// succeeds is the emotional peak of the participant journey, and it is
-/// also where the two follow-up actions belong ("voir mon billet",
-/// "continuer à explorer"). A snack bar would waste both.
+/// Un plein écran assumé plutôt qu’un toast : l’instant où une réservation
+/// aboutit est le sommet émotionnel du parcours participant, et c’est aussi
+/// là que se logent les deux actions de suite (« voir mon billet »,
+/// « continuer à explorer »). Un snack bar gâcherait les deux.
 class ReservationConfirmationScreen extends ConsumerWidget {
   const ReservationConfirmationScreen({required this.reservationId, super.key});
 

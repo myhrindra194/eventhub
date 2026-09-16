@@ -1,6 +1,6 @@
 import 'package:eventhub/core/errors/failure.dart';
+import 'package:eventhub/core/firebase/firebase_providers.dart';
 import 'package:eventhub/core/result/result.dart';
-import 'package:eventhub/core/supabase/supabase_providers.dart';
 import 'package:eventhub/features/admin/data/moderation_remote_data_source.dart';
 import 'package:eventhub/features/admin/data/moderation_repository_impl.dart';
 import 'package:eventhub/features/admin/domain/moderation.dart';
@@ -13,14 +13,16 @@ import 'package:riverpod_annotation/riverpod_annotation.dart' hide AsyncResult;
 part 'moderation_providers.g.dart';
 
 @Riverpod(keepAlive: true)
-ModerationRepository moderationRepository(Ref ref) {
-  final remote = ModerationRemoteDataSource(ref.watch(supabaseClientProvider));
-  ref.onDispose(remote.dispose);
-  return ModerationRepositoryImpl(remote);
-}
+ModerationRepository moderationRepository(Ref ref) => ModerationRepositoryImpl(
+  ModerationRemoteDataSource(
+    ref.watch(firestoreProvider),
+    ref.watch(firebaseAuthProvider),
+  ),
+);
 
-/// Nothing is even requested without the claim: RLS would answer empty
-/// lists, and a subscription per screen for nothing is waste.
+/// Rien n’est même demandé sans le rôle : les règles refuseraient chaque
+/// lecture, et ouvrir un listener par écran pour se faire refuser est du
+/// gaspillage.
 bool _isAdmin(Ref ref) => ref.watch(currentUserProvider)?.isAdmin ?? false;
 
 @riverpod
@@ -29,7 +31,7 @@ Stream<List<ModerationEntry>> moderationQueue(Ref ref, {required bool open}) {
   return ref.watch(moderationRepositoryProvider).watchQueue(open: open);
 }
 
-/// Badge on the "Modération" menu entry.
+/// Pastille sur l’entrée de menu « Modération ».
 @riverpod
 int openModerationCount(Ref ref) =>
     ref.watch(moderationQueueProvider(open: true)).value?.length ?? 0;
@@ -62,8 +64,9 @@ Stream<ReportedAccount?> reportedAccount(Ref ref, String userId) {
   return ref.watch(moderationRepositoryProvider).watchAccount(userId);
 }
 
-/// A reported review, hidden or not (RLS shows hidden reviews to
-/// administrators). [reviewId] is the uuid carried by the queue entry.
+/// Un avis signalé, masqué ou non (les règles montrent un avis masqué à son
+/// auteur et aux administrateurs). [reviewId] est l’identifiant que porte
+/// l’entrée.
 @riverpod
 Stream<Review?> moderatedReview(Ref ref, String reviewId) {
   if (reviewId.isEmpty) return Stream.value(null);
@@ -85,27 +88,16 @@ class ModerationController extends _$ModerationController {
     required ModerationEntry entry,
     required ModerationAction action,
     required String note,
-  }) => _run(
-    () => ref
-        .read(moderationRepositoryProvider)
-        .decide(entry: entry, action: action, note: note),
-  );
-
-  Future<Result<void>> setAdmin({required String email, required bool admin}) =>
-      _run(
-        () => ref
-            .read(moderationRepositoryProvider)
-            .setAdmin(email: email, admin: admin),
-      );
-
-  Future<Result<T>> _run<T>(AsyncResult<T> Function() action) async {
+  }) async {
     if (!(ref.read(currentUserProvider)?.isAdmin ?? false)) {
       return const Err(
         PermissionFailure(message: 'Réservé à l’administration.'),
       );
     }
     state = const AsyncLoading();
-    final result = await action();
+    final result = await ref
+        .read(moderationRepositoryProvider)
+        .decide(entry: entry, action: action, note: note);
     state = switch (result) {
       Ok() => const AsyncData(null),
       Err(:final failure) => AsyncError(

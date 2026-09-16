@@ -4,21 +4,24 @@ import 'package:eventhub/features/events/domain/entities/event.dart';
 import 'package:eventhub/features/events/domain/entities/event_tier.dart';
 import 'package:eventhub/features/reservations/domain/entities/reservation.dart';
 
-/// Business rules from the spec (§4.4 / §7), extended with ticket types
-/// (F-12) and payments (F-11). Pure and unit-tested.
+/// Règles métier du cahier des charges (§4.4 / §7), étendues aux types de
+/// billets (F-12) et aux paiements (F-11). Pures et couvertes par des tests
+/// unitaires.
 ///
-/// Why it runs *inside* the booking transaction: Firestore security rules
-/// answer a refused write with a bare `permission-denied`, never with the
-/// reason. The repository therefore evaluates this policy on the event and
-/// the seat the transaction has just read, and turns its precise sentence
-/// into a failure before writing anything. `firebase/firestore.rules` checks
-/// the same invariants again on the server and is the one that decides — a
-/// refusal that still reaches the rules is a race (the last seat just went)
-/// or a tampered client.
+/// Pourquoi elles s’exécutent *à l’intérieur* de la transaction de
+/// réservation : les règles de sécurité Firestore répondent à une écriture
+/// refusée par un simple `permission-denied`, jamais par le motif. Le
+/// repository évalue donc cette policy sur l’événement et la place que la
+/// transaction vient de lire, et transforme sa phrase précise en failure
+/// avant la moindre écriture. `firebase/firestore.rules` revérifie les
+/// mêmes invariants côté serveur et reste seul juge : un refus qui atteint
+/// malgré tout les règles signale une course (la dernière place vient de
+/// partir) ou un client trafiqué.
 abstract final class ReservationPolicy {
-  /// Online payment needs a server (a Stripe webhook, a refund call) and the
-  /// Spark plan has none: the rules refuse any seat with a price. Returned by
-  /// every payment entry point until a payment backend exists.
+  /// Le paiement en ligne exige un serveur (un webhook Stripe, un appel de
+  /// remboursement) et le plan Spark n’en a pas : les règles refusent toute
+  /// place ayant un prix. Renvoyé par chaque point d’entrée de paiement
+  /// tant qu’il n’existe pas de backend de paiement.
   static const paymentUnavailable = BusinessRuleFailure(
     rule: BusinessRule.paymentRequired,
     message:
@@ -26,14 +29,15 @@ abstract final class ReservationPolicy {
         'gratuits sont réservables.',
   );
 
-  /// A free seat, booked directly. [tierId] is required on an event that
-  /// has ticket types.
+  /// Une place gratuite, réservée directement. [tierId] est obligatoire sur
+  /// un événement qui possède des types de billets.
   ///
-  /// [userId] is the person booking: one account holds both spaces, so an
-  /// organizer books other people's events like anyone else, but the team
-  /// of an event (owner and co-organizers) never books its own — the rules
-  /// refuse it, because a seat taken by the team would inflate the figures
-  /// the team itself reads.
+  /// [userId] est la personne qui réserve : un seul compte porte les deux
+  /// espaces, si bien qu’un organisateur réserve les événements des autres
+  /// comme n’importe qui, mais l’équipe d’un événement (propriétaire et
+  /// co-organisateurs) ne réserve jamais le sien — les règles le refusent,
+  /// car une place prise par l’équipe gonflerait les chiffres que cette
+  /// même équipe consulte.
   static Result<void> canReserve({
     required Event event,
     required Reservation? existing,
@@ -58,9 +62,9 @@ abstract final class ReservationPolicy {
     return const Ok(null);
   }
 
-  /// A paid seat. Kept, with its tests, for the day a payment server exists:
-  /// no screen calls it on the Spark plan, where [paymentUnavailable] is the
-  /// answer.
+  /// Une place payante. Conservée, avec ses tests, pour le jour où un
+  /// serveur de paiement existera : aucun écran ne l’appelle sur le plan
+  /// Spark, où la réponse est [paymentUnavailable].
   static Result<EventTier> canCheckout({
     required Event event,
     required Reservation? existing,
@@ -68,7 +72,8 @@ abstract final class ReservationPolicy {
     required String tierId,
     String? userId,
   }) {
-    // A still-held checkout for the same event is resumed, not refused.
+    // Un paiement encore en cours sur le même événement est repris, non
+    // refusé.
     final resumable = existing != null && existing.isPending ? null : existing;
     if (_common(event: event, existing: resumable, now: now, userId: userId)
         case Err(:final failure)) {
@@ -165,8 +170,8 @@ abstract final class ReservationPolicy {
     return Ok(tier);
   }
 
-  /// A direct cancellation: free seats only. A paid ticket would need a
-  /// refund, which needs a payment server.
+  /// Une annulation directe : places gratuites uniquement. Un billet payé
+  /// exigerait un remboursement, donc un serveur de paiement.
   static Result<void> canCancel({
     required Reservation reservation,
     required String userId,
@@ -198,8 +203,8 @@ abstract final class ReservationPolicy {
     return const Ok(null);
   }
 
-  /// A refund: a paid, active ticket, before the event starts. Like
-  /// [canCheckout], waiting for a payment server.
+  /// Un remboursement : un billet payé et actif, avant le début de
+  /// l’événement. Comme [canCheckout], en attente d’un serveur de paiement.
   static Result<void> canRefund({
     required Reservation reservation,
     required String userId,

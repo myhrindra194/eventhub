@@ -5,17 +5,19 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-/// Organizer shell: Événements · Stats · Alertes · Profil.
+/// Coque de l’organisateur : Événements · Stats · Alertes · Profil.
 ///
-/// The order follows the organizer's loop: act on events, read how they
-/// perform, react to what changed, then the account. Creation, editing and
-/// the guest list are still pushed *over* the shell rather than hidden in a
-/// tab — they are tasks, not places.
+/// L’ordre suit la boucle de l’organisateur : agir sur les événements, lire
+/// comment ils se comportent, réagir à ce qui a changé, puis le compte. La
+/// création, l’édition et la liste des invités sont toujours empilées *par
+/// dessus* la coque plutôt que cachées dans un onglet — ce sont des tâches,
+/// pas des lieux.
 ///
-/// The "Alertes" destination carries a dot while the watchlist is not empty
-/// (an event starting within 24 h, last seats, sold out): it clears itself
-/// when the situation does, so it never nags about something already
-/// handled.
+/// La destination « Alertes » porte une pastille tant que la liste de
+/// surveillance n’est pas vide (un événement qui commence dans moins de 24 h,
+/// dernières places, complet) : elle s’efface d’elle-même quand la situation
+/// se résout, et ne harcèle donc jamais à propos de quelque chose de déjà
+/// traité.
 class OrganizerShell extends ConsumerWidget {
   const OrganizerShell({required this.navigationShell, super.key});
 
@@ -25,40 +27,36 @@ class OrganizerShell extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final watchCount = ref.watch(organizerWatchlistProvider).value?.length ?? 0;
 
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      extendBody: true,
-      body: navigationShell,
-      bottomNavigationBar: AppNavBar(
-        selectedIndex: navigationShell.currentIndex,
-        onSelected: (index) => navigationShell.goBranch(
-          index,
-          initialLocation: index == navigationShell.currentIndex,
-        ),
-        destinations: [
-          const NavDestination(
-            icon: Icons.dashboard_outlined,
-            selectedIcon: Icons.dashboard_rounded,
-            label: AppStrings.events,
-          ),
-          const NavDestination(
-            icon: Icons.insights_outlined,
-            selectedIcon: Icons.insights_rounded,
-            label: AppStrings.stats,
-          ),
-          NavDestination(
-            icon: Icons.notifications_none_rounded,
-            selectedIcon: Icons.notifications_rounded,
-            label: AppStrings.alerts,
-            badgeCount: watchCount,
-          ),
-          const NavDestination(
-            icon: Icons.person_outline_rounded,
-            selectedIcon: Icons.person_rounded,
-            label: AppStrings.profile,
-          ),
-        ],
+    return AdaptiveNavigation(
+      selectedIndex: navigationShell.currentIndex,
+      onSelected: (index) => navigationShell.goBranch(
+        index,
+        initialLocation: index == navigationShell.currentIndex,
       ),
+      destinations: [
+        const NavDestination(
+          icon: Icons.dashboard_outlined,
+          selectedIcon: Icons.dashboard_rounded,
+          label: AppStrings.events,
+        ),
+        const NavDestination(
+          icon: Icons.insights_outlined,
+          selectedIcon: Icons.insights_rounded,
+          label: AppStrings.stats,
+        ),
+        NavDestination(
+          icon: Icons.notifications_none_rounded,
+          selectedIcon: Icons.notifications_rounded,
+          label: AppStrings.alerts,
+          badgeCount: watchCount,
+        ),
+        const NavDestination(
+          icon: Icons.person_outline_rounded,
+          selectedIcon: Icons.person_rounded,
+          label: AppStrings.profile,
+        ),
+      ],
+      child: navigationShell,
     );
   }
 }

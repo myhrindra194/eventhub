@@ -1,85 +1,39 @@
 import 'package:eventhub/app/theme/theme.dart';
 import 'package:eventhub/core/extensions/context_x.dart';
 import 'package:eventhub/core/l10n/app_strings.dart';
-import 'package:eventhub/core/result/result.dart';
 import 'package:eventhub/core/utils/date_formats.dart';
 import 'package:eventhub/core/widgets/design_system.dart';
 import 'package:eventhub/features/admin/application/moderation_providers.dart';
-import 'package:eventhub/features/admin/domain/moderation.dart';
 import 'package:eventhub/features/auth/application/auth_providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
-/// Who administers EventHub, and how to add or remove someone.
+/// Qui administre EventHub — et pourquoi cet écran n’a aucun bouton.
 ///
-/// Granting works by email on an existing account: the claim lives in the
-/// token, so the person sees the moderation area after signing in again.
-/// Nobody can remove their own role here — the last admin can never lock the
-/// project out by mistake.
-class AdminRolesScreen extends ConsumerStatefulWidget {
+/// Le rôle, c’est le document `admins/{uid}`, que les règles de sécurité
+/// rendent non écrivable par tout client, administrateurs compris. C’est
+/// délibéré : faute de code serveur, un bouton « attribuer le rôle » devrait
+/// être une écriture client, et une écriture client capable de créer un
+/// administrateur n’est qu’à une session volée de devenir tout le back-office.
+/// La liste est donc en lecture seule, et l’écran dit, en toutes lettres, où
+/// le rôle s’attribue réellement.
+class AdminRolesScreen extends ConsumerWidget {
   const AdminRolesScreen({super.key});
 
   @override
-  ConsumerState<AdminRolesScreen> createState() => _AdminRolesScreenState();
-}
-
-class _AdminRolesScreenState extends ConsumerState<AdminRolesScreen> {
-  final _email = TextEditingController();
-
-  @override
-  void dispose() {
-    _email.dispose();
-    super.dispose();
-  }
-
-  Future<void> _grant() async {
-    FocusScope.of(context).unfocus();
-    final email = _email.text.trim();
-    final result = await ref
-        .read(moderationControllerProvider.notifier)
-        .setAdmin(email: email, admin: true);
-    if (!mounted) return;
-    switch (result) {
-      case Ok():
-        _email.clear();
-        context.showSuccess(AppStrings.adminGranted(email));
-      case Err(:final failure):
-        context.showFailure(failure);
-    }
-  }
-
-  Future<void> _revoke(AdminAccount admin) async {
-    final confirmed = await showConfirmSheet(
-      context,
-      icon: Icons.remove_moderator_outlined,
-      title: AppStrings.revokeAdminTitle,
-      message: AppStrings.revokeAdminMessage(admin.email),
-      confirmLabel: AppStrings.revokeAdmin,
-    );
-    if (!confirmed || !mounted) return;
-    final result = await ref
-        .read(moderationControllerProvider.notifier)
-        .setAdmin(email: admin.email, admin: false);
-    if (!mounted) return;
-    switch (result) {
-      case Ok():
-        context.showSuccess(AppStrings.adminRevoked(admin.email));
-      case Err(:final failure):
-        context.showFailure(failure);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final t = context.tokens;
     final text = context.textTheme;
     final me = ref.watch(currentUserProvider);
     final admins = ref.watch(adminAccountsProvider).value ?? const [];
-    final busy = ref.watch(moderationControllerProvider).isLoading;
 
     return AppScaffold(
       dense: true,
-      appBar: AppBar(title: const Text(AppStrings.adminRolesTitle)),
+      appBar: AppTopBar.subPage(
+        title: AppStrings.adminRolesTitle,
+        onBack: () => context.pop(),
+      ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(
           AppSpacing.gutter,
@@ -91,29 +45,6 @@ class _AdminRolesScreenState extends ConsumerState<AdminRolesScreen> {
           Text(
             AppStrings.adminRolesLead,
             style: text.bodySmall?.copyWith(height: 1.5),
-          ),
-          const SizedBox(height: AppSpacing.lg),
-          FieldGroup(
-            children: [
-              FieldRow(
-                icon: Icons.alternate_email_rounded,
-                controller: _email,
-                hint: AppStrings.adminEmailHint,
-                keyboardType: TextInputType.emailAddress,
-                textInputAction: TextInputAction.done,
-                enabled: !busy,
-                onChanged: (_) => setState(() {}),
-                onFieldSubmitted: (_) => _grant(),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.md),
-          AppButton.primary(
-            label: AppStrings.grantAdmin,
-            elevated: false,
-            isLoading: busy,
-            loadingLabel: AppStrings.decisionSending,
-            onPressed: _email.text.trim().isEmpty || busy ? null : _grant,
           ),
           const SizedBox(height: AppSpacing.xxl),
           Row(
@@ -139,7 +70,7 @@ class _AdminRolesScreenState extends ConsumerState<AdminRolesScreen> {
                     padding: const EdgeInsets.fromLTRB(
                       AppSpacing.lg,
                       AppSpacing.md,
-                      AppSpacing.sm,
+                      AppSpacing.lg,
                       AppSpacing.md,
                     ),
                     child: Row(
@@ -154,7 +85,9 @@ class _AdminRolesScreenState extends ConsumerState<AdminRolesScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                admins[i].email,
+                                admins[i].email.isEmpty
+                                    ? admins[i].id
+                                    : admins[i].email,
                                 style: text.titleSmall,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
@@ -172,24 +105,10 @@ class _AdminRolesScreenState extends ConsumerState<AdminRolesScreen> {
                           ),
                         ),
                         if (admins[i].id == me?.id)
-                          const Padding(
-                            padding: EdgeInsets.only(right: AppSpacing.sm),
-                            child: AppBadge(
-                              label: AppStrings.you,
-                              tone: AppTone.neutral,
-                              dense: true,
-                            ),
-                          )
-                        else
-                          TextButton(
-                            onPressed: busy ? null : () => _revoke(admins[i]),
-                            style: TextButton.styleFrom(
-                              foregroundColor: t.danger.fg,
-                              shape: const RoundedRectangleBorder(
-                                borderRadius: AppRadius.brButton,
-                              ),
-                            ),
-                            child: const Text(AppStrings.revokeAdmin),
+                          const AppBadge(
+                            label: AppStrings.you,
+                            tone: AppTone.neutral,
+                            dense: true,
                           ),
                       ],
                     ),
@@ -198,10 +117,19 @@ class _AdminRolesScreenState extends ConsumerState<AdminRolesScreen> {
               ],
             ),
           ),
+          const SizedBox(height: AppSpacing.xxl),
+          const SectionLabel(AppStrings.adminGrantTitle),
           const SizedBox(height: AppSpacing.md),
-          Text(
-            AppStrings.adminRelogHint,
-            style: text.bodySmall?.copyWith(height: 1.45),
+          Container(
+            padding: const EdgeInsets.all(AppSpacing.lg),
+            decoration: BoxDecoration(
+              color: t.surfaceSunken,
+              border: Border(left: BorderSide(color: t.borderStrong, width: 3)),
+            ),
+            child: Text(
+              AppStrings.adminGrantSteps,
+              style: text.bodySmall?.copyWith(height: 1.6),
+            ),
           ),
         ],
       ),

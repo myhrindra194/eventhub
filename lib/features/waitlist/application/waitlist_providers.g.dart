@@ -57,20 +57,20 @@ final class WaitlistRepositoryProvider
 String _$waitlistRepositoryHash() =>
     r'c8f6cd235b0468da832c168abae3fa4515aaf3fe';
 
-/// Any signed-in account may wait (one account, two spaces); the event's
-/// team is excluded by `WaitlistPolicy`, not here.
+/// Tout compte connecté peut attendre (un seul compte, deux espaces) ;
+/// l’équipe de l’événement est exclue par `WaitlistPolicy`, pas ici.
 
 @ProviderFor(isOnWaitlist)
 final isOnWaitlistProvider = IsOnWaitlistFamily._();
 
-/// Any signed-in account may wait (one account, two spaces); the event's
-/// team is excluded by `WaitlistPolicy`, not here.
+/// Tout compte connecté peut attendre (un seul compte, deux espaces) ;
+/// l’équipe de l’événement est exclue par `WaitlistPolicy`, pas ici.
 
 final class IsOnWaitlistProvider
     extends $FunctionalProvider<AsyncValue<bool>, bool, Stream<bool>>
     with $FutureModifier<bool>, $StreamProvider<bool> {
-  /// Any signed-in account may wait (one account, two spaces); the event's
-  /// team is excluded by `WaitlistPolicy`, not here.
+  /// Tout compte connecté peut attendre (un seul compte, deux espaces) ;
+  /// l’équipe de l’événement est exclue par `WaitlistPolicy`, pas ici.
   IsOnWaitlistProvider._({
     required IsOnWaitlistFamily super.from,
     required String super.argument,
@@ -116,8 +116,8 @@ final class IsOnWaitlistProvider
 
 String _$isOnWaitlistHash() => r'10512c5dd69f6ff386e71cd6b4967ea93a610f45';
 
-/// Any signed-in account may wait (one account, two spaces); the event's
-/// team is excluded by `WaitlistPolicy`, not here.
+/// Tout compte connecté peut attendre (un seul compte, deux espaces) ;
+/// l’équipe de l’événement est exclue par `WaitlistPolicy`, pas ici.
 
 final class IsOnWaitlistFamily extends $Family
     with $FunctionalFamilyOverride<Stream<bool>, String> {
@@ -130,8 +130,8 @@ final class IsOnWaitlistFamily extends $Family
         isAutoDispose: true,
       );
 
-  /// Any signed-in account may wait (one account, two spaces); the event's
-  /// team is excluded by `WaitlistPolicy`, not here.
+  /// Tout compte connecté peut attendre (un seul compte, deux espaces) ;
+  /// l’équipe de l’événement est exclue par `WaitlistPolicy`, pas ici.
 
   IsOnWaitlistProvider call(String eventId) =>
       IsOnWaitlistProvider._(argument: eventId, from: this);
@@ -140,17 +140,17 @@ final class IsOnWaitlistFamily extends $Family
   String toString() => r'isOnWaitlistProvider';
 }
 
-/// Organizer view, capped at [WaitlistRepository.queueLengthCap].
+/// Vue organisateur, plafonnée à [WaitlistRepository.queueLengthCap].
 
 @ProviderFor(waitlistLength)
 final waitlistLengthProvider = WaitlistLengthFamily._();
 
-/// Organizer view, capped at [WaitlistRepository.queueLengthCap].
+/// Vue organisateur, plafonnée à [WaitlistRepository.queueLengthCap].
 
 final class WaitlistLengthProvider
     extends $FunctionalProvider<AsyncValue<int>, int, Stream<int>>
     with $FutureModifier<int>, $StreamProvider<int> {
-  /// Organizer view, capped at [WaitlistRepository.queueLengthCap].
+  /// Vue organisateur, plafonnée à [WaitlistRepository.queueLengthCap].
   WaitlistLengthProvider._({
     required WaitlistLengthFamily super.from,
     required String super.argument,
@@ -196,7 +196,7 @@ final class WaitlistLengthProvider
 
 String _$waitlistLengthHash() => r'b2a37c8b69e15a3ae967aef319f5d72568a3dcc7';
 
-/// Organizer view, capped at [WaitlistRepository.queueLengthCap].
+/// Vue organisateur, plafonnée à [WaitlistRepository.queueLengthCap].
 
 final class WaitlistLengthFamily extends $Family
     with $FunctionalFamilyOverride<Stream<int>, String> {
@@ -209,7 +209,7 @@ final class WaitlistLengthFamily extends $Family
         isAutoDispose: true,
       );
 
-  /// Organizer view, capped at [WaitlistRepository.queueLengthCap].
+  /// Vue organisateur, plafonnée à [WaitlistRepository.queueLengthCap].
 
   WaitlistLengthProvider call(String eventId) =>
       WaitlistLengthProvider._(argument: eventId, from: this);

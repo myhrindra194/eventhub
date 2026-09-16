@@ -55,7 +55,7 @@ final class NotificationRepositoryProvider
 }
 
 String _$notificationRepositoryHash() =>
-    r'60dbd6f47408413cd59f523941fb08ba0c57a73d';
+    r'2980df71856bc086a8f4dcf3738eca5d5b484e05';
 
 @ProviderFor(pushMessaging)
 final pushMessagingProvider = PushMessagingProvider._();
@@ -152,12 +152,12 @@ final class LocalNotificationsProvider
 String _$localNotificationsHash() =>
     r'2016fd7d441d36238311b5d93deffd2f29a8c593';
 
-/// Preferences of the signed-in user; defaults while signed out.
+/// Préférences de l’utilisateur connecté ; valeurs par défaut hors session.
 
 @ProviderFor(notificationPreferences)
 final notificationPreferencesProvider = NotificationPreferencesProvider._();
 
-/// Preferences of the signed-in user; defaults while signed out.
+/// Préférences de l’utilisateur connecté ; valeurs par défaut hors session.
 
 final class NotificationPreferencesProvider
     extends
@@ -169,7 +169,7 @@ final class NotificationPreferencesProvider
     with
         $FutureModifier<NotificationPreferences>,
         $StreamProvider<NotificationPreferences> {
-  /// Preferences of the signed-in user; defaults while signed out.
+  /// Préférences de l’utilisateur connecté ; valeurs par défaut hors session.
   NotificationPreferencesProvider._()
     : super(
         from: null,
@@ -248,12 +248,12 @@ abstract class _$NotificationPreferencesController
   }
 }
 
-/// In-app history of the signed-in user, most recent first.
+/// Historique in-app de l’utilisateur connecté, le plus récent d’abord.
 
 @ProviderFor(notificationFeed)
 final notificationFeedProvider = NotificationFeedProvider._();
 
-/// In-app history of the signed-in user, most recent first.
+/// Historique in-app de l’utilisateur connecté, le plus récent d’abord.
 
 final class NotificationFeedProvider
     extends
@@ -265,7 +265,7 @@ final class NotificationFeedProvider
     with
         $FutureModifier<List<AppNotification>>,
         $StreamProvider<List<AppNotification>> {
-  /// In-app history of the signed-in user, most recent first.
+  /// Historique in-app de l’utilisateur connecté, le plus récent d’abord.
   NotificationFeedProvider._()
     : super(
         from: null,
@@ -294,17 +294,17 @@ final class NotificationFeedProvider
 
 String _$notificationFeedHash() => r'86b9aa98b880e619a1baff5a547606547ac05db7';
 
-/// Drives the dot on every bell button.
+/// Pilote la pastille de tous les boutons cloche.
 
 @ProviderFor(unreadNotificationCount)
 final unreadNotificationCountProvider = UnreadNotificationCountProvider._();
 
-/// Drives the dot on every bell button.
+/// Pilote la pastille de tous les boutons cloche.
 
 final class UnreadNotificationCountProvider
     extends $FunctionalProvider<int, int, int>
     with $Provider<int> {
-  /// Drives the dot on every bell button.
+  /// Pilote la pastille de tous les boutons cloche.
   UnreadNotificationCountProvider._()
     : super(
         from: null,
@@ -387,75 +387,90 @@ abstract class _$NotificationFeedController extends $AsyncNotifier<void> {
   }
 }
 
-/// The push pipeline on the device, driven by the session.
+/// Le pipeline push sur l’appareil, piloté par la session.
 ///
-/// * signed in → ask permission, register the FCM token under the user
-///   (`public.register_device`), keep it registered on refresh;
-/// * signed out → invalidate the token (see
-///   [PushMessagingDataSource.deleteToken]);
-/// * foreground message → shown as a local notification;
-/// * tap (foreground, background or cold start) → [NotificationRoute].
+/// * connecté → demander la permission, enregistrer le jeton FCM sous le
+///   compte et le maintenir enregistré à chaque rafraîchissement ;
+/// * déconnecté → invalider le jeton (voir
+///   [PushMessagingDataSource.deleteToken]) ;
+/// * message reçu au premier plan → affiché en notification locale ;
+/// * appui (premier plan, arrière-plan ou démarrage à froid) →
+///   [NotificationRoute].
 ///
-/// Why sign-out does not delete the `devices` row: this provider learns of
-/// the sign-out from [currentUserProvider], i.e. once the session is already
-/// gone, and RLS refuses an anonymous delete. Invalidating the token needs no
-/// session and is enough on its own: FCM answers `UNREGISTERED` to the next
-/// send and the worker forgets the row (`devices_forget_tokens`). If the
-/// device is offline and the invalidation fails, the next account signing in
-/// on the phone gets the same token, and `register_device` moves it away from
-/// the previous account. The row is keyed by installation, so the same
-/// person signing in again replaces the dead token in place.
+/// Sur le plan Spark, rien n’émet vers ces jetons — un émetteur, c’est du code
+/// serveur — ce pipeline ne porte donc que les messages reçus au premier plan
+/// et les appuis. L’enregistrement est conservé parce que c’est ce qu’une
+/// future Cloud Function irait lire, et qu’il ne coûte qu’un document par
+/// installation.
 ///
-/// Watched once by `EventHubApp`; kept alive for the app's lifetime. Web is
-/// excluded on purpose: web push needs a VAPID key and a service worker.
+/// Pourquoi la déconnexion ne supprime pas le document de l’appareil : ce
+/// provider apprend la déconnexion par [currentUserProvider], c’est-à-dire une
+/// fois la session déjà perdue, et les règles refusent une suppression
+/// anonyme. Invalider le jeton ne demande aucune session et suffit : le
+/// document est indexé sur l’installation, donc le prochain compte qui se
+/// connecte sur ce téléphone remplace le jeton mort sur place.
+///
+/// Observé une seule fois par `EventHubApp` ; maintenu en vie pendant toute la
+/// durée de l’application. Le web est exclu volontairement : le push web exige
+/// une clé VAPID et un service worker.
 
 @ProviderFor(PushNotifications)
 final pushNotificationsProvider = PushNotificationsProvider._();
 
-/// The push pipeline on the device, driven by the session.
+/// Le pipeline push sur l’appareil, piloté par la session.
 ///
-/// * signed in → ask permission, register the FCM token under the user
-///   (`public.register_device`), keep it registered on refresh;
-/// * signed out → invalidate the token (see
-///   [PushMessagingDataSource.deleteToken]);
-/// * foreground message → shown as a local notification;
-/// * tap (foreground, background or cold start) → [NotificationRoute].
+/// * connecté → demander la permission, enregistrer le jeton FCM sous le
+///   compte et le maintenir enregistré à chaque rafraîchissement ;
+/// * déconnecté → invalider le jeton (voir
+///   [PushMessagingDataSource.deleteToken]) ;
+/// * message reçu au premier plan → affiché en notification locale ;
+/// * appui (premier plan, arrière-plan ou démarrage à froid) →
+///   [NotificationRoute].
 ///
-/// Why sign-out does not delete the `devices` row: this provider learns of
-/// the sign-out from [currentUserProvider], i.e. once the session is already
-/// gone, and RLS refuses an anonymous delete. Invalidating the token needs no
-/// session and is enough on its own: FCM answers `UNREGISTERED` to the next
-/// send and the worker forgets the row (`devices_forget_tokens`). If the
-/// device is offline and the invalidation fails, the next account signing in
-/// on the phone gets the same token, and `register_device` moves it away from
-/// the previous account. The row is keyed by installation, so the same
-/// person signing in again replaces the dead token in place.
+/// Sur le plan Spark, rien n’émet vers ces jetons — un émetteur, c’est du code
+/// serveur — ce pipeline ne porte donc que les messages reçus au premier plan
+/// et les appuis. L’enregistrement est conservé parce que c’est ce qu’une
+/// future Cloud Function irait lire, et qu’il ne coûte qu’un document par
+/// installation.
 ///
-/// Watched once by `EventHubApp`; kept alive for the app's lifetime. Web is
-/// excluded on purpose: web push needs a VAPID key and a service worker.
+/// Pourquoi la déconnexion ne supprime pas le document de l’appareil : ce
+/// provider apprend la déconnexion par [currentUserProvider], c’est-à-dire une
+/// fois la session déjà perdue, et les règles refusent une suppression
+/// anonyme. Invalider le jeton ne demande aucune session et suffit : le
+/// document est indexé sur l’installation, donc le prochain compte qui se
+/// connecte sur ce téléphone remplace le jeton mort sur place.
+///
+/// Observé une seule fois par `EventHubApp` ; maintenu en vie pendant toute la
+/// durée de l’application. Le web est exclu volontairement : le push web exige
+/// une clé VAPID et un service worker.
 final class PushNotificationsProvider
     extends $NotifierProvider<PushNotifications, void> {
-  /// The push pipeline on the device, driven by the session.
+  /// Le pipeline push sur l’appareil, piloté par la session.
   ///
-  /// * signed in → ask permission, register the FCM token under the user
-  ///   (`public.register_device`), keep it registered on refresh;
-  /// * signed out → invalidate the token (see
-  ///   [PushMessagingDataSource.deleteToken]);
-  /// * foreground message → shown as a local notification;
-  /// * tap (foreground, background or cold start) → [NotificationRoute].
+  /// * connecté → demander la permission, enregistrer le jeton FCM sous le
+  ///   compte et le maintenir enregistré à chaque rafraîchissement ;
+  /// * déconnecté → invalider le jeton (voir
+  ///   [PushMessagingDataSource.deleteToken]) ;
+  /// * message reçu au premier plan → affiché en notification locale ;
+  /// * appui (premier plan, arrière-plan ou démarrage à froid) →
+  ///   [NotificationRoute].
   ///
-  /// Why sign-out does not delete the `devices` row: this provider learns of
-  /// the sign-out from [currentUserProvider], i.e. once the session is already
-  /// gone, and RLS refuses an anonymous delete. Invalidating the token needs no
-  /// session and is enough on its own: FCM answers `UNREGISTERED` to the next
-  /// send and the worker forgets the row (`devices_forget_tokens`). If the
-  /// device is offline and the invalidation fails, the next account signing in
-  /// on the phone gets the same token, and `register_device` moves it away from
-  /// the previous account. The row is keyed by installation, so the same
-  /// person signing in again replaces the dead token in place.
+  /// Sur le plan Spark, rien n’émet vers ces jetons — un émetteur, c’est du code
+  /// serveur — ce pipeline ne porte donc que les messages reçus au premier plan
+  /// et les appuis. L’enregistrement est conservé parce que c’est ce qu’une
+  /// future Cloud Function irait lire, et qu’il ne coûte qu’un document par
+  /// installation.
   ///
-  /// Watched once by `EventHubApp`; kept alive for the app's lifetime. Web is
-  /// excluded on purpose: web push needs a VAPID key and a service worker.
+  /// Pourquoi la déconnexion ne supprime pas le document de l’appareil : ce
+  /// provider apprend la déconnexion par [currentUserProvider], c’est-à-dire une
+  /// fois la session déjà perdue, et les règles refusent une suppression
+  /// anonyme. Invalider le jeton ne demande aucune session et suffit : le
+  /// document est indexé sur l’installation, donc le prochain compte qui se
+  /// connecte sur ce téléphone remplace le jeton mort sur place.
+  ///
+  /// Observé une seule fois par `EventHubApp` ; maintenu en vie pendant toute la
+  /// durée de l’application. Le web est exclu volontairement : le push web exige
+  /// une clé VAPID et un service worker.
   PushNotificationsProvider._()
     : super(
         from: null,
@@ -485,27 +500,32 @@ final class PushNotificationsProvider
 
 String _$pushNotificationsHash() => r'32c0bf3e77c487ef72b0a7349c7badcea2a126c8';
 
-/// The push pipeline on the device, driven by the session.
+/// Le pipeline push sur l’appareil, piloté par la session.
 ///
-/// * signed in → ask permission, register the FCM token under the user
-///   (`public.register_device`), keep it registered on refresh;
-/// * signed out → invalidate the token (see
-///   [PushMessagingDataSource.deleteToken]);
-/// * foreground message → shown as a local notification;
-/// * tap (foreground, background or cold start) → [NotificationRoute].
+/// * connecté → demander la permission, enregistrer le jeton FCM sous le
+///   compte et le maintenir enregistré à chaque rafraîchissement ;
+/// * déconnecté → invalider le jeton (voir
+///   [PushMessagingDataSource.deleteToken]) ;
+/// * message reçu au premier plan → affiché en notification locale ;
+/// * appui (premier plan, arrière-plan ou démarrage à froid) →
+///   [NotificationRoute].
 ///
-/// Why sign-out does not delete the `devices` row: this provider learns of
-/// the sign-out from [currentUserProvider], i.e. once the session is already
-/// gone, and RLS refuses an anonymous delete. Invalidating the token needs no
-/// session and is enough on its own: FCM answers `UNREGISTERED` to the next
-/// send and the worker forgets the row (`devices_forget_tokens`). If the
-/// device is offline and the invalidation fails, the next account signing in
-/// on the phone gets the same token, and `register_device` moves it away from
-/// the previous account. The row is keyed by installation, so the same
-/// person signing in again replaces the dead token in place.
+/// Sur le plan Spark, rien n’émet vers ces jetons — un émetteur, c’est du code
+/// serveur — ce pipeline ne porte donc que les messages reçus au premier plan
+/// et les appuis. L’enregistrement est conservé parce que c’est ce qu’une
+/// future Cloud Function irait lire, et qu’il ne coûte qu’un document par
+/// installation.
 ///
-/// Watched once by `EventHubApp`; kept alive for the app's lifetime. Web is
-/// excluded on purpose: web push needs a VAPID key and a service worker.
+/// Pourquoi la déconnexion ne supprime pas le document de l’appareil : ce
+/// provider apprend la déconnexion par [currentUserProvider], c’est-à-dire une
+/// fois la session déjà perdue, et les règles refusent une suppression
+/// anonyme. Invalider le jeton ne demande aucune session et suffit : le
+/// document est indexé sur l’installation, donc le prochain compte qui se
+/// connecte sur ce téléphone remplace le jeton mort sur place.
+///
+/// Observé une seule fois par `EventHubApp` ; maintenu en vie pendant toute la
+/// durée de l’application. Le web est exclu volontairement : le push web exige
+/// une clé VAPID et un service worker.
 
 abstract class _$PushNotifications extends $Notifier<void> {
   void build();

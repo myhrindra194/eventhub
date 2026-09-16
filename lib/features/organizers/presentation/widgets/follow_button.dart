@@ -10,12 +10,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-/// "Suivre" / "Abonné ✓".
+/// « Suivre » / « Abonné ✓ ».
 ///
-/// Two visually distinct states rather than one button whose label changes:
-/// the primary fill asks for the action, the quiet secondary confirms it is
-/// done. Renders nothing on one's own profile. No toast — the button is the
-/// confirmation.
+/// Deux états visuellement distincts plutôt qu'un seul bouton dont le libellé
+/// changerait : le plein de marque demande l'action, le secondaire discret
+/// constate qu'elle est faite. N'affiche rien sur son propre profil. Aucun
+/// message de confirmation non plus — c'est le bouton lui-même qui confirme.
 class FollowButton extends ConsumerWidget {
   const FollowButton({
     required this.organizerId,
@@ -51,14 +51,12 @@ class FollowButton extends ConsumerWidget {
               label: AppStrings.followingState,
               size: AppButtonSize.medium,
               expand: expand,
-              elevated: false,
               onPressed: busy ? null : () => _toggle(context, ref),
             )
           : AppButton.primary(
               label: AppStrings.followAction,
               size: AppButtonSize.medium,
               expand: expand,
-              elevated: false,
               onPressed: busy ? null : () => _toggle(context, ref),
             ),
     );

@@ -11,11 +11,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-/// Heart toggling an event in the participant's favourites.
+/// Cœur qui bascule un événement dans les favoris du participant.
 ///
-/// Renders nothing for an organizer: favourites are a participant feature,
-/// and a control that does nothing for the current role should not exist.
-/// No toast on success — the filled heart *is* the confirmation.
+/// N’affiche rien pour un organisateur : les favoris sont une
+/// fonctionnalité participant, et un contrôle qui ne fait rien pour le rôle
+/// courant n’a pas lieu d’exister. Aucun toast en cas de succès — le cœur
+/// plein *est* la confirmation.
 class FavoriteButton extends ConsumerWidget {
   const FavoriteButton({
     required this.eventId,
@@ -26,7 +27,8 @@ class FavoriteButton extends ConsumerWidget {
 
   final String eventId;
 
-  /// Frosted round button over photography, or a 6 px square on a surface.
+  /// Bouton rond dépoli au-dessus d’une photo, ou carré de 6 px sur une
+  /// surface.
   final bool onImage;
   final double size;
 
@@ -43,7 +45,7 @@ class FavoriteButton extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(currentUserProvider);
-    // Organizers keep every participant right, favorites included.
+    // Les organisateurs gardent tous les droits participant, favoris compris.
     if (user == null) return const SizedBox.shrink();
 
     final active = ref.watch(isFavoriteProvider(eventId));

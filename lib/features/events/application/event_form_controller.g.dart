@@ -8,27 +8,33 @@ part of 'event_form_controller.dart';
 
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // ignore_for_file: type=lint, type=warning
-/// Create / update flow. [existingEventId] == null means "create".
+/// Parcours de création / modification. [existingEventId] == null signifie
+/// « création ».
 ///
-/// The cover is an https URL typed in the form (see [EventDraft.imageUrl]):
-/// on the Spark plan there is no Cloud Storage to upload to, and an event
-/// without a cover keeps its generated visual.
+/// La couverture est une URL https saisie dans le formulaire (voir
+/// [EventDraft.imageUrl]) : sur le plan Spark, il n’y a pas de Cloud
+/// Storage vers lequel envoyer un fichier, et un événement sans couverture
+/// conserve son visuel généré.
 
 @ProviderFor(EventFormController)
 final eventFormControllerProvider = EventFormControllerProvider._();
 
-/// Create / update flow. [existingEventId] == null means "create".
+/// Parcours de création / modification. [existingEventId] == null signifie
+/// « création ».
 ///
-/// The cover is an https URL typed in the form (see [EventDraft.imageUrl]):
-/// on the Spark plan there is no Cloud Storage to upload to, and an event
-/// without a cover keeps its generated visual.
+/// La couverture est une URL https saisie dans le formulaire (voir
+/// [EventDraft.imageUrl]) : sur le plan Spark, il n’y a pas de Cloud
+/// Storage vers lequel envoyer un fichier, et un événement sans couverture
+/// conserve son visuel généré.
 final class EventFormControllerProvider
     extends $AsyncNotifierProvider<EventFormController, void> {
-  /// Create / update flow. [existingEventId] == null means "create".
+  /// Parcours de création / modification. [existingEventId] == null signifie
+  /// « création ».
   ///
-  /// The cover is an https URL typed in the form (see [EventDraft.imageUrl]):
-  /// on the Spark plan there is no Cloud Storage to upload to, and an event
-  /// without a cover keeps its generated visual.
+  /// La couverture est une URL https saisie dans le formulaire (voir
+  /// [EventDraft.imageUrl]) : sur le plan Spark, il n’y a pas de Cloud
+  /// Storage vers lequel envoyer un fichier, et un événement sans couverture
+  /// conserve son visuel généré.
   EventFormControllerProvider._()
     : super(
         from: null,
@@ -51,11 +57,13 @@ final class EventFormControllerProvider
 String _$eventFormControllerHash() =>
     r'c03a0b5256c5f546ad6a8ca02a689e9b23ffdd38';
 
-/// Create / update flow. [existingEventId] == null means "create".
+/// Parcours de création / modification. [existingEventId] == null signifie
+/// « création ».
 ///
-/// The cover is an https URL typed in the form (see [EventDraft.imageUrl]):
-/// on the Spark plan there is no Cloud Storage to upload to, and an event
-/// without a cover keeps its generated visual.
+/// La couverture est une URL https saisie dans le formulaire (voir
+/// [EventDraft.imageUrl]) : sur le plan Spark, il n’y a pas de Cloud
+/// Storage vers lequel envoyer un fichier, et un événement sans couverture
+/// conserve son visuel généré.
 
 abstract class _$EventFormController extends $AsyncNotifier<void> {
   FutureOr<void> build();
@@ -75,15 +83,15 @@ abstract class _$EventFormController extends $AsyncNotifier<void> {
   }
 }
 
-/// Destructive actions on an existing event.
+/// Actions destructrices sur un événement existant.
 
 @ProviderFor(EventActionsController)
 final eventActionsControllerProvider = EventActionsControllerProvider._();
 
-/// Destructive actions on an existing event.
+/// Actions destructrices sur un événement existant.
 final class EventActionsControllerProvider
     extends $AsyncNotifierProvider<EventActionsController, void> {
-  /// Destructive actions on an existing event.
+  /// Actions destructrices sur un événement existant.
   EventActionsControllerProvider._()
     : super(
         from: null,
@@ -106,7 +114,7 @@ final class EventActionsControllerProvider
 String _$eventActionsControllerHash() =>
     r'dd65922f339e9e9423a9632a579ae07e05698fa3';
 
-/// Destructive actions on an existing event.
+/// Actions destructrices sur un événement existant.
 
 abstract class _$EventActionsController extends $AsyncNotifier<void> {
   FutureOr<void> build();

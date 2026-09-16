@@ -59,16 +59,18 @@ final class EventAttendanceDataSourceProvider
 String _$eventAttendanceDataSourceHash() =>
     r'e54c0fcebf5dded8181b607735f4bfb0782cfd8a';
 
-/// Recent attendees' short names for the "who's going" strip (F-07), live:
-/// a booking adds its entry to `events/{id}/attendees` in the same batch as
-/// the seat, so the names move with the counter.
+/// Noms courts des participants récents pour le bandeau « qui y va »
+/// (F-07), en temps réel : une réservation ajoute son entrée dans
+/// `events/{id}/attendees` dans le même batch que la place, si bien que les
+/// noms bougent avec le compteur.
 
 @ProviderFor(eventRecentAttendees)
 final eventRecentAttendeesProvider = EventRecentAttendeesFamily._();
 
-/// Recent attendees' short names for the "who's going" strip (F-07), live:
-/// a booking adds its entry to `events/{id}/attendees` in the same batch as
-/// the seat, so the names move with the counter.
+/// Noms courts des participants récents pour le bandeau « qui y va »
+/// (F-07), en temps réel : une réservation ajoute son entrée dans
+/// `events/{id}/attendees` dans le même batch que la place, si bien que les
+/// noms bougent avec le compteur.
 
 final class EventRecentAttendeesProvider
     extends
@@ -78,9 +80,10 @@ final class EventRecentAttendeesProvider
           Stream<List<String>>
         >
     with $FutureModifier<List<String>>, $StreamProvider<List<String>> {
-  /// Recent attendees' short names for the "who's going" strip (F-07), live:
-  /// a booking adds its entry to `events/{id}/attendees` in the same batch as
-  /// the seat, so the names move with the counter.
+  /// Noms courts des participants récents pour le bandeau « qui y va »
+  /// (F-07), en temps réel : une réservation ajoute son entrée dans
+  /// `events/{id}/attendees` dans le même batch que la place, si bien que les
+  /// noms bougent avec le compteur.
   EventRecentAttendeesProvider._({
     required EventRecentAttendeesFamily super.from,
     required String super.argument,
@@ -128,9 +131,10 @@ final class EventRecentAttendeesProvider
 String _$eventRecentAttendeesHash() =>
     r'e0a5bd8975ed751e0305aa97c91ce99a50378ab7';
 
-/// Recent attendees' short names for the "who's going" strip (F-07), live:
-/// a booking adds its entry to `events/{id}/attendees` in the same batch as
-/// the seat, so the names move with the counter.
+/// Noms courts des participants récents pour le bandeau « qui y va »
+/// (F-07), en temps réel : une réservation ajoute son entrée dans
+/// `events/{id}/attendees` dans le même batch que la place, si bien que les
+/// noms bougent avec le compteur.
 
 final class EventRecentAttendeesFamily extends $Family
     with $FunctionalFamilyOverride<Stream<List<String>>, String> {
@@ -143,9 +147,10 @@ final class EventRecentAttendeesFamily extends $Family
         isAutoDispose: true,
       );
 
-  /// Recent attendees' short names for the "who's going" strip (F-07), live:
-  /// a booking adds its entry to `events/{id}/attendees` in the same batch as
-  /// the seat, so the names move with the counter.
+  /// Noms courts des participants récents pour le bandeau « qui y va »
+  /// (F-07), en temps réel : une réservation ajoute son entrée dans
+  /// `events/{id}/attendees` dans le même batch que la place, si bien que les
+  /// noms bougent avec le compteur.
 
   EventRecentAttendeesProvider call(String eventId) =>
       EventRecentAttendeesProvider._(argument: eventId, from: this);

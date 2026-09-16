@@ -15,12 +15,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-/// Team of an event (F-16).
+/// Équipe d’un événement (F-16).
 ///
-/// The owner sees an invitation field, the members and the pending
-/// invitations, each removable. A co-organizer sees the same list read-only
-/// and one action: leave. What a co-organizer can and cannot do is written
-/// on the screen, because "co-organizer" means different things elsewhere.
+/// Le propriétaire voit un champ d’invitation, les membres et les invitations
+/// en attente, chacun pouvant être retiré. Un co-organisateur voit la même
+/// liste en lecture seule et une seule action : quitter. Ce qu’un
+/// co-organisateur peut et ne peut pas faire est écrit sur l’écran, parce que
+/// « co-organisateur » ne veut pas dire la même chose ailleurs.
 class EventTeamScreen extends ConsumerStatefulWidget {
   const EventTeamScreen({required this.eventId, super.key});
 
@@ -91,7 +92,10 @@ class _EventTeamScreenState extends ConsumerState<EventTeamScreen> {
 
     return AppScaffold(
       dense: true,
-      appBar: AppBar(title: const Text(AppStrings.teamTitle)),
+      appBar: AppTopBar.subPage(
+        title: AppStrings.teamTitle,
+        onBack: () => context.pop(),
+      ),
       body: AsyncValueWidget(
         value: event,
         onRetry: () => ref.invalidate(eventByIdProvider(widget.eventId)),
@@ -170,7 +174,6 @@ class _EventTeamScreenState extends ConsumerState<EventTeamScreen> {
           const SizedBox(height: AppSpacing.md),
           AppButton.primary(
             label: AppStrings.sendInvitation,
-            elevated: false,
             isLoading: busy,
             loadingLabel: AppStrings.decisionSending,
             onPressed: _email.text.trim().isEmpty || busy || seats <= 0
@@ -275,7 +278,6 @@ class _EventTeamScreenState extends ConsumerState<EventTeamScreen> {
           const SizedBox(height: AppSpacing.xxl),
           AppButton.secondary(
             label: AppStrings.leaveTeam,
-            elevated: false,
             onPressed: busy
                 ? null
                 : () => _remove(
@@ -293,7 +295,7 @@ class _EventTeamScreenState extends ConsumerState<EventTeamScreen> {
   }
 }
 
-/// One member: their public organizer profile gives the name.
+/// Un membre : son profil public d’organisateur fournit le nom.
 class _MemberRow extends ConsumerWidget {
   const _MemberRow({
     required this.userId,

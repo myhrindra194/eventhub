@@ -12,9 +12,9 @@ import 'package:riverpod_annotation/riverpod_annotation.dart' hide AsyncResult;
 
 part 'event_providers.g.dart';
 
-/// Page size of the catalogue, well under the 200 the rules allow per query:
-/// a listener re-reads its whole page after a reconnection, and reads are
-/// the free quota's budget.
+/// Taille de page du catalogue, bien en dessous des 200 que les règles
+/// autorisent par requête : un listener relit toute sa page après une
+/// reconnexion, et les lectures sont le budget du quota gratuit.
 const cataloguePageSize = EventRemoteDataSource.maxPageSize;
 
 @Riverpod(keepAlive: true)
@@ -25,15 +25,16 @@ EventRepository eventRepository(Ref ref) {
   );
 }
 
-/// First page of upcoming events, live (today's events stay visible until
-/// midnight).
+/// Première page des événements à venir, en temps réel (ceux du jour
+/// restent visibles jusqu’à minuit).
 @riverpod
 Stream<List<Event>> upcomingEvents(Ref ref) {
   final from = ref.watch(clockProvider)().startOfDay;
   return ref.watch(eventRepositoryProvider).watchUpcoming(from: from);
 }
 
-/// Older catalogue pages, loaded when the user reaches the end of the list.
+/// Pages plus anciennes du catalogue, chargées quand l’utilisateur atteint
+/// la fin de la liste.
 @Riverpod(keepAlive: true)
 class CatalogueExtraPages extends _$CatalogueExtraPages {
   @override
@@ -62,7 +63,8 @@ class CatalogueExtraPages extends _$CatalogueExtraPages {
   }
 }
 
-/// Everything loaded so far: live first page + older pages.
+/// Tout ce qui est chargé à ce stade : la première page temps réel plus
+/// les pages plus anciennes.
 @riverpod
 AsyncValue<List<Event>> catalogue(Ref ref) {
   final older = ref.watch(catalogueExtraPagesProvider).events;
@@ -71,7 +73,7 @@ AsyncValue<List<Event>> catalogue(Ref ref) {
       .whenData((live) => mergeCatalogue(live, older));
 }
 
-/// A "load more" makes sense only once the live page is full.
+/// Un « charger plus » n’a de sens qu’une fois la page temps réel pleine.
 @riverpod
 bool canLoadMoreEvents(Ref ref) {
   final live = ref.watch(upcomingEventsProvider).value;
@@ -83,7 +85,7 @@ bool canLoadMoreEvents(Ref ref) {
 Stream<List<Event>> organizerEvents(Ref ref, String organizerId) =>
     ref.watch(eventRepositoryProvider).watchByOrganizer(organizerId);
 
-/// Events the signed-in organizer co-organizes (F-16).
+/// Événements co-organisés par l’organisateur connecté (F-16).
 @riverpod
 Stream<List<Event>> coOrganizedEvents(Ref ref, String userId) =>
     ref.watch(eventRepositoryProvider).watchCoOrganized(userId);
@@ -93,16 +95,17 @@ Stream<Event?> eventById(Ref ref, String eventId) =>
     ref.watch(eventRepositoryProvider).watchById(eventId);
 
 // ---------------------------------------------------------------------------
-// Search & filter
+// Recherche et filtres
 //
-// Filtering is done client-side over the loaded catalogue: it avoids both a
-// full-text index and a composite index per filter combination. The seam is
-// deliberate — `filteredEvents` is the only place that knows how a query is
-// applied, so switching to Algolia/Typesense (or to server-side filtering)
-// touches one provider, not the UI.
+// Le filtrage se fait côté client sur le catalogue déjà chargé : cela évite
+// à la fois un index plein texte et un index composite par combinaison de
+// filtres. La couture est délibérée — `filteredEvents` est le seul endroit
+// qui sait comment une requête est appliquée, si bien que passer à
+// Algolia/Typesense (ou à un filtrage côté serveur) ne touche qu’un
+// provider, pas l’interface.
 // ---------------------------------------------------------------------------
 
-/// Ordering offered in the search sheet.
+/// Tris proposés dans la feuille de recherche.
 enum EventSort {
   dateAsc,
   dateDesc,
@@ -117,8 +120,9 @@ enum EventSort {
   };
 }
 
-/// Coarse time window. Users think in "ce week-end", not in date pickers,
-/// so the common windows are one tap away and the picker is the fallback.
+/// Fenêtre temporelle grossière. Les utilisateurs pensent en « ce
+/// week-end », pas en sélecteur de dates : les fenêtres courantes sont donc
+/// à une tape, et le sélecteur n’est que le recours.
 enum EventPeriod {
   any,
   today,
@@ -177,8 +181,9 @@ class EventSortOrder extends _$EventSortOrder {
   void select(EventSort sort) => state = sort;
 }
 
-/// When true, sold-out events are hidden. Off by default: seeing a full
-/// event is useful information (it signals a popular organizer).
+/// Quand vrai, les événements complets sont masqués. Désactivé par défaut :
+/// voir un événement complet est une information utile (cela signale un
+/// organisateur populaire).
 @riverpod
 class HideSoldOut extends _$HideSoldOut {
   @override
@@ -189,8 +194,9 @@ class HideSoldOut extends _$HideSoldOut {
   void set(bool value) => state = value;
 }
 
-/// Number of *non-default* filters, shown as a counter on the filter button
-/// so the user always knows why a list looks empty.
+/// Nombre de filtres *hors valeur par défaut*, affiché en compteur sur le
+/// bouton de filtres pour que l’utilisateur sache toujours pourquoi une
+/// liste paraît vide.
 @riverpod
 int activeFilterCount(Ref ref) {
   var count = 0;
@@ -223,8 +229,9 @@ AsyncValue<List<Event>> filteredEvents(Ref ref) {
   });
 }
 
-/// Title, location, organizer and category are all searchable: users type
-/// "Antananarivo" or "concert" as often as an exact title.
+/// Le titre, le lieu, l’organisateur et la catégorie sont tous
+/// interrogeables : les utilisateurs tapent « Antananarivo » ou
+/// « concert » aussi souvent qu’un titre exact.
 bool _matchesQuery(Event event, String query) =>
     event.title.toLowerCase().contains(query) ||
     event.location.toLowerCase().contains(query) ||
@@ -243,21 +250,22 @@ int Function(Event, Event) _comparator(EventSort sort) => switch (sort) {
 };
 
 // ---------------------------------------------------------------------------
-// Home sections
+// Sections de l’accueil
 //
-// The feed is curated rather than chronological: three named rails answer
-// three different intents ("montre-moi le meilleur", "que faire cette
-// semaine", "qu'est-ce qui part vite") before falling back to the full
-// catalogue.
+// Le fil est éditorialisé plutôt que chronologique : trois rails nommés
+// répondent à trois intentions distinctes (« montre-moi le meilleur »,
+// « que faire cette semaine », « qu’est-ce qui part vite ») avant de
+// retomber sur le catalogue complet.
 // ---------------------------------------------------------------------------
 
-/// Editorial selection: the soonest events that still have seats.
+/// Sélection éditoriale : les événements les plus proches ayant encore des
+/// places.
 @riverpod
 AsyncValue<List<Event>> featuredEvents(Ref ref) => ref
     .watch(catalogueProvider)
     .whenData((events) => events.where((e) => !e.isFull).take(5).toList());
 
-/// Everything happening in the next seven days.
+/// Tout ce qui se passe dans les sept prochains jours.
 @riverpod
 AsyncValue<List<Event>> weekEvents(Ref ref) {
   final now = ref.watch(clockProvider)();
@@ -269,8 +277,9 @@ AsyncValue<List<Event>> weekEvents(Ref ref) {
       );
 }
 
-/// Scarcity-driven rail: events at least 60 % full but not sold out, most
-/// filled first. It is the strongest conversion surface of the home screen.
+/// Rail fondé sur la rareté : les événements remplis à au moins 60 % mais
+/// pas complets, du plus rempli au moins rempli. C’est la surface de
+/// conversion la plus forte de l’écran d’accueil.
 @riverpod
 AsyncValue<List<Event>> trendingEvents(Ref ref) =>
     ref.watch(catalogueProvider).whenData((events) {

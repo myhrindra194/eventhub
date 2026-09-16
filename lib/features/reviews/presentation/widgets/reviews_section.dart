@@ -14,11 +14,11 @@ import 'package:eventhub/features/reviews/presentation/widgets/review_sheet.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-/// Reviews on the event detail: summary, distribution, latest entries, and
-/// the call to leave one when the user is allowed to.
+/// Les avis sur le détail d’un événement : résumé, distribution, derniers
+/// avis, et l’invitation à en laisser un quand l’utilisateur y a droit.
 ///
-/// Invisible before the event starts when nobody reviewed yet — an empty
-/// "Avis" block on an upcoming event is noise.
+/// Invisible avant le début de l’événement tant que personne n’a donné son
+/// avis — un bloc « Avis » vide sur un événement à venir n’est que du bruit.
 class ReviewsSection extends ConsumerWidget {
   const ReviewsSection({required this.event, super.key});
 
@@ -101,7 +101,6 @@ class ReviewsSection extends ConsumerWidget {
               label: mine == null
                   ? AppStrings.leaveReview
                   : AppStrings.editReview,
-              elevated: false,
               onPressed: () =>
                   showReviewSheet(context, eventId: event.id, existing: mine),
             ),
@@ -129,7 +128,7 @@ class ReviewsSection extends ConsumerWidget {
 class Stars extends StatelessWidget {
   const Stars({required this.value, super.key, this.size = 16});
 
-  /// 0..5, half stars rendered.
+  /// 0..5, demi-étoiles rendues.
   final double value;
   final double size;
 
@@ -154,9 +153,10 @@ class Stars extends StatelessWidget {
   }
 }
 
-/// Average in large type, then one bar per star level. A single hue (the
-/// rating colour) with the count printed beside each bar: the bars show
-/// shape, the numbers carry the value.
+/// La moyenne en grands caractères, puis une barre par niveau d’étoiles. Une
+/// seule teinte (la couleur de la note) avec l’effectif imprimé à côté de
+/// chaque barre : les barres donnent la forme, les chiffres portent la
+/// valeur.
 class _Summary extends StatelessWidget {
   const _Summary({required this.summary});
 

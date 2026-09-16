@@ -8,12 +8,14 @@ part of 'organizer_providers.dart';
 
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // ignore_for_file: type=lint, type=warning
-/// Every reservation on the signed-in organizer's events, all statuses.
+/// Toutes les réservations sur les événements de l’organisateur connecté,
+/// tous statuts confondus.
 
 @ProviderFor(organizerReservations)
 final organizerReservationsProvider = OrganizerReservationsProvider._();
 
-/// Every reservation on the signed-in organizer's events, all statuses.
+/// Toutes les réservations sur les événements de l’organisateur connecté,
+/// tous statuts confondus.
 
 final class OrganizerReservationsProvider
     extends
@@ -25,7 +27,8 @@ final class OrganizerReservationsProvider
     with
         $FutureModifier<List<Reservation>>,
         $StreamProvider<List<Reservation>> {
-  /// Every reservation on the signed-in organizer's events, all statuses.
+  /// Toutes les réservations sur les événements de l’organisateur connecté,
+  /// tous statuts confondus.
   OrganizerReservationsProvider._()
     : super(
         from: null,
@@ -102,14 +105,14 @@ final class OrganizerStatsProvider
 
 String _$organizerStatsHash() => r'88949b05b712480c784c86c8e8f4b40b162223e2';
 
-/// Upcoming events needing attention — also drives the badge on the
-/// "Alertes" tab.
+/// Événements à venir qui demandent attention — pilote aussi la pastille de
+/// l’onglet « Alertes ».
 
 @ProviderFor(organizerWatchlist)
 final organizerWatchlistProvider = OrganizerWatchlistProvider._();
 
-/// Upcoming events needing attention — also drives the badge on the
-/// "Alertes" tab.
+/// Événements à venir qui demandent attention — pilote aussi la pastille de
+/// l’onglet « Alertes ».
 
 final class OrganizerWatchlistProvider
     extends
@@ -119,8 +122,8 @@ final class OrganizerWatchlistProvider
           AsyncValue<List<OrganizerAlert>>
         >
     with $Provider<AsyncValue<List<OrganizerAlert>>> {
-  /// Upcoming events needing attention — also drives the badge on the
-  /// "Alertes" tab.
+  /// Événements à venir qui demandent attention — pilote aussi la pastille de
+  /// l’onglet « Alertes ».
   OrganizerWatchlistProvider._()
     : super(
         from: null,

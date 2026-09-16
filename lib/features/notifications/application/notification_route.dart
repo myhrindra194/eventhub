@@ -1,43 +1,54 @@
 import 'package:eventhub/routes/app_routes.dart';
 
-/// Where tapping a push takes the user.
+/// Où mène l’appui sur une notification push.
 ///
-/// The contract with the Cloud Functions is the `data` map of each message:
-/// `type` plus the ids needed to build a location. Kept pure — no router, no
-/// plugin — so every branch is unit-tested. An unknown or malformed payload
-/// opens nothing rather than a broken screen; the router guard still applies
-/// role confinement to whatever is returned.
+/// Le contrat avec les Cloud Functions, c’est la map `data` de chaque
+/// message : `type`, plus les identifiants nécessaires pour construire une
+/// destination. Volontairement pur — pas de routeur, pas de plugin — pour que
+/// chaque branche soit couverte par un test unitaire. Une charge utile
+/// inconnue ou malformée n’ouvre rien plutôt qu’un écran cassé ; le garde du
+/// routeur applique ensuite le confinement par rôle à ce qui est renvoyé.
 abstract final class NotificationRoute {
   static const booking = 'booking';
   static const cancellation = 'cancellation';
   static const reminder = 'reminder';
 
-  /// A seat opened on an event the user waits for: open the event to book.
+  /// Une place s’est libérée sur un événement attendu : ouvrir l’événement
+  /// pour réserver.
   static const waitlist = 'waitlist';
 
-  /// An organizer the user follows published an event.
+  /// Un organisateur suivi par l’utilisateur a publié un événement.
   static const newEvent = 'newEvent';
 
-  /// Moderation removed an event: holders see their cancelled tickets
-  /// (the event itself no longer exists).
+  /// La modération a supprimé un événement : les détenteurs voient leurs
+  /// billets annulés (l’événement, lui, n’existe plus).
   static const eventRemoved = 'eventRemoved';
 
-  /// The user's review was hidden: open the event it was left on.
+  /// L’avis de l’utilisateur a été masqué, ou masqué puis rétabli : ouvrir
+  /// l’événement sur lequel il a été déposé.
   static const reviewHidden = 'reviewHidden';
+  static const reviewRestored = 'reviewRestored';
 
-  /// Co-organizers (F-16): an invitation to answer, a member who joined
-  /// (open the team), removal from a team (back to the dashboard).
+  /// La modération a suspendu ou réintégré le compte : rien à ouvrir, la
+  /// notification elle-même porte le motif.
+  static const accountSuspended = 'accountSuspended';
+  static const accountReinstated = 'accountReinstated';
+
+  /// Co-organisateurs (F-16) : une invitation en attente de réponse, un membre
+  /// qui a rejoint (ouvrir l’équipe), un retrait d’équipe (retour au tableau
+  /// de bord).
   static const staffInvite = 'staffInvite';
   static const staffJoined = 'staffJoined';
   static const staffRemoved = 'staffRemoved';
 
-  /// Payments (F-11): the ticket is ready; a late payment was refunded.
+  /// Paiements (F-11) : le billet est prêt ; un paiement tardif a été
+  /// remboursé.
   static const paymentConfirmed = 'paymentConfirmed';
   static const paymentRefunded = 'paymentRefunded';
 
-  /// Sent once, when the account registers its first device (right after
-  /// the first sign-in): opens the welcome screen, which leads to the home
-  /// of the account's role.
+  /// Envoyée une seule fois, quand le compte enregistre son premier appareil
+  /// (juste après la première connexion) : ouvre l’écran de bienvenue, qui
+  /// mène à l’accueil correspondant au rôle du compte.
   static const welcome = 'welcome';
 
   static String? locationFor(Map<String, Object?> data) {
@@ -49,7 +60,8 @@ abstract final class NotificationRoute {
         AppRoutes.organizerEventParticipantsPath(eventId),
       waitlist ||
       newEvent ||
-      reviewHidden when eventId != null => AppRoutes.eventDetailPath(eventId),
+      reviewHidden ||
+      reviewRestored when eventId != null => AppRoutes.eventDetailPath(eventId),
       eventRemoved => AppRoutes.reservations,
       staffInvite => AppRoutes.organizerInvitations,
       staffJoined when eventId != null => AppRoutes.organizerEventTeamPath(

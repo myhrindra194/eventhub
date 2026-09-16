@@ -6,12 +6,15 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 
 part 'event_tier.freezed.dart';
 
-/// A ticket type of an event (F-12): "Standard", "Étudiant", "VIP"…
+/// Un type de billet d’un événement (F-12) : « Standard », « Étudiant »,
+/// « VIP »…
 ///
-/// An entry of the `tiers` map of `events/{id}`, keyed by [id]; a booking
-/// decrements the type and the event in the same Firestore transaction, and
-/// the security rules check that both moved by one.
-/// [price] is in the currency's minor unit (see `Money`); 0 means free.
+/// C’est une entrée de la map `tiers` de `events/{id}`, indexée par [id] ;
+/// une réservation décrémente le type et l’événement dans la même
+/// transaction Firestore, et les règles de sécurité vérifient que les deux
+/// ont bougé d’une unité.
+/// [price] est exprimé dans l’unité mineure de la devise (voir `Money`) ;
+/// 0 signifie gratuit.
 @freezed
 abstract class EventTier with _$EventTier {
   const EventTier._();
@@ -34,12 +37,14 @@ abstract class EventTier with _$EventTier {
   bool get isSoldOut => available <= 0;
   int get sold => capacity - available;
 
-  /// Shape of the ids [TierPlanner] gives a new type. The id is final: it is
-  /// the map key reservations point at (`tierId`).
+  /// Forme des identifiants que [TierPlanner] attribue à un nouveau type.
+  /// L’id est définitif : c’est la clé de map que les réservations
+  /// désignent (`tierId`).
   static bool isValidId(String id) => RegExp(r'^[a-z0-9]{1,20}$').hasMatch(id);
 }
 
-/// A ticket type as typed in the event form. [id] is null for a new type.
+/// Un type de billet tel que saisi dans le formulaire d’événement. [id]
+/// vaut null pour un nouveau type.
 @freezed
 abstract class EventTierDraft with _$EventTierDraft {
   const factory EventTierDraft({
@@ -59,7 +64,8 @@ abstract class EventTierDraft with _$EventTierDraft {
   );
 }
 
-/// Ticket types ready to be written, with the event totals they imply.
+/// Types de billets prêts à être écrits, avec les totaux qu’ils impliquent
+/// pour l’événement.
 class TierPlan {
   const TierPlan({
     required this.tiers,
@@ -74,10 +80,11 @@ class TierPlan {
   bool get hasPaid => tiers.any((t) => !t.isFree);
 }
 
-/// Turns form input into ticket types, keeping every seat already sold.
-/// Pure: the form uses it for instant feedback, and the event repository
-/// applies it again inside the edit transaction, on the document as read
-/// there; the security rules then check `availablePlaces = capacity − taken`.
+/// Transforme la saisie du formulaire en types de billets, en préservant
+/// chaque place déjà vendue. Pure : le formulaire s’en sert pour un retour
+/// immédiat, et le dépôt d’événements la rejoue dans la transaction de
+/// modification, sur le document tel qu’il y est lu ; les règles de
+/// sécurité vérifient ensuite `availablePlaces = capacity − taken`.
 abstract final class TierPlanner {
   static String newId([math.Random? random]) {
     final r = random ?? math.Random.secure();
@@ -85,7 +92,7 @@ abstract final class TierPlanner {
     return 't${List.generate(7, (_) => chars[r.nextInt(chars.length)]).join()}';
   }
 
-  /// A new event: every seat of every type is available.
+  /// Un nouvel événement : toutes les places de tous les types sont libres.
   static TierPlan initial(
     List<EventTierDraft> drafts, {
     String Function()? ids,
@@ -106,14 +113,14 @@ abstract final class TierPlanner {
     return TierPlan(tiers: tiers, capacity: capacity, available: capacity);
   }
 
-  /// An edit. `null` means the event stays (or becomes) a simple event
-  /// without types.
+  /// Une modification. `null` signifie que l’événement reste (ou devient)
+  /// un événement simple, sans types de billets.
   ///
-  /// * a type may not go below what it already sold, nor be removed once it
-  ///   sold anything;
-  /// * types cannot be added to, or removed from, an event that already has
-  ///   bookings in the other mode — those reservations could not give their
-  ///   seat back to the right counter.
+  /// * un type ne peut pas descendre sous ce qu’il a déjà vendu, ni être
+  ///   retiré dès lors qu’il a vendu quoi que ce soit ;
+  /// * on ne peut ni ajouter ni retirer des types sur un événement qui a
+  ///   déjà des réservations dans l’autre mode — ces réservations ne
+  ///   sauraient pas à quel compteur rendre leur place.
   static Result<TierPlan?> apply({
     required int soldWithoutTiers,
     required List<EventTier> current,

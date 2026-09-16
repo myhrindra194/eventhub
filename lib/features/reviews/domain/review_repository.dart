@@ -4,22 +4,24 @@ import 'package:eventhub/features/reservations/domain/entities/reservation.dart'
 import 'package:eventhub/features/reviews/domain/review.dart';
 
 abstract interface class ReviewRepository {
-  /// Most recent first, bounded to the latest 100, hidden ones left out.
+  /// Les plus récents d’abord, bornés aux 100 derniers, les avis masqués
+  /// écartés.
   Stream<List<Review>> watchEventReviews(String eventId);
 
-  /// The review of [userId] on [eventId], hidden or not (its author still
-  /// sees it).
+  /// L’avis de [userId] sur [eventId], masqué ou non (son auteur continue de
+  /// le voir).
   Stream<Review?> watchReview({
     required String eventId,
     required String userId,
   });
 
-  /// A review by its id, for moderation: administrators see hidden reviews
-  /// too.
+  /// Un avis par son id, pour la modération : les administrateurs voient
+  /// aussi les avis masqués.
   Stream<Review?> watchReviewById(String reviewId);
 
-  /// Creates or edits the user's review after checking `ReviewPolicy`; the
-  /// organizer's rating moves in the same transaction.
+  /// Crée ou modifie l’avis de l’utilisateur après contrôle de
+  /// `ReviewPolicy` ; la note de l’organisateur bouge dans la même
+  /// transaction.
   AsyncResult<void> save({
     required AppUser user,
     required Reservation? reservation,

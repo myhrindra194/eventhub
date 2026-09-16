@@ -2,11 +2,12 @@ import 'package:eventhub/core/result/result.dart';
 import 'package:eventhub/features/admin/domain/moderation.dart';
 import 'package:eventhub/features/moderation/domain/report.dart';
 
-/// Everything the moderation area reads and decides. Every read is allowed
-/// by RLS to administrators only; every decision goes through a database
-/// function that checks the role again.
+/// Tout ce que l’espace de modération lit et décide. Chaque lecture est
+/// réservée aux seuls administrateurs (`admins/{uid}`), et chaque décision est
+/// un lot que les règles recontrôlent écriture par écriture.
 abstract interface class ModerationRepository {
-  /// Open entries, most reported first; closed ones, most recent first.
+  /// Entrées ouvertes, les plus signalées d’abord ; entrées fermées, les plus
+  /// récentes d’abord.
   Stream<List<ModerationEntry>> watchQueue({required bool open});
 
   Stream<ModerationEntry?> watchEntry(String entryId);
@@ -20,14 +21,16 @@ abstract interface class ModerationRepository {
 
   Stream<ReportedAccount?> watchAccount(String userId);
 
-  /// Returns the number of reservations cancelled (event removal), if any.
+  /// Renvoie le nombre de réservations annulées (retrait d’un événement), le
+  /// cas échéant.
   AsyncResult<int?> decide({
     required ModerationEntry entry,
     required ModerationAction action,
     required String note,
   });
 
+  /// Qui détient le rôle. L’attribution et le retrait se font dans la console
+  /// Firebase : `admins/{uid}` n’est écrivable par aucun client, si bien
+  /// qu’aucun compte compromis ne peut jamais se promouvoir lui-même.
   Stream<List<AdminAccount>> watchAdmins();
-
-  AsyncResult<void> setAdmin({required String email, required bool admin});
 }

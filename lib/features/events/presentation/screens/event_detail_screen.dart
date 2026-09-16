@@ -28,13 +28,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-/// Event detail — the conversion screen.
+/// Détail d’un événement — l’écran de conversion.
 ///
-/// Structure follows the decision path: a full-bleed hero establishes the
-/// event, a content sheet **overlapping** the image pulls the eye down into
-/// the facts, and the action never scrolls away (sticky frosted bar). Four
-/// states drive both the copy and the colour of that action: available,
-/// last seats, sold out, already booked.
+/// La structure suit le chemin de décision : un visuel pleine largeur pose
+/// l’événement, une feuille de contenu qui **chevauche** l’image attire
+/// l’œil vers les faits, et l’action ne défile jamais hors de portée (barre
+/// dépolie collée en bas). Quatre états pilotent à la fois le texte et la
+/// couleur de cette action : disponible, dernières places, complet, déjà
+/// réservé.
 class EventDetailScreen extends ConsumerWidget {
   const EventDetailScreen({required this.eventId, super.key});
 
@@ -87,7 +88,8 @@ class _NotFound extends StatelessWidget {
   );
 }
 
-/// Availability drives copy, colour and whether the action is enabled.
+/// La disponibilité pilote le texte, la couleur et l’activation de
+/// l’action.
 enum _Availability {
   available,
   lastSeats,
@@ -385,8 +387,8 @@ class _OrganizerRow extends StatelessWidget {
     final t = context.tokens;
     final text = Theme.of(context).textTheme;
 
-    // The whole identity block opens the organizer's public profile (F-10);
-    // the chevron says so without a separate "voir le profil" link.
+    // Tout le bloc d’identité ouvre le profil public de l’organisateur
+    // (F-10) ; le chevron le dit, sans lien « voir le profil » séparé.
     return Row(
       children: [
         Expanded(
@@ -491,7 +493,6 @@ class _InfoTile extends StatelessWidget {
     );
 
     return AppSurface(
-      elevation: SurfaceElevation.flat,
       child: wide
           ? Row(
               children: [
@@ -520,7 +521,6 @@ class _CapacityCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AppSurface(
-      elevation: SurfaceElevation.flat,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -537,8 +537,8 @@ class _CapacityCard extends StatelessWidget {
   }
 }
 
-/// Gradient ticket teaser shown once the user has booked — a small reward
-/// that also tells them where the ticket now lives.
+/// Aperçu du billet en dégradé, affiché une fois la réservation faite — une
+/// petite récompense, qui dit aussi où le billet se trouve désormais.
 class _TicketPreview extends StatelessWidget {
   const _TicketPreview({required this.reservation});
 
@@ -554,13 +554,6 @@ class _TicketPreview extends StatelessWidget {
       decoration: BoxDecoration(
         gradient: t.brandGradient,
         borderRadius: AppRadius.brXl,
-        boxShadow: [
-          BoxShadow(
-            color: t.brand.withValues(alpha: 0.32),
-            blurRadius: 28,
-            offset: const Offset(0, 14),
-          ),
-        ],
       ),
       child: Row(
         children: [
@@ -612,8 +605,9 @@ class _TicketPreview extends StatelessWidget {
   }
 }
 
-/// Sticky frosted action bar. Never scrolls away: the primary action of a
-/// conversion screen must be reachable at any scroll offset.
+/// Barre d’action dépolie, collée en bas. Elle ne défile jamais : l’action
+/// principale d’un écran de conversion doit rester atteignable quel que
+/// soit le défilement.
 class _ActionBar extends ConsumerWidget {
   const _ActionBar({
     required this.event,
@@ -626,12 +620,14 @@ class _ActionBar extends ConsumerWidget {
   final _Availability availability;
   final Reservation? reservation;
 
-  /// A paid seat held while the user was on the Stripe page (F-11).
+  /// Une place payante retenue pendant que l’utilisateur était sur la page
+  /// Stripe (F-11).
   final Reservation? pending;
 
-  /// A simple event books directly; an event with ticket types asks which
-  /// one first. Only a free seat is bookable without a payment server: the
-  /// picker keeps paid types disabled.
+  /// Un événement simple se réserve directement ; un événement à types de
+  /// billets demande d’abord lequel. Sans serveur de paiement, seule une
+  /// place gratuite est réservable : le sélecteur laisse les types payants
+  /// désactivés.
   Future<void> _reserve(BuildContext context, WidgetRef ref) async {
     String? tierId;
     if (event.hasTiers) {
@@ -695,13 +691,15 @@ class _ActionBar extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isBusy = ref.watch(reservationControllerProvider).isLoading;
-    // One account, two spaces: any signed-in account books or waits, except
-    // the event's own team, which the rules refuse.
+    // Un compte, deux espaces : tout compte connecté réserve ou s’inscrit
+    // en liste d’attente, sauf l’équipe de l’événement, que les règles
+    // refusent.
     final user = ref.watch(currentUserProvider);
     final canBook = user != null && !event.isManagedBy(user.id);
     final bottom = MediaQuery.paddingOf(context).bottom;
 
-    // Paid-only events say "choose a ticket" rather than "book my seat".
+    // Un événement entièrement payant dit « choisir un billet » plutôt que
+    // « réserver ma place ».
     final bookLabel = event.hasTiers && !event.hasFreeTier
         ? AppStrings.chooseTicket
         : AppStrings.reserve;
@@ -738,7 +736,7 @@ class _ActionBar extends ConsumerWidget {
           label: AppStrings.past,
           onPressed: null,
         ),
-        // A sold-out event is a queue, not a dead end.
+        // Un événement complet est une file d’attente, pas un cul-de-sac.
         _Availability.soldOut =>
           canBook
               ? WaitlistAction(event: event)

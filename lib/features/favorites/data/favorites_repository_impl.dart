@@ -11,8 +11,8 @@ class FavoritesRepositoryImpl implements FavoritesRepository {
   Stream<List<String>> watchFavoriteIds(String userId) =>
       _remote.watchIds(userId);
 
-  /// [userId] must be the signed-in user: the rules only open one's own
-  /// `users/{uid}/favorites`.
+  /// [userId] doit être l’utilisateur connecté : les règles n’ouvrent que
+  /// son propre `users/{uid}/favorites`.
   @override
   AsyncResult<void> add({required String userId, required String eventId}) =>
       guard(() => _remote.add(userId, eventId));

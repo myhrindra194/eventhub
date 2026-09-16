@@ -14,16 +14,17 @@ import 'package:eventhub/features/reservations/application/reservation_providers
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
-/// Door check-in.
+/// Contrôle d’accès à l’entrée.
 ///
-/// Built for a volunteer with a queue in front of them: the camera takes
-/// most of the screen, the verdict is a full-width coloured band with one
-/// word and the holder's name, a distinct haptic separates "entrez" from
-/// "non", and the next scan resumes on its own. When the camera is refused
-/// or the QR is unreadable, the short code can be typed instead — the same
-/// check runs either way.
+/// Conçu pour un bénévole avec une file devant lui : la caméra occupe
+/// l’essentiel de l’écran, le verdict est un bandeau coloré pleine largeur
+/// portant un mot et le nom du titulaire, un retour haptique distinct sépare
+/// « entrez » de « non », et le scan suivant reprend tout seul. Quand la
+/// caméra est refusée ou le QR illisible, le code court peut être saisi à
+/// la place — le même contrôle s’exécute dans les deux cas.
 class CheckInScreen extends ConsumerStatefulWidget {
   const CheckInScreen({required this.eventId, super.key});
 
@@ -33,7 +34,8 @@ class CheckInScreen extends ConsumerStatefulWidget {
   ConsumerState<CheckInScreen> createState() => _CheckInScreenState();
 }
 
-/// What the band shows: a verdict, or a QR that is not a ticket at all.
+/// Ce qu’affiche le bandeau : un verdict, ou un QR qui n’est pas du tout un
+/// billet.
 typedef _Outcome = ({CheckInVerdict? verdict, bool notATicket});
 
 class _CheckInScreenState extends ConsumerState<CheckInScreen> {
@@ -56,7 +58,7 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> {
   Future<void> _onDetect(BarcodeCapture capture) async {
     final raw = capture.barcodes.firstOrNull?.rawValue;
     if (raw == null || _busy) return;
-    // The camera reports the same code many times per second.
+    // La caméra rapporte le même code plusieurs fois par seconde.
     final now = DateTime.now();
     if (raw == _lastRaw && now.difference(_lastRawAt).inSeconds < 4) return;
     _lastRaw = raw;
@@ -136,8 +138,9 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> {
     return AppScaffold(
       dense: true,
       extendBody: false,
-      appBar: AppBar(
-        title: const Text(AppStrings.checkInTitle),
+      appBar: AppTopBar.subPage(
+        title: AppStrings.checkInTitle,
+        onBack: () => context.pop(),
         actions: [
           ValueListenableBuilder(
             valueListenable: _scanner,
@@ -255,7 +258,6 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> {
                   label: AppStrings.checkCode,
                   size: AppButtonSize.medium,
                   expand: false,
-                  elevated: false,
                   onPressed: _busy ? null : _submitCode,
                 ),
               ],
@@ -325,7 +327,8 @@ class _VerdictBand extends StatelessWidget {
             ),
           };
     final colors = t.resolve(tone);
-    // Name and ticket type only: the door function does not hand out emails.
+    // Nom et type de billet uniquement : la fonction d’entrée ne distribue
+    // pas d’e-mails.
     final holder = verdict?.holderName;
 
     return Semantics(
@@ -371,7 +374,7 @@ class _VerdictBand extends StatelessWidget {
   }
 }
 
-/// Four corner brackets marking where to hold the ticket.
+/// Quatre équerres d’angle indiquant où tenir le billet.
 class _FramePainter extends CustomPainter {
   const _FramePainter();
 

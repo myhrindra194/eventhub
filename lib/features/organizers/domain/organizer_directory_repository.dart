@@ -1,17 +1,20 @@
 import 'package:eventhub/core/result/result.dart';
 import 'package:eventhub/features/organizers/domain/organizer_profile.dart';
 
-/// Public organizer profiles and who the signed-in user follows.
+/// Les pages publiques des organisateurs, et la liste de ceux que le compte
+/// connecté suit.
 ///
-/// Following is the document `users/{uid}/following/{organizerId}` — private
-/// to the follower, and keyed by the organizer so a duplicate is structurally
-/// impossible. The public `followerCount` moves in the same commit, which the
-/// security rules require. Both operations are idempotent.
+/// Un abonnement est le document `users/{uid}/following/{organizerId}` :
+/// privé à l'abonné, et identifié par l'organisateur, ce qui rend un doublon
+/// structurellement impossible. Le compteur public `followerCount` bouge dans
+/// le même commit, comme l'exigent les règles de sécurité. Les deux
+/// opérations sont idempotentes.
 abstract interface class OrganizerDirectoryRepository {
-  /// `null` when the account is not (or no longer) an organizer.
+  /// `null` quand le compte n'est pas — ou n'est plus — organisateur.
   Stream<OrganizerProfile?> watchProfile(String organizerId);
 
-  /// Organizer ids, most recently followed first.
+  /// Les identifiants des organisateurs, du plus récemment suivi au plus
+  /// ancien.
   Stream<List<String>> watchFollowingIds(String userId);
 
   AsyncResult<void> follow({

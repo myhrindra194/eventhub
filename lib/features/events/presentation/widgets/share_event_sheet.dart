@@ -13,13 +13,13 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:share_plus/share_plus.dart';
 
-/// Share an event (F-08).
+/// Partager un événement (F-08).
 ///
-/// The native share sheet first — it reaches WhatsApp, Messenger or SMS in
-/// two taps — then the two things people paste by hand: the bare link and a
-/// ready-made invitation. The link points at the Hosting page
-/// (`publicEventPage`), which unfurls with an Open Graph preview and opens
-/// the app directly on Android (App Links).
+/// La feuille de partage native d’abord — elle atteint WhatsApp, Messenger
+/// ou les SMS en deux tapes — puis les deux choses que les gens collent à
+/// la main : le lien nu et une invitation toute faite. Le lien pointe vers
+/// la page Hosting (`publicEventPage`), qui se déploie avec un aperçu Open
+/// Graph et ouvre directement l’application sur Android (App Links).
 Future<void> showShareEventSheet(BuildContext context, Event event) {
   return showAppSheet<void>(
     context: context,
@@ -29,8 +29,8 @@ Future<void> showShareEventSheet(BuildContext context, Event event) {
         listen: false,
       ).read(appAnalyticsProvider);
 
-      // The toast is raised on the *page* context once the sheet is gone:
-      // shown from inside the sheet, it would slide in behind it.
+      // Le toast est levé sur le contexte de la *page*, une fois la feuille
+      // refermée : affiché depuis la feuille, il glisserait derrière elle.
       void done(String message, String method) {
         analytics().share(event.id, method);
         Navigator.of(sheetContext).pop();
@@ -44,7 +44,7 @@ Future<void> showShareEventSheet(BuildContext context, Event event) {
             ShareParams(
               text: _invitation(event),
               subject: event.title,
-              // Required on iPad, where the sheet is a popover.
+              // Obligatoire sur iPad, où la feuille est un popover.
               sharePositionOrigin: box == null
                   ? null
                   : box.localToGlobal(Offset.zero) & box.size,
@@ -55,7 +55,8 @@ Future<void> showShareEventSheet(BuildContext context, Event event) {
           }
           if (sheetContext.mounted) Navigator.of(sheetContext).pop();
         } on Object catch (e) {
-          // No share target on this platform: the copy actions remain.
+          // Aucune cible de partage sur cette plateforme : les actions de
+          // copie restent disponibles.
           AppLogger.debug('native share unavailable: $e');
         }
       }
@@ -66,13 +67,11 @@ Future<void> showShareEventSheet(BuildContext context, Event event) {
         actions: [
           AppButton.primary(
             label: AppStrings.shareNative,
-            elevated: false,
             onPressed: shareNative,
           ),
           const SizedBox(height: AppSpacing.md),
           AppButton.secondary(
             label: AppStrings.copyInvitation,
-            elevated: false,
             onPressed: () async {
               await Clipboard.setData(ClipboardData(text: _invitation(event)));
               done(AppStrings.invitationCopied, 'invitation');
@@ -88,8 +87,8 @@ Future<void> showShareEventSheet(BuildContext context, Event event) {
   );
 }
 
-/// Plain text, no emoji and no markdown: it has to survive SMS, WhatsApp
-/// and an email client alike.
+/// Texte brut, sans emoji ni markdown : il doit survivre aussi bien aux SMS
+/// qu’à WhatsApp ou à un client de messagerie.
 String _invitation(Event event) {
   final seats = event.isFull
       ? 'Complet pour le moment.'
@@ -103,15 +102,15 @@ String _invitation(Event event) {
       'Réserver : ${AppLinks.event(event.id)}';
 }
 
-/// "Lien public · eventhub-d411f.web.app/e/… · Copier" — the field from the
-/// 002 success board, reused by the share sheet.
+/// « Lien public · eventhub-d411f.web.app/e/… · Copier » — le champ de la
+/// maquette 002 (écran de succès), réutilisé par la feuille de partage.
 class PublicLinkField extends StatelessWidget {
   const PublicLinkField({required this.url, super.key, this.onCopied});
 
   final String url;
 
-  /// Called after the copy. When null, the field confirms with its own
-  /// toast.
+  /// Appelé après la copie. Quand il est null, le champ confirme avec son
+  /// propre toast.
   final VoidCallback? onCopied;
 
   Future<void> _copy(BuildContext context) async {

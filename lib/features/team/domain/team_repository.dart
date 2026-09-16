@@ -1,20 +1,21 @@
 import 'package:eventhub/core/result/result.dart';
 import 'package:eventhub/features/team/domain/team.dart';
 
-/// Co-organizer invitations and membership (F-16). Reads are Realtime
-/// streams; every change goes through a database function.
+/// Invitations de co-organisateurs et appartenance à l’équipe (F-16). Les
+/// lectures sont des flux Realtime ; chaque changement passe par une fonction
+/// de base de données.
 abstract interface class TeamRepository {
-  /// Pending invitations of an event, for its team.
+  /// Invitations en attente d’un événement, pour son équipe.
   Stream<List<StaffInvitation>> watchPendingForEvent(String eventId);
 
-  /// Pending invitations addressed to [userId].
+  /// Invitations en attente adressées à [userId].
   Stream<List<StaffInvitation>> watchPendingForUser(String userId);
 
   AsyncResult<void> invite({required String eventId, required String email});
 
   AsyncResult<void> respond({required String eventId, required bool accept});
 
-  /// Removes a member or cancels a pending invitation; a member may pass
-  /// their own id to leave.
+  /// Retire un membre ou annule une invitation en attente ; un membre peut
+  /// passer son propre identifiant pour quitter l’équipe.
   AsyncResult<void> remove({required String eventId, required String userId});
 }

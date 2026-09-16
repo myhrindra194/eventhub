@@ -6,10 +6,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-/// Square 6 px bell with an unread dot, opening the notification history.
+/// Cloche carrée à 6 px d’arrondi, avec une pastille de non-lu, qui ouvre
+/// l’historique des notifications.
 ///
-/// A dot, not a number: the count of unread notifications is not an
-/// actionable figure, the fact that there is something new is.
+/// Une pastille, pas un nombre : le compte de notifications non lues n’est pas
+/// un chiffre sur lequel on agit ; le fait qu’il y ait du nouveau, si.
 class NotificationBellButton extends ConsumerWidget {
   const NotificationBellButton({super.key});
 

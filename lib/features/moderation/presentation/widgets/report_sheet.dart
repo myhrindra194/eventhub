@@ -9,8 +9,9 @@ import 'package:eventhub/features/moderation/domain/report.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-/// Opens the report form for [target] / [targetId]. [subject] is what the
-/// user sees being reported (event title, organizer or author name).
+/// Ouvre le formulaire de signalement pour [target] / [targetId]. [subject]
+/// est ce que l’utilisateur voit signalé (titre de l’événement, nom de
+/// l’organisateur ou de l’auteur).
 Future<void> showReportSheet(
   BuildContext context, {
   required ReportTarget target,
@@ -28,9 +29,10 @@ Future<void> showReportSheet(
   );
 }
 
-/// A closed list of reasons, each with one line saying what it covers, then
-/// an optional note. The send button stays disabled until a reason is
-/// chosen: a report without a reason is one a moderator cannot triage.
+/// Une liste fermée de motifs, chacun avec une ligne disant ce qu’il couvre,
+/// puis une note facultative. Le bouton d’envoi reste désactivé tant qu’aucun
+/// motif n’est choisi : un signalement sans motif est un signalement qu’un
+/// modérateur ne peut pas trier.
 class _ReportSheet extends ConsumerStatefulWidget {
   const _ReportSheet({
     required this.pageContext,
@@ -39,8 +41,8 @@ class _ReportSheet extends ConsumerStatefulWidget {
     required this.subject,
   });
 
-  /// The page under the sheet: confirmation toasts are raised there once the
-  /// sheet is gone, otherwise they would slide in behind it.
+  /// La page sous la feuille : les toasts de confirmation y sont levés une
+  /// fois la feuille refermée, sans quoi ils glisseraient derrière elle.
   final BuildContext pageContext;
   final ReportTarget target;
   final String targetId;
@@ -100,12 +102,11 @@ class _ReportSheetState extends ConsumerState<_ReportSheet> {
 
     return AppSheet(
       title: AppStrings.reportTitle,
-      subtitle: '${widget.target.label} · ${widget.subject}',
+      subtitle: '${widget.target.label} Â· ${widget.subject}',
       actions: [
         AppButton(
           label: AppStrings.reportSend,
           variant: AppButtonVariant.danger,
-          elevated: false,
           isLoading: busy,
           loadingLabel: AppStrings.reportSending,
           onPressed: _reason == null || busy ? null : _submit,

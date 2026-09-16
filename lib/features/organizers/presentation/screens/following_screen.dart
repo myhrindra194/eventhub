@@ -9,11 +9,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-/// "Organisateurs suivis" — one ruled list, most recent first.
+/// « Organisateurs suivis » — une seule liste réglée, du plus récemment suivi
+/// au plus ancien.
 ///
-/// Each row watches the public profile by id, so a deleted organizer stays
-/// visible (labelled) with the way to remove it instead of vanishing
-/// silently from a list the user built.
+/// Chaque ligne observe la page publique par son identifiant : un
+/// organisateur supprimé reste donc visible, signalé comme tel, avec le moyen
+/// de le retirer — plutôt que de s'évaporer d'une liste que l'utilisateur a
+/// lui-même constituée.
 class FollowingScreen extends ConsumerWidget {
   const FollowingScreen({super.key});
 
@@ -23,7 +25,10 @@ class FollowingScreen extends ConsumerWidget {
 
     return AppScaffold(
       dense: true,
-      appBar: AppBar(title: const Text(AppStrings.followingTitle)),
+      appBar: AppTopBar.subPage(
+        title: AppStrings.followingTitle,
+        onBack: () => context.pop(),
+      ),
       body: AsyncValueWidget(
         value: ids,
         onRetry: () => ref.invalidate(followingIdsProvider),

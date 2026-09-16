@@ -3,10 +3,12 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 part 'onboarding_providers.g.dart';
 
-/// Whether the onboarding carousel has already been shown on this install.
+/// Indique si le carrousel d’onboarding a déjà été affiché sur cette
+/// installation.
 ///
-/// Persisted with `SharedPreferences`, i.e. survives restarts and updates and
-/// is only reset when the app is uninstalled (product requirement).
+/// Persisté via `SharedPreferences` : il survit donc aux redémarrages comme
+/// aux mises à jour et n’est remis à zéro qu’à la désinstallation de
+/// l’application (exigence produit).
 @Riverpod(keepAlive: true)
 class OnboardingSeen extends _$OnboardingSeen {
   static const _key = 'onboarding_seen_v1';

@@ -10,8 +10,8 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'recommendation_providers.g.dart';
 
-/// "Pour vous" (F-18). Empty until the catalogue is loaded, and for
-/// organizers — they do not book.
+/// « Pour vous » (F-18). Vide tant que le catalogue n’est pas chargé, et
+/// vide pour les organisateurs — ils ne réservent pas.
 @riverpod
 List<Recommendation> recommendedEvents(Ref ref) {
   final user = ref.watch(currentUserProvider);

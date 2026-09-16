@@ -10,7 +10,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-/// Which slice of the wallet is being shown.
+/// La tranche du portefeuille actuellement affichée.
 enum _TicketTab {
   upcoming,
   past,
@@ -23,12 +23,12 @@ enum _TicketTab {
   };
 }
 
-/// "Mes billets" — the wallet.
+/// « Mes billets » — le portefeuille.
 ///
-/// Segmented rather than one long sectioned list: a user opening this
-/// screen almost always wants the *next* ticket, and mixing cancelled and
-/// past ones into the same scroll buries it. The counter on each segment
-/// keeps the other slices discoverable without showing them.
+/// Segmenté plutôt qu’une longue liste à sections : celui qui ouvre cet
+/// écran veut presque toujours le *prochain* billet, et mêler les billets
+/// annulés et passés au même défilement l’y enterre. Le compteur porté par
+/// chaque segment garde les autres tranches repérables sans les afficher.
 class MyReservationsScreen extends ConsumerStatefulWidget {
   const MyReservationsScreen({super.key});
 
@@ -48,20 +48,17 @@ class _MyReservationsScreenState extends ConsumerState<MyReservationsScreen> {
     return AppScaffold(
       constrainWidth: false,
       dense: true,
+      appBar: const AppTopBar.root(
+        title: AppStrings.myReservations,
+        subtitle: 'Vos places réservées, prêtes à présenter à l’entrée.',
+      ),
       body: SafeArea(
         bottom: false,
         child: RefreshIndicator(
           onRefresh: () async => ref.invalidate(myReservationsProvider),
           child: CustomScrollView(
             slivers: [
-              const SliverToBoxAdapter(
-                child: ScreenHeader(
-                  title: AppStrings.myReservations,
-                  subtitle:
-                      'Vos places réservées, prêtes à être présentées '
-                      "à l'entrée.",
-                ),
-              ),
+              const SliverToBoxAdapter(child: SizedBox(height: AppSpacing.sm)),
               AsyncValueWidget(
                 value: reservations,
                 sliver: true,
@@ -123,8 +120,8 @@ class _Content extends StatelessWidget {
   final ValueChanged<_TicketTab> onTabChanged;
 
   List<Reservation> _slice(_TicketTab tab) => switch (tab) {
-    // A held purchase belongs with upcoming tickets: it is where the user
-    // looks for it, and where they finish paying.
+    // Un achat en cours a sa place parmi les billets à venir : c’est là que
+    // l’utilisateur le cherche, et là qu’il finit de payer.
     _TicketTab.upcoming =>
       reservations
           .where(
@@ -189,7 +186,7 @@ class _Content extends StatelessWidget {
   }
 }
 
-/// Pill segmented control with per-segment counters.
+/// Contrôle segmenté en pilule, avec un compteur par segment.
 class _Segments extends StatelessWidget {
   const _Segments({
     required this.selected,
@@ -228,9 +225,11 @@ class _Segments extends StatelessWidget {
                       vertical: AppSpacing.md,
                     ),
                     decoration: BoxDecoration(
+                      // Le segment actif se distingue par sa surface claire
+                      // sur le creux du rail — aucune ombre n’est
+                      // nécessaire.
                       color: tab == selected ? t.surface : Colors.transparent,
                       borderRadius: AppRadius.brSm,
-                      boxShadow: tab == selected ? t.shadows.xs : null,
                     ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,

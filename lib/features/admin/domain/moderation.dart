@@ -2,7 +2,7 @@ import 'package:eventhub/core/errors/failure.dart';
 import 'package:eventhub/core/result/result.dart';
 import 'package:eventhub/features/moderation/domain/report.dart';
 
-/// Where an entry of `moderation_queue` stands (`moderation_status`).
+/// Où en est une entrée de `moderationQueue`.
 enum ModerationStatus {
   open,
   resolved,
@@ -15,9 +15,10 @@ enum ModerationStatus {
   };
 }
 
-/// A decision an administrator can take. Wire values are the
-/// `moderation_action` enum; the per-target lists mirror the check at the
-/// top of `public.moderate_content`.
+/// Une décision qu’un administrateur peut prendre. La valeur `wire` est celle
+/// qui atterrit dans `moderationQueue/{id}.decision` et dans l’historique des
+/// décisions ; les listes par type de cible reflètent ce que les règles de
+/// sécurité autorisent réellement.
 enum ModerationAction {
   hide(
     'hide',
@@ -29,8 +30,8 @@ enum ModerationAction {
   restore(
     'restore',
     'Rétablir l’avis',
-    'L’avis réapparaît et compte de nouveau dans la note. Le seuil '
-        'automatique ne le masquera plus.',
+    'L’avis réapparaît et compte de nouveau dans la note. Son auteur est '
+        'prévenu.',
   ),
   removeEvent(
     'removeEvent',
@@ -43,16 +44,16 @@ enum ModerationAction {
   suspend(
     'suspend',
     'Suspendre le compte',
-    'La personne ne peut plus se connecter ; ses sessions ouvertes expirent '
-        'dans l’heure. Ses événements restent en ligne : retirez-les à part si '
-        'nécessaire.',
+    'La personne peut encore lire, mais n’écrit plus rien : ni réservation, '
+        'ni avis, ni événement. Ses événements restent en ligne : retirez-les '
+        'à part si nécessaire.',
     requiresNote: true,
     destructive: true,
   ),
   reinstate(
     'reinstate',
     'Réactiver le compte',
-    'La personne peut de nouveau se connecter.',
+    'La personne retrouve l’usage complet de son compte.',
   ),
   dismiss(
     'dismiss',
@@ -71,11 +72,11 @@ enum ModerationAction {
   final String wire;
   final String label;
 
-  /// What happens, in one or two sentences, shown before confirming.
+  /// Ce qui se passe, en une ou deux phrases, affiché avant de confirmer.
   final String consequence;
 
-  /// The note is sent to the person concerned: a removal or a suspension
-  /// without a reason is not acceptable.
+  /// La note est transmise à la personne concernée : un retrait ou une
+  /// suspension sans motif n’est pas acceptable.
   final bool requiresNote;
   final bool destructive;
 
@@ -87,7 +88,7 @@ enum ModerationAction {
   }
 }
 
-/// One entry of `public.moderation_queue`, one per reported target.
+/// Une entrée de `moderationQueue`, une par cible signalée.
 class ModerationEntry {
   const ModerationEntry({
     required this.id,
@@ -96,7 +97,6 @@ class ModerationEntry {
     required this.reportCount,
     required this.status,
     this.lastReason,
-    this.autoHidden = false,
     this.decision,
     this.decisionNote,
     this.decidedAt,
@@ -109,9 +109,6 @@ class ModerationEntry {
   final int reportCount;
   final ModerationStatus status;
   final ReportReason? lastReason;
-
-  /// The review was hidden by the automatic threshold, not by a person.
-  final bool autoHidden;
   final ModerationAction? decision;
   final String? decisionNote;
   final DateTime? decidedAt;
@@ -119,13 +116,15 @@ class ModerationEntry {
 
   bool get isOpen => status == ModerationStatus.open;
 
-  /// Entry ids are `<targetType>_<targetId>` (e.g. `review_<uuid>`), the
-  /// format stamped by the database and used in routes.
+  /// Les identifiants d’entrée sont `<targetType>_<targetId>` (par ex.
+  /// `review_e1_u1`), le format que les règles reconstruisent pour prouver
+  /// qu’un signalement appartient bien à son entrée, et celui qu’utilisent les
+  /// routes.
   static String composeId(ReportTarget target, String targetId) =>
       '${target.name}_$targetId';
 
-  /// Inverse of [composeId]. Splits on the first underscore: the type never
-  /// contains one, a target id may.
+  /// Inverse de [composeId]. Découpe au premier tiret bas : le type n’en
+  /// contient jamais, un identifiant de cible peut en contenir.
   static (ReportTarget, String)? parseId(String id) {
     final cut = id.indexOf('_');
     if (cut <= 0 || cut == id.length - 1) return null;
@@ -137,8 +136,9 @@ class ModerationEntry {
   }
 }
 
-/// A report as an administrator sees it: never the reporter's identity,
-/// only a short stable key to spot one account reporting many things.
+/// Un signalement tel qu’un administrateur le voit : jamais l’identité de son
+/// auteur, seulement une courte clé stable permettant de repérer un compte qui
+/// signale beaucoup de choses.
 class ReportRecord {
   const ReportRecord({
     required this.id,
@@ -169,13 +169,15 @@ class ModerationDecision {
   final DateTime? at;
 }
 
-/// The reported account, read from `public.profiles` (admins may read any).
+/// Le compte signalé, lu depuis `users/{uid}` — les administrateurs peuvent
+/// lire n’importe quel profil, et personne ne peut les lister.
 class ReportedAccount {
   const ReportedAccount({
     required this.id,
     required this.name,
     required this.email,
     required this.role,
+    this.suspended = false,
     this.createdAt,
   });
 
@@ -183,28 +185,27 @@ class ReportedAccount {
   final String name;
   final String email;
   final String role;
+  final bool suspended;
   final DateTime? createdAt;
 }
 
-/// `public.administrators` — who holds the back-office role.
+/// `admins/{uid}` — qui détient le rôle back-office.
 class AdminAccount {
   const AdminAccount({
     required this.id,
     required this.email,
     this.name,
-    this.grantedBy,
     this.grantedAt,
   });
 
   final String id;
   final String email;
   final String? name;
-  final String? grantedBy;
   final DateTime? grantedAt;
 }
 
-/// What a moderator may do next. Pure, so the screen and the tests agree
-/// with the server list.
+/// Ce qu’un modérateur peut faire ensuite. Fonction pure, pour que l’écran et
+/// les tests s’accordent avec ce que les règles accepteront.
 abstract final class ModerationPolicy {
   static const maxNote = 500;
 
@@ -230,12 +231,6 @@ abstract final class ModerationPolicy {
     ],
   };
 
-  /// The last decision tells whether the account is currently suspended:
-  /// `moderate_content` is the only way to suspend or reinstate.
-  static bool isSuspended(ModerationEntry? entry) =>
-      entry?.target == ReportTarget.user &&
-      entry?.decision == ModerationAction.suspend;
-
   static Result<void> validateNote(ModerationAction action, String note) {
     final text = note.trim();
     if (action.requiresNote && text.isEmpty) {
@@ -247,14 +242,6 @@ abstract final class ModerationPolicy {
     }
     if (text.length > maxNote) {
       return const Err(ValidationFailure(message: '500 caractères maximum.'));
-    }
-    return const Ok(null);
-  }
-
-  static Result<void> validateEmail(String email) {
-    final text = email.trim();
-    if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(text)) {
-      return const Err(ValidationFailure(message: 'Adresse email invalide.'));
     }
     return const Ok(null);
   }

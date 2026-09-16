@@ -3,22 +3,23 @@ import 'package:eventhub/features/events/domain/entities/event.dart';
 import 'package:eventhub/features/events/domain/entities/event_category.dart';
 import 'package:eventhub/features/events/domain/entities/event_tier.dart';
 
-/// `events/{id}` as a booking or a cancellation reads it inside its
-/// transaction.
+/// `events/{id}` tel qu’une réservation ou une annulation le lit à
+/// l’intérieur de sa transaction.
 ///
-/// Why not the events feature's DTO: the reservation must copy
-/// `title`, `startsAt`, `location` and `organizerId` *exactly* — the rules
-/// compare them with `==` to the event (`matchesEvent()`). A round trip
-/// through [DateTime] loses the nanoseconds of a Firestore `Timestamp` and
-/// would get every booking refused, so the raw values are kept next to the
-/// parsed [event] the domain policy needs.
+/// Pourquoi pas le DTO de la feature events : la réservation doit copier
+/// `title`, `startsAt`, `location` et `organizerId` *à l’identique* — les
+/// règles les comparent à l’événement avec `==` (`matchesEvent()`). Un
+/// aller-retour par [DateTime] perd les nanosecondes d’un `Timestamp`
+/// Firestore et ferait refuser toutes les réservations : on conserve donc
+/// les valeurs brutes à côté de l’[event] parsé dont la policy du domaine
+/// a besoin.
 class BookingEvent {
   BookingEvent(this.id, this.raw);
 
   final String id;
   final Map<String, dynamic> raw;
 
-  /// The fields a reservation copies, untouched.
+  /// Les champs qu’une réservation copie, sans y toucher.
   Map<String, Object?> get copiedFields => {
     'organizerId': raw['organizerId'],
     'eventTitle': raw['title'],
@@ -28,8 +29,8 @@ class BookingEvent {
 
   int get availablePlaces => _int(raw['availablePlaces']);
 
-  /// Whom booking and cancellation notices go to: the owner and every
-  /// co-organizer, once each.
+  /// Les destinataires des notifications de réservation et d’annulation :
+  /// le propriétaire et chaque co-organisateur, une seule fois chacun.
   List<String> get teamIds => {
     event.organizerId,
     ...event.staffIds,

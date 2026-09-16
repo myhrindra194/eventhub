@@ -1,10 +1,10 @@
+import 'package:cloud_firestore/cloud_firestore.dart' show FirebaseException;
 import 'package:eventhub/core/errors/failure.dart';
 import 'package:eventhub/core/errors/failure_exception.dart';
 import 'package:eventhub/core/result/result.dart';
 import 'package:eventhub/features/moderation/data/report_remote_data_source.dart';
 import 'package:eventhub/features/moderation/domain/report.dart';
 import 'package:eventhub/features/moderation/domain/report_repository.dart';
-import 'package:supabase_flutter/supabase_flutter.dart' show PostgrestException;
 
 class ReportRepositoryImpl implements ReportRepository {
   const ReportRepositoryImpl(this._remote);
@@ -36,22 +36,22 @@ class ReportRepositoryImpl implements ReportRepository {
         reason: reason,
         details: details.trim(),
       );
-    } on PostgrestException catch (e) {
-      // `reports_one_per_reporter`: the automatic threshold counts people,
-      // not clicks. Saying so is both true and reassuring. Every other
-      // refusal (cannotReportSelf, notFound, validation) already carries its
-      // rule and French message from the trigger.
-      if (e.code == '23505') {
-        throw FailureException(
-          BusinessRuleFailure(
-            rule: BusinessRule.alreadyReported,
-            message:
-                'Vous avez déjà signalé ce contenu. Il est en cours d’examen.',
-            cause: e,
-          ),
-        );
-      }
-      rethrow;
+    } on FirebaseException catch (e) {
+      if (e.code != 'permission-denied') rethrow;
+      // La source de données a déjà tenté les deux formes de l’écriture, et
+      // `ReportPolicy` a validé tout ce qu’un client peut vérifier. Il ne
+      // reste que la règle que l’identifiant encode lui-même — un signalement
+      // par personne et par cible — parce qu’un document de signalement ne
+      // peut jamais être écrit deux fois. Le dire est à la fois exact et
+      // rassurant : le comptage automatique suit les personnes, pas les clics.
+      throw FailureException(
+        BusinessRuleFailure(
+          rule: BusinessRule.alreadyReported,
+          message:
+              'Vous avez déjà signalé ce contenu. Il est en cours d’examen.',
+          cause: e,
+        ),
+      );
     }
   });
 }

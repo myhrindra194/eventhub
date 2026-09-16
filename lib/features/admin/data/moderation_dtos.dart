@@ -1,13 +1,14 @@
-import 'package:eventhub/core/supabase/timestamp_converter.dart';
+import 'package:eventhub/core/firebase/timestamp_converter.dart';
 import 'package:eventhub/features/admin/domain/moderation.dart';
 import 'package:eventhub/features/moderation/domain/report.dart';
 import 'package:json_annotation/json_annotation.dart';
 
 part 'moderation_dtos.g.dart';
 
-/// Rows of the moderation back-office, all readable by administrators only
-/// (RLS). Enum columns are kept as text: a value added to a Postgres enum
-/// before the app knows it degrades to "unknown" instead of failing a list.
+/// Documents du back-office de modération, tous lisibles par les seuls
+/// administrateurs. Les colonnes de type énumération sont conservées en
+/// texte : une valeur écrite par un build plus récent se dégrade en
+/// « inconnu » au lieu de faire échouer toute une liste.
 
 ReportReason? _reason(String? wire) {
   for (final reason in ReportReason.values) {
@@ -16,18 +17,17 @@ ReportReason? _reason(String? wire) {
   return null;
 }
 
-/// `public.moderation_queue`. [id] is `<target_type>_<target_id>`, stamped
-/// by a trigger: the id the app routes to.
-@JsonSerializable(fieldRename: FieldRename.snake, createToJson: false)
+/// `moderationQueue/{targetType}_{targetId}`. L’identifiant est celui du
+/// document lui-même, qui est aussi celui vers lequel l’application route.
+@JsonSerializable(createToJson: false)
 class ModerationEntryDto {
   const ModerationEntryDto({
     required this.id,
-    required this.targetType,
-    required this.targetId,
+    this.targetType = '',
+    this.targetId = '',
     this.reportCount = 0,
     this.lastReason,
     this.status,
-    this.autoHidden = false,
     this.decision,
     this.decisionNote,
     this.decidedAt,
@@ -37,13 +37,17 @@ class ModerationEntryDto {
   factory ModerationEntryDto.fromJson(Map<String, dynamic> json) =>
       _$ModerationEntryDtoFromJson(json);
 
+  factory ModerationEntryDto.fromFirestore(
+    String id,
+    Map<String, dynamic> data,
+  ) => ModerationEntryDto.fromJson({...data, 'id': id});
+
   final String id;
   final String targetType;
   final String targetId;
   final int reportCount;
   final String? lastReason;
   final String? status;
-  final bool autoHidden;
   final String? decision;
   final String? decisionNote;
   @NullableTimestampConverter()
@@ -51,7 +55,8 @@ class ModerationEntryDto {
   @NullableTimestampConverter()
   final DateTime? updatedAt;
 
-  /// `null` for a target type this version of the app cannot display.
+  /// `null` pour un type de cible que cette version de l’application ne sait
+  /// pas afficher.
   ModerationEntry? toDomain() {
     final target = ReportTarget.values.asNameMap()[targetType];
     if (target == null) return null;
@@ -62,7 +67,6 @@ class ModerationEntryDto {
       reportCount: reportCount,
       status: ModerationStatus.fromWire(status),
       lastReason: _reason(lastReason),
-      autoHidden: autoHidden,
       decision: ModerationAction.fromWire(decision),
       decisionNote: decisionNote,
       decidedAt: decidedAt,
@@ -71,8 +75,8 @@ class ModerationEntryDto {
   }
 }
 
-/// `public.reports`, as a moderator sees it.
-@JsonSerializable(fieldRename: FieldRename.snake, createToJson: false)
+/// `reports/{id}`, tel qu’un modérateur le voit.
+@JsonSerializable(createToJson: false)
 class ReportRecordDto {
   const ReportRecordDto({
     required this.id,
@@ -85,15 +89,18 @@ class ReportRecordDto {
   factory ReportRecordDto.fromJson(Map<String, dynamic> json) =>
       _$ReportRecordDtoFromJson(json);
 
-  /// Length of [ReportRecord.reporterKey]: the first group of the uuid —
-  /// enough to notice one account reporting many things, not an identity.
+  factory ReportRecordDto.fromFirestore(String id, Map<String, dynamic> data) =>
+      ReportRecordDto.fromJson({...data, 'id': id});
+
+  /// Longueur de [ReportRecord.reporterKey] : assez pour remarquer qu’un même
+  /// compte signale beaucoup de choses, pas assez pour être une identité.
   static const reporterKeyLength = 8;
 
   final String id;
   final String? reason;
   final String details;
 
-  /// Null once the reporter's account is deleted.
+  /// `''` une fois le compte de l’auteur du signalement supprimé.
   final String? reporterId;
   @NullableTimestampConverter()
   final DateTime? createdAt;
@@ -112,51 +119,58 @@ class ReportRecordDto {
   }
 }
 
-/// `public.moderation_decisions` (append-only history).
-@JsonSerializable(fieldRename: FieldRename.snake, createToJson: false)
+/// `moderationQueue/{entryId}/decisions/{id}` — historique en ajout seul.
+@JsonSerializable(createToJson: false)
 class ModerationDecisionDto {
-  const ModerationDecisionDto({
-    this.action,
-    this.note = '',
-    this.decidedBy,
-    this.decidedAt,
-  });
+  const ModerationDecisionDto({this.action, this.note = '', this.by, this.at});
 
   factory ModerationDecisionDto.fromJson(Map<String, dynamic> json) =>
       _$ModerationDecisionDtoFromJson(json);
 
   final String? action;
   final String note;
-  final String? decidedBy;
+  final String? by;
   @NullableTimestampConverter()
-  final DateTime? decidedAt;
+  final DateTime? at;
 
   ModerationDecision toDomain() => ModerationDecision(
     action: ModerationAction.fromWire(action),
     note: note,
-    by: decidedBy ?? '',
-    at: decidedAt,
+    by: by ?? '',
+    at: at,
   );
 }
 
-/// `public.profiles` of a reported account (administrators may read any).
-@JsonSerializable(fieldRename: FieldRename.snake, createToJson: false)
+/// `users/{uid}` d’un compte signalé : les administrateurs peuvent lire
+/// n’importe quel profil, et personne ne peut les lister.
+@JsonSerializable(createToJson: false)
 class ReportedAccountDto {
   const ReportedAccountDto({
     required this.id,
     this.name = '',
     this.email = '',
     this.role = '',
+    this.suspended = false,
     this.createdAt,
   });
 
   factory ReportedAccountDto.fromJson(Map<String, dynamic> json) =>
       _$ReportedAccountDtoFromJson(json);
 
+  factory ReportedAccountDto.fromFirestore(
+    String id,
+    Map<String, dynamic> data,
+  ) => ReportedAccountDto.fromJson({...data, 'id': id});
+
   final String id;
   final String name;
   final String email;
   final String role;
+
+  /// L’état lui-même, pas une déduction tirée de la dernière décision : la
+  /// modération l’écrit sur le profil, et les règles le relisent à chaque
+  /// écriture que le compte tente.
+  final bool suspended;
   @NullableTimestampConverter()
   final DateTime? createdAt;
 
@@ -165,36 +179,37 @@ class ReportedAccountDto {
     name: name,
     email: email,
     role: role,
+    suspended: suspended,
     createdAt: createdAt,
   );
 }
 
-/// `public.administrators`, written only by `set_admin_role`.
-@JsonSerializable(fieldRename: FieldRename.snake, createToJson: false)
+/// `admins/{uid}` — créé et supprimé depuis la seule console Firebase.
+@JsonSerializable(createToJson: false)
 class AdminAccountDto {
   const AdminAccountDto({
-    required this.userId,
+    required this.id,
     this.email,
     this.name,
-    this.grantedBy,
     this.grantedAt,
   });
 
   factory AdminAccountDto.fromJson(Map<String, dynamic> json) =>
       _$AdminAccountDtoFromJson(json);
 
-  final String userId;
+  factory AdminAccountDto.fromFirestore(String id, Map<String, dynamic> data) =>
+      AdminAccountDto.fromJson({...data, 'id': id});
+
+  final String id;
   final String? email;
   final String? name;
-  final String? grantedBy;
   @NullableTimestampConverter()
   final DateTime? grantedAt;
 
   AdminAccount toDomain() => AdminAccount(
-    id: userId,
+    id: id,
     email: email ?? '',
     name: name,
-    grantedBy: grantedBy,
     grantedAt: grantedAt,
   );
 }

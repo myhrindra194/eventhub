@@ -135,12 +135,14 @@ final class OrganizerProfileFamily extends $Family
   String toString() => r'organizerProfileProvider';
 }
 
-/// Organizers the signed-in user follows (either role may follow).
+/// Les organisateurs suivis par le compte connecté — les deux rôles peuvent
+/// s'abonner, un organisateur reste un participant.
 
 @ProviderFor(followingIds)
 final followingIdsProvider = FollowingIdsProvider._();
 
-/// Organizers the signed-in user follows (either role may follow).
+/// Les organisateurs suivis par le compte connecté — les deux rôles peuvent
+/// s'abonner, un organisateur reste un participant.
 
 final class FollowingIdsProvider
     extends
@@ -150,7 +152,8 @@ final class FollowingIdsProvider
           Stream<List<String>>
         >
     with $FutureModifier<List<String>>, $StreamProvider<List<String>> {
-  /// Organizers the signed-in user follows (either role may follow).
+  /// Les organisateurs suivis par le compte connecté — les deux rôles peuvent
+  /// s'abonner, un organisateur reste un participant.
   FollowingIdsProvider._()
     : super(
         from: null,

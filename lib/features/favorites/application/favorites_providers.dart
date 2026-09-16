@@ -20,19 +20,21 @@ FavoritesRepository favoritesRepository(Ref ref) => FavoritesRepositoryImpl(
 @riverpod
 Stream<List<String>> favoriteIds(Ref ref) {
   final user = ref.watch(currentUserProvider);
-  // Every account is a participant, organizers included (one account, two
-  // spaces): anyone signed in keeps favorites.
+  // Tout compte est participant, organisateurs compris (un compte, deux
+  // espaces) : quiconque est connecté conserve ses favoris.
   if (user == null) return Stream.value(const []);
   return ref.watch(favoritesRepositoryProvider).watchFavoriteIds(user.id);
 }
 
-/// Toggles sent but not yet reflected by the listener: event id → starred.
+/// Bascules envoyées mais pas encore reflétées par le listener :
+/// id d’événement → mis en favori.
 ///
-/// Firestore shows a local write at once, but starring first reads the
-/// document (the rules refuse a `set` over an existing favorite), so the
-/// write — and the listener — lag by that round trip. Overlaying the intent
-/// keeps the heart flipping at the tap; an entry is dropped once the stream
-/// agrees, or when the write fails.
+/// Firestore rend une écriture locale visible immédiatement, mais mettre en
+/// favori lit d’abord le document (les règles refusent un `set` par-dessus
+/// un favori existant) : l’écriture — et donc le listener — accusent ce
+/// temps d’aller-retour. Superposer l’intention garde le cœur qui bascule
+/// dès la tape ; une entrée est retirée dès que le flux confirme, ou quand
+/// l’écriture échoue.
 @Riverpod(keepAlive: true)
 class PendingFavorites extends _$PendingFavorites {
   @override
@@ -73,8 +75,9 @@ class FavoriteController extends _$FavoriteController {
   @override
   FutureOr<void> build() {}
 
-  /// The heart flips at once (see [PendingFavorites]); a refused write
-  /// flips it back and returns the failure for the caller to show.
+  /// Le cœur bascule immédiatement (voir [PendingFavorites]) ; une écriture
+  /// refusée le rebascule et renvoie l’échec, à charge pour l’appelant de
+  /// l’afficher.
   Future<Result<void>> toggle(String eventId) async {
     final user = ref.read(currentUserProvider);
     if (user == null) return const Err(AuthFailure.notSignedIn());

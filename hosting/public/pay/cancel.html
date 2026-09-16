@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Paiement interrompu · EventHub</title>
+<style>
+:root{color-scheme:light dark;--ink:#14121f;--muted:#5d5a6e;--bg:#faf9fc;--accent:#5b4ff5}
+@media (prefers-color-scheme:dark){:root{--ink:#f2f1f7;--muted:#a3a0b5;--bg:#0f0e17;--accent:#8c83ff}}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+main{max-width:560px;margin:0 auto;padding:28px 20px 48px}
+.mark{margin:0 0 56px;font-weight:700}
+h1{margin:0 0 12px;font-size:32px;line-height:1.1}
+p{color:var(--muted)}
+a.cta{display:block;margin-top:28px;text-align:center;padding:14px 18px;border-radius:6px;background:var(--accent);color:#fff;font-weight:600;text-decoration:none}
+</style>
+</head>
+<body>
+<main>
+  <p class="mark">EventHub</p>
+  <h1>Aucun montant n'a été débité.</h1>
+  <p>Votre place reste réservée quelques minutes : vous pouvez reprendre le paiement depuis l'application, ou l'annuler pour la libérer.</p>
+  <a class="cta" id="open" href="/">Retour à EventHub</a>
+</main>
+<script>
+  var reservation = new URLSearchParams(location.search).get('reservation');
+  if (reservation) {
+    document.getElementById('open').href =
+      'intent://eventhub-d411f.web.app/pay/cancel?reservation=' +
+      encodeURIComponent(reservation) +
+      '#Intent;scheme=https;package=com.example.eventhub;end';
+  }
+</script>
+</body>
+</html>

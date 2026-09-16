@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Fond du lancement natif : exactement le canvas clair de l'app
+         (AppPalette.neutral50), pour que le passage du système à Flutter ne
+         produise aucun flash. -->
+    <color name="launch_background">#F7F8FC</color>
+</resources>

@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Événement · EventHub</title>
+<meta name="description" content="Un événement partagé depuis EventHub.">
+<meta property="og:site_name" content="EventHub">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Un événement sur EventHub">
+<style>
+:root{color-scheme:light dark;--ink:#14121f;--muted:#5d5a6e;--line:#e6e4ee;--bg:#faf9fc;--accent:#5b4ff5}
+@media (prefers-color-scheme:dark){:root{--ink:#f2f1f7;--muted:#a3a0b5;--line:#2c2a3a;--bg:#0f0e17;--accent:#8c83ff}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+main{max-width:640px;margin:0 auto;padding:28px 20px 48px}
+.mark{margin:0 0 28px;font-weight:700;letter-spacing:.02em}
+.cover{display:block;width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:6px;margin-bottom:24px}
+.eyebrow{margin:0;color:var(--accent);font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:.08em}
+h1{margin:6px 0 24px;font-size:clamp(28px,6vw,40px);line-height:1.12;letter-spacing:-.01em}
+dl{display:grid;grid-template-columns:1fr 1fr;margin:0;border-top:1px solid var(--line)}
+dl div{padding:12px 0;border-bottom:1px solid var(--line)}
+dl div:nth-child(odd):not(.wide){padding-right:12px;border-right:1px solid var(--line)}
+dl div:nth-child(even):not(.wide){padding-left:12px}
+dl .wide{grid-column:1/-1}
+dt{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.06em}
+dd{margin:2px 0 0;font-weight:600}
+.status{margin:20px 0 0;padding-left:12px;border-left:3px solid var(--accent);font-weight:600}
+.status.muted{border-color:var(--muted);color:var(--muted)}
+.description{margin:24px 0;color:var(--muted);white-space:pre-line}
+.cta{display:block;text-align:center;padding:14px 18px;border-radius:6px;background:var(--accent);color:#fff;font-weight:600;text-decoration:none}
+.cta.quiet{background:transparent;color:var(--ink);border:1px solid var(--line)}
+.foot{margin:16px 0 0;color:var(--muted);font-size:13px}
+[hidden]{display:none!important}
+</style>
+<script src="/eventhub-config.js"></script>
+</head>
+<body>
+<main>
+  <p class="mark">EventHub</p>
+  <p id="loading" class="description">Chargement de l’événement…</p>
+
+  <article id="event" hidden>
+    <img id="cover" class="cover" alt="" hidden>
+    <p id="category" class="eyebrow"></p>
+    <h1 id="title"></h1>
+    <dl>
+      <div><dt>Date</dt><dd id="day"></dd></div>
+      <div><dt>Heure</dt><dd id="hour"></dd></div>
+      <div class="wide"><dt>Lieu</dt><dd id="location"></dd></div>
+      <div class="wide"><dt>Organisé par</dt><dd id="organizer"></dd></div>
+    </dl>
+    <p id="status" class="status"></p>
+    <p id="description" class="description"></p>
+    <a id="cta" class="cta" href="/">Ouvrir dans l’app</a>
+    <p id="price" class="foot"></p>
+  </article>
+
+  <section id="missing" hidden>
+    <h1>Cet événement n’existe plus.</h1>
+    <p class="description">L’organisateur l’a peut-être supprimé, ou le lien a été mal copié. Les événements à venir sont dans l’application.</p>
+    <a class="cta quiet" href="/">Découvrir EventHub</a>
+  </section>
+
+  <section id="failure" hidden>
+    <h1>L’événement n’a pas pu être chargé.</h1>
+    <p id="failure-detail" class="description">Vérifiez votre connexion, puis réessayez.</p>
+    <a id="retry" class="cta quiet" href="">Réessayer</a>
+  </section>
+</main>
+<script>
+// Reads one event straight from the Firestore REST API. There is no server on
+// the Spark plan: `events/{id}` allows a public `get` in firestore.rules, and
+// the field mask below keeps team uids (staffIds, organizerId) out of the
+// response. Every value goes through textContent / attributes: nothing from
+// the event is ever parsed as HTML.
+(function () {
+  'use strict';
+
+  var config = window.EVENTHUB;
+  var id = decodeURIComponent(location.pathname.replace(/^\/e\//, '').replace(/\/$/, ''));
+  var $ = function (key) { return document.getElementById(key); };
+  var show = function (key) { $('loading').hidden = true; $(key).hidden = false; };
+  var has = function (object, key) { return Object.prototype.hasOwnProperty.call(object, key); };
+
+  var FIELDS = ['title', 'description', 'category', 'startsAt', 'location',
+    'capacity', 'availablePlaces', 'organizerName', 'imageUrl', 'tiers', 'currency'];
+
+  var CATEGORIES = {
+    conference: 'Conférence', meetup: 'Meetup', workshop: 'Atelier', concert: 'Concert',
+    sport: 'Sport', culture: 'Culture', other: 'Événement'
+  };
+
+  // Minor units per currency, as the app stores prices (MGA has none).
+  var MINOR_DIGITS = { EUR: 2, USD: 2, MGA: 0 };
+
+  /** Typed Firestore JSON value → plain JavaScript value. */
+  function decodeValue(value) {
+    if (value == null || typeof value !== 'object') return null;
+    if (has(value, 'stringValue')) return value.stringValue;
+    if (has(value, 'integerValue')) return Number(value.integerValue);
+    if (has(value, 'doubleValue')) return Number(value.doubleValue);
+    if (has(value, 'booleanValue')) return value.booleanValue === true;
+    if (has(value, 'timestampValue')) return new Date(value.timestampValue);
+    if (has(value, 'nullValue')) return null;
+    if (has(value, 'mapValue')) return decodeFields(value.mapValue.fields || {});
+    if (has(value, 'arrayValue')) return (value.arrayValue.values || []).map(decodeValue);
+    if (has(value, 'referenceValue')) return value.referenceValue;
+    if (has(value, 'geoPointValue')) return value.geoPointValue;
+    return null;
+  }
+
+  function decodeFields(fields) {
+    var out = {};
+    Object.keys(fields).forEach(function (key) { out[key] = decodeValue(fields[key]); });
+    return out;
+  }
+
+  function formatPrice(minor, currency) {
+    if (!minor) return 'Gratuit';
+    var digits = has(MINOR_DIGITS, currency) ? MINOR_DIGITS[currency] : 2;
+    try {
+      return new Intl.NumberFormat('fr-FR', {
+        style: 'currency', currency: currency, minimumFractionDigits: digits, maximumFractionDigits: digits
+      }).format(minor / Math.pow(10, digits));
+    } catch (error) {
+      return (minor / Math.pow(10, digits)) + ' ' + currency;
+    }
+  }
+
+  function priceLine(event) {
+    var tiers = event.tiers && typeof event.tiers === 'object' ? Object.keys(event.tiers).map(function (key) {
+      return event.tiers[key] || {};
+    }) : [];
+    var prices = tiers.map(function (tier) { return typeof tier.price === 'number' ? tier.price : 0; });
+    if (prices.length === 0 || Math.max.apply(null, prices) === 0) return 'Gratuit';
+    var lowest = Math.min.apply(null, prices);
+    var currency = event.currency || 'EUR';
+    return lowest === 0
+      ? 'Gratuit, ou jusqu’à ' + formatPrice(Math.max.apply(null, prices), currency)
+      : 'Dès ' + formatPrice(lowest, currency);
+  }
+
+  function statusLine(event, past) {
+    if (past) return 'Cet événement est passé.';
+    var left = typeof event.availablePlaces === 'number' ? event.availablePlaces : 0;
+    if (left <= 0) return 'Complet · liste d’attente dans l’application';
+    return left === 1 ? 'Il reste 1 place' : 'Il reste ' + left + ' places';
+  }
+
+  function render(event) {
+    var startsAt = event.startsAt instanceof Date && !isNaN(event.startsAt) ? event.startsAt : null;
+    var past = startsAt ? startsAt.getTime() < Date.now() : false;
+    var title = event.title || 'Événement';
+
+    document.title = title + ' · EventHub';
+    $('category').textContent = CATEGORIES[event.category] || CATEGORIES.other;
+    $('title').textContent = title;
+    $('day').textContent = startsAt
+      ? new Intl.DateTimeFormat('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(startsAt)
+      : '—';
+    $('hour').textContent = startsAt
+      ? new Intl.DateTimeFormat('fr-FR', { hour: '2-digit', minute: '2-digit' }).format(startsAt)
+      : '—';
+    $('location').textContent = event.location || '—';
+    $('organizer').textContent = event.organizerName || '—';
+    $('status').textContent = statusLine(event, past);
+    if (past || !(event.availablePlaces > 0)) $('status').classList.add('muted');
+    $('description').textContent = event.description || '';
+    $('price').textContent = priceLine(event) + '. La réservation se fait dans l’application EventHub, avec un compte.';
+
+    if (typeof event.imageUrl === 'string' && event.imageUrl.indexOf('https://') === 0) {
+      $('cover').src = event.imageUrl;
+      $('cover').hidden = false;
+    }
+
+    if (past) {
+      $('cta').hidden = true;
+    } else if (/Android/i.test(navigator.userAgent)) {
+      // Opens the app through its verified App Link; without the app, Android
+      // falls back to this very page.
+      $('cta').href = 'intent://' + location.host + '/e/' + encodeURIComponent(id) +
+        '#Intent;scheme=https;package=' + config.androidPackage +
+        ';S.browser_fallback_url=' + encodeURIComponent(location.href) + ';end';
+    } else {
+      $('cta').textContent = 'Découvrir EventHub';
+      $('cta').href = '/';
+    }
+    show('event');
+  }
+
+  function fail(message) {
+    if (message) $('failure-detail').textContent = message;
+    $('retry').href = location.href;
+    show('failure');
+  }
+
+  // Firestore auto-ids: 20 characters; ids never contain a slash.
+  if (!/^[A-Za-z0-9_-]{1,128}$/.test(id)) { show('missing'); return; }
+  if (!config || !config.projectId || !config.apiKey) {
+    fail('La configuration du site est incomplète.');
+    return;
+  }
+
+  var url = 'https://firestore.googleapis.com/v1/projects/' + encodeURIComponent(config.projectId) +
+    '/databases/(default)/documents/events/' + encodeURIComponent(id) +
+    '?key=' + encodeURIComponent(config.apiKey) +
+    FIELDS.map(function (field) { return '&mask.fieldPaths=' + field; }).join('');
+
+  var controller = typeof AbortController === 'function' ? new AbortController() : null;
+  var timer = controller ? setTimeout(function () { controller.abort(); }, 10000) : null;
+
+  fetch(url, { headers: { Accept: 'application/json' }, signal: controller ? controller.signal : undefined })
+    .then(function (response) {
+      if (response.status === 404) return null;
+      if (!response.ok) {
+        var error = new Error('HTTP ' + response.status);
+        error.status = response.status;
+        throw error;
+      }
+      return response.json();
+    })
+    .then(function (snapshot) {
+      if (timer) clearTimeout(timer);
+      if (!snapshot || !snapshot.fields) { show('missing'); return; }
+      render(decodeFields(snapshot.fields));
+    })
+    .catch(function (error) {
+      if (timer) clearTimeout(timer);
+      if (error && error.name === 'AbortError') {
+        fail('Le chargement a pris trop de temps. Vérifiez votre connexion, puis réessayez.');
+      } else if (error && (error.status === 403 || error.status === 401)) {
+        fail('L’accès à cet événement est refusé pour le moment.');
+      } else if (error && error.status >= 500) {
+        fail('Le service est momentanément indisponible. Réessayez dans un instant.');
+      } else {
+        fail();
+      }
+    });
+})();
+</script>
+</body>
+</html>

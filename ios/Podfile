@@ -1,0 +1,69 @@
+# Podfile d'EventHub : gabarit standard de Flutter, complété par les macros
+# de permission_handler (voir le bloc post_install).
+platform :ios, '13.0'
+
+# L'analytique de CocoaPods envoie ses statistiques de façon synchrone, ce qui
+# ralentit chaque `flutter build`.
+ENV['COCOAPODS_DISABLE_STATS'] = 'true'
+
+project 'Runner', {
+  'Debug' => :debug,
+  'Profile' => :release,
+  'Release' => :release,
+}
+
+def flutter_root
+  generated_xcode_build_settings_path = File.expand_path(File.join('..', 'Flutter', 'Generated.xcconfig'), __FILE__)
+  unless File.exist?(generated_xcode_build_settings_path)
+    raise "#{generated_xcode_build_settings_path} must exist. If you're running pod install manually, make sure flutter pub get is executed first"
+  end
+
+  File.foreach(generated_xcode_build_settings_path) do |line|
+    matches = line.match(/FLUTTER_ROOT\=(.*)/)
+    return matches[1].strip if matches
+  end
+  raise "FLUTTER_ROOT not found in #{generated_xcode_build_settings_path}. Try deleting Generated.xcconfig, then run flutter pub get"
+end
+
+require File.expand_path(File.join('packages', 'flutter_tools', 'bin', 'podhelper'), flutter_root)
+
+flutter_ios_podfile_setup
+
+target 'Runner' do
+  use_frameworks!
+
+  flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__))
+  target 'RunnerTests' do
+    inherit! :search_paths
+  end
+end
+
+post_install do |installer|
+  installer.pods_project.targets.each do |target|
+    flutter_additional_ios_build_settings(target)
+
+    target.build_configurations.each do |config|
+      # permission_handler compile chaque permission derrière une macro, et
+      # toutes valent 0 par défaut sous CocoaPods : sans PERMISSION_CAMERA=1,
+      # le greffon répond « refus définitif » pour la caméra sans jamais
+      # montrer l'invite système, et le profil renverrait l'utilisateur vers
+      # des réglages où l'interrupteur n'existe même pas.
+      #
+      # Seules les permissions réellement demandées par l'app sont activées :
+      # chaque macro inutile embarque du code qui appelle des API sensibles
+      # (contacts, localisation…), que la revue d'Apple demande alors de
+      # justifier par une clé d'Info.plist dont l'app n'a aucun usage.
+      #
+      # Sous Swift Package Manager, ce bloc est ignoré : le Package.swift du
+      # greffon déduit les mêmes permissions des clés présentes dans
+      # Info.plist (NSCameraUsageDescription, NSPhotoLibraryUsageDescription).
+      config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] ||= [
+        '$(inherited)',
+
+        ## dart: PermissionGroup.camera
+        'PERMISSION_CAMERA=1',
+        'PERMISSION_PHOTOS=1',
+      ]
+    end
+  end
+end

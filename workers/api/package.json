@@ -1,0 +1,18 @@
+{
+  "name": "eventhub-api",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Worker Cloudflare qui relaie vers FCM les notifications Firestore d'EventHub, sans Cloud Functions ni plan Blaze.",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "test": "node --test --test-reporter=spec \"test/*.test.js\"",
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy"
+  },
+  "devDependencies": {
+    "wrangler": "^4.132.0"
+  }
+}

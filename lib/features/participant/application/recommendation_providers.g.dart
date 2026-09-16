@@ -1,0 +1,64 @@
+// GENERATED CODE - DO NOT MODIFY BY HAND
+
+part of 'recommendation_providers.dart';
+
+// **************************************************************************
+// RiverpodGenerator
+// **************************************************************************
+
+// GENERATED CODE - DO NOT MODIFY BY HAND
+// ignore_for_file: type=lint, type=warning
+/// « Pour vous » (F-18). Vide tant que le catalogue n’est pas chargé, et
+/// vide pour les organisateurs — ils ne réservent pas.
+
+@ProviderFor(recommendedEvents)
+final recommendedEventsProvider = RecommendedEventsProvider._();
+
+/// « Pour vous » (F-18). Vide tant que le catalogue n’est pas chargé, et
+/// vide pour les organisateurs — ils ne réservent pas.
+
+final class RecommendedEventsProvider
+    extends
+        $FunctionalProvider<
+          List<Recommendation>,
+          List<Recommendation>,
+          List<Recommendation>
+        >
+    with $Provider<List<Recommendation>> {
+  /// « Pour vous » (F-18). Vide tant que le catalogue n’est pas chargé, et
+  /// vide pour les organisateurs — ils ne réservent pas.
+  RecommendedEventsProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'recommendedEventsProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$recommendedEventsHash();
+
+  @$internal
+  @override
+  $ProviderElement<List<Recommendation>> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  List<Recommendation> create(Ref ref) {
+    return recommendedEvents(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(List<Recommendation> value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<List<Recommendation>>(value),
+    );
+  }
+}
+
+String _$recommendedEventsHash() => r'f950d596a2925887e7dbd28d3a94ad7dc3c14a58';

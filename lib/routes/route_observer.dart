@@ -1,16 +1,18 @@
 import 'package:eventhub/core/utils/app_logger.dart';
 import 'package:flutter/widgets.dart';
 
-/// Navigation telemetry.
+/// Télémétrie de navigation.
 ///
-/// Every push/pop/replace is logged with a stable screen name, which is the
-/// exact hook an analytics or crash-reporting SDK needs (`setCurrentScreen`,
-/// breadcrumbs). Keeping it in the routing layer means feature code never
-/// has to remember to instrument navigation.
+/// Chaque push/pop/replace est journalisé avec un nom d’écran stable, ce qui
+/// est exactement le point d’accroche attendu par un SDK d’analytics ou de
+/// crash reporting (`setCurrentScreen`, fils d’Ariane). Le garder dans la
+/// couche de routage évite au code des features d’avoir à penser à
+/// instrumenter la navigation.
 class AppRouteObserver extends NavigatorObserver {
   AppRouteObserver({this.onScreen});
 
-  /// Optional sink — wire it to Analytics/Crashlytics in `bootstrap()`.
+  /// Puits optionnel — à brancher sur Analytics/Crashlytics dans
+  /// `bootstrap()`.
   final void Function(String screen)? onScreen;
 
   @override

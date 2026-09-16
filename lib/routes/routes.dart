@@ -1,6 +1,6 @@
-/// Public surface of the routing layer.
+/// Surface publique de la couche de routage.
 ///
-/// Feature code imports this file only:
+/// Le code des features n’importe que ce fichier :
 /// `import 'package:eventhub/routes/routes.dart';`
 library;
 

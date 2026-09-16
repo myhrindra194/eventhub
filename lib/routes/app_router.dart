@@ -51,25 +51,27 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'app_router.g.dart';
 
-/// Navigator keys. The root one is used by every route that must cover the
-/// bottom navigation bar (details, forms, modals); each shell branch keeps
-/// its own key so tab state survives switching.
+/// Clés de navigator. Celle de la racine sert à toute route qui doit
+/// recouvrir la barre de navigation basse (détails, formulaires, modales) ;
+/// chaque branche de shell garde sa propre clé pour que l’état d’un onglet
+/// survive au passage d’un onglet à l’autre.
 final rootNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'root');
 final _participantShellKey = GlobalKey<NavigatorState>(debugLabel: 'shell.p');
 final _organizerShellKey = GlobalKey<NavigatorState>(debugLabel: 'shell.o');
 
-/// The application router.
+/// Le router de l’application.
 ///
-/// Composition:
-///  * two [StatefulShellRoute]s — one per role — so each tab owns an
-///    independent navigation stack;
-///  * every "leaf" route (detail, form, participants) is attached to the
-///    root navigator so it slides over the navigation bar;
-///  * navigation policy lives in [RouteGuard], not here.
+/// Composition :
+///  * deux [StatefulShellRoute] — un par rôle — pour que chaque onglet
+///    possède une pile de navigation indépendante ;
+///  * toute route « feuille » (détail, formulaire, participants) est
+///    rattachée au navigator racine afin de glisser par-dessus la barre de
+///    navigation ;
+///  * la politique de navigation vit dans [RouteGuard], pas ici.
 ///
-/// The router instance is `keepAlive`: rebuilding it would reset the whole
-/// navigation state, so session changes are pushed through a
-/// [RouterRefresh] listenable instead.
+/// L’instance du router est `keepAlive` : la reconstruire réinitialiserait
+/// tout l’état de navigation ; les changements de session sont donc poussés
+/// via un listenable [RouterRefresh].
 @Riverpod(keepAlive: true)
 GoRouter appRouter(Ref ref) {
   final refresh = RouterRefresh();
@@ -102,8 +104,8 @@ GoRouter appRouter(Ref ref) {
   );
 }
 
-/// Snapshot of everything the guard needs, read (never watched) so that the
-/// router itself is never rebuilt.
+/// Instantané de tout ce dont le guard a besoin, lu avec `read` (jamais
+/// `watch`) pour que le router lui-même ne soit jamais reconstruit.
 RouteGuardState _guardState(Ref ref) {
   final session = ref.read(authSessionProvider);
   final onboarding = ref.read(onboardingSeenProvider);
@@ -114,7 +116,7 @@ RouteGuardState _guardState(Ref ref) {
   );
 }
 
-// ---------------------------------------------------------------- common --
+// ---------------------------------------------------------------- commun --
 
 final _commonRoutes = <RouteBase>[
   GoRoute(
@@ -146,8 +148,9 @@ final _commonRoutes = <RouteBase>[
     name: AppRoutes.registerName,
     pageBuilder: (_, state) => AppPage.screen(state, const RegisterScreen()),
   ),
-  // Reachable from Settings while signed in, hence a top-level route rather
-  // than a child of either role's profile branch.
+  // Accessible depuis les réglages une fois connecté, d’où une route de
+  // premier niveau plutôt qu’un enfant de la branche profil de l’un ou
+  // l’autre rôle.
   GoRoute(
     path: AppRoutes.changePassword,
     name: AppRoutes.changePasswordName,
@@ -159,7 +162,8 @@ final _commonRoutes = <RouteBase>[
       ),
     ),
   ),
-  // Account and support pages, opened from the profile of either role.
+  // Pages compte et support, ouvertes depuis le profil de l’un ou l’autre
+  // rôle.
   GoRoute(
     path: AppRoutes.editProfile,
     name: AppRoutes.editProfileName,
@@ -191,7 +195,7 @@ final _commonRoutes = <RouteBase>[
     parentNavigatorKey: rootNavigatorKey,
     pageBuilder: (_, state) => AppPage.screen(state, const AboutScreen()),
   ),
-  // Public organizer profiles and follows: open to both roles.
+  // Profils publics d’organisateurs et abonnements : ouverts aux deux rôles.
   GoRoute(
     path: AppRoutes.organizerPublicProfile,
     name: AppRoutes.organizerPublicProfileName,
@@ -209,7 +213,7 @@ final _commonRoutes = <RouteBase>[
     parentNavigatorKey: rootNavigatorKey,
     pageBuilder: (_, state) => AppPage.screen(state, const FollowingScreen()),
   ),
-  // Administration — the guard requires the `admin` claim.
+  // Administration — le guard exige le claim `admin`.
   GoRoute(
     path: AppRoutes.adminModeration,
     name: AppRoutes.adminModerationName,
@@ -234,7 +238,7 @@ final _commonRoutes = <RouteBase>[
     parentNavigatorKey: rootNavigatorKey,
     pageBuilder: (_, state) => AppPage.screen(state, const AdminRolesScreen()),
   ),
-  // Return from Stripe Checkout (F-11), delivered by Android App Links.
+  // Retour de Stripe Checkout (F-11), acheminé par les App Links Android.
   GoRoute(
     path: AppRoutes.paySuccess,
     name: AppRoutes.paySuccessName,
@@ -245,7 +249,7 @@ final _commonRoutes = <RouteBase>[
     name: AppRoutes.payCancelName,
     redirect: (_, state) => _paymentLocation(state),
   ),
-  // Shared link https://<host>/e/{id}, delivered by Android App Links.
+  // Lien partagé https://<host>/e/{id}, acheminé par les App Links Android.
   GoRoute(
     path: AppRoutes.publicEventLink,
     name: AppRoutes.publicEventLinkName,
@@ -279,8 +283,8 @@ final _commonRoutes = <RouteBase>[
   ),
 ];
 
-/// `/pay/success?reservation=…` → the payment screen, which shows the real
-/// state (the webhook, not the redirect, decides whether it is paid).
+/// `/pay/success?reservation=…` → l’écran de paiement, qui affiche l’état
+/// réel (c’est le webhook, pas la redirection, qui décide si c’est payé).
 String _paymentLocation(GoRouterState state) {
   final id = state.uri.queryParameters['reservation'];
   return id == null || id.isEmpty
@@ -411,7 +415,7 @@ final _participantLeafRoutes = <RouteBase>[
   ),
 ];
 
-// ------------------------------------------------------------- organizer --
+// ---------------------------------------------------------- organisateur --
 
 final _organizerShell = StatefulShellRoute.indexedStack(
   parentNavigatorKey: rootNavigatorKey,

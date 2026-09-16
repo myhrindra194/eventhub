@@ -8,50 +8,53 @@ part of 'app_router.dart';
 
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // ignore_for_file: type=lint, type=warning
-/// The application router.
+/// Le router de l’application.
 ///
-/// Composition:
-///  * two [StatefulShellRoute]s — one per role — so each tab owns an
-///    independent navigation stack;
-///  * every "leaf" route (detail, form, participants) is attached to the
-///    root navigator so it slides over the navigation bar;
-///  * navigation policy lives in [RouteGuard], not here.
+/// Composition :
+///  * deux [StatefulShellRoute] — un par rôle — pour que chaque onglet
+///    possède une pile de navigation indépendante ;
+///  * toute route « feuille » (détail, formulaire, participants) est
+///    rattachée au navigator racine afin de glisser par-dessus la barre de
+///    navigation ;
+///  * la politique de navigation vit dans [RouteGuard], pas ici.
 ///
-/// The router instance is `keepAlive`: rebuilding it would reset the whole
-/// navigation state, so session changes are pushed through a
-/// [RouterRefresh] listenable instead.
+/// L’instance du router est `keepAlive` : la reconstruire réinitialiserait
+/// tout l’état de navigation ; les changements de session sont donc poussés
+/// via un listenable [RouterRefresh].
 
 @ProviderFor(appRouter)
 final appRouterProvider = AppRouterProvider._();
 
-/// The application router.
+/// Le router de l’application.
 ///
-/// Composition:
-///  * two [StatefulShellRoute]s — one per role — so each tab owns an
-///    independent navigation stack;
-///  * every "leaf" route (detail, form, participants) is attached to the
-///    root navigator so it slides over the navigation bar;
-///  * navigation policy lives in [RouteGuard], not here.
+/// Composition :
+///  * deux [StatefulShellRoute] — un par rôle — pour que chaque onglet
+///    possède une pile de navigation indépendante ;
+///  * toute route « feuille » (détail, formulaire, participants) est
+///    rattachée au navigator racine afin de glisser par-dessus la barre de
+///    navigation ;
+///  * la politique de navigation vit dans [RouteGuard], pas ici.
 ///
-/// The router instance is `keepAlive`: rebuilding it would reset the whole
-/// navigation state, so session changes are pushed through a
-/// [RouterRefresh] listenable instead.
+/// L’instance du router est `keepAlive` : la reconstruire réinitialiserait
+/// tout l’état de navigation ; les changements de session sont donc poussés
+/// via un listenable [RouterRefresh].
 
 final class AppRouterProvider
     extends $FunctionalProvider<GoRouter, GoRouter, GoRouter>
     with $Provider<GoRouter> {
-  /// The application router.
+  /// Le router de l’application.
   ///
-  /// Composition:
-  ///  * two [StatefulShellRoute]s — one per role — so each tab owns an
-  ///    independent navigation stack;
-  ///  * every "leaf" route (detail, form, participants) is attached to the
-  ///    root navigator so it slides over the navigation bar;
-  ///  * navigation policy lives in [RouteGuard], not here.
+  /// Composition :
+  ///  * deux [StatefulShellRoute] — un par rôle — pour que chaque onglet
+  ///    possède une pile de navigation indépendante ;
+  ///  * toute route « feuille » (détail, formulaire, participants) est
+  ///    rattachée au navigator racine afin de glisser par-dessus la barre de
+  ///    navigation ;
+  ///  * la politique de navigation vit dans [RouteGuard], pas ici.
   ///
-  /// The router instance is `keepAlive`: rebuilding it would reset the whole
-  /// navigation state, so session changes are pushed through a
-  /// [RouterRefresh] listenable instead.
+  /// L’instance du router est `keepAlive` : la reconstruire réinitialiserait
+  /// tout l’état de navigation ; les changements de session sont donc poussés
+  /// via un listenable [RouterRefresh].
   AppRouterProvider._()
     : super(
         from: null,

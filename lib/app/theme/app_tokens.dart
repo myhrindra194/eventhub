@@ -1,10 +1,11 @@
 import 'package:eventhub/app/theme/app_palette.dart';
 import 'package:flutter/material.dart';
 
-/// A semantic colour pair used by status surfaces (success, warning,
-/// danger, info, brand). [fg] is legible on [bg], and [bg] is legible on the
-/// screen ground — that invariant is what lets the same pill component be
-/// dropped anywhere without a contrast audit.
+/// Paire de couleurs sémantiques utilisée par les surfaces de statut
+/// (succès, avertissement, danger, info, marque). [fg] est lisible sur [bg],
+/// et [bg] est lisible sur le fond de l’écran — c’est cet invariant qui
+/// permet de poser le même composant pilule n’importe où sans refaire un
+/// audit de contraste.
 @immutable
 class ToneColors {
   const ToneColors({
@@ -15,19 +16,19 @@ class ToneColors {
     required this.onSolid,
   });
 
-  /// Text/icon colour on a tinted background.
+  /// Couleur du texte et des icônes sur un fond teinté.
   final Color fg;
 
-  /// The tint itself (low-alpha or low-chroma).
+  /// La teinte elle-même (faible alpha ou faible chroma).
   final Color bg;
 
-  /// Hairline for outlined variants.
+  /// Filet pour les variantes en contour.
   final Color border;
 
-  /// Fully saturated fill, for the loudest variant.
+  /// Aplat pleinement saturé, pour la variante la plus sonore.
   final Color solid;
 
-  /// Text/icon colour on [solid].
+  /// Couleur du texte et des icônes sur [solid].
   final Color onSolid;
 
   static ToneColors lerp(ToneColors a, ToneColors b, double t) => ToneColors(
@@ -39,42 +40,19 @@ class ToneColors {
   );
 }
 
-/// Elevation as *shadow recipes* rather than a single `elevation: n`.
+/// Les jetons de design d'EventHub, attachés à `ThemeData.extensions`.
 ///
-/// Material's numeric elevation bakes in a tint that reads badly on a dark
-/// ground; a two-layer shadow (a tight contact shadow plus a wide ambient
-/// one) is what actually makes a surface look lifted.
-@immutable
-class AppShadows {
-  const AppShadows({
-    required this.xs,
-    required this.sm,
-    required this.md,
-    required this.lg,
-    required this.xl,
-  });
-
-  final List<BoxShadow> xs;
-  final List<BoxShadow> sm;
-  final List<BoxShadow> md;
-  final List<BoxShadow> lg;
-  final List<BoxShadow> xl;
-
-  static AppShadows lerp(AppShadows a, AppShadows b, double t) => AppShadows(
-    xs: BoxShadow.lerpList(a.xs, b.xs, t)!,
-    sm: BoxShadow.lerpList(a.sm, b.sm, t)!,
-    md: BoxShadow.lerpList(a.md, b.md, t)!,
-    lg: BoxShadow.lerpList(a.lg, b.lg, t)!,
-    xl: BoxShadow.lerpList(a.xl, b.xl, t)!,
-  );
-}
-
-/// The EventHub design tokens, attached to `ThemeData.extensions`.
+/// Il n'y a **aucune ombre** dans ce jeu de jetons, et c'est une décision, pas
+/// un oubli : la profondeur du produit vient des filets, des fonds creusés et
+/// du contraste. Une ombre portée est le marqueur le plus immédiat d'un
+/// gabarit par défaut, et sur un fond sombre elle se lit comme une salissure
+/// plutôt que comme une élévation. Deux plans se distinguent donc par leur
+/// couleur de surface et leur bordure — jamais par un flou noir.
 ///
-/// Widgets read `context.tokens` instead of importing a palette. Swapping
-/// the light and the dark instance is therefore the *only* thing needed to
-/// re-skin the entire application, and `ThemeExtension.lerp` makes the
-/// light↔dark switch animate rather than snap.
+/// Les widgets lisent `context.tokens` au lieu d'importer une palette :
+/// échanger l'instance claire et l'instance sombre est donc la *seule* chose
+/// nécessaire pour repeindre toute l'application, et `ThemeExtension.lerp`
+/// fait que la bascule clair/sombre s'anime au lieu de sauter.
 @immutable
 class AppTokens extends ThemeExtension<AppTokens> {
   const AppTokens({
@@ -103,7 +81,6 @@ class AppTokens extends ThemeExtension<AppTokens> {
     required this.danger,
     required this.info,
     required this.neutralTone,
-    required this.shadows,
     required this.brandGradient,
     required this.accentGradient,
     required this.heroScrim,
@@ -115,60 +92,60 @@ class AppTokens extends ThemeExtension<AppTokens> {
 
   final Brightness brightness;
 
-  // ---------------------------------------------------------- ground layers
-  /// The page background.
+  // ---------------------------------------------------------- plans de fond
+  /// Le fond de la page.
   final Color canvas;
 
-  /// Default card / panel colour, one step off the canvas.
+  /// Couleur par défaut des cartes et panneaux, à un pas du canvas.
   final Color surface;
 
-  /// A surface that must read as *closer* to the user (sticky bars, menus).
+  /// Une surface qui doit paraître *plus proche* de l’utilisateur (barres
+  /// collantes, menus).
   final Color surfaceRaised;
 
-  /// A recess: inputs, track of a progress bar, image placeholders.
+  /// Un creux : champs, piste d’une barre de progression, placeholders.
   final Color surfaceSunken;
 
-  /// Sheets and dialogs, which sit above a scrim.
+  /// Sheets et dialogues, qui se posent au-dessus d’un scrim.
   final Color surfaceOverlay;
 
-  /// Translucent fill for frosted (blurred) elements.
+  /// Remplissage translucide pour les éléments dépolis (floutés).
   final Color glass;
 
-  /// Dim behind modals.
+  /// Assombrissement derrière les modales.
   final Color scrim;
 
-  // ----------------------------------------------------------------- lines
+  // ---------------------------------------------------------------- filets
   final Color borderSubtle;
   final Color border;
   final Color borderStrong;
 
-  // ------------------------------------------------------------------ text
+  // ----------------------------------------------------------------- texte
   final Color textPrimary;
   final Color textSecondary;
   final Color textTertiary;
   final Color textOnBrand;
 
-  // ----------------------------------------------------------------- brand
+  // ---------------------------------------------------------------- marque
   final Color brand;
   final Color brandSoft;
   final Color brandStrong;
   final Color accent;
   final Color accentSoft;
 
-  // ------------------------------------------------------------- semantics
+  // ------------------------------------------------------------ sémantique
   final ToneColors success;
   final ToneColors warning;
   final ToneColors danger;
   final ToneColors info;
   final ToneColors neutralTone;
 
-  // ----------------------------------------------------------- decorations
-  final AppShadows shadows;
+  // ----------------------------------------------------------- décorations
   final LinearGradient brandGradient;
   final LinearGradient accentGradient;
 
-  /// Vertical scrim laid over hero photography so white text stays legible
-  /// whatever the image is.
+  /// Scrim vertical posé sur les photos hero pour que le texte blanc reste
+  /// lisible quelle que soit l’image.
   final LinearGradient heroScrim;
 
   final Color bloomPrimary;
@@ -179,8 +156,9 @@ class AppTokens extends ThemeExtension<AppTokens> {
 
   bool get isDark => brightness == Brightness.dark;
 
-  /// Tone matching an event fill rate — used by capacity meters so the
-  /// colour semantics ("almost full") are decided once.
+  /// Ton correspondant au taux de remplissage d’un événement — utilisé par
+  /// les jauges de capacité pour que la sémantique de couleur (« presque
+  /// complet ») soit décidée une seule fois.
   ToneColors seatTone({required int available, required int capacity}) {
     if (available <= 0) return danger;
     if (capacity > 0 && available <= 3) return warning;
@@ -214,7 +192,6 @@ class AppTokens extends ThemeExtension<AppTokens> {
     ToneColors? danger,
     ToneColors? info,
     ToneColors? neutralTone,
-    AppShadows? shadows,
     LinearGradient? brandGradient,
     LinearGradient? accentGradient,
     LinearGradient? heroScrim,
@@ -249,7 +226,6 @@ class AppTokens extends ThemeExtension<AppTokens> {
       danger: danger ?? this.danger,
       info: info ?? this.info,
       neutralTone: neutralTone ?? this.neutralTone,
-      shadows: shadows ?? this.shadows,
       brandGradient: brandGradient ?? this.brandGradient,
       accentGradient: accentGradient ?? this.accentGradient,
       heroScrim: heroScrim ?? this.heroScrim,
@@ -289,7 +265,6 @@ class AppTokens extends ThemeExtension<AppTokens> {
       danger: ToneColors.lerp(danger, other.danger, t),
       info: ToneColors.lerp(info, other.info, t),
       neutralTone: ToneColors.lerp(neutralTone, other.neutralTone, t),
-      shadows: AppShadows.lerp(shadows, other.shadows, t),
       brandGradient: LinearGradient.lerp(
         brandGradient,
         other.brandGradient,
@@ -313,7 +288,7 @@ class AppTokens extends ThemeExtension<AppTokens> {
   }
 
   // ==========================================================================
-  //  Light
+  //  Clair
   // ==========================================================================
   static const light = AppTokens(
     brightness: Brightness.light,
@@ -371,63 +346,6 @@ class AppTokens extends ThemeExtension<AppTokens> {
       solid: AppPalette.neutral700,
       onSolid: AppPalette.neutral0,
     ),
-    shadows: AppShadows(
-      xs: [
-        BoxShadow(
-          color: Color(0x0D0F1424),
-          blurRadius: 2,
-          offset: Offset(0, 1),
-        ),
-      ],
-      sm: [
-        BoxShadow(
-          color: Color(0x140F1424),
-          blurRadius: 6,
-          offset: Offset(0, 2),
-        ),
-        BoxShadow(
-          color: Color(0x0A0F1424),
-          blurRadius: 2,
-          offset: Offset(0, 1),
-        ),
-      ],
-      md: [
-        BoxShadow(
-          color: Color(0x140F1424),
-          blurRadius: 16,
-          offset: Offset(0, 6),
-        ),
-        BoxShadow(
-          color: Color(0x0F0F1424),
-          blurRadius: 4,
-          offset: Offset(0, 2),
-        ),
-      ],
-      lg: [
-        BoxShadow(
-          color: Color(0x1A0F1424),
-          blurRadius: 28,
-          offset: Offset(0, 12),
-        ),
-        BoxShadow(
-          color: Color(0x0F0F1424),
-          blurRadius: 8,
-          offset: Offset(0, 4),
-        ),
-      ],
-      xl: [
-        BoxShadow(
-          color: Color(0x240F1424),
-          blurRadius: 48,
-          offset: Offset(0, 20),
-        ),
-        BoxShadow(
-          color: Color(0x140F1424),
-          blurRadius: 12,
-          offset: Offset(0, 6),
-        ),
-      ],
-    ),
     brandGradient: LinearGradient(
       begin: Alignment.topLeft,
       end: Alignment.bottomRight,
@@ -451,7 +369,7 @@ class AppTokens extends ThemeExtension<AppTokens> {
   );
 
   // ==========================================================================
-  //  Dark
+  //  Sombre
   // ==========================================================================
   static const dark = AppTokens(
     brightness: Brightness.dark,
@@ -509,43 +427,6 @@ class AppTokens extends ThemeExtension<AppTokens> {
       solid: Color(0xFF394154),
       onSolid: Color(0xFFF3F5FA),
     ),
-    shadows: AppShadows(
-      xs: [
-        BoxShadow(
-          color: Color(0x59000000),
-          blurRadius: 2,
-          offset: Offset(0, 1),
-        ),
-      ],
-      sm: [
-        BoxShadow(
-          color: Color(0x66000000),
-          blurRadius: 8,
-          offset: Offset(0, 3),
-        ),
-      ],
-      md: [
-        BoxShadow(
-          color: Color(0x73000000),
-          blurRadius: 20,
-          offset: Offset(0, 8),
-        ),
-      ],
-      lg: [
-        BoxShadow(
-          color: Color(0x80000000),
-          blurRadius: 32,
-          offset: Offset(0, 14),
-        ),
-      ],
-      xl: [
-        BoxShadow(
-          color: Color(0x99000000),
-          blurRadius: 56,
-          offset: Offset(0, 24),
-        ),
-      ],
-    ),
     brandGradient: LinearGradient(
       begin: Alignment.topLeft,
       end: Alignment.bottomRight,
@@ -569,8 +450,9 @@ class AppTokens extends ThemeExtension<AppTokens> {
   );
 }
 
-/// Semantic intent of a status surface. Components take an [AppTone] and
-/// resolve it against the tokens, so a caller never picks a raw colour.
+/// Intention sémantique d’une surface de statut. Les composants prennent un
+/// [AppTone] et le résolvent contre les tokens : un appelant ne choisit
+/// jamais une couleur brute.
 enum AppTone { brand, accent, success, warning, danger, info, neutral }
 
 extension AppToneResolver on AppTokens {
@@ -597,7 +479,7 @@ extension AppToneResolver on AppTokens {
   };
 }
 
-/// Ergonomic access: `context.tokens.surface`.
+/// Accès ergonomique : `context.tokens.surface`.
 extension AppTokensX on BuildContext {
   AppTokens get tokens =>
       Theme.of(this).extension<AppTokens>() ??

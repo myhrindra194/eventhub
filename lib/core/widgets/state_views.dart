@@ -4,13 +4,13 @@ import 'package:eventhub/core/widgets/app_button.dart';
 import 'package:eventhub/core/widgets/app_surface.dart';
 import 'package:flutter/material.dart';
 
-/// Shared layout for the three "there is nothing to show" states.
+/// La mise en page partagée des trois états « il n'y a rien à montrer ».
 ///
-/// They are treated as first-class screens, not afterthoughts: an empty or
-/// failing state is where a user decides whether the product is broken or
-/// simply new. Each one gets an illustration-grade icon, a title that names
-/// the situation, a sentence that explains it, and — crucially — an action
-/// that gets the user out of the dead end.
+/// Ils sont traités comme des écrans à part entière, jamais comme un
+/// après-coup : c'est devant un état vide ou en échec que l'utilisateur
+/// décide si le produit est cassé ou simplement neuf. Chacun reçoit donc une
+/// icône de qualité d'illustration, un titre qui nomme la situation, une
+/// phrase qui l'explique et — surtout — une action qui sort de l'impasse.
 class _StateLayout extends StatelessWidget {
   const _StateLayout({
     required this.hero,
@@ -38,7 +38,10 @@ class _StateLayout extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            hero,
+            // Centrage explicite de l'icône : selon le parent (sliver, liste,
+            // colonne étirée), elle se retrouvait calée à gauche alors que le
+            // texte, lui, restait centré.
+            Center(child: hero),
             const SizedBox(height: AppSpacing.xl),
             if (title.isNotEmpty) ...[
               Text(
@@ -64,8 +67,8 @@ class _StateLayout extends StatelessWidget {
   }
 }
 
-/// Soft radial glow behind the state icon — enough presence to anchor the
-/// column without commissioning an illustration set.
+/// Halo radial doux derrière l'icône d'état — assez de présence pour ancrer
+/// la colonne, sans commander toute une série d'illustrations.
 class _GlowIcon extends StatelessWidget {
   const _GlowIcon({required this.icon, required this.tone});
 

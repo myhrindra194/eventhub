@@ -7,12 +7,13 @@ import 'package:flutter/cupertino.dart' show CupertinoPageTransitionsBuilder;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-/// Assembles Material 3 [ThemeData] from the design tokens.
+/// Assemble le [ThemeData] Material 3 à partir des tokens de design.
 ///
-/// Nothing here invents a colour: every value is read from [AppTokens], so
-/// the light and the dark theme are literally the same code run over two
-/// token sets. Component themes are configured exhaustively — a screen
-/// should almost never need to style a button, an input or a chip locally.
+/// Rien ici n’invente une couleur : chaque valeur est lue depuis [AppTokens],
+/// si bien que le thème clair et le thème sombre sont littéralement le même
+/// code exécuté sur deux jeux de tokens. Les thèmes de composants sont
+/// configurés exhaustivement — un écran ne devrait presque jamais avoir à
+/// styler localement un bouton, un champ ou un chip.
 abstract final class AppTheme {
   static ThemeData light() => _build(AppTokens.light);
 
@@ -45,7 +46,7 @@ abstract final class AppTheme {
         },
       ),
 
-      // ------------------------------------------------------------- bars
+      // ----------------------------------------------------------- barres
       appBarTheme: AppBarTheme(
         backgroundColor: t.canvas,
         surfaceTintColor: Colors.transparent,
@@ -72,7 +73,7 @@ abstract final class AppTheme {
         labelBehavior: NavigationDestinationLabelBehavior.onlyShowSelected,
       ),
 
-      // -------------------------------------------------------- containers
+      // -------------------------------------------------------- conteneurs
       cardTheme: CardThemeData(
         elevation: 0,
         clipBehavior: Clip.antiAlias,
@@ -97,8 +98,8 @@ abstract final class AppTheme {
         surfaceTintColor: Colors.transparent,
         modalBarrierColor: t.scrim,
         elevation: 0,
-        // No grabber: sheets close with their own ✕ button, a tap on the
-        // scrim or a downward drag.
+        // Pas de poignée : les sheets se ferment par leur propre bouton ✕,
+        // par un appui sur le scrim ou par un glissement vers le bas.
         showDragHandle: false,
         clipBehavior: Clip.antiAlias,
         shape: const RoundedRectangleBorder(
@@ -127,7 +128,7 @@ abstract final class AppTheme {
         ),
       ),
 
-      // ------------------------------------------------------------ inputs
+      // ------------------------------------------------------------ champs
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: t.surfaceSunken,
@@ -157,7 +158,7 @@ abstract final class AppTheme {
         selectionHandleColor: t.brand,
       ),
 
-      // ----------------------------------------------------------- buttons
+      // ----------------------------------------------------------- boutons
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
           backgroundColor: t.brand,
@@ -209,7 +210,7 @@ abstract final class AppTheme {
         shape: const RoundedRectangleBorder(borderRadius: AppRadius.brLg),
       ),
 
-      // ------------------------------------------------------------- misc
+      // ----------------------------------------------------------- divers
       chipTheme: ChipThemeData(
         backgroundColor: t.surfaceSunken,
         selectedColor: t.brand,
@@ -358,8 +359,8 @@ abstract final class AppTheme {
         borderSide: BorderSide(color: color, width: width),
       );
 
-  /// System bars matched to the current theme. Applied by `EventHubApp`
-  /// through an `AnnotatedRegion`, so a screen never has to think about it.
+  /// Barres système accordées au thème courant. Appliquées par `EventHubApp`
+  /// via un `AnnotatedRegion`, pour qu’un écran n’ait jamais à s’en soucier.
   static SystemUiOverlayStyle overlayStyle(Brightness brightness) {
     final isDark = brightness == Brightness.dark;
     return SystemUiOverlayStyle(
@@ -374,7 +375,7 @@ abstract final class AppTheme {
     );
   }
 
-  /// Duration used by `MaterialApp.themeAnimationDuration` so a light↔dark
-  /// switch cross-fades through the token `lerp` instead of snapping.
+  /// Durée utilisée par `MaterialApp.themeAnimationDuration` pour qu’une
+  /// bascule clair↔sombre fonde via le `lerp` des tokens au lieu de sauter.
   static const themeSwitchDuration = AppMotion.slow;
 }

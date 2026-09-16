@@ -4,13 +4,15 @@ import 'package:eventhub/core/l10n/app_strings.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-/// Puts a thin "hors ligne" band above the whole app while the network is
-/// down.
+/// Pose un mince bandeau « hors ligne » au-dessus de toute l'application tant
+/// que le réseau est absent.
 ///
-/// Not a blocking screen: Firestore serves cached data and queues writes, so
-/// the user can keep browsing their tickets. The band only explains why fresh
-/// data is not arriving. It takes the status-bar inset itself and removes it
-/// from the app below, so no screen is pushed under the notch.
+/// Ce n'est pas un écran bloquant : Firestore sert les données du cache et met
+/// les écritures en file, l'utilisateur peut donc continuer à consulter ses
+/// billets. Le bandeau explique seulement pourquoi rien de neuf n'arrive. Il
+/// prend lui-même la marge de la barre d'état et la retire à l'application
+/// située dessous, de sorte qu'aucun écran ne se retrouve poussé sous
+/// l'encoche.
 class OfflineAware extends ConsumerWidget {
   const OfflineAware({required this.child, super.key});
 
@@ -18,7 +20,7 @@ class OfflineAware extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Unknown (plugin missing in tests) is treated as online.
+    // État inconnu — greffon absent en test — traité comme « en ligne ».
     final online = ref.watch(isOnlineProvider).value ?? true;
     final t = context.tokens;
     final colors = t.neutralTone;

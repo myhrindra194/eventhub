@@ -1,16 +1,17 @@
 import 'package:flutter/animation.dart';
 
-/// Motion tokens.
+/// Tokens de mouvement.
 ///
-/// One vocabulary of durations and curves for the whole product, so that a
-/// chip, a page transition and a bottom sheet feel like they belong to the
-/// same machine. Values follow the Material 3 "expressive" easing set.
+/// Un seul vocabulaire de durées et de courbes pour tout le produit, afin
+/// qu’un chip, une transition de page et une bottom sheet donnent le
+/// sentiment d’appartenir à la même mécanique. Les valeurs suivent le jeu
+/// d’easing « expressive » de Material 3.
 ///
-/// Rule of thumb:
-///  * [instant] / [xshort] — state feedback (press, hover, ripple)
-///  * [short]              — small element enters/leaves (chip, badge)
-///  * [medium]             — page transitions, expanding cards
-///  * [long] / [xlong]     — full-screen or celebratory motion
+/// Règle générale :
+///  * [instant] / [xshort] — retour d’état (appui, survol, ripple)
+///  * [short]              — entrée/sortie d’un petit élément (chip, badge)
+///  * [medium]             — transitions de page, cartes qui se déplient
+///  * [long] / [xlong]     — mouvement plein écran ou célébratoire
 abstract final class AppMotion {
   static const instant = Duration(milliseconds: 80);
   static const xshort = Duration(milliseconds: 120);
@@ -20,18 +21,18 @@ abstract final class AppMotion {
   static const long = Duration(milliseconds: 480);
   static const xlong = Duration(milliseconds: 720);
 
-  /// Default "arrives with authority, settles softly" curve.
+  /// Courbe par défaut, « arrive avec autorité, se pose en douceur ».
   static const emphasized = Cubic(0.2, 0, 0, 1);
 
-  /// Entering the screen — no initial speed, decelerates into place.
+  /// Entrée à l’écran — aucune vitesse initiale, décélère jusqu’à sa place.
   static const decelerate = Cubic(0.05, 0.7, 0.1, 1);
 
-  /// Leaving the screen — picks up speed and exits.
+  /// Sortie de l’écran — prend de la vitesse et s’en va.
   static const accelerate = Cubic(0.3, 0, 0.8, 0.15);
 
-  /// Symmetric, for values that go back and forth (toggles, sliders).
+  /// Symétrique, pour les valeurs qui font l’aller-retour (toggles, sliders).
   static const standard = Cubic(0.4, 0, 0.2, 1);
 
-  /// A touch of overshoot for celebratory or playful elements only.
+  /// Un soupçon d’overshoot, réservé aux seuls éléments festifs ou ludiques.
   static const spring = Cubic(0.34, 1.56, 0.64, 1);
 }

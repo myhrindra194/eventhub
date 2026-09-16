@@ -1,18 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-/// Type system.
+/// Système typographique.
 ///
-/// Two families, one job each — the classic "editorial" pairing:
-///  * **Plus Jakarta Sans** for display/headline/title. Geometric with
-///    humanist details; at large sizes and tight tracking it gives the
-///    product a voice instead of looking like a default Material app.
-///  * **Inter** for body, labels and every dense UI string. It was drawn
-///    for screens, so it stays readable at 12–14 px where a display face
-///    would fall apart.
+/// Deux familles, un rôle chacune — le classique duo « éditorial » :
+///  * **Plus Jakarta Sans** pour display/headline/title. Géométrique avec
+///    des détails humanistes ; en grandes tailles et à tracking serré, elle
+///    donne une voix au produit au lieu d’une app Material par défaut.
+///  * **Inter** pour le corps, les labels et toutes les chaînes d’UI
+///    denses. Elle a été dessinée pour l’écran : elle reste lisible à
+///    12–14 px, là où une display se désagrégerait.
 ///
-/// Sizes follow a ~1.2 modular scale, and every step above 20 px gets
-/// negative tracking: large text set at default tracking reads loose.
+/// Les tailles suivent une échelle modulaire d’environ 1.2, et chaque
+/// palier au-dessus de 20 px reçoit un tracking négatif : un grand texte au
+/// tracking par défaut paraît lâche.
 abstract final class AppTypography {
   static TextTheme textTheme({
     required Color primary,
@@ -114,8 +115,8 @@ abstract final class AppTypography {
     );
   }
 
-  /// Tabular figures — for counters, capacities and countdowns that must not
-  /// jitter as digits change.
+  /// Chiffres tabulaires — pour les compteurs, les capacités et les comptes
+  /// à rebours qui ne doivent pas tressauter quand les chiffres changent.
   static const tabular = TextStyle(
     fontFeatures: [FontFeature.tabularFigures()],
   );

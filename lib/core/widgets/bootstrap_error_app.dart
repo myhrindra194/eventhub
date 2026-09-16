@@ -1,8 +1,9 @@
 import 'package:eventhub/app/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 
-/// Shown instead of the real app when a startup dependency (Firebase)
-/// could not be initialised. Keeps the failure visible and actionable.
+/// Affiché à la place de l'application lorsqu'une dépendance de démarrage —
+/// Firebase — n'a pas pu être initialisée. Garde l'échec visible et
+/// actionnable, au lieu de laisser un écran vide sans explication.
 class BootstrapErrorApp extends StatelessWidget {
   const BootstrapErrorApp({required this.error, super.key});
 

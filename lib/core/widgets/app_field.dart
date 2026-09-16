@@ -1,13 +1,14 @@
 import 'package:eventhub/app/theme/theme.dart';
 import 'package:flutter/material.dart';
 
-/// A labelled form row.
+/// Une ligne de formulaire avec son libellé.
 ///
-/// The label sits *above* the field rather than floating inside it: with a
-/// label-in-placeholder the user loses the question as soon as they start
-/// typing, which is the classic source of form abandonment. An optional
-/// [hint] carries the constraint ("5 Mo max", "min. 6 caractères") before
-/// the user can get it wrong, so validation errors become the exception.
+/// Le libellé se place *au-dessus* du champ plutôt que de flotter dedans :
+/// avec un libellé en guise de texte indicatif, l'utilisateur perd la
+/// question dès qu'il commence à répondre — c'est la cause classique
+/// d'abandon d'un formulaire. Un [hint] facultatif porte la contrainte
+/// (« 5 Mo max », « min. 6 caractères ») avant qu'on puisse s'y tromper, si
+/// bien que l'erreur de validation devient l'exception et non le parcours.
 class LabeledField extends StatelessWidget {
   const LabeledField({
     required this.label,
@@ -64,13 +65,13 @@ class LabeledField extends StatelessWidget {
   }
 }
 
-/// Search input.
+/// Le champ de recherche.
 ///
-/// Two modes on purpose:
-///  * interactive — types straight into [onChanged];
-///  * [readOnly] with [onTap] — a *fake* field on the home screen that
-///    navigates to the real search page. It keeps the affordance visible
-///    without loading the search machinery on the feed.
+/// Deux modes, et c'est voulu :
+///  * interactif — la frappe part directement dans [onChanged] ;
+///  * [readOnly] avec [onTap] — un champ *leurre* sur l'accueil, qui ouvre
+///    l'onglet de recherche. Il garde la commande visible sans charger toute
+///    la machinerie de recherche dans le fil.
 class AppSearchField extends StatelessWidget {
   const AppSearchField({
     required this.hint,
@@ -116,8 +117,11 @@ class AppSearchField extends StatelessWidget {
         fillColor: t.surface,
         contentPadding: const EdgeInsets.symmetric(
           horizontal: AppSpacing.lg,
-          vertical: AppSpacing.md,
+          vertical: AppSpacing.lg,
         ),
+        // Le champ doit mesurer exactement [AppSizes.inputHeight] : c'est ce
+        // qui lui permet de partager sa ligne avec le bouton de filtre sans
+        // qu'aucun des deux ne dépasse de l'autre.
         prefixIcon: Icon(Icons.search_rounded, color: t.textTertiary, size: 20),
         suffixIcon:
             trailing ??
@@ -143,11 +147,11 @@ class AppSearchField extends StatelessWidget {
       );
 }
 
-/// Read-only row that opens a picker (date, time, category).
+/// Ligne en lecture seule qui ouvre un sélecteur — date, heure, catégorie.
 ///
-/// Styled exactly like a text input so the form reads as one coherent
-/// surface, but it carries a chevron to advertise that tapping opens
-/// something.
+/// Habillée exactement comme un champ de saisie, pour que le formulaire se
+/// lise comme une surface cohérente, mais elle porte un chevron qui annonce
+/// qu'un appui ouvre quelque chose.
 class PickerField extends StatelessWidget {
   const PickerField({
     required this.value,

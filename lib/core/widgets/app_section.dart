@@ -3,7 +3,7 @@ import 'dart:ui';
 import 'package:eventhub/app/theme/theme.dart';
 import 'package:flutter/material.dart';
 
-/// Small uppercase caption introducing a group of content.
+/// Petite légende en capitales qui introduit un groupe de contenu.
 class SectionLabel extends StatelessWidget {
   const SectionLabel(this.text, {super.key, this.color});
 
@@ -17,11 +17,12 @@ class SectionLabel extends StatelessWidget {
   );
 }
 
-/// Section title with an optional "see all" affordance.
+/// Titre de section, avec un « tout voir » facultatif.
 ///
-/// The home feed is built from these: a scannable hierarchy of named
-/// sections is what turns a flat list into something that feels curated —
-/// the pattern every large marketplace app converged on.
+/// Le fil d'accueil est bâti avec ceux-là : c'est une hiérarchie de sections
+/// nommées, que l'œil parcourt, qui transforme une liste plate en quelque
+/// chose qui paraît éditorialisé — le motif vers lequel toutes les grandes
+/// places de marché ont convergé.
 class SectionHeader extends StatelessWidget {
   const SectionHeader({
     required this.title,
@@ -87,8 +88,9 @@ class SectionHeader extends StatelessWidget {
   }
 }
 
-/// The header every top-level screen opens with: an eyebrow line, a large
-/// title and an optional trailing action (avatar, button).
+/// L'en-tête par lequel s'ouvre un écran de premier niveau : une ligne de
+/// surtitre, un grand titre, et une action facultative à droite — avatar,
+/// bouton.
 class ScreenHeader extends StatelessWidget {
   const ScreenHeader({
     required this.title,
@@ -147,9 +149,9 @@ class ScreenHeader extends StatelessWidget {
   }
 }
 
-/// Sliver app bar that fades a frosted background in as the user scrolls,
-/// keeping a compact title available without stealing vertical space at
-/// rest. Used by the detail screens.
+/// Barre en sliver dont le fond flouté apparaît en fondu au défilement : elle
+/// garde un titre compact accessible sans voler de hauteur au repos. Utilisée
+/// par les écrans de détail.
 class FrostedSliverAppBar extends StatelessWidget {
   const FrostedSliverAppBar({
     required this.title,

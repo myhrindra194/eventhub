@@ -1,13 +1,13 @@
 import 'package:eventhub/app/theme/theme.dart';
 import 'package:flutter/material.dart';
 
-/// Capacity meter: a track, a fill and a plain-language caption.
+/// Jauge de remplissage : une piste, un remplissage et une légende en clair.
 ///
-/// The colour is *derived* from scarcity (`AppTokens.seatTone`) rather than
-/// passed in, so "il reste 2 places" is amber everywhere in the app without
-/// any screen having to remember the threshold. Scarcity signalling is the
-/// single most effective element on an event card — it deserves a component,
-/// not an inline `LinearProgressIndicator`.
+/// La couleur est *dérivée* de la rareté (`AppTokens.seatTone`) au lieu d'être
+/// passée en paramètre : « il reste 2 places » est donc ambre partout dans
+/// l'application, sans qu'aucun écran ait à se souvenir du seuil. Signaler la
+/// rareté est l'élément le plus efficace d'une carte d'événement — cela
+/// mérite un composant, pas un `LinearProgressIndicator` posé en ligne.
 class CapacityMeter extends StatelessWidget {
   const CapacityMeter({
     required this.available,
@@ -23,8 +23,8 @@ class CapacityMeter extends StatelessWidget {
   final int capacity;
   final bool showCaption;
 
-  /// Set when the meter is laid over a photo: the track becomes translucent
-  /// white and the caption switches to white.
+  /// À activer quand la jauge est posée sur une photo : la piste devient d'un
+  /// blanc translucide et la légende passe en blanc.
   final bool onImage;
   final double height;
   final String? caption;
@@ -102,9 +102,10 @@ class CapacityMeter extends StatelessWidget {
   }
 }
 
-/// A single KPI: value, label, optional trend/icon. Organizer dashboards
-/// live or die on how quickly these can be scanned, so the value is set in
-/// display type and everything else recedes.
+/// Un indicateur unique : la valeur, son libellé, et facultativement une
+/// tendance ou une icône. Un tableau de bord d'organisateur vaut ce que vaut
+/// la vitesse à laquelle on parcourt ces tuiles : la valeur est donc composée
+/// en caractères d'affichage, et tout le reste s'efface derrière elle.
 class StatTile extends StatelessWidget {
   const StatTile({
     required this.value,
@@ -168,8 +169,8 @@ class StatTile extends StatelessWidget {
   }
 }
 
-/// Concentric-ring hero used by success screens. The outer glow is a radial
-/// gradient rather than a shadow so it blooms symmetrically.
+/// L'anneau concentrique des écrans de succès. Le halo extérieur est un
+/// dégradé radial plutôt qu'une ombre, pour qu'il rayonne symétriquement.
 class SuccessHero extends StatelessWidget {
   const SuccessHero({
     super.key,
@@ -210,13 +211,6 @@ class SuccessHero extends StatelessWidget {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: colors.solid,
-                boxShadow: [
-                  BoxShadow(
-                    color: colors.solid.withValues(alpha: 0.45),
-                    blurRadius: 32,
-                    offset: const Offset(0, 12),
-                  ),
-                ],
               ),
               child: Icon(icon, color: colors.onSolid, size: size * 0.26),
             ),

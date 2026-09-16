@@ -1,7 +1,7 @@
-/// Public surface of the design system.
+/// Surface publique du design system.
 ///
-/// `import 'package:eventhub/app/theme/theme.dart';` gives a widget the
-/// tokens, the scales and the motion vocabulary in one line.
+/// `import 'package:eventhub/app/theme/theme.dart';` donne à un widget les
+/// tokens, les échelles et le vocabulaire de mouvement en une seule ligne.
 library;
 
 export 'app_motion.dart';

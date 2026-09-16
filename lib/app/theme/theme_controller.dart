@@ -4,19 +4,19 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 part 'theme_controller.g.dart';
 
-/// User-selected appearance, persisted across launches.
+/// Apparence choisie par l’utilisateur, persistée d’un lancement à l’autre.
 ///
-/// Defaults to [ThemeMode.system]: respecting the OS setting is the mature
-/// default — the in-app switch exists for the minority who want to override
-/// it, not as the primary mechanism.
+/// Valeur par défaut : [ThemeMode.system]. Respecter le réglage de l’OS est
+/// le choix mature — l’interrupteur dans l’app existe pour la minorité qui
+/// veut le surcharger, pas comme mécanisme principal.
 @Riverpod(keepAlive: true)
 class ThemeModeController extends _$ThemeModeController {
   static const _key = 'theme_mode_v1';
 
   @override
   ThemeMode build() {
-    // Read asynchronously and patch the state once available; the app must
-    // not block its first frame on a disk read.
+    // Lecture asynchrone, puis mise à jour de l’état dès qu’elle aboutit ;
+    // l’app ne doit pas bloquer sa première frame sur un accès disque.
     Future.microtask(_restore);
     return ThemeMode.system;
   }
@@ -37,7 +37,7 @@ class ThemeModeController extends _$ThemeModeController {
     await prefs.setString(_key, mode.name);
   }
 
-  /// Convenience for a two-state switch in the UI.
+  /// Raccourci pour un interrupteur à deux états dans l’UI.
   Future<void> toggle(BuildContext context) {
     final effective = switch (state) {
       ThemeMode.system =>

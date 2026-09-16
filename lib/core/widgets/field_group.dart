@@ -1,15 +1,18 @@
 import 'package:eventhub/app/theme/theme.dart';
 import 'package:flutter/material.dart';
 
-/// A group of form rows sharing one card, separated by hairlines.
+/// Un groupe de lignes de formulaire partageant une seule carte, séparées par
+/// des filets.
 ///
-/// The iOS "inset grouped" pattern, and it earns its place: a login form is
-/// *one* object — an identity — not four floating boxes. Grouping collapses
-/// three borders into one, removes the ladder of gaps between fields, and
-/// makes the whole block read as a single tap target region.
+/// C'est le motif « inset grouped » d'iOS, et il mérite sa place : un
+/// formulaire de connexion est *un* objet — une identité — et non quatre
+/// boîtes flottantes. Le regroupement réduit trois bordures à une, supprime
+/// l'échelle d'espaces entre les champs, et fait lire l'ensemble comme une
+/// seule zone à toucher.
 ///
-/// The trade-off is that a row cannot carry its own outline, so focus and
-/// error are expressed by a background tint and by text under the row.
+/// La contrepartie : une ligne ne peut plus porter son propre contour, donc
+/// le focus et l'erreur s'expriment par une teinte de fond et par un texte
+/// sous la ligne.
 class FieldGroup extends StatelessWidget {
   const FieldGroup({required this.children, super.key});
 
@@ -39,11 +42,12 @@ class FieldGroup extends StatelessWidget {
   }
 }
 
-/// One row of a [FieldGroup]: a leading glyph, the input, an optional
-/// trailing affordance.
+/// Une ligne de [FieldGroup] : un glyphe en tête, le champ, et une commande
+/// facultative en fin de ligne.
 ///
-/// Focus tints the row with the brand surface instead of drawing a ring —
-/// inside a grouped card an outline would fight the card's own border.
+/// Le focus teinte la ligne de la surface de marque au lieu de dessiner un
+/// contour : à l'intérieur d'une carte groupée, un contour entrerait en
+/// concurrence avec la bordure de la carte elle-même.
 class FieldRow extends StatefulWidget {
   const FieldRow({
     required this.icon,
@@ -67,8 +71,8 @@ class FieldRow extends StatefulWidget {
   final TextEditingController controller;
   final String? hint;
 
-  /// Optional fixed-width caption on the left of the value, as in the
-  /// reference's "Nom / Email / Téléphone" rows.
+  /// Libellé facultatif, de largeur fixe, à gauche de la valeur — comme les
+  /// lignes « Nom / Email / Téléphone » de la référence.
   final String? label;
   final TextInputType? keyboardType;
   final TextInputAction textInputAction;
@@ -168,8 +172,8 @@ class _FieldRowState extends State<FieldRow> {
   }
 }
 
-/// Square checkbox with a rounded 7 px corner, as in the reference — used for
-/// "Se souvenir de moi" and the terms acceptance.
+/// Case à cocher carrée à coins de 6 px — utilisée pour « Se souvenir de
+/// moi » et l'acceptation des conditions.
 class AppCheckbox extends StatelessWidget {
   const AppCheckbox({
     required this.value,
@@ -216,7 +220,7 @@ class AppCheckbox extends StatelessWidget {
   }
 }
 
-/// "ou continuer avec" — a hairline on each side of a caption.
+/// « ou continuer avec » — un filet de chaque côté d'une légende.
 class LabelledDivider extends StatelessWidget {
   const LabelledDivider({required this.label, super.key});
 
@@ -238,11 +242,13 @@ class LabelledDivider extends StatelessWidget {
   }
 }
 
-/// A [FieldRow] that owns its own masking state and exposes the eye toggle.
+/// Une [FieldRow] qui détient son propre état de masquage et expose l'œil
+/// pour le basculer.
 ///
-/// Inside a grouped card the toggle is an icon rather than the word
-/// "Afficher": the row is already carrying a leading glyph and a value, and a
-/// third text element would turn a 56 px line into a paragraph.
+/// Dans une carte groupée, ce bascule est une icône plutôt que le mot
+/// « Afficher » : la ligne porte déjà un glyphe en tête et une valeur, et un
+/// troisième élément de texte transformerait une ligne de 56 px en
+/// paragraphe.
 class PasswordFieldRow extends StatefulWidget {
   const PasswordFieldRow({
     required this.controller,

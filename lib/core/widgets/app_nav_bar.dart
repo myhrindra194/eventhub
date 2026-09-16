@@ -4,7 +4,7 @@ import 'package:eventhub/app/theme/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-/// One destination of the floating navigation bar.
+/// Une destination de la barre de navigation flottante.
 class NavDestination {
   const NavDestination({
     required this.icon,
@@ -17,26 +17,29 @@ class NavDestination {
   final IconData selectedIcon;
   final String label;
 
-  /// Optional counter rendered as a dot on the icon.
+  /// Compteur facultatif, rendu sous forme de pastille sur l'icône.
   final int? badgeCount;
 }
 
-/// Floating frosted navigation bar.
+/// Barre de navigation flottante et floutée.
 ///
-/// Design decisions worth stating, because they are what make it feel
-/// finished rather than default:
-///  * it **floats** with a margin instead of sticking to the screen edge,
-///    so content scrolls visibly underneath and the app feels layered;
-///  * only the selected destination shows its label, inside a gradient
-///    pill — the label appears where the eye already is, and the bar stays
-///    uncluttered at four items;
-///  * the transition is a single animated container, so switching tabs
-///    reads as one object moving rather than four objects blinking;
-///  * a light haptic fires on selection: on a phone, navigation without
-///    physical feedback feels laggy even when it is not.
+/// Les décisions de design méritent d'être énoncées, parce que ce sont elles
+/// qui lui donnent l'air fini plutôt que par défaut :
+///  * elle **flotte**, avec une marge, au lieu de coller au bord de l'écran :
+///    le contenu défile visiblement dessous et l'application paraît
+///    stratifiée ;
+///  * seule la destination active affiche son libellé, dans une pastille
+///    dégradée — le mot apparaît là où l'œil se trouve déjà, et la barre
+///    reste lisible à quatre entrées ;
+///  * la transition est un unique conteneur animé : changer d'onglet se lit
+///    comme un objet qui se déplace, non comme quatre objets qui clignotent ;
+///  * un retour haptique léger accompagne la sélection — sur un téléphone,
+///    une navigation sans retour physique paraît lente même quand elle ne
+///    l'est pas.
 ///
-/// Screens must pad the bottom of their scrollables with
-/// [AppSizes.navBarInset] so the last item clears the bar.
+/// Les écrans doivent réserver [AppSizes.navBarInset] en bas de leurs zones
+/// défilantes, pour que le dernier élément passe sous la barre sans être
+/// masqué.
 class AppNavBar extends StatelessWidget {
   const AppNavBar({
     required this.destinations,
@@ -62,7 +65,7 @@ class AppNavBar extends StatelessWidget {
         bottom + AppSpacing.md,
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(AppRadius.xxl),
+        borderRadius: AppRadius.brButton,
         child: BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
           child: Container(
@@ -70,17 +73,19 @@ class AppNavBar extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
             decoration: BoxDecoration(
               color: t.glass,
-              borderRadius: BorderRadius.circular(AppRadius.xxl),
+              // 6 px, comme tout le reste du produit. La barre se détache par
+              // son flou et son filet, jamais par une ombre portée.
+              borderRadius: AppRadius.brButton,
               border: Border.all(color: t.borderStrong),
-              boxShadow: t.shadows.lg,
             ),
             child: Row(
               children: [
                 for (var i = 0; i < destinations.length; i++)
-                  // The selected destination is the only one showing a label,
-                  // so it needs more room than the icon-only ones. Equal
-                  // `Expanded` slots overflow at four destinations on a 360 dp
-                  // screen — caught by running the app, never by the analyzer.
+                  // La destination active est la seule à porter un libellé :
+                  // il lui faut donc plus de place qu'aux autres. Des
+                  // `Expanded` de parts égales débordent dès quatre
+                  // destinations sur un écran de 360 dp — ce que l'on
+                  // découvre en lançant l'application, jamais par l'analyseur.
                   Expanded(
                     flex: i == selectedIndex ? 2 : 1,
                     child: _NavButton(
@@ -124,7 +129,7 @@ class _NavButton extends StatelessWidget {
       label: destination.label,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(AppRadius.lg),
+        borderRadius: AppRadius.brButton,
         child: Center(
           child: AnimatedContainer(
             duration: AppMotion.medium,
@@ -134,17 +139,11 @@ class _NavButton extends StatelessWidget {
               vertical: AppSpacing.sm,
             ),
             decoration: BoxDecoration(
+              // La pastille active se signale par son dégradé seul : une
+              // lueur portée à l'intérieur d'une barre déjà floutée se lit
+              // comme une salissure, pas comme une élévation.
               gradient: selected ? t.brandGradient : null,
-              borderRadius: BorderRadius.circular(AppRadius.lg),
-              boxShadow: selected
-                  ? [
-                      BoxShadow(
-                        color: t.brand.withValues(alpha: 0.38),
-                        blurRadius: 16,
-                        offset: const Offset(0, 5),
-                      ),
-                    ]
-                  : null,
+              borderRadius: AppRadius.brButton,
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -157,9 +156,10 @@ class _NavButton extends StatelessWidget {
                 ),
                 if (selected) ...[
                   const SizedBox(width: AppSpacing.sm),
-                  // Flexible + ellipsis is the safety net: whatever the label
-                  // length or the user's text scale, the pill can shrink
-                  // instead of overflowing its slot.
+                  // `Flexible` et l'ellipse forment le filet de sécurité :
+                  // quelle que soit la longueur du libellé ou la taille de
+                  // texte choisie par l'utilisateur, la pastille se rétrécit
+                  // au lieu de déborder de son emplacement.
                   Flexible(
                     child: Text(
                       destination.label,

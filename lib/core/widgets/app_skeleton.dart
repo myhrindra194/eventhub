@@ -1,12 +1,13 @@
 import 'package:eventhub/app/theme/theme.dart';
 import 'package:flutter/material.dart';
 
-/// Shimmering placeholder.
+/// Placeholder animé d'un reflet.
 ///
-/// Skeletons beat spinners for content that has a known shape: they show
-/// *where* things will appear, so the layout does not jump when data lands
-/// and the wait feels shorter. Respects `MediaQuery.disableAnimations`
-/// (OS-level "reduce motion"), falling back to a static block.
+/// Pour un contenu dont la forme est connue, le squelette vaut mieux qu'un
+/// indicateur de chargement : il montre *où* les choses vont apparaître, si
+/// bien que la mise en page ne saute pas à l'arrivée des données et que
+/// l'attente paraît plus courte. Respecte `MediaQuery.disableAnimations` — le
+/// « réduire les animations » du système — en retombant sur un bloc fixe.
 class Skeleton extends StatefulWidget {
   const Skeleton({
     super.key,
@@ -16,14 +17,14 @@ class Skeleton extends StatefulWidget {
     this.shape = BoxShape.rectangle,
   });
 
-  /// A circular skeleton, for avatars.
+  /// Un squelette circulaire, pour les avatars.
   const Skeleton.circle({super.key, required double size})
     : width = size,
       height = size,
       radius = 0,
       shape = BoxShape.circle;
 
-  /// A line of fake text.
+  /// Une ligne de faux texte.
   const Skeleton.text({super.key, this.width, this.height = 12})
     : radius = AppRadius.xs,
       shape = BoxShape.rectangle;
@@ -94,8 +95,8 @@ class _SkeletonState extends State<Skeleton>
   }
 }
 
-/// Several fake text lines, the last one shorter — the shape real prose
-/// has, which is what makes a skeleton believable.
+/// Plusieurs lignes de faux texte, la dernière plus courte — la forme qu'a
+/// une vraie prose, et c'est ce qui rend un squelette crédible.
 class SkeletonParagraph extends StatelessWidget {
   const SkeletonParagraph({super.key, this.lines = 3, this.spacing = 8});
 

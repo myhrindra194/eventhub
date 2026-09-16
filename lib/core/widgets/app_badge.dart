@@ -3,25 +3,25 @@ import 'dart:ui';
 import 'package:eventhub/app/theme/theme.dart';
 import 'package:flutter/material.dart';
 
-/// How loudly a badge speaks.
+/// Le volume sonore d’un badge.
 enum BadgeStyle {
-  /// Tinted background, coloured text. The default: readable without
-  /// stealing attention from the content it annotates.
+  /// Fond teinté, texte coloré. Le défaut : lisible sans voler l’attention
+  /// au contenu qu’il annote.
   soft,
 
-  /// Fully saturated. Reserved for states the user must not miss
-  /// ("Complet", "En direct").
+  /// Pleinement saturé. Réservé aux états que l’utilisateur ne doit pas
+  /// manquer (« Complet », « En direct »).
   solid,
 
-  /// Transparent with a coloured hairline. For badges laid over imagery.
+  /// Transparent avec un filet coloré. Pour les badges posés sur une image.
   outline,
 }
 
-/// Compact status label.
+/// Étiquette de statut compacte.
 ///
-/// Deliberately small and uppercase with generous tracking: a badge is a
-/// *machine* label, not prose, and the typographic treatment signals that
-/// at a glance.
+/// Volontairement petite, en capitales et au tracking généreux : un badge
+/// est une étiquette *machine*, pas de la prose, et le traitement
+/// typographique le signale d’un coup d’œil.
 class AppBadge extends StatelessWidget {
   const AppBadge({
     required this.label,
@@ -77,7 +77,8 @@ class AppBadge extends StatelessWidget {
   }
 }
 
-/// A pulsing dot + label, for "live" states that benefit from motion.
+/// Un point pulsant plus un libellé, pour les états « en direct » que le
+/// mouvement met en valeur.
 class LiveBadge extends StatefulWidget {
   const LiveBadge({
     required this.label,
@@ -144,10 +145,12 @@ class _LiveBadgeState extends State<LiveBadge>
   }
 }
 
-/// Frosted two-line date chip laid over an event cover.
+/// Pastille de date dépolie sur deux lignes, posée sur la couverture d’un
+/// événement.
 ///
-/// It is the calendar-page metaphor every ticketing app uses, because a
-/// date is the first thing a user scans for on an event card.
+/// C’est la métaphore de la page de calendrier qu’emploie toute application
+/// de billetterie, parce que la date est la première chose qu’un utilisateur
+/// cherche du regard sur une carte d’événement.
 class DateBadge extends StatelessWidget {
   const DateBadge({
     required this.month,
@@ -202,8 +205,9 @@ class DateBadge extends StatelessWidget {
   }
 }
 
-/// Numeric counter chip — unread notifications, participants, filters
-/// applied. Uses tabular figures so the width does not dance.
+/// Pastille compteur — notifications non lues, participants, filtres
+/// appliqués. Utilise des chiffres tabulaires pour que la largeur ne danse
+/// pas.
 class CountBadge extends StatelessWidget {
   const CountBadge({
     required this.count,

@@ -1,16 +1,18 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:eventhub/app/theme/theme.dart';
+import 'package:eventhub/core/utils/image_data_url.dart';
 import 'package:eventhub/core/utils/in_memory_images.dart';
 import 'package:eventhub/core/widgets/app_skeleton.dart';
 import 'package:flutter/material.dart';
 
-/// Event artwork with a designed fallback.
+/// Le visuel d'un événement, avec un repli dessiné.
 ///
-/// An event without a cover is not an error state: rather than a grey box
-/// with a broken-image glyph, we render a **deterministic gradient** derived
-/// from [seed] (the event id). Two consequences that matter at scale:
-/// a feed of image-less events still looks intentional, and the same event
-/// keeps the same colours everywhere it appears.
+/// Un événement sans image n'est pas un état d'erreur : plutôt qu'un carré
+/// gris portant un glyphe d'image brisée, on rend un **dégradé
+/// déterministe** dérivé de [seed], l'identifiant de l'événement. Deux
+/// conséquences qui comptent à l'échelle d'un catalogue : un fil d'événements
+/// sans photo garde l'air intentionnel, et le même événement conserve les
+/// mêmes couleurs partout où il apparaît.
 class EventImage extends StatelessWidget {
   const EventImage({
     super.key,
@@ -28,7 +30,8 @@ class EventImage extends StatelessWidget {
   final double? width;
   final BorderRadius borderRadius;
 
-  /// Stable string (event id, title) used to pick the fallback gradient.
+  /// Chaîne stable — identifiant ou titre de l'événement — qui détermine le
+  /// dégradé de repli.
   final String? seed;
   final IconData icon;
   final BoxFit fit;
@@ -41,6 +44,23 @@ class EventImage extends StatelessWidget {
     [AppPalette.ember500, AppPalette.rose600],
     [AppPalette.fuchsia500, AppPalette.violet500],
   ];
+
+  /// L'`ImageProvider` correspondant à une URL du produit, quelle que soit sa
+  /// provenance — registre mémoire, image portée par le document (`data:`) ou
+  /// réseau. Renvoie `null` quand il n'y a rien à afficher, ce qui laisse
+  /// l'appelant poser son propre repli.
+  static ImageProvider? providerFor(String? url) {
+    if (url == null || url.isEmpty) return null;
+    if (InMemoryImages.isMemoryUrl(url)) {
+      final bytes = InMemoryImages.get(url);
+      return bytes == null ? null : MemoryImage(bytes);
+    }
+    if (ImageDataUrl.isDataUrl(url)) {
+      final bytes = ImageDataUrl.decode(url);
+      return bytes == null ? null : MemoryImage(bytes);
+    }
+    return CachedNetworkImageProvider(url);
+  }
 
   List<Color> get _fallbackGradient {
     final key = seed ?? imageUrl ?? '';
@@ -69,8 +89,13 @@ class EventImage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final url = imageUrl;
+    // Trois provenances derrière une seule chaîne : le registre mémoire (
+    // aperçus), une URL `data:` (image portée par le document Firestore,
+    // faute de Cloud Storage) et le réseau.
     final memoryBytes = InMemoryImages.isMemoryUrl(url)
         ? InMemoryImages.get(url!)
+        : ImageDataUrl.isDataUrl(url)
+        ? ImageDataUrl.decode(url!)
         : null;
 
     return ClipRRect(

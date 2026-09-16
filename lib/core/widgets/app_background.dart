@@ -4,15 +4,16 @@ import 'package:eventhub/app/theme/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-/// Ambient screen background.
+/// Fond d’écran d’ambiance.
 ///
-/// Two very soft radial blooms over the canvas colour. It gives depth to a
-/// flat ground without shipping an image, reads correctly in both themes
-/// (the bloom colours are tokens), and — importantly — stays cheap: two
-/// gradients, no blur, no shader.
+/// Deux halos radiaux très doux posés sur la couleur du canvas. Cela donne
+/// de la profondeur à un fond plat sans embarquer d’image, se lit
+/// correctement dans les deux thèmes (les couleurs des halos sont des
+/// tokens) et — surtout — reste bon marché : deux dégradés, aucun flou,
+/// aucun shader.
 ///
-/// [dense] halves the bloom opacity for content-heavy screens (lists,
-/// forms) where the background must recede completely.
+/// [dense] divise par deux l’opacité des halos pour les écrans denses en
+/// contenu (listes, formulaires) où le fond doit s’effacer complètement.
 class AuroraBackground extends StatelessWidget {
   const AuroraBackground({
     required this.child,
@@ -87,11 +88,12 @@ class _Bloom extends StatelessWidget {
   }
 }
 
-/// The standard screen chrome.
+/// L’habillage d’écran standard.
 ///
-/// Wraps [AuroraBackground], applies the system overlay style for the
-/// current theme and constrains content to [AppSizes.maxContentWidth] on
-/// wide windows — so a tablet does not get a 1000 px-wide paragraph.
+/// Enveloppe [AuroraBackground], applique le style d’overlay système du
+/// thème courant et contraint le contenu à [AppSizes.maxContentWidth] sur
+/// les fenêtres larges — pour qu’une tablette n’hérite pas d’un paragraphe
+/// de 1000 px de large.
 class AppScaffold extends StatelessWidget {
   const AppScaffold({
     required this.body,
@@ -149,8 +151,9 @@ class AppScaffold extends StatelessWidget {
   }
 }
 
-/// A frosted bar that sits above scrolling content (sticky action bars,
-/// navigation bars). Falls back to a solid fill where blur is expensive.
+/// Une barre dépolie posée au-dessus du contenu qui défile (barres d’action
+/// collantes, barres de navigation). Retombe sur un aplat opaque là où le
+/// flou coûte cher.
 class FrostedBar extends StatelessWidget {
   const FrostedBar({
     required this.child,

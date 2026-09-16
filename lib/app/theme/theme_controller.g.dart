@@ -8,27 +8,27 @@ part of 'theme_controller.dart';
 
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // ignore_for_file: type=lint, type=warning
-/// User-selected appearance, persisted across launches.
+/// Apparence choisie par l’utilisateur, persistée d’un lancement à l’autre.
 ///
-/// Defaults to [ThemeMode.system]: respecting the OS setting is the mature
-/// default — the in-app switch exists for the minority who want to override
-/// it, not as the primary mechanism.
+/// Valeur par défaut : [ThemeMode.system]. Respecter le réglage de l’OS est
+/// le choix mature — l’interrupteur dans l’app existe pour la minorité qui
+/// veut le surcharger, pas comme mécanisme principal.
 
 @ProviderFor(ThemeModeController)
 final themeModeControllerProvider = ThemeModeControllerProvider._();
 
-/// User-selected appearance, persisted across launches.
+/// Apparence choisie par l’utilisateur, persistée d’un lancement à l’autre.
 ///
-/// Defaults to [ThemeMode.system]: respecting the OS setting is the mature
-/// default — the in-app switch exists for the minority who want to override
-/// it, not as the primary mechanism.
+/// Valeur par défaut : [ThemeMode.system]. Respecter le réglage de l’OS est
+/// le choix mature — l’interrupteur dans l’app existe pour la minorité qui
+/// veut le surcharger, pas comme mécanisme principal.
 final class ThemeModeControllerProvider
     extends $NotifierProvider<ThemeModeController, ThemeMode> {
-  /// User-selected appearance, persisted across launches.
+  /// Apparence choisie par l’utilisateur, persistée d’un lancement à l’autre.
   ///
-  /// Defaults to [ThemeMode.system]: respecting the OS setting is the mature
-  /// default — the in-app switch exists for the minority who want to override
-  /// it, not as the primary mechanism.
+  /// Valeur par défaut : [ThemeMode.system]. Respecter le réglage de l’OS est
+  /// le choix mature — l’interrupteur dans l’app existe pour la minorité qui
+  /// veut le surcharger, pas comme mécanisme principal.
   ThemeModeControllerProvider._()
     : super(
         from: null,
@@ -59,11 +59,11 @@ final class ThemeModeControllerProvider
 String _$themeModeControllerHash() =>
     r'54d9a7257060b3e1fe63748370025d771cd7fb91';
 
-/// User-selected appearance, persisted across launches.
+/// Apparence choisie par l’utilisateur, persistée d’un lancement à l’autre.
 ///
-/// Defaults to [ThemeMode.system]: respecting the OS setting is the mature
-/// default — the in-app switch exists for the minority who want to override
-/// it, not as the primary mechanism.
+/// Valeur par défaut : [ThemeMode.system]. Respecter le réglage de l’OS est
+/// le choix mature — l’interrupteur dans l’app existe pour la minorité qui
+/// veut le surcharger, pas comme mécanisme principal.
 
 abstract class _$ThemeModeController extends $Notifier<ThemeMode> {
   ThemeMode build();

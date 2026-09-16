@@ -1,18 +1,19 @@
 import 'package:flutter/painting.dart';
 
-/// Raw colour ramps — the *only* place where a hexadecimal literal is
-/// allowed in the application.
+/// Gammes de couleurs brutes — le *seul* endroit de l’application où un
+/// littéral hexadécimal est autorisé.
 ///
-/// A ramp is never consumed directly by a widget: it is mapped to a
-/// **semantic** token in `app_tokens.dart` (`surface`, `border`, `danger`…).
-/// That indirection is what makes a light and a dark theme possible without
-/// touching a single widget.
+/// Une gamme n’est jamais consommée directement par un widget : elle est
+/// mappée vers un token **sémantique** dans `app_tokens.dart` (`surface`,
+/// `border`, `danger`…). C’est cette indirection qui rend possibles un
+/// thème clair et un thème sombre sans toucher à un seul widget.
 ///
-/// Ramps are numbered like Tailwind/Radix: 50 = lightest, 950 = darkest.
+/// Les gammes sont numérotées comme chez Tailwind/Radix : 50 = la plus
+/// claire, 950 = la plus sombre.
 abstract final class AppPalette {
-  // ------------------------------------------------------------- neutrals
-  /// Slightly cool grey. Pure black/white are avoided: they vibrate against
-  /// saturated content and make photography look flat.
+  // -------------------------------------------------------------- neutres
+  /// Gris légèrement froid. Le noir et le blanc purs sont évités : ils
+  /// vibrent contre les contenus saturés et aplatissent la photographie.
   static const neutral0 = Color(0xFFFFFFFF);
   static const neutral25 = Color(0xFFFCFCFE);
   static const neutral50 = Color(0xFFF7F8FC);
@@ -28,8 +29,8 @@ abstract final class AppPalette {
   static const neutral950 = Color(0xFF10141D);
   static const neutral1000 = Color(0xFF090C12);
 
-  // ----------------------------------------------------------- brand: iris
-  /// Indigo–violet. Confident without being neon; legible on both grounds.
+  // --------------------------------------------------------- marque : iris
+  /// Indigo–violet. Affirmé sans être fluo ; lisible sur les deux fonds.
   static const iris50 = Color(0xFFEEEEFE);
   static const iris100 = Color(0xFFE0DFFD);
   static const iris200 = Color(0xFFC5C3FA);
@@ -41,15 +42,16 @@ abstract final class AppPalette {
   static const iris800 = Color(0xFF383291);
   static const iris900 = Color(0xFF2C2872);
 
-  // -------------------------------------------------------- accent: ember
-  /// Warm counterweight to the brand hue. Used sparingly: highlights,
-  /// "trending", the organizer's accent — never as a second primary.
+  // ------------------------------------------------------- accent : ember
+  /// Contrepoids chaud de la teinte de marque. À utiliser avec parcimonie :
+  /// mises en avant, « tendance », l’accent de l’organisateur — jamais
+  /// comme seconde couleur primaire.
   static const ember300 = Color(0xFFFFC49B);
   static const ember400 = Color(0xFFFF9A62);
   static const ember500 = Color(0xFFF97316);
   static const ember600 = Color(0xFFE25B08);
 
-  // ----------------------------------------------------------- semantics
+  // ---------------------------------------------------------- sémantique
   static const mint300 = Color(0xFF6EE7B7);
   static const mint400 = Color(0xFF34D399);
   static const mint500 = Color(0xFF10B981);
@@ -70,10 +72,11 @@ abstract final class AppPalette {
   static const sky500 = Color(0xFF0EA5E9);
   static const sky600 = Color(0xFF0284C7);
 
-  // ------------------------------------------------------ category accents
-  /// One hue per event category. They are deliberately spread around the
-  /// wheel so a category is recognisable at chip size, and each has a
-  /// light-mode and a dark-mode variant with comparable contrast.
+  // ------------------------------------------------- accents par catégorie
+  /// Une teinte par catégorie d’événement. Elles sont volontairement
+  /// réparties autour de la roue pour qu’une catégorie reste reconnaissable
+  /// à la taille d’un chip, et chacune a une variante claire et une
+  /// variante sombre de contraste comparable.
   static const violet400 = Color(0xFFA78BFA);
   static const violet500 = Color(0xFF8B5CF6);
   static const fuchsia400 = Color(0xFFE879F9);

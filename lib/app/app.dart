@@ -15,19 +15,21 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-/// Application root.
+/// Racine de l’application.
 ///
-/// Responsibilities, and nothing else: wire the router, hand both themes to
-/// Material and let the user's preference (or the OS) pick between them,
-/// declare the supported locales, clamp text scaling — and start the
-/// app-wide services that follow the session (push notifications, analytics
-/// identity and consent, the offline band).
+/// Ses responsabilités, et rien d’autre : brancher le routeur, confier les
+/// deux thèmes à Material en laissant la préférence de l’utilisateur (ou
+/// celle de l’OS) trancher entre eux, déclarer les locales supportées,
+/// borner la mise à l’échelle du texte — et démarrer les services globaux
+/// qui suivent la session (notifications push, identité et consentement
+/// analytics, le bandeau hors ligne).
 class EventHubApp extends ConsumerWidget {
   const EventHubApp({super.key});
 
-  /// Accessibility text scaling is honoured but bounded: past ~1.35 the
-  /// dense cards of the feed break apart. Clamping is the honest trade-off
-  /// — the alternative is ignoring the setting entirely.
+  /// La mise à l’échelle du texte demandée par l’accessibilité est
+  /// respectée, mais bornée : au-delà de ~1.35 les cartes denses du fil
+  /// se disloquent. Le clamp est le compromis honnête — l’alternative
+  /// serait d’ignorer purement et simplement le réglage.
   static const _minTextScale = 0.85;
   static const _maxTextScale = 1.35;
 
@@ -36,14 +38,14 @@ class EventHubApp extends ConsumerWidget {
     final config = ref.watch(appConfigProvider);
     final router = ref.watch(appRouterProvider);
     final themeMode = ref.watch(themeModeControllerProvider);
-    // Starts the push pipeline (token registration follows the session).
+    // Démarre le pipeline push (l’enregistrement du token suit la session).
     ref.watch(pushNotificationsProvider);
 
     ref
-      // Subscribing instantiates the consent provider at startup; its build
-      // applies the stored decision to Firebase Analytics.
+      // S’abonner instancie le provider de consentement au démarrage ; son
+      // build applique la décision stockée à Firebase Analytics.
       ..listen<AsyncValue<bool?>>(analyticsConsentProvider, (_, __) {})
-      // A password-reset link opened the app with a recovery session.
+      // Un lien de réinitialisation a ouvert l’app en session de récupération.
       ..listen<AsyncValue<void>>(passwordRecoveryProvider, (_, next) {
         if (next is AsyncData<void>) {
           router.go('${AppRoutes.changePassword}?recovery=1');
@@ -59,9 +61,9 @@ class EventHubApp extends ConsumerWidget {
     return MaterialApp.router(
       title: config.appName,
 
-      // The debug ribbon is off in every flavour: it sits exactly where the
-      // top-right action of most screens is, and it makes screenshots and
-      // demos look unfinished.
+      // Le ruban de debug est coupé dans toutes les saveurs : il se place
+      // pile où se trouve l’action en haut à droite de la plupart des
+      // écrans, et il donne aux captures et aux démos un air inachevé.
       debugShowCheckedModeBanner: false,
 
       theme: AppTheme.light(),
@@ -97,9 +99,9 @@ class EventHubApp extends ConsumerWidget {
     );
   }
 
-  /// Offers the consent sheet after the first sign-in of the session, once
-  /// the home screen is on screen, and only if the question was never
-  /// answered on this install.
+  /// Propose la feuille de consentement après la première connexion de la
+  /// session, une fois l’écran d’accueil affiché, et uniquement si la
+  /// question n’a jamais reçu de réponse sur cette installation.
   static Future<void> _askConsentOnce(WidgetRef ref) async {
     final consent = await ref.read(analyticsConsentProvider.future);
     if (consent != null) return;
@@ -110,9 +112,9 @@ class EventHubApp extends ConsumerWidget {
   }
 }
 
-/// Lets the app be dragged with a mouse or a stylus (desktop, web previews)
-/// and keeps the iOS bouncing physics on every platform, which is what
-/// makes the immersive feed feel right.
+/// Permet de faire défiler l’app à la souris ou au stylet (desktop,
+/// aperçus web) et conserve la physique rebondissante iOS sur toutes les
+/// plateformes : c’est elle qui donne au fil immersif la bonne sensation.
 class _AppScrollBehavior extends MaterialScrollBehavior {
   const _AppScrollBehavior();
 

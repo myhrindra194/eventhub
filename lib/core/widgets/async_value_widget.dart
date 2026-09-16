@@ -3,14 +3,16 @@ import 'package:eventhub/core/widgets/state_views.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-/// Renders an [AsyncValue] with consistent loading / error / empty states.
+/// Rend un [AsyncValue] avec des états de chargement, d'erreur et de vide
+/// cohérents dans toute l'application.
 ///
-/// Keeps the previous data visible while refreshing (Riverpod `isRefreshing`)
-/// so lists don't flash a spinner on every Firestore snapshot.
+/// Garde les données précédentes à l'écran pendant un rafraîchissement
+/// (`isRefreshing` de Riverpod), pour qu'une liste ne fasse pas clignoter un
+/// indicateur de chargement à chaque snapshot Firestore.
 ///
-/// Set [sliver] when used inside a `CustomScrollView`: state views are then
-/// wrapped in a `SliverFillRemaining` and [data]/[empty]/[loading] must
-/// return slivers.
+/// Passe [sliver] à `true` dans un `CustomScrollView` : les vues d'état sont
+/// alors enveloppées dans un `SliverFillRemaining`, et [data], [empty] et
+/// [loading] doivent renvoyer des slivers.
 class AsyncValueWidget<T> extends StatelessWidget {
   const AsyncValueWidget({
     required this.value,
@@ -27,7 +29,8 @@ class AsyncValueWidget<T> extends StatelessWidget {
   final Widget Function(T data) data;
   final VoidCallback? onRetry;
 
-  /// When provided and true for the current data, [empty] is shown instead.
+  /// Fourni et vrai pour les données courantes, [empty] s'affiche à leur
+  /// place.
   final bool Function(T data)? isEmpty;
   final Widget? empty;
   final Widget? loading;

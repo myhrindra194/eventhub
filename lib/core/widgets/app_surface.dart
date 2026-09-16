@@ -3,16 +3,17 @@ import 'dart:ui';
 import 'package:eventhub/app/theme/theme.dart';
 import 'package:flutter/material.dart';
 
-/// Elevation levels available to a surface. They map to shadow recipes, not
-/// to Material's numeric elevation, so a card looks lifted on a dark ground
-/// instead of merely tinted.
-enum SurfaceElevation { flat, low, medium, high }
-
-/// The single container primitive of the design system.
+/// La primitive conteneur unique du design system.
 ///
-/// Everything that is "a box with content on it" — cards, tiles, panels,
-/// list rows — is an [AppSurface]. Consistency of radius, border and shadow
-/// across the app comes for free, and a design change is one edit here.
+/// Tout ce qui est « une boîte avec du contenu dessus » — cartes, tuiles,
+/// panneaux, lignes de liste — est une [AppSurface]. La cohérence du rayon et
+/// du filet est ainsi acquise, et un changement de design tient en une seule
+/// édition ici.
+///
+/// Il n'y a pas de niveau d'élévation : le produit ne porte aucune ombre. Une
+/// surface se détache de son fond par sa couleur et son filet, ce qui reste
+/// lisible dans les deux thèmes là où une ombre noire s'effondre sur fond
+/// sombre.
 class AppSurface extends StatelessWidget {
   const AppSurface({
     required this.child,
@@ -20,7 +21,6 @@ class AppSurface extends StatelessWidget {
     this.padding = const EdgeInsets.all(AppSpacing.lg),
     this.margin,
     this.radius = AppRadius.xl,
-    this.elevation = SurfaceElevation.low,
     this.color,
     this.borderColor,
     this.gradient,
@@ -31,14 +31,13 @@ class AppSurface extends StatelessWidget {
     this.height,
   });
 
-  /// Convenience: a surface with no padding, for image-led cards that
-  /// manage their own insets.
+  /// Variante sans marge intérieure, pour les cartes menées par une image
+  /// qui gèrent elles-mêmes leurs retraits.
   const AppSurface.bare({
     required this.child,
     super.key,
     this.margin,
     this.radius = AppRadius.xl,
-    this.elevation = SurfaceElevation.low,
     this.color,
     this.borderColor,
     this.gradient,
@@ -53,7 +52,6 @@ class AppSurface extends StatelessWidget {
   final EdgeInsetsGeometry padding;
   final EdgeInsetsGeometry? margin;
   final double radius;
-  final SurfaceElevation elevation;
   final Color? color;
   final Color? borderColor;
   final Gradient? gradient;
@@ -67,12 +65,6 @@ class AppSurface extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = context.tokens;
     final br = BorderRadius.circular(radius);
-    final shadows = switch (elevation) {
-      SurfaceElevation.flat => const <BoxShadow>[],
-      SurfaceElevation.low => t.shadows.sm,
-      SurfaceElevation.medium => t.shadows.md,
-      SurfaceElevation.high => t.shadows.lg,
-    };
 
     Widget content = Padding(padding: padding, child: child);
 
@@ -98,16 +90,15 @@ class AppSurface extends StatelessWidget {
         gradient: gradient,
         borderRadius: br,
         border: Border.all(color: borderColor ?? t.border),
-        boxShadow: shadows,
       ),
       child: content,
     );
   }
 }
 
-/// Translucent, blurred panel. Reserved for elements that must let the
-/// content underneath show through — sheets, floating bars, overlays on
-/// photography. Blur is expensive: do not use it for ordinary cards.
+/// Panneau translucide et flouté. Réservé à ce qui doit laisser voir le
+/// contenu situé dessous — feuilles, barres flottantes, calques posés sur une
+/// photo. Le flou coûte cher : ne l'employez pas pour une carte ordinaire.
 class GlassPanel extends StatelessWidget {
   const GlassPanel({
     required this.child,
@@ -147,8 +138,8 @@ class GlassPanel extends StatelessWidget {
   }
 }
 
-/// A rounded square holding an icon on a soft ground. Used as the visual
-/// anchor of list rows, empty states and info tiles.
+/// Un carré arrondi portant une icône sur un fond doux. Sert d'ancrage visuel
+/// aux lignes de liste, aux états vides et aux tuiles d'information.
 class IconTile extends StatelessWidget {
   const IconTile({
     required this.icon,
@@ -187,16 +178,15 @@ class IconTile extends StatelessWidget {
   }
 }
 
-/// The app mark: a gradient **disc** carrying the glyph.
+/// La marque de l'application : un **disque** dégradé portant le glyphe.
 ///
-/// A circle, not a rounded square: an icon container that is round reads as
-/// a mark, while a rounded rectangle reads as an app tile. [glow] is off by
-/// default — the mark should hold the eye by its colour, not by a halo.
+/// Un cercle, pas un carré arrondi : un conteneur d'icône rond se lit comme
+/// une marque, là où un rectangle arrondi se lit comme une tuile d'app. La
+/// marque retient l'œil par sa couleur, jamais par un halo.
 class AppLogo extends StatelessWidget {
-  const AppLogo({super.key, this.size = 56, this.glow = false});
+  const AppLogo({super.key, this.size = 56});
 
   final double size;
-  final bool glow;
 
   @override
   Widget build(BuildContext context) {
@@ -208,15 +198,6 @@ class AppLogo extends StatelessWidget {
       decoration: BoxDecoration(
         gradient: t.brandGradient,
         shape: BoxShape.circle,
-        boxShadow: glow
-            ? [
-                BoxShadow(
-                  color: t.brand.withValues(alpha: 0.4),
-                  blurRadius: size * 0.5,
-                  offset: Offset(0, size * 0.18),
-                ),
-              ]
-            : null,
       ),
       child: Icon(
         Icons.local_activity_rounded,
@@ -227,7 +208,7 @@ class AppLogo extends StatelessWidget {
   }
 }
 
-/// Logo + wordmark, for headers and splash screens.
+/// Logo et nom de marque, pour les en-têtes et l'écran de démarrage.
 class AppWordmark extends StatelessWidget {
   const AppWordmark({super.key, this.size = 40, this.showTagline = false});
 
@@ -262,7 +243,7 @@ class AppWordmark extends StatelessWidget {
   }
 }
 
-/// A hairline that respects the token scale and can be inset.
+/// Un filet qui respecte l'échelle des jetons et peut être mis en retrait.
 class AppDivider extends StatelessWidget {
   const AppDivider({super.key, this.indent = 0, this.height = AppSpacing.lg});
 

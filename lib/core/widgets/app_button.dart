@@ -3,35 +3,38 @@ import 'dart:ui';
 import 'package:eventhub/app/theme/theme.dart';
 import 'package:flutter/material.dart';
 
-/// Visual weight of an action. Exactly one [AppButtonVariant.primary] per
-/// screen region: if everything shouts, nothing is emphasised.
+/// Le poids visuel d'une action. Exactement un [AppButtonVariant.primary] par
+/// région d'écran : si tout crie, plus rien ne ressort.
 enum AppButtonVariant {
-  /// The single most important action. Brand gradient + glow.
+  /// L'action la plus importante, et la seule à ce rang. Dégradé de marque.
   primary,
 
-  /// A real alternative to the primary action. Surface + hairline.
+  /// Une véritable alternative à l'action principale. Surface et filet.
   secondary,
 
-  /// Low-emphasis but still a button. Brand tint, no border.
+  /// Peu appuyé, mais toujours un bouton. Teinte de marque, sans bordure.
   tonal,
 
-  /// Text-only. For tertiary or repeated actions inside dense layouts.
+  /// Texte seul. Pour les actions tertiaires ou répétées dans une mise en
+  /// page dense.
   ghost,
 
-  /// Destructive and irreversible.
+  /// Destructeur et irréversible.
   danger,
 }
 
 enum AppButtonSize { small, medium, large }
 
-/// The one button of the design system.
+/// L'unique bouton du design system.
 ///
-/// Behaviour baked in, so no screen has to re-implement it:
-///  * a press scales the button by 2 % — physical feedback that a colour
-///    change alone does not give;
-///  * [isLoading] swaps the label for a spinner **and** blocks the callback,
-///    which removes the classic double-submit bug from every form;
-///  * a disabled button keeps its footprint so the layout never jumps.
+/// Son comportement est intégré, pour qu'aucun écran n'ait à le réécrire :
+///  * l'appui réduit le bouton de 2 % — un retour physique qu'un simple
+///    changement de couleur ne donne pas ;
+///  * [isLoading] remplace le libellé par un indicateur **et** bloque le
+///    rappel, ce qui supprime de tous les formulaires le classique double
+///    envoi ;
+///  * un bouton désactivé conserve son encombrement, si bien que la mise en
+///    page ne saute jamais.
 class AppButton extends StatefulWidget {
   const AppButton({
     required this.label,
@@ -42,7 +45,6 @@ class AppButton extends StatefulWidget {
     this.isLoading = false,
     this.loadingLabel,
     this.expand = true,
-    this.elevated = true,
   });
 
   const AppButton.primary({
@@ -53,7 +55,6 @@ class AppButton extends StatefulWidget {
     this.isLoading = false,
     this.loadingLabel,
     this.expand = true,
-    this.elevated = true,
   }) : variant = AppButtonVariant.primary;
 
   const AppButton.secondary({
@@ -64,7 +65,6 @@ class AppButton extends StatefulWidget {
     this.isLoading = false,
     this.loadingLabel,
     this.expand = true,
-    this.elevated = true,
   }) : variant = AppButtonVariant.secondary;
 
   const AppButton.tonal({
@@ -75,7 +75,6 @@ class AppButton extends StatefulWidget {
     this.isLoading = false,
     this.loadingLabel,
     this.expand = false,
-    this.elevated = true,
   }) : variant = AppButtonVariant.tonal;
 
   const AppButton.ghost({
@@ -86,7 +85,6 @@ class AppButton extends StatefulWidget {
     this.isLoading = false,
     this.loadingLabel,
     this.expand = false,
-    this.elevated = true,
   }) : variant = AppButtonVariant.ghost;
 
   const AppButton.danger({
@@ -97,7 +95,6 @@ class AppButton extends StatefulWidget {
     this.isLoading = false,
     this.loadingLabel,
     this.expand = true,
-    this.elevated = true,
   }) : variant = AppButtonVariant.danger;
 
   final String label;
@@ -107,15 +104,10 @@ class AppButton extends StatefulWidget {
   final bool isLoading;
   final String? loadingLabel;
 
-  /// Whether the button fills the available width. `true` for full-width
-  /// calls to action, `false` for inline actions inside a row.
+  /// Si le bouton occupe toute la largeur disponible : `true` pour un appel
+  /// à l'action pleine largeur, `false` pour une action en ligne dans une
+  /// rangée.
   final bool expand;
-
-  /// Coloured drop shadow under the filled variants. Set `false` for flat
-  /// surfaces — the authentication screens run completely shadowless, where
-  /// a glow would be the only piece of depth on an otherwise plain page and
-  /// would read as decoration rather than hierarchy.
-  final bool elevated;
 
   @override
   State<AppButton> createState() => _AppButtonState();
@@ -202,13 +194,13 @@ class _AppButtonState extends State<AppButton> {
             decoration: BoxDecoration(
               color: style.background,
               gradient: style.gradient,
-              // 6 px, per the product's radius scale: a drawn edge, not a
-              // rounded rectangle pretending to be a pill.
+              // 6 px, selon l'échelle de rayons du produit : une arête
+              // dessinée, et non un rectangle arrondi qui se prendrait pour
+              // une pastille.
               borderRadius: AppRadius.brButton,
               border: style.border == null
                   ? null
                   : Border.all(color: style.border!),
-              boxShadow: widget.elevated ? style.shadow : null,
             ),
             child: row,
           ),
@@ -230,19 +222,11 @@ class _AppButtonState extends State<AppButton> {
       AppButtonVariant.primary => _ButtonStyle(
         gradient: t.brandGradient,
         foreground: t.textOnBrand,
-        shadow: [
-          BoxShadow(
-            color: t.brand.withValues(alpha: 0.34),
-            blurRadius: 22,
-            offset: const Offset(0, 8),
-          ),
-        ],
       ),
       AppButtonVariant.secondary => _ButtonStyle(
         background: t.surface,
         foreground: t.textPrimary,
         border: t.borderStrong,
-        shadow: t.shadows.xs,
       ),
       AppButtonVariant.tonal => _ButtonStyle(
         background: t.brandSoft,
@@ -255,13 +239,6 @@ class _AppButtonState extends State<AppButton> {
       AppButtonVariant.danger => _ButtonStyle(
         background: t.danger.solid,
         foreground: t.danger.onSolid,
-        shadow: [
-          BoxShadow(
-            color: t.danger.solid.withValues(alpha: 0.3),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
-          ),
-        ],
       ),
     };
   }
@@ -273,18 +250,17 @@ class _ButtonStyle {
     this.background,
     this.gradient,
     this.border,
-    this.shadow,
   });
 
   final Color foreground;
   final Color? background;
   final Gradient? gradient;
   final Color? border;
-  final List<BoxShadow>? shadow;
 }
 
-/// Square icon button sitting on a surface. Used for row-level actions
-/// (edit, delete) where a labelled button would overwhelm the layout.
+/// Bouton d'icône carré posé sur une surface. Pour les actions au niveau
+/// d'une ligne — modifier, supprimer — où un bouton à libellé écraserait la
+/// mise en page.
 class IconActionButton extends StatelessWidget {
   const IconActionButton({
     required this.icon,
@@ -322,8 +298,9 @@ class IconActionButton extends StatelessWidget {
   }
 }
 
-/// Circular frosted button floating over imagery (back, share, favourite).
-/// The blur guarantees legibility whatever the photo underneath is.
+/// Bouton circulaire flouté, flottant au-dessus d'une image — retour,
+/// partage, favori. Le flou garantit la lisibilité quelle que soit la photo
+/// qui se trouve dessous.
 class OverlayIconButton extends StatelessWidget {
   const OverlayIconButton({
     required this.icon,
@@ -363,7 +340,7 @@ class OverlayIconButton extends StatelessWidget {
   }
 }
 
-/// Round gradient action button — the organizer's "create" affordance.
+/// Bouton d'action rond et dégradé — le geste « créer » de l'organisateur.
 class GradientFab extends StatelessWidget {
   const GradientFab({
     required this.icon,
@@ -381,17 +358,10 @@ class GradientFab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = context.tokens;
+    // Pas de halo sous le bouton : le dégradé de marque sur le fond calme de
+    // l'écran suffit à en faire l'élément le plus saillant de la page.
     final button = DecoratedBox(
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        boxShadow: [
-          BoxShadow(
-            color: t.brand.withValues(alpha: 0.38),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
+      decoration: const BoxDecoration(shape: BoxShape.circle),
       child: Material(
         color: Colors.transparent,
         shape: const CircleBorder(),
@@ -416,15 +386,16 @@ class GradientFab extends StatelessWidget {
   }
 }
 
-/// Circular back affordance.
+/// Le retour, en disque.
 ///
-/// A solid accent disc with a white glyph, centred. It is deliberately the
-/// **warm** colour rather than the brand indigo: "revenir" is the one action
-/// on a form screen that is not the primary path, and giving it its own hue
-/// keeps it findable without competing with the call to action underneath.
+/// Un disque plein de la couleur d'accent, glyphe blanc centré. C'est
+/// délibérément la couleur **chaude** et non l'indigo de marque : « revenir »
+/// est la seule action d'un écran de formulaire qui ne soit pas le chemin
+/// principal, et lui donner sa propre teinte la rend repérable sans qu'elle
+/// concurrence l'appel à l'action situé dessous.
 ///
-/// Circular here, 6 px everywhere else: a back control is a single glyph, and
-/// a disc reads as a target the thumb can hit without aiming.
+/// Rond ici, 6 px partout ailleurs : un retour n'est qu'un glyphe, et un
+/// disque se lit comme une cible que le pouce atteint sans viser.
 class CircleBackButton extends StatelessWidget {
   const CircleBackButton({
     required this.onPressed,

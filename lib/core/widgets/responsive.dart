@@ -1,19 +1,20 @@
 import 'package:eventhub/app/theme/theme.dart';
 import 'package:flutter/widgets.dart';
 
-/// Width bands the product actually adapts to.
+/// Les bandes de largeur auxquelles le produit s'adapte réellement.
 ///
-/// Three, not seven. Every extra band is a layout nobody tests: the design
-/// only has to survive a 320 dp budget phone, the 360–430 dp mainstream, and
-/// anything wider where a single column would look stretched.
+/// Trois, pas sept. Chaque bande supplémentaire est une mise en page que
+/// personne ne teste : le design doit seulement tenir sur un téléphone
+/// d'entrée de gamme de 320 dp, sur les 360–430 dp du courant, et au-delà, là
+/// où une colonne unique paraîtrait étirée.
 enum ScreenSize {
-  /// < 360 dp — small or split-screen phones.
+  /// < 360 dp — petits téléphones, ou écran partagé.
   small,
 
-  /// 360–599 dp — the phone the design is drawn for.
+  /// 360–599 dp — le téléphone pour lequel le design est dessiné.
   medium,
 
-  /// >= 600 dp — tablets, foldables, desktop windows.
+  /// >= 600 dp — tablettes, pliables, fenêtres de bureau.
   expanded;
 
   static ScreenSize of(double width) {
@@ -29,8 +30,9 @@ extension ResponsiveX on BuildContext {
   bool get isSmallScreen => screenSize == ScreenSize.small;
   bool get isExpandedScreen => screenSize == ScreenSize.expanded;
 
-  /// Picks a value per band. [medium] is the reference; the other two fall
-  /// back to it, so a caller only overrides what genuinely needs to change.
+  /// Choisit une valeur par bande. [medium] est la référence ; les deux
+  /// autres s'y rabattent, de sorte qu'un appelant ne redéfinit que ce qui
+  /// doit vraiment changer.
   ///
   /// ```dart
   /// final hero = context.responsive(medium: 148.0, small: 116.0);
@@ -42,17 +44,17 @@ extension ResponsiveX on BuildContext {
         ScreenSize.expanded => expanded ?? medium,
       };
 
-  /// Horizontal gutter, tightened on narrow screens where 20 dp on each side
-  /// eats a meaningful share of a 320 dp line.
+  /// Gouttière horizontale, resserrée sur les écrans étroits où 20 dp de
+  /// chaque côté mangent une part notable d'une ligne de 320 dp.
   double get gutter => responsive(medium: AppSpacing.gutter, small: 16.0);
 }
 
-/// Centres and caps a single column of content.
+/// Centre une colonne de contenu et plafonne sa largeur.
 ///
-/// Beyond ~480 dp a form column stops being readable and starts looking
-/// abandoned in the middle of a page. Capping the width is what makes the
-/// same screen usable on a phone, a foldable and a desktop window without a
-/// second layout.
+/// Au-delà d'environ 480 dp, une colonne de formulaire cesse d'être lisible
+/// et commence à paraître abandonnée au milieu de la page. C'est ce plafond
+/// qui rend le même écran utilisable sur un téléphone, un pliable et une
+/// fenêtre de bureau, sans écrire une seconde mise en page.
 class ResponsiveColumn extends StatelessWidget {
   const ResponsiveColumn({required this.child, super.key, this.maxWidth = 480});
 

@@ -2,16 +2,18 @@ import 'package:eventhub/app/theme/theme.dart';
 import 'package:eventhub/core/widgets/app_button.dart';
 import 'package:flutter/material.dart';
 
-/// Opens a modal bottom sheet with the product's chrome already applied
-/// (6 px top corners, scrim, safe-area padding, scroll control).
+/// Ouvre une feuille modale avec l'habillage du produit déjà appliqué : coins
+/// supérieurs à 6 px, voile, marges de zone sûre, contrôle du défilement.
 ///
-/// Sheets are preferred to dialogs for anything with more than one line of
-/// content: they stay within thumb reach, they can grow, and dismissing by
-/// dragging is more forgiving than hunting for a small "cancel".
+/// Les feuilles sont préférées aux boîtes de dialogue dès qu'il y a plus
+/// d'une ligne de contenu : elles restent à portée du pouce, elles peuvent
+/// grandir, et les refermer d'un glissement pardonne davantage que viser un
+/// petit « Annuler ».
 ///
-/// There is deliberately **no drag handle**. The grabber pill is an iOS
-/// convention that reads as template chrome; every sheet carries an explicit
-/// close button instead, and drag-to-dismiss still works.
+/// Il n'y a **volontairement pas de poignée**. La barrette de préhension est
+/// une convention iOS qui se lit comme du décor de gabarit ; chaque feuille
+/// porte à la place un bouton de fermeture explicite, et le glissement vers
+/// le bas continue de fonctionner.
 Future<T?> showAppSheet<T>({
   required BuildContext context,
   required WidgetBuilder builder,
@@ -24,8 +26,8 @@ Future<T?> showAppSheet<T>({
     isDismissible: isDismissible,
     enableDrag: isDismissible,
     useSafeArea: true,
-    // Set here as well as in the theme, so a sheet looks right even under a
-    // theme that does not come from `AppTheme`.
+    // Posé ici en plus du thème, pour qu'une feuille reste correcte même sous
+    // un thème qui ne viendrait pas d'`AppTheme`.
     showDragHandle: false,
     clipBehavior: Clip.antiAlias,
     shape: const RoundedRectangleBorder(borderRadius: AppRadius.brModalSheet),
@@ -35,12 +37,12 @@ Future<T?> showAppSheet<T>({
   );
 }
 
-/// Standard layout inside a sheet.
+/// La mise en page standard à l'intérieur d'une feuille.
 ///
-/// Three bands separated by hairlines — header, content, actions — rather
-/// than one centred column: the header states what the sheet is and how to
-/// leave it, the content scrolls on its own, and the actions stay anchored
-/// at the bottom however long the content gets.
+/// Trois bandes séparées par des filets — en-tête, contenu, actions — plutôt
+/// qu'une seule colonne centrée : l'en-tête dit ce qu'est la feuille et
+/// comment en sortir, le contenu défile pour son propre compte, et les
+/// actions restent ancrées en bas quelle que soit la longueur du contenu.
 class AppSheet extends StatelessWidget {
   const AppSheet({
     required this.title,
@@ -56,7 +58,7 @@ class AppSheet extends StatelessWidget {
   final Widget child;
   final List<Widget> actions;
 
-  /// Padding of the content band.
+  /// Marge intérieure de la bande de contenu.
   final EdgeInsetsGeometry padding;
 
   @override
@@ -125,12 +127,12 @@ class AppSheet extends StatelessWidget {
   }
 }
 
-/// Square ✕ with the 6 px control radius — the explicit way out that
-/// replaces the drag handle.
+/// Le ✕ carré au rayon de commande de 6 px — la sortie explicite qui
+/// remplace la poignée de glissement.
 class SheetCloseButton extends StatelessWidget {
   const SheetCloseButton({super.key, this.onPressed});
 
-  /// Defaults to popping the sheet with no result.
+  /// Par défaut, referme la feuille sans renvoyer de résultat.
   final VoidCallback? onPressed;
 
   @override
@@ -155,13 +157,13 @@ class SheetCloseButton extends StatelessWidget {
   }
 }
 
-/// Confirmation sheet for an irreversible action.
+/// Feuille de confirmation d'une action irréversible.
 ///
-/// Left-aligned, like a letter rather than a pop-up: a tinted 6 px square
-/// carrying the subject, the consequence spelled out in plain French, then
-/// the two choices. The destructive button sits **above** "Annuler" so the
-/// safe option is the one closest to the thumb. Returns `false` when
-/// dismissed, never `null`.
+/// Alignée à gauche, comme une lettre et non comme une fenêtre surgissante :
+/// un carré teinté de 6 px portant le sujet, la conséquence écrite en toutes
+/// lettres, puis les deux choix. Le bouton destructeur se place **au-dessus**
+/// d'« Annuler », pour que l'option sûre soit la plus proche du pouce.
+/// Renvoie `false` en cas d'abandon, jamais `null`.
 Future<bool> showConfirmSheet(
   BuildContext context, {
   required String title,
@@ -209,8 +211,8 @@ Future<bool> showConfirmSheet(
                   ),
                 ],
               ),
-              // The content keeps the xl gutter on the right even though the
-              // header row hugs the close button closer to the edge.
+              // Le contenu conserve la gouttière xl à droite, alors même que
+              // la ligne d'en-tête rapproche le bouton de fermeture du bord.
               Padding(
                 padding: const EdgeInsets.only(right: AppSpacing.sm),
                 child: Column(
@@ -229,13 +231,11 @@ Future<bool> showConfirmSheet(
                       variant: tone == AppTone.danger
                           ? AppButtonVariant.danger
                           : AppButtonVariant.primary,
-                      elevated: false,
                       onPressed: () => Navigator.of(context).pop(true),
                     ),
                     const SizedBox(height: AppSpacing.md),
                     AppButton.secondary(
                       label: cancelLabel,
-                      elevated: false,
                       onPressed: () => Navigator.of(context).pop(false),
                     ),
                   ],

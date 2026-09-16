@@ -1,10 +1,12 @@
 import 'package:flutter/widgets.dart';
 
-/// Spacing scale — a strict 4 pt grid.
+/// Échelle d’espacement — une grille stricte de 4 pt.
 ///
-/// Never hard-code a padding: pick the closest step. A layout built from a
-/// finite scale reads as deliberate; one built from arbitrary numbers reads
-/// as accidental, and that difference is most of what "mature design" means.
+/// Ne jamais coder un padding en dur : prendre le pas le plus proche. Une
+/// mise en page construite sur une échelle finie se lit comme un choix ;
+/// une mise en page faite de nombres arbitraires se lit comme un accident,
+/// et cet écart constitue l’essentiel de ce qu’on appelle un « design
+/// mature ».
 abstract final class AppSpacing {
   static const none = 0.0;
   static const xxs = 2.0;
@@ -18,33 +20,34 @@ abstract final class AppSpacing {
   static const huge = 40.0;
   static const giant = 56.0;
 
-  /// Horizontal gutter of every screen. Single source of truth: change it
-  /// here and the whole app re-aligns.
+  /// Gouttière horizontale de tous les écrans. Source de vérité unique :
+  /// changez-la ici et toute l’app se réaligne.
   static const gutter = 20.0;
 
   static const screen = EdgeInsets.symmetric(horizontal: gutter);
 }
 
-/// Corner radii.
+/// Rayons d’angle.
 ///
-/// The scale is **deliberately flat at 6 px**. Every rounded rectangle —
-/// button, field, card, chip, badge, sheet, dialog, snack bar, image, track —
-/// takes the same drawn edge. The named steps (`xs` … `xxxl`) are kept so
-/// call sites still say *which* role a corner plays, but they all resolve to
-/// the same value: one sharp edge, repeated, reads as a decision; a ladder of
-/// neighbouring radii reads as a default template.
+/// L’échelle est **volontairement plate à 6 px**. Tout rectangle arrondi —
+/// bouton, champ, carte, chip, badge, sheet, dialogue, snack bar, image,
+/// piste — reçoit la même arête dessinée. Les paliers nommés (`xs` … `xxxl`)
+/// sont conservés pour que les appels disent encore *quel* rôle joue un
+/// angle, mais ils résolvent tous vers la même valeur : une arête franche,
+/// répétée, se lit comme une décision ; une échelle de rayons voisins se lit
+/// comme un template par défaut.
 ///
-/// Circles are a different shape, not a bigger radius: avatars, status dots,
-/// pager dots and round icon-only buttons use `BoxShape.circle` /
-/// `CircleBorder`, never a radius.
+/// Un cercle est une autre forme, pas un rayon plus grand : avatars, points
+/// de statut, points de pagination et boutons ronds à icône seule utilisent
+/// `BoxShape.circle` / `CircleBorder`, jamais un rayon.
 abstract final class AppRadius {
-  /// 6 px is not a rounded rectangle pretending to be a pill: it reads as a
-  /// drawn edge. Large radii are the single strongest tell of a default
-  /// template, and the product's identity lives in its photography and its
-  /// type, not in soft corners.
+  /// 6 px, ce n’est pas un rectangle arrondi qui se prend pour une pilule :
+  /// ça se lit comme une arête dessinée. Les grands rayons sont le signe le
+  /// plus flagrant d’un template par défaut, et l’identité du produit tient
+  /// à sa photographie et à sa typographie, pas à des angles mous.
   static const button = 6.0;
 
-  /// Fields share the button radius.
+  /// Les champs partagent le rayon des boutons.
   static const input = button;
 
   static const xs = button;
@@ -55,8 +58,9 @@ abstract final class AppRadius {
   static const xxl = button;
   static const xxxl = button;
 
-  /// Fully rounded ends. Reserved for pager dots and hairline indicators
-  /// whose height *is* their diameter — never for a shape that holds text.
+  /// Extrémités totalement arrondies. Réservé aux points de pagination et
+  /// aux indicateurs filaires dont la hauteur *est* le diamètre — jamais
+  /// pour une forme qui contient du texte.
   static const pill = 999.0;
 
   static const brButton = BorderRadius.all(Radius.circular(button));
@@ -69,21 +73,22 @@ abstract final class AppRadius {
   static const brXxl = BorderRadius.all(Radius.circular(xxl));
   static const brPill = BorderRadius.all(Radius.circular(pill));
 
-  /// Top-only rounding of the content sheet that overlaps a hero image.
-  /// Same 6 px as everything else.
+  /// Arrondi du haut uniquement, pour la feuille de contenu qui chevauche
+  /// une image hero. Les mêmes 6 px que partout ailleurs.
   static const brSheet = BorderRadius.vertical(top: Radius.circular(xxxl));
 
-  /// Modal bottom sheets use the control radius, not [brSheet]: a sheet is
-  /// a panel the user acts in, and it takes the same drawn 6 px edge as the
-  /// buttons and fields it holds.
+  /// Les bottom sheets modales utilisent le rayon des contrôles, et non
+  /// [brSheet] : une sheet est un panneau dans lequel l’utilisateur agit,
+  /// elle reprend donc la même arête dessinée à 6 px que les boutons et les
+  /// champs qu’elle contient.
   static const brModalSheet = BorderRadius.vertical(
     top: Radius.circular(button),
   );
 }
 
-/// Touch-target and control sizing.
+/// Dimensions des cibles tactiles et des contrôles.
 abstract final class AppSizes {
-  /// WCAG / Material minimum touch target.
+  /// Cible tactile minimale imposée par WCAG / Material.
   static const minTouch = 48.0;
 
   static const buttonSm = 40.0;
@@ -93,17 +98,17 @@ abstract final class AppSizes {
   static const inputHeight = 56.0;
   static const navBarHeight = 68.0;
 
-  /// Space a scrollable must reserve so its last item clears the floating
-  /// navigation bar.
+  /// Espace qu’une zone scrollable doit réserver pour que son dernier
+  /// élément passe au-dessus de la barre de navigation flottante.
   static const navBarInset = 108.0;
 
-  /// Max content width — beyond this, a single column looks stretched on
-  /// tablets and foldables, so content is centred instead.
+  /// Largeur de contenu maximale — au-delà, une colonne unique paraît
+  /// étirée sur tablettes et pliables ; le contenu est donc centré.
   static const maxContentWidth = 560.0;
 }
 
-/// Layout breakpoints (Material 3 window size classes, trimmed to what the
-/// product actually adapts to).
+/// Points de rupture de mise en page (window size classes de Material 3,
+/// réduites à ce à quoi le produit s’adapte réellement).
 abstract final class AppBreakpoints {
   static const compact = 600.0;
   static const medium = 840.0;

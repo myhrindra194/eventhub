@@ -1,12 +1,14 @@
 import 'package:eventhub/app/theme/theme.dart';
+import 'package:eventhub/core/utils/image_data_url.dart';
 import 'package:flutter/material.dart';
 
-/// Initials avatar with a **deterministic** gradient.
+/// Avatar d’initiales avec un dégradé **déterministe**.
 ///
-/// The hue pair is derived from the name, so the same person always gets
-/// the same colours across the app (feed, ticket, participant list). That
-/// consistency is what makes an avatar act as an identity cue rather than
-/// decoration — and it costs nothing compared to storing a picture.
+/// La paire de teintes est dérivée du nom : la même personne reçoit donc
+/// toujours les mêmes couleurs dans toute l’app (fil, billet, liste des
+/// participants). C’est cette constance qui fait d’un avatar un repère
+/// d’identité plutôt qu’une décoration — et cela ne coûte rien face au
+/// stockage d’une photo.
 class AppAvatar extends StatelessWidget {
   const AppAvatar({
     required this.name,
@@ -14,14 +16,12 @@ class AppAvatar extends StatelessWidget {
     this.size = 40,
     this.imageUrl,
     this.showRing = false,
-    this.glow = false,
   });
 
   final String name;
   final double size;
   final String? imageUrl;
   final bool showRing;
-  final bool glow;
 
   static const _palettes = <List<Color>>[
     [AppPalette.iris400, AppPalette.iris600],
@@ -63,27 +63,10 @@ class AppAvatar extends StatelessWidget {
           end: Alignment.bottomRight,
           colors: colors,
         ),
-        boxShadow: glow
-            ? [
-                BoxShadow(
-                  color: colors.first.withValues(alpha: 0.4),
-                  blurRadius: size * 0.35,
-                  offset: Offset(0, size * 0.12),
-                ),
-              ]
-            : null,
       ),
       alignment: Alignment.center,
       clipBehavior: Clip.antiAlias,
-      child: imageUrl != null && imageUrl!.isNotEmpty
-          ? Image.network(
-              imageUrl!,
-              width: size,
-              height: size,
-              fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => _label(context),
-            )
-          : _label(context),
+      child: _picture(context) ?? _label(context),
     );
 
     if (showRing) {
@@ -99,6 +82,37 @@ class AppAvatar extends StatelessWidget {
     return avatar;
   }
 
+  /// La photo, si le compte en a une.
+  ///
+  /// Deux provenances possibles, et une seule chaîne pour les décrire : une
+  /// URL `https:` (image distante) ou une URL `data:` (photo embarquée dans
+  /// le profil, faute de Cloud Storage sur le plan Spark). Dans les deux cas
+  /// un échec retombe sur les initiales, qui restent une identité lisible.
+  Widget? _picture(BuildContext context) {
+    final url = imageUrl;
+    if (url == null || url.isEmpty) return null;
+
+    if (ImageDataUrl.isDataUrl(url)) {
+      final bytes = ImageDataUrl.decode(url);
+      if (bytes == null) return null;
+      return Image.memory(
+        bytes,
+        width: size,
+        height: size,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => _label(context),
+      );
+    }
+
+    return Image.network(
+      url,
+      width: size,
+      height: size,
+      fit: BoxFit.cover,
+      errorBuilder: (_, __, ___) => _label(context),
+    );
+  }
+
   Widget _label(BuildContext context) => Text(
     _initials,
     style: Theme.of(context).textTheme.titleMedium?.copyWith(
@@ -110,9 +124,10 @@ class AppAvatar extends StatelessWidget {
   );
 }
 
-/// Overlapping avatars with a "+n" overflow chip — the standard "who else
-/// is coming" affordance. Social proof is the strongest conversion lever on
-/// an event card, so it is a first-class component.
+/// Avatars superposés avec une pastille de dépassement « +n » — l’affordance
+/// standard du « qui d’autre vient ». La preuve sociale est le plus fort
+/// levier de conversion sur une carte d’événement : c’est donc un composant
+/// de premier rang.
 class AvatarStack extends StatelessWidget {
   const AvatarStack({
     required this.names,

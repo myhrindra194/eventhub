@@ -9,15 +9,17 @@ import 'package:eventhub/features/auth/application/auth_providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-/// Opens the account deletion sheet.
+/// Ouvre la feuille de suppression du compte.
 ///
-/// The confirmation is a credential, not a "Êtes-vous sûr ?": the password
-/// for a password account, the Google picker otherwise. It is what Firebase
-/// requires for a sensitive operation anyway, and it stops an unlocked phone
-/// from erasing someone's account in two taps.
+/// La confirmation est un identifiant, pas un « Êtes-vous sûr ? » : le mot de
+/// passe pour un compte à mot de passe, le sélecteur Google sinon. C’est de
+/// toute façon ce que Firebase exige pour une opération sensible, et cela
+/// empêche un téléphone déverrouillé d’effacer le compte de quelqu’un en deux
+/// appuis.
 Future<void> showDeleteAccountSheet(BuildContext context) {
-  // Captured now: on success the router leaves this screen (signed out), so
-  // the confirmation toast must not depend on its context.
+  // Capturé maintenant : en cas de succès, le router quitte cet écran
+  // (déconnexion), donc le message de confirmation ne doit pas dépendre de
+  // son context.
   final messenger = ScaffoldMessenger.of(context);
   return showAppSheet<void>(
     context: context,
@@ -71,8 +73,8 @@ class _DeleteAccountSheetState extends ConsumerState<_DeleteAccountSheet> {
       case Err(:final failure):
         setState(() {
           _busy = false;
-          // Errors are shown inside the sheet: a toast would slide in
-          // behind it.
+          // Les erreurs s’affichent dans la feuille : un toast glisserait
+          // derrière elle.
           _error =
               failure is AuthFailure &&
                   failure.code == AuthFailureCode.cancelled
@@ -95,7 +97,6 @@ class _DeleteAccountSheetState extends ConsumerState<_DeleteAccountSheet> {
           label: AppStrings.deleteAccount,
           loadingLabel: AppStrings.deletingAccount,
           isLoading: _busy,
-          elevated: false,
           onPressed: _submit,
         ),
       ],

@@ -10,13 +10,16 @@ import 'package:eventhub/features/auth/application/auth_providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-/// Reminder shown until the signed-in user confirms their address.
+/// Rappel affiché tant que l’utilisateur connecté n’a pas confirmé son
+/// adresse.
 ///
-/// Two actions, both honest about what they do: "C'est fait" reloads the
-/// account (the link is opened in a mail app, outside EventHub, so the app
-/// cannot know by itself), "Renvoyer le lien" is throttled to once a minute
-/// because Firebase rate-limits it anyway and a silent failure would look
-/// like a broken button. Disappears on its own once verified.
+/// Deux actions, honnêtes l’une comme l’autre sur ce qu’elles font : « C’est
+/// fait » recharge le compte (le lien s’ouvre dans une application de
+/// messagerie, hors d’EventHub : l’application ne peut donc pas le savoir
+/// d’elle-même), « Renvoyer le lien » est limité à une fois par minute parce
+/// que Firebase le plafonne de toute façon et qu’un échec silencieux aurait
+/// l’air d’un bouton cassé. Disparaît de lui-même une fois la vérification
+/// faite.
 class EmailVerificationBanner extends ConsumerStatefulWidget {
   const EmailVerificationBanner({super.key, this.padding = EdgeInsets.zero});
 
@@ -134,7 +137,6 @@ class _EmailVerificationBannerState
                   label: AppStrings.iVerifiedEmail,
                   size: AppButtonSize.small,
                   isLoading: _checking,
-                  elevated: false,
                   onPressed: _check,
                 ),
                 TextButton(

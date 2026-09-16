@@ -6,7 +6,7 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 part 'user_dto.freezed.dart';
 part 'user_dto.g.dart';
 
-/// Document `users/{uid}`. The id is read separately by the repository.
+/// Document `users/{uid}`. L’id est lu séparément par le repository.
 @freezed
 abstract class UserDto with _$UserDto {
   const UserDto._();
@@ -16,15 +16,24 @@ abstract class UserDto with _$UserDto {
     required String email,
     @JsonKey(unknownEnumValue: UserRole.participant) required UserRole role,
 
-    /// `null` in the pending local snapshot of a fresh sign-up.
+    /// `null` dans le snapshot local en attente d’une inscription toute
+    /// fraîche.
     @NullableTimestampConverter() DateTime? createdAt,
 
     String? bio,
 
-    /// Set by moderation: the account reads but can no longer write.
+    /// Photo de profil et photo de couverture.
+    ///
+    /// Une URL `https:`, ou une image encodée dans le document lui-même
+    /// (`data:`) : sans Cloud Storage sur le plan Spark, c'est Firestore qui
+    /// porte l'image. Voir `ImageDataUrl` pour les bornes de taille.
+    String? photoUrl,
+    String? coverUrl,
+
+    /// Posé par la modération : le compte lit mais ne peut plus écrire.
     @Default(false) bool suspended,
 
-    /// Stamped when the welcome notification was written.
+    /// Horodaté au moment où la notification de bienvenue a été écrite.
     @NullableTimestampConverter() DateTime? welcomedAt,
   }) = _UserDto;
 
@@ -38,5 +47,7 @@ abstract class UserDto with _$UserDto {
     role: role,
     createdAt: createdAt,
     bio: bio,
+    photoUrl: photoUrl,
+    coverUrl: coverUrl,
   );
 }

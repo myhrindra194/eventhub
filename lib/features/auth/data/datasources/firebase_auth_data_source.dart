@@ -4,25 +4,28 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
-/// Thin wrapper over Firebase Authentication and native Google Sign-In. SDK
-/// exceptions pass through untouched for `ErrorMapper`; a cancelled Google
-/// picker becomes a [FailureException] the UI knows not to display.
+/// Fine enveloppe autour de Firebase Authentication et du Google Sign-In
+/// natif. Les exceptions du SDK remontent intactes pour `ErrorMapper` ; un
+/// sélecteur Google annulé devient une [FailureException] que l’UI sait ne
+/// pas afficher.
 class FirebaseAuthDataSource {
   FirebaseAuthDataSource(this._auth, {required this.googleServerClientId});
 
   final FirebaseAuth _auth;
 
-  /// OAuth web client id, required by Google Sign-In on Android.
+  /// Identifiant client web OAuth, exigé par Google Sign-In sur Android.
   final String googleServerClientId;
 
-  /// `GoogleSignIn.initialize` must run exactly once per process.
+  /// `GoogleSignIn.initialize` ne doit s’exécuter qu’une seule fois par
+  /// processus.
   static Future<void>? _googleInit;
 
-  /// Emails (verification, password reset) in the app's language.
+  /// Les e-mails (vérification, réinitialisation du mot de passe) dans la
+  /// langue de l’application.
   static const _emailLanguage = 'fr';
 
-  /// Sign-in, sign-out, profile and token changes — including a verified
-  /// address after [reload].
+  /// Connexion, déconnexion, changements de profil et de token — y compris
+  /// une adresse vérifiée après [reload].
   Stream<User?> userChanges() => _auth.userChanges();
 
   User? get currentUser => _auth.currentUser;
@@ -41,7 +44,7 @@ class FirebaseAuthDataSource {
     return _requireUser(credential.user);
   }
 
-  /// Creates the account; Firebase signs it in right away.
+  /// Crée le compte ; Firebase le connecte dans la foulée.
   Future<User> signUp({
     required String email,
     required String password,
@@ -56,8 +59,8 @@ class FirebaseAuthDataSource {
     return user;
   }
 
-  /// Web: Firebase popup. Mobile: native account picker, then its ID token
-  /// exchanged for a Firebase credential.
+  /// Web : popup Firebase. Mobile : sélecteur de compte natif, puis son ID
+  /// token échangé contre un credential Firebase.
   Future<void> signInWithGoogle() async {
     if (kIsWeb) {
       await _auth.signInWithPopup(GoogleAuthProvider());
@@ -78,8 +81,9 @@ class FirebaseAuthDataSource {
     await user.sendEmailVerification();
   }
 
-  /// Reloads the account; once verified, forces a new ID token so the
-  /// `email_verified` claim the rules read is up to date.
+  /// Recharge le compte ; une fois l’adresse vérifiée, force un nouvel ID
+  /// token pour que le claim `email_verified` que lisent les règles soit à
+  /// jour.
   Future<bool> refreshEmailVerification() async {
     final user = _requireUser(_auth.currentUser);
     await user.reload();
@@ -88,8 +92,8 @@ class FirebaseAuthDataSource {
     return fresh.emailVerified;
   }
 
-  /// A fresh ID token, so a claim that just changed (a verified address)
-  /// reaches the rules.
+  /// Un ID token frais, pour qu’un claim qui vient de changer (une adresse
+  /// vérifiée) parvienne jusqu’aux règles.
   Future<void> refreshToken() async {
     await _requireUser(_auth.currentUser).getIdToken(true);
   }
@@ -99,9 +103,10 @@ class FirebaseAuthDataSource {
     required String newPassword,
   }) async {
     final user = _requireUser(_auth.currentUser);
-    // Re-authenticating proves the current password (a wrong one is reported
-    // as invalid credentials, attachable to the right field) and makes the
-    // session recent, which a password change requires.
+    // Se réauthentifier prouve le mot de passe actuel (un mot de passe erroné
+    // est remonté comme des identifiants invalides, rattachables au bon
+    // champ) et rend la session récente, ce qu’exige un changement de mot de
+    // passe.
     await user.reauthenticateWithCredential(
       EmailAuthProvider.credential(
         email: _requireEmail(user),
@@ -114,8 +119,8 @@ class FirebaseAuthDataSource {
   Future<void> setNewPassword(String newPassword) =>
       _requireUser(_auth.currentUser).updatePassword(newPassword);
 
-  /// Proves the person holding the device owns the account before an
-  /// irreversible operation.
+  /// Prouve que la personne qui tient l’appareil est bien propriétaire du
+  /// compte, avant une opération irréversible.
   Future<void> reauthenticate({String? password}) async {
     final user = _requireUser(_auth.currentUser);
     if (usesPasswordSignIn) {
@@ -134,13 +139,13 @@ class FirebaseAuthDataSource {
     await user.reauthenticateWithCredential(await _googleCredential());
   }
 
-  /// Deletes the Authentication user (the session must be recent).
+  /// Supprime l’utilisateur Authentication (la session doit être récente).
   Future<void> deleteUser() => _requireUser(_auth.currentUser).delete();
 
   Future<void> signOut() async {
     if (!kIsWeb && _googleInit != null) {
-      // Otherwise the next "Continuer avec Google" silently reuses the
-      // previous account instead of showing the picker.
+      // Sans cela, le prochain « Continuer avec Google » réutilise en
+      // silence le compte précédent au lieu d’afficher le sélecteur.
       await GoogleSignIn.instance.signOut();
     }
     await _auth.signOut();

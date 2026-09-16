@@ -9,6 +9,7 @@ import 'package:eventhub/features/admin/application/moderation_providers.dart';
 import 'package:eventhub/features/auth/application/auth_controller.dart';
 import 'package:eventhub/features/auth/application/auth_providers.dart';
 import 'package:eventhub/features/auth/domain/entities/app_user.dart';
+import 'package:eventhub/features/auth/presentation/widgets/become_organizer_sheet.dart';
 import 'package:eventhub/features/auth/presentation/widgets/email_verification_banner.dart';
 import 'package:eventhub/features/events/application/event_providers.dart';
 import 'package:eventhub/features/reservations/application/reservation_providers.dart';
@@ -17,11 +18,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-/// Profile — identity, a few numbers that matter, and the way out.
+/// Profil — l’identité, les quelques chiffres qui comptent, et la sortie.
 ///
-/// The same screen serves both roles: the identity block is shared, only
-/// the statistics differ. Duplicating it per role would double the
-/// maintenance for a header and an avatar.
+/// Le même écran sert les deux rôles : le bloc d’identité est commun, seules
+/// les statistiques diffèrent. Le dupliquer par rôle doublerait la
+/// maintenance pour un en-tête et un avatar.
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
 
@@ -55,6 +56,10 @@ class ProfileScreen extends ConsumerWidget {
 
     return AppScaffold(
       constrainWidth: false,
+      appBar: AppTopBar.root(
+        title: AppStrings.profile,
+        subtitle: user.role.label,
+      ),
       body: SafeArea(
         bottom: false,
         child: ListView(
@@ -91,7 +96,23 @@ class ProfileScreen extends ConsumerWidget {
                   label: AppStrings.notifications,
                   onTap: () => context.push(AppRoutes.notificationsCenter),
                 ),
-                if (user.isOrganizer)
+                // « Un compte, deux espaces » : tant que l'espace
+                // organisateur n'est pas ouvert, c'est ici qu'on l'ouvre —
+                // et une fois ouvert, c'est ici qu'on passe de l'un à
+                // l'autre. Sans cette entrée, la méthode d'activation
+                // existait dans le code sans qu'aucun écran ne l'appelle.
+                if (user.isParticipant)
+                  _MenuItem(
+                    icon: Icons.workspace_premium_outlined,
+                    label: AppStrings.becomeOrganizer,
+                    onTap: () => showBecomeOrganizerSheet(context),
+                  ),
+                if (user.isOrganizer) ...[
+                  _MenuItem(
+                    icon: Icons.swap_horiz_rounded,
+                    label: AppStrings.switchToParticipantSpace,
+                    onTap: () => context.go(AppRoutes.events),
+                  ),
                   _MenuItem(
                     icon: Icons.storefront_outlined,
                     label: AppStrings.publicProfile,
@@ -99,6 +120,7 @@ class ProfileScreen extends ConsumerWidget {
                       AppRoutes.organizerPublicProfilePath(user.id),
                     ),
                   ),
+                ],
                 _MenuItem(
                   icon: Icons.person_add_alt_outlined,
                   label: AppStrings.followingTitle,
@@ -153,9 +175,9 @@ class ProfileScreen extends ConsumerWidget {
   }
 }
 
-/// Gradient identity header. The role is shown as a badge rather than a
-/// line of text: it is the single piece of information that changes what
-/// the whole app does, so it deserves to be unmissable.
+/// En-tête d’identité en dégradé. Le rôle est affiché sous forme de badge
+/// plutôt qu’en ligne de texte : c’est la seule information qui change ce que
+/// fait toute l’application, elle mérite donc d’être impossible à manquer.
 class _IdentityCard extends StatelessWidget {
   const _IdentityCard({required this.user});
 
@@ -166,18 +188,27 @@ class _IdentityCard extends StatelessWidget {
     final t = context.tokens;
     final text = Theme.of(context).textTheme;
 
+    // Avec une couverture, elle devient le fond de la carte, assombrie pour
+    // que le nom et l'email restent lisibles quelle que soit l'image ; sans
+    // elle, le dégradé de marque tient ce rôle.
+    final cover = EventImage.providerFor(user.coverUrl);
+
     return Container(
       padding: const EdgeInsets.all(AppSpacing.xl),
       decoration: BoxDecoration(
-        gradient: t.brandGradient,
+        gradient: cover == null ? t.brandGradient : null,
+        color: cover == null ? null : t.canvas,
         borderRadius: AppRadius.brXxl,
-        boxShadow: [
-          BoxShadow(
-            color: t.brand.withValues(alpha: 0.3),
-            blurRadius: 30,
-            offset: const Offset(0, 14),
-          ),
-        ],
+        image: cover == null
+            ? null
+            : DecorationImage(
+                image: cover,
+                fit: BoxFit.cover,
+                colorFilter: const ColorFilter.mode(
+                  Color(0x99101420),
+                  BlendMode.srcOver,
+                ),
+              ),
       ),
       child: Row(
         children: [
@@ -187,7 +218,11 @@ class _IdentityCard extends StatelessWidget {
               shape: BoxShape.circle,
               border: Border.all(color: Colors.white24, width: 2),
             ),
-            child: AppAvatar(name: user.name, size: 62),
+            child: AppAvatar(
+              name: user.name,
+              imageUrl: user.photoUrl,
+              size: 62,
+            ),
           ),
           const SizedBox(width: AppSpacing.lg),
           Expanded(
@@ -347,7 +382,7 @@ class _Stats extends ConsumerWidget {
   }
 }
 
-/// Open moderation files, next to the chevron.
+/// Les dossiers de modération ouverts, à côté du chevron.
 class _ModerationBadge extends ConsumerWidget {
   const _ModerationBadge();
 
@@ -379,8 +414,9 @@ class _MenuItem {
   final Widget? trailing;
 }
 
-/// Grouped rows sharing one surface, iOS-settings style — dividers between
-/// items instead of a card per row, which halves the visual noise.
+/// Lignes regroupées sur une seule surface, façon réglages iOS — des
+/// séparateurs entre les entrées plutôt qu’une carte par ligne, ce qui divise
+/// par deux le bruit visuel.
 class _MenuGroup extends StatelessWidget {
   const _MenuGroup({required this.items});
 
@@ -391,7 +427,6 @@ class _MenuGroup extends StatelessWidget {
     final t = context.tokens;
     return AppSurface(
       padding: EdgeInsets.zero,
-      elevation: SurfaceElevation.flat,
       child: Column(
         children: [
           for (var i = 0; i < items.length; i++) ...[

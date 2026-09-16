@@ -9,12 +9,13 @@ import 'package:eventhub/features/auth/application/auth_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-/// "ou continuer avec" + "Continuer avec Google".
+/// « ou continuer avec » + « Continuer avec Google ».
 ///
-/// Renders nothing where Google Sign-In is not configured (Android without
-/// `GOOGLE_SERVER_CLIENT_ID`): a button that can only fail is worse than no
-/// button. Navigation after success is the router's job, as for the password
-/// sign-in — a first Google sign-in lands on the role choice.
+/// N’affiche rien là où Google Sign-In n’est pas configuré (Android sans
+/// `GOOGLE_SERVER_CLIENT_ID`) : un bouton qui ne peut qu’échouer est pire que
+/// pas de bouton du tout. La navigation après succès revient au router, comme
+/// pour la connexion par mot de passe — une première connexion Google
+/// atterrit sur le choix du rôle.
 class GoogleSignInButton extends ConsumerStatefulWidget {
   const GoogleSignInButton({super.key});
 
@@ -33,7 +34,7 @@ class _GoogleSignInButtonState extends ConsumerState<GoogleSignInButton> {
     if (!mounted) return;
     setState(() => _busy = false);
     if (result case Err(:final failure)) {
-      // Closing the picker is a choice, not an error.
+      // Fermer le sélecteur est un choix, pas une erreur.
       if (failure is AuthFailure && failure.code == AuthFailureCode.cancelled) {
         return;
       }
@@ -56,7 +57,6 @@ class _GoogleSignInButtonState extends ConsumerState<GoogleSignInButton> {
           label: AppStrings.continueWithGoogle,
           loadingLabel: AppStrings.googleSigningIn,
           isLoading: _busy,
-          elevated: false,
           onPressed: _signIn,
         ),
       ],

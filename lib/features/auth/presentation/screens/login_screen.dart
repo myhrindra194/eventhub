@@ -12,15 +12,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-/// Sign-in.
+/// Connexion.
 ///
-/// Navigation on success is *not* handled here: the router's guard reacts to
-/// the new session and moves the user to their role home. A screen that both
-/// authenticates and navigates ends up fighting the redirect.
+/// La navigation en cas de succès n’est *pas* gérée ici : le guard du router
+/// réagit à la nouvelle session et emmène l’utilisateur vers l’accueil de son
+/// rôle. Un écran qui authentifie et navigue à la fois finit par se battre
+/// contre la redirection.
 ///
-/// There is no "Se souvenir de moi" checkbox. Firebase persists the session
-/// by default, so the control would do nothing — and a switch that does
-/// nothing is worse than no switch at all.
+/// Il n’y a pas de case « Se souvenir de moi ». Firebase persiste la session
+/// par défaut : le contrôle ne ferait donc rien — et un interrupteur qui ne
+/// fait rien est pire que pas d’interrupteur du tout.
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
 
@@ -116,7 +117,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 label: AppStrings.login,
                 loadingLabel: AppStrings.signingIn,
                 isLoading: isLoading,
-                elevated: false,
                 onPressed: _submit,
               ),
               const GoogleSignInButton(),

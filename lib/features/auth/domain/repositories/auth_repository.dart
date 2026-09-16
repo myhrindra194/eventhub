@@ -2,15 +2,16 @@ import 'package:eventhub/core/result/result.dart';
 import 'package:eventhub/features/auth/domain/entities/app_user.dart';
 import 'package:eventhub/features/auth/domain/entities/auth_session.dart';
 
-/// Contract for authentication + profile persistence.
-/// Implementations must never throw; every failure is a `Result.err`.
+/// Contrat d’authentification et de persistance du profil.
+/// Les implémentations ne doivent jamais lever d’exception ; tout échec est
+/// un `Result.err`.
 ///
-/// One account, two spaces (the Eventbrite / Airbnb model): every account
-/// starts as a participant, and turns the organizer space on later with
-/// [becomeOrganizer]. Nobody picks a role at sign-up.
+/// Un compte, deux espaces (le modèle Eventbrite / Airbnb) : tout compte
+/// démarre en participant et active plus tard l’espace organisateur via
+/// [becomeOrganizer]. Personne ne choisit de rôle à l’inscription.
 abstract interface class AuthRepository {
-  /// Emits on every auth or profile change (including email verification).
-  /// Never completes.
+  /// Émet à chaque changement d’authentification ou de profil (y compris la
+  /// vérification de l’e-mail). Ne se termine jamais.
   Stream<AuthSession> watchSession();
 
   AsyncResult<AppUser> signIn({
@@ -18,73 +19,91 @@ abstract interface class AuthRepository {
     required String password,
   });
 
-  /// Google account. A first sign-in has no profile yet: the session then
-  /// becomes [ProfileMissing] and the router asks for a name.
+  /// Compte Google. Une première connexion n’a pas encore de profil : la
+  /// session passe alors en [ProfileMissing] et le router réclame un nom.
   AsyncResult<void> signInWithGoogle();
 
-  /// Creates the account and its participant profile, signs in and sends
-  /// the verification email (a failure to send never fails the sign-up; the
-  /// user can resend).
+  /// Crée le compte et son profil participant, connecte l’utilisateur et
+  /// envoie l’e-mail de vérification (un échec d’envoi ne fait jamais échouer
+  /// l’inscription ; l’utilisateur peut le redemander).
   AsyncResult<AppUser> signUp({
     required String name,
     required String email,
     required String password,
   });
 
-  /// Creates the participant profile of an already-authenticated account
-  /// (recovery path for [ProfileMissing], and first Google sign-in).
+  /// Crée le profil participant d’un compte déjà authentifié (chemin de
+  /// rattrapage pour [ProfileMissing], et première connexion Google).
   AsyncResult<AppUser> completeProfile({required String name});
 
-  /// Turns the organizer space on: verified email required, one way. Creates
-  /// the public organizer page in the same batch.
+  /// Active l’espace organisateur : e-mail vérifié obligatoire, opération
+  /// sans retour. Crée la page publique d’organisateur dans le même batch.
   AsyncResult<AppUser> becomeOrganizer({String bio = ''});
 
-  /// Updates the presentation fields of the signed-in user's profile (and of
-  /// their public organizer page).
+  /// Met à jour les champs de présentation du profil de l’utilisateur
+  /// connecté (et de sa page publique d’organisateur).
   ///
-  /// Names already denormalised on past reservations are left untouched —
-  /// a ticket keeps the name it was issued under.
-  /// [bio] is left untouched when `null`; an empty string clears it.
-  AsyncResult<AppUser> updateProfile({required String name, String? bio});
+  /// Les noms déjà dénormalisés sur les réservations passées ne sont pas
+  /// touchés — un billet conserve le nom sous lequel il a été émis.
+  /// [bio] reste inchangée lorsqu’elle vaut `null` ; une chaîne vide
+  /// l’efface.
+  ///
+  /// Les photos obéissent à une règle différente, parce qu'un `null` y est
+  /// ambigu : il faut [updatePhotos] pour que [photoUrl] et [coverUrl] soient
+  /// écrites, et c'est alors `null` qui retire l'image. Sans ce drapeau, un
+  /// changement de nom effacerait la photo.
+  AsyncResult<AppUser> updateProfile({
+    required String name,
+    String? bio,
+    String? photoUrl,
+    String? coverUrl,
+    bool updatePhotos = false,
+  });
 
   AsyncResult<void> sendPasswordReset({required String email});
 
-  /// Sends (again) the verification link to the signed-in user's address.
+  /// (Re)envoie le lien de vérification à l’adresse de l’utilisateur
+  /// connecté.
   AsyncResult<void> sendEmailVerification();
 
-  /// Reloads the account and, when the address is now verified, refreshes
-  /// the ID token so the rules see `email_verified == true` immediately.
-  /// Returns the verification status.
+  /// Recharge le compte et, si l’adresse est désormais vérifiée, rafraîchit
+  /// l’ID token pour que les règles voient `email_verified == true`
+  /// immédiatement. Renvoie le statut de vérification.
   AsyncResult<bool> refreshEmailVerification();
 
-  /// Changes the password of the currently signed-in account.
+  /// Change le mot de passe du compte actuellement connecté.
   ///
-  /// [currentPassword] is not decoration: the provider requires a recent
-  /// login for this operation, and re-authenticating with it turns an
-  /// unactionable "requires-recent-login" into a plain "wrong password" the
-  /// user can actually fix. It is also the only thing standing between an
-  /// unlocked phone and a stolen account.
+  /// [currentPassword] n’est pas décoratif : le fournisseur exige une
+  /// connexion récente pour cette opération, et se réauthentifier avec lui
+  /// transforme un « requires-recent-login » sur lequel l’utilisateur ne peut
+  /// rien en un banal « mot de passe incorrect » qu’il peut réellement
+  /// corriger. C’est aussi la seule chose qui sépare un téléphone
+  /// déverrouillé d’un compte volé.
   AsyncResult<void> changePassword({
     required String currentPassword,
     required String newPassword,
   });
 
-  /// Fires when a password-reset link opens the app. Firebase completes the
-  /// reset on its own hosted page, so this stream stays silent; it is kept
-  /// for providers that hand the reset back to the app.
+  /// Se déclenche lorsqu’un lien de réinitialisation de mot de passe ouvre
+  /// l’application. Firebase termine la réinitialisation sur sa propre page
+  /// hébergée, si bien que ce flux reste silencieux ; il est conservé pour
+  /// les fournisseurs qui rendent la réinitialisation à l’application.
   Stream<void> get passwordRecoveries;
 
-  /// Sets a new password on the signed-in account without the current one.
+  /// Définit un nouveau mot de passe sur le compte connecté sans exiger
+  /// l’actuel.
   AsyncResult<void> setNewPassword(String newPassword);
 
-  /// Whether the signed-in account has a password credential (otherwise it
-  /// is a Google account). Decides how [deleteAccount] re-authenticates.
+  /// Indique si le compte connecté possède un identifiant mot de passe
+  /// (sinon c’est un compte Google). Détermine comment [deleteAccount] se
+  /// réauthentifie.
   bool get usesPasswordSignIn;
 
-  /// Re-authenticates ([password] for a password account, Google otherwise),
-  /// then deletes the account: upcoming seats released, history anonymised,
-  /// personal data removed, the Authentication user deleted, signed out.
-  /// Refused while an upcoming event of the account has participants.
+  /// Réauthentifie ([password] pour un compte à mot de passe, Google sinon),
+  /// puis supprime le compte : places à venir libérées, historique anonymisé,
+  /// données personnelles effacées, utilisateur Authentication supprimé,
+  /// déconnexion. Refusé tant qu’un événement à venir du compte a des
+  /// participants.
   AsyncResult<void> deleteAccount({String? password});
 
   AsyncResult<void> signOut();

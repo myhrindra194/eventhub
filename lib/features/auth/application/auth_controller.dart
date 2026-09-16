@@ -6,8 +6,9 @@ import 'package:riverpod_annotation/riverpod_annotation.dart' hide AsyncResult;
 
 part 'auth_controller.g.dart';
 
-/// Drives auth actions from the UI. `state` mirrors the in-flight action
-/// (loading / error) while the actual session comes from `authSessionProvider`.
+/// Pilote les actions d’authentification depuis l’UI. `state` reflète
+/// l’action en cours (chargement / erreur), tandis que la session réelle,
+/// elle, provient de `authSessionProvider`.
 @riverpod
 class AuthController extends _$AuthController {
   @override
@@ -50,7 +51,8 @@ class AuthController extends _$AuthController {
     return result;
   }
 
-  /// Also the end of a first Google sign-in, hence its own sign-up method.
+  /// C’est aussi la fin d’une première connexion Google, d’où sa propre
+  /// méthode d’inscription.
   Future<Result<AppUser>> completeProfile({required String name}) async {
     final result = await _run(
       () => ref.read(authRepositoryProvider).completeProfile(name: name),
@@ -59,24 +61,35 @@ class AuthController extends _$AuthController {
     return result;
   }
 
-  /// Turns the organizer space on (verified email, one way).
-  Future<Result<AppUser>> becomeOrganizer({String bio = ''}) => _run(
-    () => ref.read(authRepositoryProvider).becomeOrganizer(bio: bio),
-  );
+  /// Active l’espace organisateur (e-mail vérifié, opération sans retour).
+  Future<Result<AppUser>> becomeOrganizer({String bio = ''}) =>
+      _run(() => ref.read(authRepositoryProvider).becomeOrganizer(bio: bio));
 
-  Future<Result<AppUser>> updateProfile({required String name, String? bio}) =>
-      _run(
-        () => ref
-            .read(authRepositoryProvider)
-            .updateProfile(name: name, bio: bio),
-      );
+  Future<Result<AppUser>> updateProfile({
+    required String name,
+    String? bio,
+    String? photoUrl,
+    String? coverUrl,
+    bool updatePhotos = false,
+  }) => _run(
+    () => ref
+        .read(authRepositoryProvider)
+        .updateProfile(
+          name: name,
+          bio: bio,
+          photoUrl: photoUrl,
+          coverUrl: coverUrl,
+          updatePhotos: updatePhotos,
+        ),
+  );
 
   Future<Result<void>> sendPasswordReset(String email) => _run(
     () => ref.read(authRepositoryProvider).sendPasswordReset(email: email),
   );
 
-  /// Not routed through `_run`: the banner has its own busy state, and a
-  /// resend must not disable unrelated auth buttons.
+  /// Ne passe pas par `_run` : le bandeau a son propre état d’occupation, et
+  /// un renvoi ne doit pas désactiver des boutons d’authentification qui
+  /// n’ont rien à voir.
   Future<Result<void>> sendEmailVerification() =>
       ref.read(authRepositoryProvider).sendEmailVerification();
 
@@ -95,7 +108,8 @@ class AuthController extends _$AuthController {
         ),
   );
 
-  /// After a password-recovery link: no current password to ask for.
+  /// Après un lien de récupération de mot de passe : aucun mot de passe
+  /// actuel à demander.
   Future<Result<void>> setNewPassword(String newPassword) =>
       _run(() => ref.read(authRepositoryProvider).setNewPassword(newPassword));
 

@@ -11,12 +11,13 @@ import 'package:eventhub/features/auth/presentation/widgets/auth_scaffold.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-/// Recovery screen for an account whose Firestore profile is missing.
+/// Écran de rattrapage pour un compte dont le profil Firestore manque.
 ///
-/// This is what an interrupted sign-up (or a deleted `users/{uid}`
-/// document) lands on. The alternative — signing the user out — would be
-/// both hostile and confusing, since their credentials are perfectly valid.
-/// The router pins them here until the profile exists.
+/// C’est là qu’atterrit une inscription interrompue (ou un document
+/// `users/{uid}` supprimé). L’autre option — déconnecter l’utilisateur —
+/// serait à la fois hostile et déroutante, puisque ses identifiants sont
+/// parfaitement valides. Le router l’épingle ici tant que le profil n’existe
+/// pas.
 class CompleteProfileScreen extends ConsumerStatefulWidget {
   const CompleteProfileScreen({super.key});
 
@@ -32,7 +33,7 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
   @override
   void initState() {
     super.initState();
-    // First Google sign-in: the account already has a display name.
+    // Première connexion Google : le compte a déjà un nom d’affichage.
     if (ref.read(authSessionProvider).value case ProfileMissing(
       :final displayName?,
     )) {
@@ -97,7 +98,6 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
               AppButton.primary(
                 label: AppStrings.continueLabel,
                 isLoading: isLoading,
-                elevated: false,
                 onPressed: _submit,
               ),
             ],

@@ -4,18 +4,20 @@ import 'package:eventhub/core/widgets/design_system.dart';
 import 'package:eventhub/features/auth/presentation/widgets/event_mark.dart';
 import 'package:flutter/material.dart';
 
-/// Boot screen.
+/// Écran de démarrage.
 ///
-/// Purely presentational: it is shown while the session stream and the
-/// onboarding flag resolve, and the router's guard decides when to leave it.
+/// Purement présentationnel : il est affiché pendant que le flux de session
+/// et le drapeau d’onboarding se résolvent, et c’est le guard du router qui
+/// décide quand le quitter.
 ///
-/// The mark draws itself — ticket, perforation, then three sparks — while a
-/// progress bar fills underneath. Both are honest about the same thing: the
-/// app is starting. A static logo on a cold start reads as a freeze.
+/// La marque se dessine toute seule — billet, perforation, puis trois
+/// étincelles — pendant qu’une barre de progression se remplit en dessous.
+/// Les deux disent honnêtement la même chose : l’application démarre. Sur un
+/// démarrage à froid, un logo statique se lit comme un gel.
 ///
-/// **No appearance toggle here.** A startup screen is not a settings surface:
-/// it follows the system, and the override lives in Settings, where a user
-/// actually goes looking for it.
+/// **Pas de bascule d’apparence ici.** Un écran de démarrage n’est pas une
+/// surface de réglages : il suit le système, et la surcharge vit dans les
+/// réglages, là où l’utilisateur va effectivement la chercher.
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
@@ -62,8 +64,8 @@ class _SplashScreenState extends State<SplashScreen>
     final t = context.tokens;
     final text = Theme.of(context).textTheme;
 
-    // Respect the OS "reduce motion" setting: show the finished mark rather
-    // than tracing it.
+    // Respecte le réglage système « réduire les animations » : on montre la
+    // marque terminée au lieu de la tracer.
     if (MediaQuery.disableAnimationsOf(context) && !_controller.isCompleted) {
       _controller.value = 1;
     }
@@ -142,8 +144,9 @@ class _SplashScreenState extends State<SplashScreen>
   }
 }
 
-/// Thin determinate bar plus a caption. Determinate on purpose: a spinner
-/// says "something is happening", a bar says "it is nearly done".
+/// Fine barre déterminée, accompagnée d’une légende. Déterminée à dessein :
+/// un spinner dit « il se passe quelque chose », une barre dit « c’est
+/// presque fini ».
 class _BootBar extends StatelessWidget {
   const _BootBar({required this.progress});
 
@@ -160,8 +163,9 @@ class _BootBar extends StatelessWidget {
           child: AnimatedBuilder(
             animation: progress,
             builder: (context, _) => LinearProgressIndicator(
-              // Never starts at zero and never claims to reach the end: the
-              // real work is a network round-trip we cannot measure.
+              // Ne part jamais de zéro et ne prétend jamais atteindre la
+              // fin : le vrai travail est un aller-retour réseau que l’on ne
+              // sait pas mesurer.
               value: 0.08 + progress.value * 0.7,
               minHeight: 4,
               backgroundColor: t.surfaceSunken,

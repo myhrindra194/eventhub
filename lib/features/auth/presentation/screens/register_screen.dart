@@ -11,12 +11,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-/// Sign-up, in one card.
+/// Inscription, en une seule carte.
 ///
-/// No role to pick: like Eventbrite or Airbnb, every account starts as a
-/// participant and opens its organizer space later, from the profile, once
-/// it has something to publish. Four familiar fields, then the app — the
-/// router lands the new account on the welcome screen.
+/// Aucun rôle à choisir : comme chez Eventbrite ou Airbnb, tout compte
+/// démarre en participant et ouvre plus tard son espace organisateur, depuis
+/// le profil, une fois qu’il a quelque chose à publier. Quatre champs
+/// familiers, puis l’application — le router fait atterrir le nouveau compte
+/// sur l’écran de bienvenue.
 class RegisterScreen extends ConsumerStatefulWidget {
   const RegisterScreen({super.key});
 
@@ -63,8 +64,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     switch (result) {
       case Err(:final failure):
         context.showFailure(failure);
-      // Signed in already; the verification banner follows the person
-      // until they open the link.
+      // Déjà connecté ; le bandeau de vérification suit la personne jusqu’à
+      // ce qu’elle ouvre le lien.
       case Ok(:final value) when !value.emailVerified:
         context.showToast(
           AppStrings.confirmEmailSent(value.email),
@@ -156,7 +157,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 label: AppStrings.createAccount,
                 loadingLabel: 'Création du compte',
                 isLoading: isLoading,
-                elevated: false,
                 onPressed: _submit,
               ),
               const GoogleSignInButton(),

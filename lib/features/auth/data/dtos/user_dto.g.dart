@@ -16,6 +16,8 @@ _UserDto _$UserDtoFromJson(Map<String, dynamic> json) => _UserDto(
   ),
   createdAt: const NullableTimestampConverter().fromJson(json['createdAt']),
   bio: json['bio'] as String?,
+  photoUrl: json['photoUrl'] as String?,
+  coverUrl: json['coverUrl'] as String?,
   suspended: json['suspended'] as bool? ?? false,
   welcomedAt: const NullableTimestampConverter().fromJson(json['welcomedAt']),
 );
@@ -26,6 +28,8 @@ Map<String, dynamic> _$UserDtoToJson(_UserDto instance) => <String, dynamic>{
   'role': _$UserRoleEnumMap[instance.role]!,
   'createdAt': const NullableTimestampConverter().toJson(instance.createdAt),
   'bio': instance.bio,
+  'photoUrl': instance.photoUrl,
+  'coverUrl': instance.coverUrl,
   'suspended': instance.suspended,
   'welcomedAt': const NullableTimestampConverter().toJson(instance.welcomedAt),
 };

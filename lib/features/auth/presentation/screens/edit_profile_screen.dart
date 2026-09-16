@@ -1,4 +1,5 @@
 import 'package:eventhub/app/theme/theme.dart';
+import 'package:eventhub/core/errors/failure_exception.dart';
 import 'package:eventhub/core/extensions/context_x.dart';
 import 'package:eventhub/core/l10n/app_strings.dart';
 import 'package:eventhub/core/result/result.dart';
@@ -6,21 +7,24 @@ import 'package:eventhub/core/utils/validators.dart';
 import 'package:eventhub/core/widgets/design_system.dart';
 import 'package:eventhub/features/auth/application/auth_controller.dart';
 import 'package:eventhub/features/auth/application/auth_providers.dart';
+import 'package:eventhub/features/auth/data/datasources/profile_photo_picker.dart';
 import 'package:eventhub/features/auth/presentation/widgets/auth_scaffold.dart';
+import 'package:eventhub/features/auth/presentation/widgets/profile_images_editor.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-/// Edit the signed-in user's profile.
+/// Édite le profil de l’utilisateur connecté.
 ///
-/// The name for everyone, and for organizers the presentation shown on their
-/// public profile. Email and role are shown — greyed, with a padlock and one
-/// sentence of why — rather than hidden: a user looking for "change my
-/// email" should learn it is not possible here instead of wondering whether
-/// they missed a menu.
+/// Le nom pour tout le monde et, pour les organisateurs, la présentation
+/// affichée sur leur profil public. L’e-mail et le rôle sont montrés —
+/// grisés, avec un cadenas et une phrase qui dit pourquoi — plutôt que
+/// cachés : un utilisateur qui cherche « changer mon e-mail » doit apprendre
+/// que ce n’est pas possible ici, au lieu de se demander s’il a raté un menu.
 ///
-/// The avatar above the form follows the name as it is typed; it is the
-/// cheapest possible preview of what the change will look like elsewhere.
+/// L’avatar au-dessus du formulaire suit le nom au fur et à mesure de la
+/// frappe ; c’est l’aperçu le moins coûteux de ce que le changement donnera
+/// ailleurs.
 class EditProfileScreen extends ConsumerStatefulWidget {
   const EditProfileScreen({super.key});
 
@@ -29,12 +33,19 @@ class EditProfileScreen extends ConsumerStatefulWidget {
 }
 
 class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
-  /// Mirrors `isString(bio, 0, 500)` in firestore.rules.
+  /// Reprend `isString(bio, 0, 500)` de firestore.rules.
   static const _bioMax = 500;
 
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _name;
   late final TextEditingController _bio;
+
+  /// Les images telles qu'elles seront enregistrées. Elles ne partent qu'au
+  /// moment du « Enregistrer », comme le nom : choisir une photo ne doit pas
+  /// écrire dans la base avant que l'utilisateur ait validé sa page.
+  String? _photoUrl;
+  String? _coverUrl;
+  bool _photosChanged = false;
 
   @override
   void initState() {
@@ -42,6 +53,8 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     final user = ref.read(currentUserProvider);
     _name = TextEditingController(text: user?.name);
     _bio = TextEditingController(text: user?.bio);
+    _photoUrl = user?.photoUrl;
+    _coverUrl = user?.coverUrl;
   }
 
   @override
@@ -58,14 +71,55 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     final nameChanged = _name.text.trim() != (user?.name ?? '');
     final bioChanged =
         _isOrganizer && _bio.text.trim() != (user?.bio ?? '').trim();
-    return nameChanged || bioChanged;
+    return nameChanged || bioChanged || _photosChanged;
+  }
+
+  /// Choisit, remplace ou retire une des deux images.
+  ///
+  /// Le sélecteur peut refuser une image trop lourde (aucun Cloud Storage
+  /// sur le plan Spark, l'image voyage dans le document) : ce refus porte
+  /// déjà sa phrase, il suffit de la montrer.
+  Future<void> _editImage({required bool cover}) async {
+    final current = cover ? _coverUrl : _photoUrl;
+    final choice = await showPhotoSourceSheet(
+      context,
+      cover: cover,
+      hasImage: current != null && current.isNotEmpty,
+    );
+    if (choice == null || !mounted) return;
+
+    final picker = ref.read(profilePhotoPickerProvider);
+    try {
+      String? encoded;
+      if (choice != PhotoChoice.remove) {
+        final source = choice == PhotoChoice.camera
+            ? PhotoSource.camera
+            : PhotoSource.gallery;
+        encoded = cover
+            ? await picker.pickCover(source)
+            : await picker.pickAvatar(source);
+        // L'utilisateur a refermé la galerie sans rien choisir.
+        if (encoded == null) return;
+      }
+      if (!mounted) return;
+      setState(() {
+        if (cover) {
+          _coverUrl = encoded;
+        } else {
+          _photoUrl = encoded;
+        }
+        _photosChanged = true;
+      });
+    } on FailureException catch (error) {
+      if (mounted) context.showFailure(error.failure);
+    }
   }
 
   String? _validate(String? value) {
     final base = Validators.minLength(value, 2, label: 'Le nom');
     if (base != null) return base;
-    // Mirrors `isString(name, 2, 80)` in firestore.rules: fail here with a
-    // sentence rather than on the server with a permission error.
+    // Reprend `isString(name, 2, 80)` de firestore.rules : échouer ici avec
+    // une phrase plutôt que sur le serveur avec une erreur de permission.
     if (value!.trim().length > 80) return '80 caractères maximum.';
     return null;
   }
@@ -87,6 +141,9 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
         .updateProfile(
           name: _name.text,
           bio: _isOrganizer ? _bio.text.trim() : null,
+          photoUrl: _photoUrl,
+          coverUrl: _coverUrl,
+          updatePhotos: _photosChanged,
         );
 
     if (!mounted) return;
@@ -110,7 +167,13 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       title: AppStrings.editProfileTitle,
       lead: AppStrings.editProfileLead,
       showMark: false,
-      hero: AppAvatar(name: preview, size: 84),
+      hero: ProfileImagesEditor(
+        name: preview,
+        photoUrl: _photoUrl,
+        coverUrl: _coverUrl,
+        onEditPhoto: () => _editImage(cover: false),
+        onEditCover: () => _editImage(cover: true),
+      ),
       onBack: () => context.pop(),
       children: [
         Form(
@@ -208,7 +271,6 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
           label: AppStrings.save,
           loadingLabel: 'Enregistrement…',
           isLoading: isLoading,
-          elevated: false,
           onPressed: _isDirty ? _submit : null,
         ),
       ],
@@ -216,8 +278,8 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   }
 }
 
-/// A read-only row with the same geometry as [FieldRow], so the two groups
-/// line up column for column.
+/// Une ligne en lecture seule ayant la même géométrie que [FieldRow], pour
+/// que les deux groupes s’alignent colonne par colonne.
 class _LockedRow extends StatelessWidget {
   const _LockedRow({
     required this.icon,

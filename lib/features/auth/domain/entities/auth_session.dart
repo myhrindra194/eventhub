@@ -1,10 +1,11 @@
 import 'package:eventhub/features/auth/domain/entities/app_user.dart';
 
-/// Authentication state as seen by the app.
+/// État d’authentification tel que l’application le voit.
 ///
-/// `ProfileMissing` covers a Firebase account whose Firestore profile does not
-/// exist (interrupted sign-up, deleted document). The router sends such users
-/// to the profile-completion screen instead of silently logging them out.
+/// `ProfileMissing` couvre un compte Firebase dont le profil Firestore
+/// n’existe pas (inscription interrompue, document supprimé). Le router
+/// envoie ces utilisateurs vers l’écran de complétion du profil plutôt que de
+/// les déconnecter silencieusement.
 sealed class AuthSession {
   const AuthSession();
 }
@@ -29,7 +30,8 @@ final class ProfileMissing extends AuthSession {
   final String uid;
   final String email;
 
-  /// Provided by Google Sign-In; pre-fills the profile completion form.
+  /// Fourni par Google Sign-In ; pré-remplit le formulaire de complétion du
+  /// profil.
   final String? displayName;
 }
 

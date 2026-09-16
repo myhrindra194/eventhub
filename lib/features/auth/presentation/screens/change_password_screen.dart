@@ -11,16 +11,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-/// Change the password of the signed-in account.
+/// Change le mot de passe du compte connecté.
 ///
-/// Three fields, in the order the user thinks about them: prove it is you,
-/// choose the new one, confirm it. The current password is not ceremony —
-/// re-authenticating with it is what turns the provider's unactionable
-/// "requires-recent-login" into a plain "wrong password", and it is the only
-/// thing between an unlocked phone and a stolen account.
+/// Trois champs, dans l’ordre où l’utilisateur y pense : prouvez que c’est
+/// bien vous, choisissez le nouveau, confirmez-le. Le mot de passe actuel
+/// n’est pas un cérémonial — c’est en se réauthentifiant avec lui que le
+/// « requires-recent-login » du fournisseur, sur lequel on ne peut rien,
+/// devient un banal « mot de passe incorrect » ; et c’est la seule chose qui
+/// sépare un téléphone déverrouillé d’un compte volé.
 ///
-/// In [recovery] mode — opened by a password-reset link — the link already
-/// proved ownership of the address: the current password is not asked for.
+/// En mode [recovery] — ouvert par un lien de réinitialisation — le lien a
+/// déjà prouvé la possession de l’adresse : le mot de passe actuel n’est pas
+/// demandé.
 class ChangePasswordScreen extends ConsumerStatefulWidget {
   const ChangePasswordScreen({super.key, this.recovery = false});
 
@@ -106,9 +108,9 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Two groups, not one: "prove it is you" and "choose the new
-              // one" are separate intentions, and the gap between the cards
-              // says so without a heading.
+              // Deux groupes, et non un seul : « prouvez que c’est vous » et
+              // « choisissez le nouveau » sont deux intentions distinctes, et
+              // l’écart entre les cartes le dit sans avoir besoin d’un titre.
               if (!widget.recovery) ...[
                 FieldGroup(
                   children: [
@@ -154,7 +156,6 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
                 label: AppStrings.changePassword,
                 loadingLabel: 'Mise à jour…',
                 isLoading: isLoading,
-                elevated: false,
                 onPressed: _submit,
               ),
             ],

@@ -3,13 +3,14 @@ import 'package:eventhub/core/errors/failure.dart';
 import 'package:eventhub/core/errors/failure_exception.dart';
 import 'package:eventhub/core/firebase/firestore_paths.dart';
 
-/// Deleting an account without a server: the owner cleans up their own data,
-/// in an order every security rule accepts, before the Authentication user
-/// is deleted.
+/// Supprimer un compte sans serveur : le propriétaire nettoie lui-même ses
+/// propres données, dans un ordre que toutes les règles de sécurité
+/// acceptent, avant que l’utilisateur Authentication ne soit supprimé.
 ///
-/// What stays, on purpose: past reservations and reviews (anonymised — the
-/// organizer's statistics and ratings remain true), and past events of an
-/// organizer (the tickets people hold point at them).
+/// Ce qui reste, volontairement : les réservations et les avis passés
+/// (anonymisés — les statistiques et les notes de l’organisateur restent
+/// justes), ainsi que les événements passés d’un organisateur (les billets
+/// détenus par les participants pointent dessus).
 class AccountRemoteDataSource {
   const AccountRemoteDataSource(this._db);
 
@@ -18,7 +19,7 @@ class AccountRemoteDataSource {
   static const deletedName = 'Compte supprimé';
   static const deletedEmail = 'supprime@eventhub.invalid';
 
-  /// Firestore batches hold at most 500 writes.
+  /// Un batch Firestore n’accepte que 500 écritures au maximum.
   static const _batchLimit = 450;
 
   Future<void> deleteAccountData(
@@ -33,7 +34,8 @@ class AccountRemoteDataSource {
         .limit(200)
         .get();
 
-    // 1. Refused while people hold a ticket for an upcoming event.
+    // 1. Refusé tant que des participants détiennent un billet pour un
+    //    événement à venir.
     for (final event in events.docs) {
       final data = event.data();
       final startsAt = (data['startsAt'] as Timestamp).toDate();
@@ -52,8 +54,8 @@ class AccountRemoteDataSource {
       }
     }
 
-    // 2. Upcoming seats go back to the events, then every ticket is
-    //    anonymised (the rules require the profile to still exist).
+    // 2. Les places à venir retournent aux événements, puis chaque billet
+    //    est anonymisé (les règles exigent que le profil existe encore).
     final reservations = await _db
         .collection(Collections.reservations)
         .where('userId', isEqualTo: uid)
@@ -83,7 +85,7 @@ class AccountRemoteDataSource {
         ),
     ]);
 
-    // 3. Reviews stay, anonymised.
+    // 3. Les avis restent, anonymisés.
     final reviews = await _db
         .collection(Collections.reviews)
         .where('authorId', isEqualTo: uid)
@@ -97,14 +99,12 @@ class AccountRemoteDataSource {
         }),
     ]);
 
-    // 4. Follows give their counter back, one batch each (the rules prove
-    //    the step against the follow document).
+    // 4. Les abonnements rendent leur compteur, un batch chacun (les règles
+    //    prouvent l’opération contre le document d’abonnement).
     final user = _db.collection(Collections.users).doc(uid);
     final following = await user.collection(Collections.following).get();
     for (final follow in following.docs) {
-      final organizer = _db
-          .collection(Collections.organizers)
-          .doc(follow.id);
+      final organizer = _db.collection(Collections.organizers).doc(follow.id);
       final batch = _db.batch()..delete(follow.reference);
       if ((await organizer.get()).exists) {
         batch.update(organizer, {'followerCount': FieldValue.increment(-1)});
@@ -112,7 +112,8 @@ class AccountRemoteDataSource {
       await batch.commit();
     }
 
-    // 5. Organizer: events nobody booked are removed, then the public page.
+    // 5. Organisateur : les événements que personne n’a réservés sont
+    //    supprimés, puis la page publique.
     for (final event in events.docs) {
       final data = event.data();
       final taken =
@@ -128,8 +129,8 @@ class AccountRemoteDataSource {
             .commit();
       }
     }
-    // 6. Personal sub-collections, the public page and its e-mail lookup
-    //    entry, then the profile last.
+    // 6. Les sous-collections personnelles, la page publique et son entrée
+    //    de recherche par e-mail, puis le profil en tout dernier.
     final personal = [
       for (final name in [
         Collections.favorites,
@@ -143,7 +144,9 @@ class AccountRemoteDataSource {
       for (final ref in personal) (WriteBatch batch) => batch.delete(ref),
       if (isOrganizer) ...[
         (WriteBatch batch) => batch.delete(
-          _db.collection(Collections.organizerEmails).doc(DocIds.emailKey(email)),
+          _db
+              .collection(Collections.organizerEmails)
+              .doc(DocIds.emailKey(email)),
         ),
         (WriteBatch batch) =>
             batch.delete(_db.collection(Collections.organizers).doc(uid)),
@@ -166,7 +169,8 @@ class AccountRemoteDataSource {
         final tierId = data['tierId'] as String?;
         tx.update(eventRef, {
           'availablePlaces': FieldValue.increment(1),
-          if (tierId != null) 'tiers.$tierId.available': FieldValue.increment(1),
+          if (tierId != null)
+            'tiers.$tierId.available': FieldValue.increment(1),
         });
       }
       tx.update(reservation, {

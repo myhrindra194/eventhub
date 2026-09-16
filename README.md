@@ -43,6 +43,7 @@
 21. [Contribuer](#21-contribuer)
 
 Documentation détaillée :
+[`EQUIPE.md`](EQUIPE.md) (qui a fait quoi, relevé dans l'historique Git),
 [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) (couches, modèle par
 collection, patterns sans serveur),
 [`docs/SECURITY.md`](docs/SECURITY.md) (modèle de menace, règles, limites,
@@ -135,9 +136,21 @@ décisions), décisions : masquer / rétablir un avis (la note suit), retirer un
 événement (réservations annulées), suspendre / réactiver un compte. Les
 administrateurs se gèrent **dans la console Firebase** ([§5.6](#56-premier-administrateur)).
 
-### 2.5 Transverse
+### 2.5 Profil et espaces
 
-Layout **responsive** (téléphone, tablette, web, bureau), bandeau hors ligne,
+Un compte, deux espaces : tout le monde s'inscrit participant, et « Devenir
+organisateur » ouvre le second espace depuis le profil (email vérifié exigé,
+sens unique) ; une entrée de menu fait ensuite l'aller-retour entre les deux.
+Le profil porte une **photo** et une **photo de couverture**, choisies dans la
+galerie ou prises à l'appareil, rognées et compressées sur l'appareil puis
+enregistrées dans le document Firestore — Cloud Storage exigerait le plan
+Blaze ([§18](#18-décisions-dingénierie)).
+
+### 2.6 Transverse
+
+Layout **responsive** (téléphone, tablette, web, bureau) : barre de navigation
+en bas sur téléphone, rail latéral au-delà de 600 px et rail étendu avec
+libellés au-delà de 1024 px. Bandeau hors ligne,
 cache Firestore persistant, rapport de plantage, consentement à la mesure
 d'audience.
 

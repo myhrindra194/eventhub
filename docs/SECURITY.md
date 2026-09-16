@@ -58,9 +58,16 @@
 * `get` : soi ou admin. `list` : **jamais**, admins compris (pas d'annuaire).
 * `create` : soi, clés exactes, `email` = celui du jeton, `role = participant`,
   `createdAt` serveur.
-* `update` : trois branches exclusives — présentation (nom, bio, `welcomedAt`
-  posé une fois) ; passage organisateur prouvé par `existsAfter(organizers/uid)` ;
-  suspension par un admin (`onlyChanged(['suspended','updatedAt'])`).
+* `update` : trois branches exclusives — présentation (nom, bio, photos,
+  `welcomedAt` posé une fois) ; passage organisateur prouvé par
+  `existsAfter(organizers/uid)` ; suspension par un admin
+  (`onlyChanged(['suspended','updatedAt'])`).
+* **Photos** : `photoUrl` et `coverUrl` acceptent une URL `https://` ou une
+  image embarquée `data:image/(jpeg|png|webp);base64,…`, bornée à 140 000 et
+  280 000 caractères. Deux raisons à cette forme : Cloud Storage exige le plan
+  Blaze, et un document Firestore plafonne à 1 Mio — une image non bornée
+  rendrait le profil illisible. Tout ce qui n'est ni https ni `data:image`
+  (un `javascript:` par exemple) est refusé.
 * `delete` : soi (suppression de compte).
 * Sous-collections `private`, `devices`, `favorites` : propriétaire seul,
   formes strictes (`private/notifications` est le seul document autorisé).
@@ -68,9 +75,11 @@
   `followerCount` de l'organisateur bouge de ±1 dans le même batch ; pas de
   suivi de soi-même.
 * `notifications` : lecture et suppression par le destinataire ; création par
-  l'acteur sous preuve (8 types : bienvenue, réservation, annulation, liste
-  d'attente, invitation, arrivée / retrait d'équipe, modération) ; seule mise à
-  jour possible : `readAt` posé une fois à l'heure serveur.
+  l'acteur sous preuve (bienvenue, réservation, annulation, liste d'attente,
+  invitation, arrivée / retrait d'équipe, et les cinq avis de modération :
+  événement retiré, avis masqué, avis rétabli, compte suspendu, compte
+  réactivé — ces cinq-là réservés aux admins) ; seule mise à jour possible :
+  `readAt` posé une fois à l'heure serveur.
 
 ### `admins/{uid}`
 Lecture de soi, liste par les admins, **aucune écriture**.
@@ -193,6 +202,7 @@ fixtures sont posées règles désactivées (`seed`).
 | `events.rules.test.js` | publication, édition, suppression, types de billets, équipe, invitations |
 | `reservations.rules.test.js` | réserver, annuler, re-réserver, survente, liste d'attente, entrée, anonymisation |
 | `social.rules.test.js` | abonnements, avis et note, signalements, modération, notifications, preuve sociale |
+| `team.rules.test.js` | entrée et sortie d'équipe (invitation acceptée dans le même commit), annulation d'invitation, décisions de modération (retrait d'événement, suspension), compte suspendu |
 
 Elle tourne en CI (job `firestore-rules`) sans aucun secret. **Toute
 modification des règles arrive avec son test** (cas autorisé et attaque

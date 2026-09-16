@@ -36,6 +36,11 @@
 
 ## 2. Historique des livraisons
 
+> **Le backend du projet est Firebase** — Firebase Auth et Cloud Firestore, sur
+> le plan Spark. La ligne v2.0 ci-dessous est une parenthèse close, conservée
+> pour mémoire : plus aucune ligne de Supabase ne subsiste dans le dépôt, ni
+> dans le code, ni dans les dépendances, ni dans la configuration.
+
 | Version | Livraison |
 |---|---|
 | v1.0 | Inscription, catalogue éditorialisé, recherche et filtres, réservation atomique, portefeuille, tableau de bord organisateur, thème clair/sombre |
@@ -44,7 +49,7 @@
 | v1.3 | Google, vérification d'email, suppression de compte, centre de notifications, favoris (F-05), liste d'attente (F-06), avis (F-09), contrôle à l'entrée (F-01), pagination (F-04) |
 | v1.4 | Profils organisateurs et abonnements (F-10), preuve sociale (F-07), page publique et App Links (F-08), export CSV fichier (F-15), « Pour vous » (F-18), signalement et modération (F-19) |
 | v1.5 – v1.6 | Co-organisateurs (F-16), types de billets (F-12), billetterie Stripe (F-11) |
-| v2.0 | Migration vers Supabase (Postgres, RLS, fonctions SQL, Edge Functions) |
+| v2.0 | *Parenthèse Supabase* (Postgres, RLS, fonctions SQL, Edge Functions) — **abandonnée**, puis intégralement retirée en v2.1 |
 | **v2.1** | **Retour à Firebase Auth + Cloud Firestore sur le plan Spark** : Supabase retiré ; règles Firestore comme unique backend (preuves `getAfter`/`existsAfter`, identifiants déterministes), notifications écrites par l'acteur, rappels J-1 locaux, suppression de compte côté client, images par URL, TTL des notifications, page `/e/{id}` par l'API REST, « un compte, deux espaces » (bouton « Devenir organisateur »), layout responsive multiplateforme (Android, iOS, web, Windows, macOS), suite de règles sur émulateur en CI. **Désactivés faute de serveur** : paiements (F-11), push app fermée (F-02 partiel), uploads d'images |
 
 **Pourquoi ce retour.** Le critère décisif est le coût : aucun service payant.

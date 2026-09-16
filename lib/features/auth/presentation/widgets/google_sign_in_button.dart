@@ -6,6 +6,7 @@ import 'package:eventhub/core/l10n/app_strings.dart';
 import 'package:eventhub/core/result/result.dart';
 import 'package:eventhub/core/widgets/design_system.dart';
 import 'package:eventhub/features/auth/application/auth_controller.dart';
+import 'package:eventhub/features/auth/domain/entities/user_role.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -17,7 +18,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 /// pour la connexion par mot de passe — une première connexion Google
 /// atterrit sur le choix du rôle.
 class GoogleSignInButton extends ConsumerStatefulWidget {
-  const GoogleSignInButton({super.key});
+  const GoogleSignInButton({super.key, this.intendedRole, this.beforeSignIn});
+
+  /// Rôle choisi sur l'écran d'inscription, appliqué si la connexion Google
+  /// crée le compte. Sans objet sur l'écran de connexion.
+  final UserRole? intendedRole;
+
+  /// Garde facultative : l'inscription s'en sert pour exiger le rôle avant
+  /// d'ouvrir le sélecteur Google. Renvoie `false` pour ne rien faire.
+  final bool Function()? beforeSignIn;
 
   @override
   ConsumerState<GoogleSignInButton> createState() => _GoogleSignInButtonState();
@@ -27,10 +36,13 @@ class _GoogleSignInButtonState extends ConsumerState<GoogleSignInButton> {
   bool _busy = false;
 
   Future<void> _signIn() async {
+    if (!(widget.beforeSignIn?.call() ?? true)) return;
     setState(() => _busy = true);
     final result = await ref
         .read(authControllerProvider.notifier)
-        .signInWithGoogle();
+        .signInWithGoogle(
+          intendedRole: widget.intendedRole ?? UserRole.participant,
+        );
     if (!mounted) return;
     setState(() => _busy = false);
     if (result case Err(:final failure)) {

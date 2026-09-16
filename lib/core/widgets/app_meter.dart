@@ -76,13 +76,22 @@ class CapacityMeter extends StatelessWidget {
                 color: onImage ? Colors.white : tone.fg,
               ),
               const SizedBox(width: AppSpacing.xs),
-              Text(
-                label,
-                style: text.labelSmall?.copyWith(
-                  color: onImage ? Colors.white : tone.fg,
-                  letterSpacing: 0.2,
+              // Le libellé cède (ellipse) avant le compteur : sur une carte de
+              // 230 dp ou avec un texte système agrandi, « 100 places
+              // restantes » et « 0/100 » ne tiennent plus côte à côte, et
+              // c'est le chiffre qui porte l'information la plus dense.
+              Flexible(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: text.labelSmall?.copyWith(
+                    color: onImage ? Colors.white : tone.fg,
+                    letterSpacing: 0.2,
+                  ),
                 ),
               ),
+              const SizedBox(width: AppSpacing.sm),
               const Spacer(),
               Text(
                 '${capacity - available}/$capacity',

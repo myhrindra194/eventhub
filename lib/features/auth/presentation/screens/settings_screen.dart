@@ -4,6 +4,7 @@ import 'package:eventhub/core/config/app_config.dart';
 import 'package:eventhub/core/extensions/context_x.dart';
 import 'package:eventhub/core/l10n/app_strings.dart';
 import 'package:eventhub/core/result/result.dart';
+import 'package:eventhub/core/widgets/appearance_settings.dart';
 import 'package:eventhub/core/widgets/design_system.dart';
 import 'package:eventhub/features/auth/application/auth_providers.dart';
 import 'package:eventhub/features/auth/presentation/widgets/delete_account_sheet.dart';
@@ -45,7 +46,7 @@ class SettingsScreen extends ConsumerWidget {
         children: [
           const SectionLabel(AppStrings.appearance),
           const SizedBox(height: AppSpacing.md),
-          const _ThemeSelector(),
+          const AppearanceSettings(),
           const SizedBox(height: AppSpacing.xxl),
           const SectionLabel(AppStrings.account),
           const SizedBox(height: AppSpacing.md),
@@ -244,66 +245,6 @@ class _AnalyticsSwitch extends ConsumerWidget {
           AppStrings.analyticsSettingHint,
           style: context.textTheme.bodySmall,
         ),
-      ),
-    );
-  }
-}
-
-/// Sélecteur d’apparence à trois positions.
-///
-/// « Automatique » est proposé en premier et fait office de valeur par
-/// défaut : une application qui contrarie le réglage système est une
-/// application qu’on remarque pour de mauvaises raisons.
-class _ThemeSelector extends ConsumerWidget {
-  const _ThemeSelector();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final current = ref.watch(themeModeControllerProvider);
-    final t = context.tokens;
-
-    return AppSurface(
-      padding: const EdgeInsets.all(AppSpacing.md),
-      child: Row(
-        children: [
-          for (final mode in ThemeMode.values)
-            Expanded(
-              child: GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTap: () =>
-                    ref.read(themeModeControllerProvider.notifier).set(mode),
-                child: AnimatedContainer(
-                  duration: AppMotion.short,
-                  curve: AppMotion.standard,
-                  margin: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
-                  padding: const EdgeInsets.symmetric(vertical: AppSpacing.lg),
-                  decoration: BoxDecoration(
-                    color: mode == current ? t.brandSoft : t.surfaceSunken,
-                    borderRadius: AppRadius.brButton,
-                    border: Border.all(
-                      color: mode == current ? t.brand : Colors.transparent,
-                    ),
-                  ),
-                  child: Column(
-                    children: [
-                      Icon(
-                        mode.icon,
-                        size: 22,
-                        color: mode == current ? t.brand : t.textSecondary,
-                      ),
-                      const SizedBox(height: AppSpacing.sm),
-                      Text(
-                        mode.label,
-                        style: context.textTheme.titleSmall?.copyWith(
-                          color: mode == current ? t.brand : t.textSecondary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-        ],
       ),
     );
   }

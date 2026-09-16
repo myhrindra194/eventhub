@@ -48,72 +48,7 @@ final class AuthRepositoryProvider
   }
 }
 
-String _$authRepositoryHash() => r'9b1df2d80c1dbbaab2a766ca7070de8954557fa1';
-
-/// Le sélecteur de photo de profil.
-///
-/// Exposé comme dépendance plutôt qu'instancié dans l'écran : il ouvre la
-/// galerie ou l'appareil photo par un canal de plateforme, donc un test de
-/// widget doit pouvoir le remplacer pour ne rien ouvrir du tout.
-
-@ProviderFor(profilePhotoPicker)
-final profilePhotoPickerProvider = ProfilePhotoPickerProvider._();
-
-/// Le sélecteur de photo de profil.
-///
-/// Exposé comme dépendance plutôt qu'instancié dans l'écran : il ouvre la
-/// galerie ou l'appareil photo par un canal de plateforme, donc un test de
-/// widget doit pouvoir le remplacer pour ne rien ouvrir du tout.
-
-final class ProfilePhotoPickerProvider
-    extends
-        $FunctionalProvider<
-          ProfilePhotoPicker,
-          ProfilePhotoPicker,
-          ProfilePhotoPicker
-        >
-    with $Provider<ProfilePhotoPicker> {
-  /// Le sélecteur de photo de profil.
-  ///
-  /// Exposé comme dépendance plutôt qu'instancié dans l'écran : il ouvre la
-  /// galerie ou l'appareil photo par un canal de plateforme, donc un test de
-  /// widget doit pouvoir le remplacer pour ne rien ouvrir du tout.
-  ProfilePhotoPickerProvider._()
-    : super(
-        from: null,
-        argument: null,
-        retry: null,
-        name: r'profilePhotoPickerProvider',
-        isAutoDispose: false,
-        dependencies: null,
-        $allTransitiveDependencies: null,
-      );
-
-  @override
-  String debugGetCreateSourceHash() => _$profilePhotoPickerHash();
-
-  @$internal
-  @override
-  $ProviderElement<ProfilePhotoPicker> $createElement(
-    $ProviderPointer pointer,
-  ) => $ProviderElement(pointer);
-
-  @override
-  ProfilePhotoPicker create(Ref ref) {
-    return profilePhotoPicker(ref);
-  }
-
-  /// {@macro riverpod.override_with_value}
-  Override overrideWithValue(ProfilePhotoPicker value) {
-    return $ProviderOverride(
-      origin: this,
-      providerOverride: $SyncValueProvider<ProfilePhotoPicker>(value),
-    );
-  }
-}
-
-String _$profilePhotoPickerHash() =>
-    r'3cc98d902459f1f812fb0e7e526454ef948c2f27';
+String _$authRepositoryHash() => r'269c7668db16ad47e68492f5e42b19c8ce70784a';
 
 /// Source de vérité unique pour « qui est connecté ». Maintenue en vie
 /// pendant toute la durée de vie de l’application : le router et chacune des

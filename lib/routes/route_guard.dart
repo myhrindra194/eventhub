@@ -52,7 +52,7 @@ class RouteGuardState {
 ///     épinglé sur `/complete-profile` (pas d’échappatoire, pas d’impasse).
 ///  5. **Connecté** — les destinations publiques renvoient vers l’accueil du
 ///     rôle, et chaque rôle est confiné à son propre espace (`/organizer/**`
-///     face au reste).
+///     face au reste) : les deux rôles sont exclusifs.
 ///
 /// **Liens profonds.** Un lien partagé démarre le plus souvent l’application
 /// à froid, c’est-à-dire qu’il arrive pendant le démarrage ou hors session.
@@ -155,10 +155,10 @@ abstract final class RouteGuard {
     // niveau des routes.
     if (location.startsWith('/e/')) return null;
 
-    // Un compte, deux espaces : un organisateur navigue et réserve aussi en
-    // tant que participant ; l’espace organisateur reste fermé tant qu’il
-    // n’a pas été activé.
-    if (AppRoutes.isOrganizerArea(location) && !isOrganizer) return home;
+    // Deux rôles exclusifs, fixés à l’inscription : chacun reste dans son
+    // espace. Un participant n’entre pas dans l’espace organisateur ; un
+    // organisateur ne réserve pas et reste dans le sien.
+    if (AppRoutes.isOrganizerArea(location) != isOrganizer) return home;
 
     return null;
   }

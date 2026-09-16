@@ -28,7 +28,10 @@ mixin _$AppUser {
 /// Firestore, où personne ne pourrait être habilité à l’écrire. Il donne
 /// accès à l’espace de modération ; le serveur revérifie le claim à
 /// chaque appel.
- bool get isAdmin;
+ bool get isAdmin;/// Le rôle coché dans le formulaire d'inscription, conservé tel quel.
+/// Égal à [role] pour tout compte récent — les deux rôles sont fixés à
+/// l'inscription — ; `null` pour les comptes créés avant la question.
+ UserRole? get intendedRole;
 /// Create a copy of AppUser
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -40,20 +43,20 @@ $AppUserCopyWith<AppUser> get copyWith => _$AppUserCopyWithImpl<AppUser>(this as
 @override
 bool operator ==(Object other) {
   final _this = this as AppUser;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is AppUser&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.name, _this.name) || other.name == _this.name)&&(identical(other.email, _this.email) || other.email == _this.email)&&(identical(other.role, _this.role) || other.role == _this.role)&&(identical(other.createdAt, _this.createdAt) || other.createdAt == _this.createdAt)&&(identical(other.bio, _this.bio) || other.bio == _this.bio)&&(identical(other.photoUrl, _this.photoUrl) || other.photoUrl == _this.photoUrl)&&(identical(other.coverUrl, _this.coverUrl) || other.coverUrl == _this.coverUrl)&&(identical(other.emailVerified, _this.emailVerified) || other.emailVerified == _this.emailVerified)&&(identical(other.isAdmin, _this.isAdmin) || other.isAdmin == _this.isAdmin));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is AppUser&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.name, _this.name) || other.name == _this.name)&&(identical(other.email, _this.email) || other.email == _this.email)&&(identical(other.role, _this.role) || other.role == _this.role)&&(identical(other.createdAt, _this.createdAt) || other.createdAt == _this.createdAt)&&(identical(other.bio, _this.bio) || other.bio == _this.bio)&&(identical(other.photoUrl, _this.photoUrl) || other.photoUrl == _this.photoUrl)&&(identical(other.coverUrl, _this.coverUrl) || other.coverUrl == _this.coverUrl)&&(identical(other.emailVerified, _this.emailVerified) || other.emailVerified == _this.emailVerified)&&(identical(other.isAdmin, _this.isAdmin) || other.isAdmin == _this.isAdmin)&&(identical(other.intendedRole, _this.intendedRole) || other.intendedRole == _this.intendedRole));
 }
 
 
 @override
 int get hashCode {
   final _this = this as AppUser;
-  return Object.hash(runtimeType,_this.id,_this.name,_this.email,_this.role,_this.createdAt,_this.bio,_this.photoUrl,_this.coverUrl,_this.emailVerified,_this.isAdmin);
+  return Object.hash(runtimeType,_this.id,_this.name,_this.email,_this.role,_this.createdAt,_this.bio,_this.photoUrl,_this.coverUrl,_this.emailVerified,_this.isAdmin,_this.intendedRole);
 }
 
 @override
 String toString() {
   final _this = this as AppUser;
-  return 'AppUser(id: ${_this.id}, name: ${_this.name}, email: ${_this.email}, role: ${_this.role}, createdAt: ${_this.createdAt}, bio: ${_this.bio}, photoUrl: ${_this.photoUrl}, coverUrl: ${_this.coverUrl}, emailVerified: ${_this.emailVerified}, isAdmin: ${_this.isAdmin})';
+  return 'AppUser(id: ${_this.id}, name: ${_this.name}, email: ${_this.email}, role: ${_this.role}, createdAt: ${_this.createdAt}, bio: ${_this.bio}, photoUrl: ${_this.photoUrl}, coverUrl: ${_this.coverUrl}, emailVerified: ${_this.emailVerified}, isAdmin: ${_this.isAdmin}, intendedRole: ${_this.intendedRole})';
 }
 
 
@@ -64,7 +67,7 @@ abstract mixin class $AppUserCopyWith<$Res>  {
   factory $AppUserCopyWith(AppUser value, $Res Function(AppUser) _then) = _$AppUserCopyWithImpl;
 @useResult
 $Res call({
- String id, String name, String email, UserRole role, DateTime? createdAt, String? bio, String? photoUrl, String? coverUrl, bool emailVerified, bool isAdmin
+ String id, String name, String email, UserRole role, DateTime? createdAt, String? bio, String? photoUrl, String? coverUrl, bool emailVerified, bool isAdmin, UserRole? intendedRole
 });
 
 
@@ -81,7 +84,7 @@ class _$AppUserCopyWithImpl<$Res>
 
 /// Create a copy of AppUser
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? name = null,Object? email = null,Object? role = null,Object? createdAt = freezed,Object? bio = freezed,Object? photoUrl = freezed,Object? coverUrl = freezed,Object? emailVerified = null,Object? isAdmin = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? name = null,Object? email = null,Object? role = null,Object? createdAt = freezed,Object? bio = freezed,Object? photoUrl = freezed,Object? coverUrl = freezed,Object? emailVerified = null,Object? isAdmin = null,Object? intendedRole = freezed,}) {
   return _then(AppUser(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
@@ -93,7 +96,8 @@ as String?,photoUrl: freezed == photoUrl ? _self.photoUrl : photoUrl // ignore: 
 as String?,coverUrl: freezed == coverUrl ? _self.coverUrl : coverUrl // ignore: cast_nullable_to_non_nullable
 as String?,emailVerified: null == emailVerified ? _self.emailVerified : emailVerified // ignore: cast_nullable_to_non_nullable
 as bool,isAdmin: null == isAdmin ? _self.isAdmin : isAdmin // ignore: cast_nullable_to_non_nullable
-as bool,
+as bool,intendedRole: freezed == intendedRole ? _self.intendedRole : intendedRole // ignore: cast_nullable_to_non_nullable
+as UserRole?,
   ));
 }
 
@@ -178,10 +182,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String name,  String email,  UserRole role,  DateTime? createdAt,  String? bio,  String? photoUrl,  String? coverUrl,  bool emailVerified,  bool isAdmin)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String name,  String email,  UserRole role,  DateTime? createdAt,  String? bio,  String? photoUrl,  String? coverUrl,  bool emailVerified,  bool isAdmin,  UserRole? intendedRole)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _AppUser() when $default != null:
-return $default(_that.id,_that.name,_that.email,_that.role,_that.createdAt,_that.bio,_that.photoUrl,_that.coverUrl,_that.emailVerified,_that.isAdmin);case _:
+return $default(_that.id,_that.name,_that.email,_that.role,_that.createdAt,_that.bio,_that.photoUrl,_that.coverUrl,_that.emailVerified,_that.isAdmin,_that.intendedRole);case _:
   return orElse();
 
 }
@@ -199,10 +203,10 @@ return $default(_that.id,_that.name,_that.email,_that.role,_that.createdAt,_that
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String name,  String email,  UserRole role,  DateTime? createdAt,  String? bio,  String? photoUrl,  String? coverUrl,  bool emailVerified,  bool isAdmin)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String name,  String email,  UserRole role,  DateTime? createdAt,  String? bio,  String? photoUrl,  String? coverUrl,  bool emailVerified,  bool isAdmin,  UserRole? intendedRole)  $default,) {final _that = this;
 switch (_that) {
 case _AppUser():
-return $default(_that.id,_that.name,_that.email,_that.role,_that.createdAt,_that.bio,_that.photoUrl,_that.coverUrl,_that.emailVerified,_that.isAdmin);case _:
+return $default(_that.id,_that.name,_that.email,_that.role,_that.createdAt,_that.bio,_that.photoUrl,_that.coverUrl,_that.emailVerified,_that.isAdmin,_that.intendedRole);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -219,10 +223,10 @@ return $default(_that.id,_that.name,_that.email,_that.role,_that.createdAt,_that
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String name,  String email,  UserRole role,  DateTime? createdAt,  String? bio,  String? photoUrl,  String? coverUrl,  bool emailVerified,  bool isAdmin)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String name,  String email,  UserRole role,  DateTime? createdAt,  String? bio,  String? photoUrl,  String? coverUrl,  bool emailVerified,  bool isAdmin,  UserRole? intendedRole)?  $default,) {final _that = this;
 switch (_that) {
 case _AppUser() when $default != null:
-return $default(_that.id,_that.name,_that.email,_that.role,_that.createdAt,_that.bio,_that.photoUrl,_that.coverUrl,_that.emailVerified,_that.isAdmin);case _:
+return $default(_that.id,_that.name,_that.email,_that.role,_that.createdAt,_that.bio,_that.photoUrl,_that.coverUrl,_that.emailVerified,_that.isAdmin,_that.intendedRole);case _:
   return null;
 
 }
@@ -234,7 +238,7 @@ return $default(_that.id,_that.name,_that.email,_that.role,_that.createdAt,_that
 
 
 class _AppUser extends AppUser {
-  const _AppUser({required this.id, required this.name, required this.email, required this.role, this.createdAt, this.bio, this.photoUrl, this.coverUrl, this.emailVerified = false, this.isAdmin = false}): super._();
+  const _AppUser({required this.id, required this.name, required this.email, required this.role, this.createdAt, this.bio, this.photoUrl, this.coverUrl, this.emailVerified = false, this.isAdmin = false, this.intendedRole}): super._();
   
 
 @override final  String id;
@@ -260,6 +264,10 @@ class _AppUser extends AppUser {
 /// accès à l’espace de modération ; le serveur revérifie le claim à
 /// chaque appel.
 @override@JsonKey() final  bool isAdmin;
+/// Le rôle coché dans le formulaire d'inscription, conservé tel quel.
+/// Égal à [role] pour tout compte récent — les deux rôles sont fixés à
+/// l'inscription — ; `null` pour les comptes créés avant la question.
+@override final  UserRole? intendedRole;
 
 /// Create a copy of AppUser
 /// with the given fields replaced by the non-null parameter values.
@@ -271,18 +279,18 @@ _$AppUserCopyWith<_AppUser> get copyWith => __$AppUserCopyWithImpl<_AppUser>(thi
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is _AppUser&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.email, email) || other.email == email)&&(identical(other.role, role) || other.role == role)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.bio, bio) || other.bio == bio)&&(identical(other.photoUrl, photoUrl) || other.photoUrl == photoUrl)&&(identical(other.coverUrl, coverUrl) || other.coverUrl == coverUrl)&&(identical(other.emailVerified, emailVerified) || other.emailVerified == emailVerified)&&(identical(other.isAdmin, isAdmin) || other.isAdmin == isAdmin));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _AppUser&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.email, email) || other.email == email)&&(identical(other.role, role) || other.role == role)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.bio, bio) || other.bio == bio)&&(identical(other.photoUrl, photoUrl) || other.photoUrl == photoUrl)&&(identical(other.coverUrl, coverUrl) || other.coverUrl == coverUrl)&&(identical(other.emailVerified, emailVerified) || other.emailVerified == emailVerified)&&(identical(other.isAdmin, isAdmin) || other.isAdmin == isAdmin)&&(identical(other.intendedRole, intendedRole) || other.intendedRole == intendedRole));
 }
 
 
 @override
 int get hashCode {
-    return Object.hash(runtimeType,id,name,email,role,createdAt,bio,photoUrl,coverUrl,emailVerified,isAdmin);
+    return Object.hash(runtimeType,id,name,email,role,createdAt,bio,photoUrl,coverUrl,emailVerified,isAdmin,intendedRole);
 }
 
 @override
 String toString() {
-    return 'AppUser(id: $id, name: $name, email: $email, role: $role, createdAt: $createdAt, bio: $bio, photoUrl: $photoUrl, coverUrl: $coverUrl, emailVerified: $emailVerified, isAdmin: $isAdmin)';
+    return 'AppUser(id: $id, name: $name, email: $email, role: $role, createdAt: $createdAt, bio: $bio, photoUrl: $photoUrl, coverUrl: $coverUrl, emailVerified: $emailVerified, isAdmin: $isAdmin, intendedRole: $intendedRole)';
 }
 
 
@@ -293,7 +301,7 @@ abstract mixin class _$AppUserCopyWith<$Res> implements $AppUserCopyWith<$Res> {
   factory _$AppUserCopyWith(_AppUser value, $Res Function(_AppUser) _then) = __$AppUserCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String name, String email, UserRole role, DateTime? createdAt, String? bio, String? photoUrl, String? coverUrl, bool emailVerified, bool isAdmin
+ String id, String name, String email, UserRole role, DateTime? createdAt, String? bio, String? photoUrl, String? coverUrl, bool emailVerified, bool isAdmin, UserRole? intendedRole
 });
 
 
@@ -310,7 +318,7 @@ class __$AppUserCopyWithImpl<$Res>
 
 /// Create a copy of AppUser
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? name = null,Object? email = null,Object? role = null,Object? createdAt = freezed,Object? bio = freezed,Object? photoUrl = freezed,Object? coverUrl = freezed,Object? emailVerified = null,Object? isAdmin = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? name = null,Object? email = null,Object? role = null,Object? createdAt = freezed,Object? bio = freezed,Object? photoUrl = freezed,Object? coverUrl = freezed,Object? emailVerified = null,Object? isAdmin = null,Object? intendedRole = freezed,}) {
   return _then(_AppUser(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
@@ -322,7 +330,8 @@ as String?,photoUrl: freezed == photoUrl ? _self.photoUrl : photoUrl // ignore: 
 as String?,coverUrl: freezed == coverUrl ? _self.coverUrl : coverUrl // ignore: cast_nullable_to_non_nullable
 as String?,emailVerified: null == emailVerified ? _self.emailVerified : emailVerified // ignore: cast_nullable_to_non_nullable
 as bool,isAdmin: null == isAdmin ? _self.isAdmin : isAdmin // ignore: cast_nullable_to_non_nullable
-as bool,
+as bool,intendedRole: freezed == intendedRole ? _self.intendedRole : intendedRole // ignore: cast_nullable_to_non_nullable
+as UserRole?,
   ));
 }
 

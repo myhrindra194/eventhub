@@ -6,6 +6,7 @@ import 'package:eventhub/features/admin/data/moderation_repository_impl.dart';
 import 'package:eventhub/features/admin/domain/moderation.dart';
 import 'package:eventhub/features/admin/domain/moderation_repository.dart';
 import 'package:eventhub/features/auth/application/auth_providers.dart';
+import 'package:eventhub/features/notifications/application/push_dispatcher_provider.dart';
 import 'package:eventhub/features/reviews/application/review_providers.dart';
 import 'package:eventhub/features/reviews/domain/review.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart' hide AsyncResult;
@@ -17,6 +18,7 @@ ModerationRepository moderationRepository(Ref ref) => ModerationRepositoryImpl(
   ModerationRemoteDataSource(
     ref.watch(firestoreProvider),
     ref.watch(firebaseAuthProvider),
+    push: ref.watch(pushDispatcherProvider),
   ),
 );
 

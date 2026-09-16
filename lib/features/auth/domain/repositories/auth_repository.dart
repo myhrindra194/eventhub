@@ -1,14 +1,15 @@
 import 'package:eventhub/core/result/result.dart';
 import 'package:eventhub/features/auth/domain/entities/app_user.dart';
 import 'package:eventhub/features/auth/domain/entities/auth_session.dart';
+import 'package:eventhub/features/auth/domain/entities/user_role.dart';
 
 /// Contrat d’authentification et de persistance du profil.
 /// Les implémentations ne doivent jamais lever d’exception ; tout échec est
 /// un `Result.err`.
 ///
-/// Un compte, deux espaces (le modèle Eventbrite / Airbnb) : tout compte
-/// démarre en participant et active plus tard l’espace organisateur via
-/// [becomeOrganizer]. Personne ne choisit de rôle à l’inscription.
+/// Deux rôles exclusifs, choisis à l’inscription et définitifs : un compte
+/// est participant **ou** organisateur. Aucun passage de l’un à l’autre
+/// n’existe, ni dans ce contrat ni dans les règles de sécurité.
 abstract interface class AuthRepository {
   /// Émet à chaque changement d’authentification ou de profil (y compris la
   /// vérification de l’e-mail). Ne se termine jamais.
@@ -21,24 +22,25 @@ abstract interface class AuthRepository {
 
   /// Compte Google. Une première connexion n’a pas encore de profil : la
   /// session passe alors en [ProfileMissing] et le router réclame un nom.
-  AsyncResult<void> signInWithGoogle();
+  /// [intendedRole] ne sert qu'à une première connexion Google, qui crée le
+  /// compte : c'est le rôle choisi sur l'écran d'inscription.
+  AsyncResult<void> signInWithGoogle({
+    UserRole intendedRole = UserRole.participant,
+  });
 
-  /// Crée le compte et son profil participant, connecte l’utilisateur et
-  /// envoie l’e-mail de vérification (un échec d’envoi ne fait jamais échouer
-  /// l’inscription ; l’utilisateur peut le redemander).
+  /// Crée le compte et son profil, connecte l’utilisateur et demande l’envoi
+  /// du mail de bienvenue. Aucun lien de vérification ne part ici : il n’est
+  /// demandé qu’au moment de publier ou d’ouvrir l’espace organisateur.
   AsyncResult<AppUser> signUp({
     required String name,
     required String email,
     required String password,
+    required UserRole intendedRole,
   });
 
   /// Crée le profil participant d’un compte déjà authentifié (chemin de
   /// rattrapage pour [ProfileMissing], et première connexion Google).
   AsyncResult<AppUser> completeProfile({required String name});
-
-  /// Active l’espace organisateur : e-mail vérifié obligatoire, opération
-  /// sans retour. Crée la page publique d’organisateur dans le même batch.
-  AsyncResult<AppUser> becomeOrganizer({String bio = ''});
 
   /// Met à jour les champs de présentation du profil de l’utilisateur
   /// connecté (et de sa page publique d’organisateur).

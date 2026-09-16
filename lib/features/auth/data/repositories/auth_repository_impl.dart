@@ -21,7 +21,9 @@ class AuthRepositoryImpl implements AuthRepository {
     required AccountRemoteDataSource accountDataSource,
     required Duration profileGracePeriod,
     required DateTime Function() clock,
-  }) : _auth = authDataSource,
+    Future<void> Function()? onAccountCreated,
+  }) : _onAccountCreated = onAccountCreated,
+       _auth = authDataSource,
        _users = userDataSource,
        _account = accountDataSource,
        _profileGracePeriod = profileGracePeriod,
@@ -33,12 +35,37 @@ class AuthRepositoryImpl implements AuthRepository {
   final Duration _profileGracePeriod;
   final DateTime Function() _clock;
 
-  /// Comptes dont le profil manquant est déjà en cours de création.
+  /// Appelé une fois le profil d'un nouveau compte écrit : c'est le mail de
+  /// bienvenue, envoyé par le Worker `eventhub-api`. Jamais attendu et jamais
+  /// fatal — un mail perdu ne doit pas faire échouer une inscription réussie.
+  final Future<void> Function()? _onAccountCreated;
+
+  /// Ce que l'écran d'inscription sait du compte sur le point d'être créé :
+  /// le nom saisi et le rôle choisi.
   ///
-  /// Le flux de profil ré-émet `null` à chaque passage tant que le document
-  /// n'existe pas ; sans ce garde-fou, chaque émission relancerait une
-  /// écriture concurrente pour le même compte.
-  final _pendingProfiles = <String>{};
+  /// **Pourquoi avant la création du compte Auth.** Dès que Firebase crée le
+  /// compte, `userChanges()` émet, le flux de session constate l'absence de
+  /// profil et l'écrit lui-même — souvent *avant* que [signUp] n'ait repris
+  /// la main. Sans cette intention posée en amont, ce profil partait avec les
+  /// valeurs par défaut (participant, nom tiré de l'adresse), et l'écriture de
+  /// l'inscription arrivait ensuite sur un document existant, que les règles
+  /// refusent de réécrire : le rôle « Organisateur » choisi était perdu.
+  ({String? name, UserRole role})? _signUpIntent;
+
+  void _announceNewAccount() {
+    final callback = _onAccountCreated;
+    if (callback == null) return;
+    unawaited(callback().catchError((Object _) {}));
+  }
+
+  /// L'écriture du profil de chaque compte, partagée par tous ceux qui la
+  /// demandent.
+  ///
+  /// Le flux de session et [signUp] veulent tous deux créer le profil d'un
+  /// compte neuf ; le flux ré-émet en plus `null` à chaque passage tant que le
+  /// document n'existe pas. Une seule écriture doit partir : les suivants
+  /// attendent la même `Future` au lieu d'en lancer une concurrente.
+  final _profileWrites = <String, Future<void>>{};
 
   static const _suspended = AuthFailure(
     code: AuthFailureCode.userDisabled,
@@ -120,24 +147,38 @@ class AuthRepositoryImpl implements AuthRepository {
     return (name == null || name.isEmpty) ? null : name;
   }
 
-  /// Écrit le profil d'un compte qui n'en a pas, sans rien demander.
+  /// Écrit le profil d'un compte qui n'en a pas, une seule fois.
   ///
-  /// Un échec n'est pas remonté : l'utilisateur n'a rien demandé, donc rien
-  /// à réparer. Le compte est simplement retiré des créations en cours pour
-  /// qu'une émission suivante puisse retenter, et le délai de grâce finira
-  /// par exposer l'écran de rattrapage si le problème persiste.
-  Future<void> _createMissingProfile(User user) async {
-    if (!_pendingProfiles.add(user.uid)) return;
-    try {
+  /// Le nom et le rôle viennent, par ordre de préférence : des arguments,
+  /// de l'intention d'inscription ([_signUpIntent]), puis de ce que Firebase
+  /// sait déjà du compte. Un échec retire l'écriture de la table pour qu'un
+  /// appel suivant puisse retenter, puis se propage à l'appelant.
+  Future<void> _ensureProfile(User user, {String? name, UserRole? role}) {
+    final inFlight = _profileWrites[user.uid];
+    if (inFlight != null) return inFlight;
+
+    final intent = _signUpIntent;
+    final write = () async {
       await _users.create(
         user.uid,
-        name: _initialName(user),
+        name: name ?? intent?.name ?? _initialName(user),
         email: user.email ?? '',
+        intendedRole: role ?? intent?.role ?? UserRole.participant,
       );
-    } on Object {
-      _pendingProfiles.remove(user.uid);
-    }
+      _announceNewAccount();
+    }();
+    _profileWrites[user.uid] = write;
+    return write.catchError((Object error, StackTrace stackTrace) {
+      _profileWrites.remove(user.uid);
+      Error.throwWithStackTrace(error, stackTrace);
+    });
   }
+
+  /// Côté flux de session : aucune erreur n'est remontée, l'utilisateur n'a
+  /// rien demandé. Le délai de grâce exposera l'écran de rattrapage si le
+  /// problème persiste.
+  Future<void> _createMissingProfile(User user) =>
+      _ensureProfile(user).catchError((Object _) {});
 
   /// Le meilleur nom disponible sans poser de question : celui du compte
   /// Google, sinon la partie locale de l'adresse. Le repli n'est pas une
@@ -171,33 +212,46 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
-  AsyncResult<void> signInWithGoogle() => guard(_auth.signInWithGoogle);
+  AsyncResult<void> signInWithGoogle({
+    UserRole intendedRole = UserRole.participant,
+  }) {
+    _signUpIntent = (name: null, role: intendedRole);
+    return guard(_auth.signInWithGoogle);
+  }
 
   @override
   AsyncResult<AppUser> signUp({
     required String name,
     required String email,
     required String password,
+    required UserRole intendedRole,
   }) {
     return guard(() async {
       final trimmed = name.trim();
-      final user = await _auth.signUp(
-        email: email,
-        password: password,
-        name: trimmed,
-      );
-      final address = user.email ?? email.trim();
-      await _users.create(user.uid, name: trimmed, email: address);
-      // Ne fait jamais échouer l’inscription : le bandeau propose de renvoyer
-      // le lien.
-      await _auth.sendEmailVerification().catchError((_) {});
-      return AppUser(
-        id: user.uid,
-        name: trimmed,
-        email: address,
-        role: UserRole.participant,
-        emailVerified: user.emailVerified,
-      );
+      // Posée avant la création du compte : voir [_signUpIntent].
+      _signUpIntent = (name: trimmed, role: intendedRole);
+      try {
+        final user = await _auth.signUp(
+          email: email,
+          password: password,
+          name: trimmed,
+        );
+        final address = user.email ?? email.trim();
+        // Rejoint l'écriture déjà lancée par le flux de session s'il a été
+        // plus rapide ; sinon la lance. Dans les deux cas, avec ce rôle-ci. Le
+        // mail de bienvenue part de cette écriture unique.
+        await _ensureProfile(user, name: trimmed, role: intendedRole);
+        return AppUser(
+          id: user.uid,
+          name: trimmed,
+          email: address,
+          role: intendedRole,
+          intendedRole: intendedRole,
+          emailVerified: user.emailVerified,
+        );
+      } finally {
+        _signUpIntent = null;
+      }
     });
   }
 
@@ -208,7 +262,8 @@ class AuthRepositoryImpl implements AuthRepository {
       if (user == null) throw const FailureException(AuthFailure.notSignedIn());
       final trimmed = name.trim();
       final email = user.email ?? '';
-      await _users.create(user.uid, name: trimmed, email: email);
+      // Même écriture unique que l'inscription et le flux de session.
+      await _ensureProfile(user, name: trimmed);
       return AppUser(
         id: user.uid,
         name: trimmed,
@@ -216,38 +271,6 @@ class AuthRepositoryImpl implements AuthRepository {
         role: UserRole.participant,
         emailVerified: user.emailVerified,
       );
-    });
-  }
-
-  @override
-  AsyncResult<AppUser> becomeOrganizer({String bio = ''}) {
-    return guard(() async {
-      final user = _auth.currentUser;
-      if (user == null) throw const FailureException(AuthFailure.notSignedIn());
-      // Les règles lisent `email_verified` dans le token : on le met à jour.
-      if (!await _auth.refreshEmailVerification()) {
-        throw const FailureException(
-          BusinessRuleFailure(
-            rule: BusinessRule.emailNotVerified,
-            message:
-                'Confirmez votre adresse email pour ouvrir votre espace '
-                'organisateur.',
-          ),
-        );
-      }
-      final dto = await _users.get(user.uid);
-      if (dto == null) throw const FailureException(_profileMissing);
-      if (dto.role == UserRole.organizer) return _toUser(user, dto);
-      await _users.becomeOrganizer(
-        user.uid,
-        name: dto.name,
-        email: user.email ?? dto.email,
-        bio: bio.trim(),
-      );
-      return _toUser(
-        user,
-        dto.copyWith(role: UserRole.organizer, bio: bio.trim()),
-      ).copyWith(emailVerified: true);
     });
   }
 
@@ -300,8 +323,21 @@ class AuthRepositoryImpl implements AuthRepository {
       guard(_auth.sendEmailVerification);
 
   @override
-  AsyncResult<bool> refreshEmailVerification() =>
-      guard(_auth.refreshEmailVerification);
+  AsyncResult<bool> refreshEmailVerification() => guard(() async {
+    final verified = await _auth.refreshEmailVerification();
+    // Un organisateur qui vient de confirmer son adresse devient trouvable
+    // pour les invitations de co-organisateurs.
+    final user = _auth.currentUser;
+    if (verified && user != null) {
+      final dto = await _users.get(user.uid);
+      if (dto != null && dto.role == UserRole.organizer) {
+        await _users
+            .registerOrganizerEmail(user.uid, user.email ?? dto.email)
+            .catchError((Object _) {});
+      }
+    }
+    return verified;
+  });
 
   @override
   AsyncResult<void> changePassword({

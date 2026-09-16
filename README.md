@@ -3,9 +3,9 @@
 > Application Flutter **multiplateforme** (Android, iOS, web, Windows, macOS)
 > de découverte, de réservation et d'organisation d'événements, adossée à
 > **Firebase Auth** et **Cloud Firestore** sur le plan gratuit **Spark**.
-> Un compte, deux espaces : chacun **participe** (découvre, réserve, garde son
-> billet) et peut activer l'espace **organisateur** (publie, compose une
-> équipe, contrôle les billets à l'entrée).
+> Deux rôles exclusifs, choisis à l'inscription et définitifs : le
+> **participant** découvre, réserve et garde son billet ; l'**organisateur**
+> publie, compose une équipe et contrôle les billets à l'entrée.
 > Cahier des charges : `EVENTHUB — Cahier des charges MVP.pdf`.
 
 [![CI](https://img.shields.io/badge/CI-GitHub_Actions-2088FF?logo=githubactions&logoColor=white)](.github/workflows/ci.yml)
@@ -60,7 +60,7 @@ données Firestore),
 | Espace | En une phrase |
 |---|---|
 | **Participant** (tout compte) | découvre les événements (dont « Pour vous »), voit qui y va, garde des favoris, suit des organisateurs, réserve une place gratuite, rejoint la liste d'attente, présente son billet QR, laisse un avis après l'événement |
-| **Organisateur** (activé par « Devenir organisateur », email vérifié) | publie ses événements avec des types de billets, compose une équipe, soigne sa page publique, est prévenu à chaque réservation, suit stats et alertes, exporte sa liste d'invités en CSV, scanne les billets à l'entrée |
+| **Organisateur** (choisi à l'inscription ; email vérifié pour publier) | publie ses événements avec des types de billets, compose une équipe, soigne sa page publique, est prévenu à chaque réservation, suit stats et alertes, exporte sa liste d'invités en CSV, scanne les billets à l'entrée |
 | **Administrateur** (document `admins/{uid}` créé dans la console) | traite la file de modération : masquer un avis, retirer un événement, suspendre un compte |
 
 **Il n'y a pas de backend simulé, et il n'y a pas de serveur.** Toutes les
@@ -74,10 +74,11 @@ Cloud Functions, Cloud Storage et Cloud Scheduler exigent le plan Blaze
 
 | Brique | Rôle dans EventHub |
 |---|---|
-| **Firebase Auth** | email + mot de passe avec vérification d'adresse, Google, réinitialisation, suppression de compte |
+| **Firebase Auth** | email + mot de passe, Google, vérification d'adresse **au moment de publier**, réinitialisation, suppression de compte |
 | **Cloud Firestore** | comptes, pages organisateurs, événements et types de billets, réservations, équipes, favoris, abonnements, liste d'attente, avis, signalements, modération, notifications, préférences, appareils ; cache hors ligne |
 | **Règles Firestore** | droits, formes des documents, preuves inter-documents (`getAfter` / `existsAfter`) : aucune survente, aucun compteur falsifiable |
 | **TTL Firestore** | purge automatique des notifications après 30 jours |
+| **Cloudinary** (hors Firebase) | héberge les photos de profil et les affiches d'événements ; Firestore n'en garde que le lien, les règles n'acceptent qu'un lien Cloudinary |
 | **Hosting** | page publique `/e/{id}` (lecture par l'API REST), App Links Android, accueil |
 | **FCM** | jetons enregistrés, messages au premier plan (pas d'envoi serveur sur Spark) |
 | **Crashlytics · Analytics** | plantages ; mesure d'audience sur consentement |
@@ -90,9 +91,9 @@ Cloud Functions, Cloud Storage et Cloud Scheduler exigent le plan Blaze
 
 | Fonctionnalité | Détail |
 |---|---|
-| Inscription | email + mot de passe (8 caractères, lettres et chiffres) ou Google ; tout compte naît **participant** ; email de vérification envoyé par Firebase Auth |
+| Inscription | rôle **Participant ou Organisateur demandé dans le formulaire**, puis email + mot de passe (8 caractères, lettres et chiffres) ou Google ; **mail de bienvenue** (pas de lien à cliquer) ; un organisateur a son espace **dès l'inscription** (page publique créée dans le même batch), seule la **publication** attend une adresse confirmée |
 | Vérification d'email | lien envoyé par Firebase ; exigée pour devenir organisateur, publier et laisser un avis ; renvoi depuis le bandeau |
-| **Devenir organisateur** | un seul batch : rôle, page publique et entrée de recherche par email ; sens unique ; l'espace participant reste disponible |
+| **Rôle** | choisi à l'inscription, définitif ; un organisateur naît avec sa page publique (même batch) ; aucun passage d'un rôle à l'autre |
 | Mots de passe | oubli : email Firebase de réinitialisation ; changement avec ré-authentification |
 | Profil | nom, présentation publique pour un organisateur |
 | Profil organisateur public | `/organizers/{id}` : présentation, nombre d'événements, abonnés, note moyenne (compteurs prouvés par les règles), bouton **Suivre** |
@@ -122,7 +123,7 @@ Cloud Functions, Cloud Storage et Cloud Scheduler exigent le plan Blaze
 | Fonctionnalité | Détail |
 |---|---|
 | Mes événements | KPI, à venir / passés, co-organisés ; suppression refusée s'il y a des réservations |
-| Créer / modifier | image par **URL https**, validation immédiate puis par les règles, email vérifié requis |
+| Créer / modifier | affiche **importée depuis l'appareil** (hébergée sur Cloudinary, recadrée en 16:9), validation immédiate puis par les règles, email vérifié requis |
 | Types de billets | jusqu'à 6 types (nom, description, places, prix affiché), devise EUR, USD ou MGA ; la capacité ne descend jamais sous les places prises |
 | Participants | recherche, type de billet, compteur d'entrées, export CSV (UTF-8 avec BOM, `;`) |
 | Équipe | jusqu'à 10 co-organisateurs invités par email ; un co-organisateur modifie, voit les participants et scanne, mais ne supprime pas et ne compose pas l'équipe |
@@ -138,19 +139,29 @@ administrateurs se gèrent **dans la console Firebase** ([§5.6](#56-premier-adm
 
 ### 2.5 Profil et espaces
 
-Un compte, deux espaces : tout le monde s'inscrit participant, et « Devenir
-organisateur » ouvre le second espace depuis le profil (email vérifié exigé,
-sens unique) ; une entrée de menu fait ensuite l'aller-retour entre les deux.
+Deux rôles exclusifs : le rôle est choisi dans le formulaire d'inscription et
+ne change plus. Chaque rôle reste dans son espace — le router renvoie un
+organisateur hors de l'espace participant et inversement, et les règles
+réservent la réservation, la liste d'attente et les avis aux participants.
 Le profil porte une **photo** et une **photo de couverture**, choisies dans la
-galerie ou prises à l'appareil, rognées et compressées sur l'appareil puis
-enregistrées dans le document Firestore — Cloud Storage exigerait le plan
-Blaze ([§18](#18-décisions-dingénierie)).
+galerie ou prises à l'appareil, compressées sur l'appareil puis envoyées sur
+**Cloudinary** ; le document Firestore ne garde que leur lien. Cloud Storage
+exigerait le plan Blaze ([§18](#18-décisions-darchitecture-adr)).
 
 ### 2.6 Transverse
 
-Layout **responsive** (téléphone, tablette, web, bureau) : barre de navigation
-en bas sur téléphone, rail latéral au-delà de 600 px et rail étendu avec
-libellés au-delà de 1024 px. Bandeau hors ligne,
+Layout **responsive** (téléphone, tablette, web, bureau) : barre d'onglets
+**façon iOS** en bas sur téléphone (bord à bord, translucide, libellé sous
+chaque icône, sélection par la teinte), de la **même matière que les barres du
+haut** ; rail latéral au-delà de 600 px et rail étendu avec libellés au-delà de
+1024 px. **Apparence personnalisable** depuis Profil (participant comme
+organisateur) : mode clair, sombre ou automatique, **modèle de couleurs**
+(Iris, Océan, Forêt, Corail, Graphite) et **police** (Moderne, Sobre,
+Géométrique, Arrondie, Éditoriale), appliqués à l'instant et mémorisés sur
+l'appareil. Filtres
+du catalogue dans un **menu déroulant** ancré au bouton. Appareil photo :
+explication puis demande d'autorisation système avant la première prise de
+vue ; renvoi vers les réglages si l'accès a été refusé. Bandeau hors ligne,
 cache Firestore persistant, rapport de plantage, consentement à la mesure
 d'audience.
 
@@ -213,6 +224,7 @@ complet, arborescence et patterns : [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.m
 | Auth tierce | `google_sign_in` 7 (Android/iOS), popup Firebase (web) |
 | Appareil | `flutter_local_notifications`, `mobile_scanner`, `connectivity_plus`, `qr_flutter`, `share_plus`, `url_launcher`, `shared_preferences` |
 | UI | Material 3 clair/sombre, `google_fonts`, `cached_network_image` |
+| Images | `image_picker` (compression sur l'appareil), `http` (envoi non signé vers Cloudinary), variantes redimensionnées à l'affichage |
 | Qualité | `flutter_lints` strict, `riverpod_lint`, `mocktail`, `@firebase/rules-unit-testing` + `node:test` sur l'émulateur, GitHub Actions |
 
 ---
@@ -389,7 +401,7 @@ Détail par champ : [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) §4 ;
 source de vérité : `firebase/firestore.rules`.
 
 ```
-users/{uid}                        name, email, role, bio?, suspended?, welcomedAt?, createdAt   (privé)
+users/{uid}                        name, email, role, intendedRole?, bio?, photoUrl?, coverUrl?, suspended?, welcomedAt?, createdAt   (privé)
   ├─ private/notifications         eventReminders, bookingAlerts, followedOrganizers
   ├─ devices/{deviceId}            token, platform, updatedAt
   ├─ favorites/{eventId}           eventId, createdAt
@@ -446,7 +458,7 @@ précise), puis dans `firestore.rules` (décision).
 | Liste d'attente | `WaitlistPolicy` | complet, à venir, hors équipe |
 | Avis | `ReviewPolicy` | présent (réservation confirmée, événement commencé), email vérifié, note de l'organisateur dans le batch |
 | Entrée | `CheckInPolicy.precheck` | équipe, réservation confirmée du même événement, création seule |
-| Devenir organisateur | email vérifié | batch rôle + page + `organizerEmails`, sens unique |
+| Rôle | fixé à l'inscription | aucune règle d'update ne touche `role` ; `organizers/{uid}` créée seulement avec le compte |
 | S'abonner | `FollowPolicy` (pas soi-même) | `followerCount ± 1` prouvé |
 | Signaler | `ReportPolicy` | id `{type}_{target}_{uid}`, pas soi-même, dossier ouvert ou incrémenté dans le batch |
 | Équipe | `TeamPolicy` (≤ 10) | invitation créée par le propriétaire pour un organisateur existant ; entrée prouvée par l'invitation acceptée |
@@ -465,7 +477,7 @@ créés hors de l'app. Chaque règle est rejouée en tant qu'attaquant par
 `make rules-test` (95 tests, job CI `firestore-rules`).
 
 Ce que les règles **ne peuvent pas** faire (limitation de débit, emails
-personnalisés, push app fermée, paiements, désactivation d'un compte Auth) et
+personnalisés, paiements, désactivation d'un compte Auth) et
 la recommandation **App Check** : [`docs/SECURITY.md`](docs/SECURITY.md)
 §7–8. Politique des secrets (rien de secret dans le dépôt,
 `firebase_options.dart` public par conception) : §9.
@@ -489,10 +501,28 @@ la recommandation **App Check** : [`docs/SECURITY.md`](docs/SECURITY.md)
 
 Toutes les notifications in-app sont des documents
 `users/{uid}/notifications/{id}` à identifiant déterministe (une par fait),
-lus en temps réel par le centre de notifications et purgés par TTL. Les jetons
-FCM sont enregistrés (`users/{uid}/devices`) et les messages de premier plan
-affichés ; **l'envoi de push quand l'app est fermée exige un serveur**
-([§10](#10-limites-assumées-du-plan-spark)).
+lus en temps réel par le centre de notifications et purgés par TTL. Juste
+après l'écriture, l'app demande l'envoi **push FCM** au Worker Cloudflare
+`eventhub-api` (`workers/api/`), qui le relaie à chaque appareil du
+destinataire, **même app fermée**. Le Worker vérifie l'ID token, que
+l'appelant est bien l'auteur de la notification, qu'elle est récente et
+qu'elle n'a pas déjà été envoyée
+([`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) §5.5).
+
+**Mettre en service le push** (une fois, gratuit) :
+
+1. Console Firebase → *Paramètres du projet → Comptes de service →
+   Générer une nouvelle clé privée* ; garder le fichier JSON **hors du dépôt**.
+2. `cd workers/api && npm install && npx wrangler login`
+3. `npx wrangler secret put FIREBASE_SERVICE_ACCOUNT < chemin/vers/cle.json`
+   et, pour les emails, `npx wrangler secret put BREVO_API_KEY` (compte
+   [Brevo](https://www.brevo.com) gratuit : 300 emails/jour ; l'adresse de
+   l'entreprise, mise dans `COMPANY_EMAIL` du `wrangler.toml`, doit y être
+   vérifiée comme expéditeur).
+4. `npm run deploy` : relever l'adresse `https://eventhub-api.<compte>.workers.dev`.
+5. La mettre dans `API_WORKER_URL` (`env/dev.json`), puis `make run`.
+6. Les règles (dont `pushReceipts`) sont déjà publiées ; après une
+   modification, `make deploy-rules`.
 
 ---
 
@@ -503,10 +533,10 @@ compense.
 
 | Limite | Effet visible | Compensation | Avec Blaze |
 |---|---|---|---|
-| **Pas de Cloud Functions** | pas de push app fermée ; notifications à autrui best-effort | centre de notifications temps réel ; identifiants déterministes rejouables | triggers + FCM (F-02) |
+| **Pas de Cloud Functions** | push envoyé par un Worker Cloudflare sur appel de l'auteur (perdu si l'app meurt entre l'écriture et l'appel) ; notifications à autrui best-effort | centre de notifications temps réel ; identifiants déterministes rejouables ; reçus d'envoi | triggers `onDocumentCreated` + FCM (F-02) |
 | **Pas de paiement** | types payants affichés, non réservables | événements gratuits (cœur du MVP) | Stripe Checkout + webhook (F-11) |
 | **Pas de Cloud Scheduler** | rappel J-1 seulement sur l'appareil qui a réservé, pas sur le web | notification locale replanifiée au démarrage | fonction planifiée |
-| **Pas de Cloud Storage** | images par URL https | aucune donnée à stocker ni à payer | upload + règles Storage |
+| **Pas de Cloud Storage** | images hébergées sur Cloudinary (offre gratuite) par envoi non signé ; une image remplacée n'est pas supprimée | preset Cloudinary restrictif, règles limitées aux liens Cloudinary | envoi signé et suppression par une fonction |
 | **Pas de limitation de débit** | un compte peut abuser d'écritures valides | App Check, identifiants déterministes, requêtes bornées | quotas serveur |
 | **Quotas quotidiens** | 50 k lectures, 20 k écritures, 20 k suppressions, 1 Gio : au-delà, arrêt jusqu'au lendemain | cache hors ligne, écouteurs temps réel, pagination | facturation à l'usage + alertes budgétaires |
 | **Pas d'Admin SDK** | un compte suspendu peut encore se connecter et lire | écritures refusées immédiatement ; désactivation manuelle dans la console | désactivation + révocation des jetons |
@@ -576,6 +606,25 @@ jamais de secret) :
 | `FIREBASE_EMULATOR_HOST` | `localhost` · `10.0.2.2` (émulateur Android) · IP du poste (téléphone) |
 | `GOOGLE_SERVER_CLIENT_ID` | client OAuth web ; requis pour Google Sign-In sur Android |
 | `FIREBASE_WEB_VAPID_KEY` | clé Web Push publique ; sans elle, pas de jeton FCM web |
+| `CLOUDINARY_CLOUD_NAME` | nom du cloud Cloudinary ; vide → import d'images masqué |
+| `CLOUDINARY_UPLOAD_PRESET` | preset d'envoi **non signé** ; vide → import d'images masqué |
+| `API_WORKER_URL` | adresse du Worker Cloudflare `eventhub-api` ; vide → pas de push FCM, pas de mail de bienvenue, formulaire de contact désactivé |
+| `SUPPORT_EMAIL` | boîte de l'entreprise affichée dans « Nous contacter » ; vide → « bientôt disponible » et envoi désactivé |
+
+**Mettre en place Cloudinary** (une fois, gratuit) :
+
+1. Créer un compte sur [cloudinary.com](https://cloudinary.com) et relever le
+   **Cloud name** affiché sur le tableau de bord.
+2. *Settings → Upload → Upload presets → Add upload preset* : mode
+   **Unsigned**, formats `jpg, png, webp, heic`, écrasement interdit,
+   transformation entrante `c_limit,w_2048,h_2048` — ou, plus sûr, laisser
+   `tools/cloudinary/setup-preset.mjs` le créer (`npm install && npm run
+   setup-preset`, secret dans `tools/cloudinary/.env`, ignoré par git).
+   Réglages détaillés et raisons :
+   [`docs/SECURITY.md`](docs/SECURITY.md) §11.
+3. Renseigner les deux clés dans `env/dev.json` (valeurs publiques : elles
+   voyagent dans le binaire), puis `make run`. **Ne jamais y mettre la clé
+   API ni le secret Cloudinary.**
 
 **Constantes à garder alignées** :
 
@@ -635,8 +684,9 @@ jamais de secret) :
 
 Deux appareils (ou un téléphone et un navigateur), projet configuré (§5).
 
-1. **Compte A** : inscription par email → lien de vérification → Profil →
-   **Devenir organisateur** → publier *Flutter Meetup*, capacité 1.
+1. **Compte A** : inscription par email en choisissant **Organisateur** →
+   espace organisateur ouvert → Profil → **Envoyer le lien** → confirmer
+   l'adresse → **C'est fait** → publier *Flutter Meetup*, capacité 1.
 2. **Compte B** : « Continuer avec Google » → cœur sur l'événement →
    **Réserver**. A voit « Nouvelle réservation » dans son centre de
    notifications.
@@ -666,13 +716,14 @@ Deux appareils (ou un téléphone et un navigateur), projet configuré (§5).
 | 4 | Transactions pour tout compteur dépendant d'une lecture | aucune survente, même en concurrence | transactions indisponibles hors ligne |
 | 5 | Notifications écrites par l'acteur, best-effort, id par fait | pas de serveur pour les émettre ; pas de spam possible | peut manquer si l'app meurt entre deux commits |
 | 6 | Rappels J-1 locaux | pas de Scheduler | dépend de l'appareil qui a réservé |
-| 7 | Un compte, deux espaces ; « Devenir organisateur » en un batch | modèle Eventbrite / Airbnb ; pas de choix de rôle bloquant à l'inscription | rôle organisateur à sens unique |
+| 6 bis | Push FCM par un Worker Cloudflare appelé par l'auteur | pas de Cloud Functions sans Blaze ; le Worker ne relaie qu'une notification déjà acceptée par les règles | pas de déclencheur : push perdu si l'app meurt entre l'écriture et l'appel |
+| 7 | Deux rôles exclusifs, choisis à l'inscription | demande explicite : un compte est participant ou organisateur | un organisateur qui veut réserver crée un compte participant |
 | 8 | Administrateurs créés dans la console uniquement | aucune porte dérobée dans l'app | gestion hors app |
 | 9 | Suspension par champ relu dans les règles | effet immédiat sur les écritures | lecture de profil en plus par écriture ; lecture encore possible |
 | 10 | Réservation dénormalisée (copie vérifiée) | portefeuille et liste d'invités sans jointure ; billet lisible après suppression | copie figée à la réservation |
 | 11 | Types de billets en map dans l'événement | une lecture transactionnelle ; preuve de ±1 par type en une règle | 6 types maximum |
 | 12 | Paiements désactivés tant qu'il n'y a pas de serveur | un secret Stripe ne peut pas vivre dans un client | pas de billetterie payante |
-| 13 | Images par URL https | pas de Storage payant | contenu hors de notre contrôle |
+| 13 | Images sur Cloudinary, envoi non signé depuis l'app ; Firestore ne garde que le lien | pas de Storage payant ; CDN et redimensionnement à la volée gratuits | un preset public peut servir hors de l'app ; pas de suppression sans serveur |
 | 14 | Suppression de compte côté client, étapes idempotentes | RGPD sans fonction | nettoyage non garanti si interrompu |
 | 15 | TTL Firestore sur `expiresAt` | purge sans tâche planifiée | suppression différée (≈ 24 h) |
 | 16 | Page publique statique + API REST Firestore, App Links | un lien pour app et web, sans serveur ; contenu rendu par `textContent` | pas d'aperçu Open Graph dynamique |
@@ -691,13 +742,13 @@ Deux appareils (ou un téléphone et un navigateur), projet configuré (§5).
 | Cahier des charges / feuille de route | État | Où |
 |---|---|---|
 | Authentification (email, vérification, Google, mot de passe oublié) | ✅ | `features/auth`, Firebase Auth |
-| Rôles participant / organisateur | ✅ un compte, deux espaces | `users/{uid}.role`, règles |
+| Rôles participant / organisateur | ✅ exclusifs, choisis à l'inscription | `users/{uid}.role`, règles, `RouteGuard` |
 | Catalogue, recherche, filtres, pagination (F-04) | ✅ | `features/events` |
 | Fiche événement, réservation, annulation, portefeuille, billet | ✅ | `features/reservations` |
 | Création / édition / suppression d'événement | ✅ | `features/events`, règles `events` |
 | Liste des participants, export CSV (F-15) | ✅ | `features/organizer` |
 | Contrôle à l'entrée (F-01) | 🟡 QR non signé | `features/checkin` |
-| Notifications et rappels (F-02) | 🟡 in-app + rappels locaux, pas de push app fermée | `features/notifications` |
+| Notifications et rappels (F-02) | ✅ in-app, push FCM app fermée (Worker Cloudflare), rappels J-1 locaux | `features/notifications`, `workers/api` |
 | Favoris (F-05) · Liste d'attente (F-06) · Avis (F-09) | ✅ | `features/favorites`, `waitlist`, `reviews` |
 | Preuve sociale (F-07) · Partage et page publique (F-08) | ✅ · 🟡 sans aperçu dynamique | `attendees`, `hosting/public/e.html` |
 | Profils organisateurs et abonnements (F-10) | ✅ | `features/organizers` |
@@ -727,7 +778,8 @@ Deux appareils (ou un téléphone et un navigateur), projet configuré (§5).
 | `failed-precondition` / « The query requires an index » | index manquant ou en construction : l'ajouter à `firestore.indexes.json`, `make deploy-rules`, attendre la fin de construction |
 | `resource-exhausted` | quota Spark du jour atteint : attendre la réinitialisation (minuit, heure du Pacifique) |
 | « Confirmez votre adresse » en boucle après avoir cliqué le lien | le jeton n'est pas rafraîchi : se déconnecter / reconnecter (l'app force `reload()` + `getIdToken(true)`) |
-| Email de vérification non reçu | dossier indésirables ; modèle et expéditeur dans *Authentication → Modèles* ; sur l'émulateur, le lien est dans le terminal |
+| Email de vérification non reçu | il ne part qu'à la demande (bandeau « Envoyer le lien ») ; dossier indésirables ; modèle dans *Authentication → Modèles* ; sur l'émulateur, le lien est dans le terminal |
+| Mail de bienvenue ou message de contact non reçu | `API_WORKER_URL` vide, secret `BREVO_API_KEY` absent, `COMPANY_EMAIL` vide ou non vérifié dans Brevo ; journaux du Worker : `npx wrangler tail` |
 | Bouton Google absent (Android) | `GOOGLE_SERVER_CLIENT_ID` manquant dans `env/<flavor>.json` |
 | Google : erreur 10 / `DEVELOPER_ERROR` | SHA-1 de la clé de signature absente de l'app Android Firebase |
 | Google sur le web : `auth/unauthorized-domain` | ajouter le domaine dans *Authentication → Paramètres → Domaines autorisés* |

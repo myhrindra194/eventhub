@@ -160,6 +160,8 @@ abstract final class AppStrings {
       'Votre place est enregistrée. Préparez-vous à vivre une expérience '
       'inoubliable !';
   static const viewMyTickets = 'Voir mes billets';
+  static const showMyTicket = 'Afficher mon billet';
+  static const bookedShowTicket = 'Place réservée. Voici votre billet.';
   static const returnHome = "Retour à l'accueil";
   static const upcomingEvents = 'À venir';
   static const pastEvents = 'Passés';
@@ -431,14 +433,30 @@ abstract final class AppStrings {
 
   // Vérification d'email
   static const verifyEmailTitle = 'Confirmez votre adresse email';
-  static String verifyEmailBody(String email) =>
-      'Un lien a été envoyé à $email. Il débloque la publication '
-      'd’événements et les avis.';
+  static String verifyEmailForOrganizer(String email) =>
+      'Pour publier vos événements, confirmez $email. Nous vous envoyons un '
+      'lien.';
+  static String verifyEmailForReview(String email) =>
+      'Pour publier un avis, confirmez d’abord $email. Nous vous envoyons un '
+      'lien.';
+  static String verifyEmailSentBody(String email) =>
+      'Lien envoyé à $email. Ouvrez-le depuis votre messagerie, puis revenez '
+      'ici.';
+  static const sendVerificationLink = 'Envoyer le lien';
+  static const alreadyVerified = 'Déjà confirmée';
   static const resendVerification = 'Renvoyer le lien';
   static const iVerifiedEmail = 'C’est fait';
   static const verificationSent = 'Lien de vérification envoyé.';
-  static String confirmEmailSent(String email) =>
-      'Compte créé. Ouvrez le lien envoyé à $email, puis connectez-vous.';
+  static String welcomeEmailSent(String email) =>
+      'Bienvenue ! Un email de confirmation d’inscription part vers $email.';
+  static const roleRequired =
+      'Dites-nous comment vous utiliserez EventHub : participant ou '
+      'organisateur.';
+  static const roleSignUpTitle = 'Vous êtes';
+  static const roleOrganizerNote =
+      'Votre espace organisateur est ouvert dès l’inscription. Nous vous '
+      'demanderons de confirmer votre adresse au moment de publier votre '
+      'premier événement.';
   static const stillNotVerified =
       'Adresse pas encore confirmée. Ouvrez le lien reçu par email, puis '
       'réessayez.';
@@ -652,39 +670,14 @@ abstract final class AppStrings {
   static const coverUpdated = 'Couverture mise à jour.';
   static const photoRemoved = 'Photo retirée.';
   static const photoHelp =
-      'Votre photo est enregistrée avec votre profil, en petite taille : elle '
-      'est rognée et compressée sur l’appareil avant l’envoi.';
-
-  // Devenir organisateur — un compte, deux espaces
-  static const becomeOrganizer = 'Devenir organisateur';
-  static const becomeOrganizerLead =
-      'Votre compte ne change pas : vous continuez à réserver comme '
-      'participant, et vous gagnez un espace pour publier vos propres '
-      'événements.';
-  static const becomeOrganizerPoint1 =
-      'Publier un événement, fixer la jauge et les types de billets';
-  static const becomeOrganizerPoint2 =
-      'Suivre les réservations et scanner les billets à l’entrée';
-  static const becomeOrganizerPoint3 =
-      'Inviter jusqu’à 10 co-organisateurs sur chaque événement';
-  static const becomeOrganizerBioLabel = 'Présentation (facultative)';
-  static const becomeOrganizerBioHint =
-      'En une ou deux phrases : qui organise, et pour qui. C’est ce que vos '
-      'participants liront sur votre page publique.';
-  static const becomeOrganizerCta = 'Ouvrir mon espace organisateur';
-  static const becomeOrganizerLoading = 'Ouverture…';
-  static const becomeOrganizerDone = 'Votre espace organisateur est ouvert.';
-  static const becomeOrganizerVerifyFirst =
-      'Confirmez d’abord votre adresse email : c’est elle qui autorise la '
-      'publication d’un événement.';
-  static const becomeOrganizerOneWay =
-      'L’espace organisateur ne se referme pas, mais rien ne vous oblige à '
-      'publier : tant que vous ne créez aucun événement, votre page publique '
-      'reste vide.';
-
-  // Bascule entre les deux espaces d'un même compte
-  static const switchToParticipantSpace = 'Espace participant';
-  static const switchToOrganizerSpace = 'Espace organisateur';
+      'L’image est compressée sur l’appareil puis envoyée tout de suite ; elle '
+      'n’apparaît sur votre profil qu’une fois celui-ci enregistré.';
+  static const imageUploadUnavailable =
+      'L’import d’images n’est pas disponible sur cette version de '
+      'l’application.';
+  static const imageUploading = 'Envoi de l’image…';
+  static const waitForImageUpload =
+      'Patientez : l’image est encore en cours d’envoi.';
 
   // Co-organisateurs (F-16)
   static const teamTitle = 'Équipe';

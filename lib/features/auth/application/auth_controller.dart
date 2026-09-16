@@ -2,6 +2,7 @@ import 'package:eventhub/core/analytics/app_analytics.dart';
 import 'package:eventhub/core/result/result.dart';
 import 'package:eventhub/features/auth/application/auth_providers.dart';
 import 'package:eventhub/features/auth/domain/entities/app_user.dart';
+import 'package:eventhub/features/auth/domain/entities/user_role.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart' hide AsyncResult;
 
 part 'auth_controller.g.dart';
@@ -29,9 +30,13 @@ class AuthController extends _$AuthController {
     return result;
   }
 
-  Future<Result<void>> signInWithGoogle() async {
+  Future<Result<void>> signInWithGoogle({
+    UserRole intendedRole = UserRole.participant,
+  }) async {
     final result = await _run(
-      () => ref.read(authRepositoryProvider).signInWithGoogle(),
+      () => ref
+          .read(authRepositoryProvider)
+          .signInWithGoogle(intendedRole: intendedRole),
     );
     if (result is Ok<void>) _analytics.login('google');
     return result;
@@ -41,11 +46,17 @@ class AuthController extends _$AuthController {
     required String name,
     required String email,
     required String password,
+    required UserRole intendedRole,
   }) async {
     final result = await _run(
       () => ref
           .read(authRepositoryProvider)
-          .signUp(name: name, email: email, password: password),
+          .signUp(
+            name: name,
+            email: email,
+            password: password,
+            intendedRole: intendedRole,
+          ),
     );
     if (result is Ok<AppUser>) _analytics.signUp('password');
     return result;
@@ -60,10 +71,6 @@ class AuthController extends _$AuthController {
     if (result is Ok<AppUser>) _analytics.signUp('profile_completion');
     return result;
   }
-
-  /// Active l’espace organisateur (e-mail vérifié, opération sans retour).
-  Future<Result<AppUser>> becomeOrganizer({String bio = ''}) =>
-      _run(() => ref.read(authRepositoryProvider).becomeOrganizer(bio: bio));
 
   Future<Result<AppUser>> updateProfile({
     required String name,

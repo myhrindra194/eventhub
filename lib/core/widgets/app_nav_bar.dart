@@ -1,5 +1,3 @@
-import 'dart:ui';
-
 import 'package:eventhub/app/theme/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -21,25 +19,27 @@ class NavDestination {
   final int? badgeCount;
 }
 
-/// Barre de navigation flottante et floutée.
+/// Barre d'onglets, dessinée d'après la barre d'onglets d'iOS.
 ///
-/// Les décisions de design méritent d'être énoncées, parce que ce sont elles
-/// qui lui donnent l'air fini plutôt que par défaut :
-///  * elle **flotte**, avec une marge, au lieu de coller au bord de l'écran :
-///    le contenu défile visiblement dessous et l'application paraît
-///    stratifiée ;
-///  * seule la destination active affiche son libellé, dans une pastille
-///    dégradée — le mot apparaît là où l'œil se trouve déjà, et la barre
-///    reste lisible à quatre entrées ;
-///  * la transition est un unique conteneur animé : changer d'onglet se lit
-///    comme un objet qui se déplace, non comme quatre objets qui clignotent ;
-///  * un retour haptique léger accompagne la sélection — sur un téléphone,
-///    une navigation sans retour physique paraît lente même quand elle ne
-///    l'est pas.
+/// Pourquoi ce modèle plutôt que l'ancienne pastille flottante : sur un
+/// téléphone, la barre d'Apple est la navigation que tout le monde sait déjà
+/// lire — des cibles égales, toujours étiquetées, ancrées au bord. Ses
+/// décisions, reprises une à une :
+///  * **bord à bord**, sans marge ni coins : la barre appartient au cadre de
+///    l'écran, pas au contenu. C'est la seule surface du produit sans les
+///    6 px, parce qu'elle n'est pas un objet posé sur la page ;
+///  * **même couleur que la barre du haut** ([AppTopBar]) : la surface opaque
+///    `surface`, séparée du contenu par un filet d'un demi-point. Opaque et
+///    non translucide, pour que les deux barres soient identiques quel que
+///    soit le contenu qui passe dessous ;
+///  * **chaque onglet porte son libellé**, en petit sous l'icône : on ne
+///    devine jamais ce que cache une icône ;
+///  * **la sélection se lit par la teinte seule** — icône pleine et libellé
+///    à la couleur de la marque —, sans pastille, sans dégradé, sans ombre ;
+///  * un retour haptique léger accompagne le changement d'onglet.
 ///
-/// Les écrans doivent réserver [AppSizes.navBarInset] en bas de leurs zones
-/// défilantes, pour que le dernier élément passe sous la barre sans être
-/// masqué.
+/// Les écrans réservent [AppSizes.navBarInset] en bas de leurs zones
+/// défilantes, pour que le dernier élément passe au-dessus de la barre.
 class AppNavBar extends StatelessWidget {
   const AppNavBar({
     required this.destinations,
@@ -57,48 +57,31 @@ class AppNavBar extends StatelessWidget {
     final t = context.tokens;
     final bottom = MediaQuery.paddingOf(context).bottom;
 
-    return Padding(
-      padding: EdgeInsets.fromLTRB(
-        AppSpacing.lg,
-        0,
-        AppSpacing.lg,
-        bottom + AppSpacing.md,
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: t.surface,
+        border: Border(top: BorderSide(color: t.border, width: 0.5)),
       ),
-      child: ClipRRect(
-        borderRadius: AppRadius.brButton,
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
-          child: Container(
-            height: AppSizes.navBarHeight,
-            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
-            decoration: BoxDecoration(
-              color: t.glass,
-              // 6 px, comme tout le reste du produit. La barre se détache par
-              // son flou et son filet, jamais par une ombre portée.
-              borderRadius: AppRadius.brButton,
-              border: Border.all(color: t.borderStrong),
-            ),
-            child: Row(
-              children: [
-                for (var i = 0; i < destinations.length; i++)
-                  // La destination active est la seule à porter un libellé :
-                  // il lui faut donc plus de place qu'aux autres. Des
-                  // `Expanded` de parts égales débordent dès quatre
-                  // destinations sur un écran de 360 dp — ce que l'on
-                  // découvre en lançant l'application, jamais par l'analyseur.
-                  Expanded(
-                    flex: i == selectedIndex ? 2 : 1,
-                    child: _NavButton(
-                      destination: destinations[i],
-                      selected: i == selectedIndex,
-                      onTap: () {
-                        HapticFeedback.selectionClick();
-                        onSelected(i);
-                      },
-                    ),
+      child: Padding(
+        // La zone du geste d'accueil reste sous la barre, jamais sur ses
+        // cibles tactiles.
+        padding: EdgeInsets.only(bottom: bottom),
+        child: SizedBox(
+          height: AppSizes.navBarHeight,
+          child: Row(
+            children: [
+              for (var i = 0; i < destinations.length; i++)
+                Expanded(
+                  child: _NavButton(
+                    destination: destinations[i],
+                    selected: i == selectedIndex,
+                    onTap: () {
+                      HapticFeedback.selectionClick();
+                      onSelected(i);
+                    },
                   ),
-              ],
-            ),
+                ),
+            ],
           ),
         ),
       ),
@@ -121,61 +104,43 @@ class _NavButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = context.tokens;
     final text = Theme.of(context).textTheme;
-    final color = selected ? t.textOnBrand : t.textSecondary;
+    final color = selected ? t.brand : t.textTertiary;
 
     return Semantics(
       selected: selected,
       button: true,
       label: destination.label,
-      child: InkWell(
+      excludeSemantics: true,
+      child: InkResponse(
         onTap: onTap,
-        borderRadius: AppRadius.brButton,
-        child: Center(
-          child: AnimatedContainer(
-            duration: AppMotion.medium,
-            curve: AppMotion.emphasized,
-            padding: EdgeInsets.symmetric(
-              horizontal: selected ? AppSpacing.md : AppSpacing.sm,
-              vertical: AppSpacing.sm,
+        // Une éclaboussure circulaire et discrète (la forme par défaut
+        // d'InkResponse) plutôt qu'un rectangle : sur iOS, toucher un onglet
+        // ne dessine presque rien, le changement de teinte suffit.
+        radius: 28,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            _Icon(
+              icon: selected ? destination.selectedIcon : destination.icon,
+              color: color,
+              badgeCount: destination.badgeCount,
             ),
-            decoration: BoxDecoration(
-              // La pastille active se signale par son dégradé seul : une
-              // lueur portée à l'intérieur d'une barre déjà floutée se lit
-              // comme une salissure, pas comme une élévation.
-              gradient: selected ? t.brandGradient : null,
-              borderRadius: AppRadius.brButton,
+            const SizedBox(height: 3),
+            // 10,5 points comme les libellés d'onglets d'iOS ; l'ellipse
+            // protège la barre quand l'utilisateur agrandit le texte système.
+            Text(
+              destination.label,
+              maxLines: 1,
+              softWrap: false,
+              overflow: TextOverflow.ellipsis,
+              style: text.labelSmall?.copyWith(
+                color: color,
+                fontSize: 10.5,
+                letterSpacing: 0.1,
+                fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+              ),
             ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                _Icon(
-                  icon: selected ? destination.selectedIcon : destination.icon,
-                  color: color,
-                  badgeCount: destination.badgeCount,
-                ),
-                if (selected) ...[
-                  const SizedBox(width: AppSpacing.sm),
-                  // `Flexible` et l'ellipse forment le filet de sécurité :
-                  // quelle que soit la longueur du libellé ou la taille de
-                  // texte choisie par l'utilisateur, la pastille se rétrécit
-                  // au lieu de déborder de son emplacement.
-                  Flexible(
-                    child: Text(
-                      destination.label,
-                      maxLines: 1,
-                      softWrap: false,
-                      overflow: TextOverflow.ellipsis,
-                      style: text.labelLarge?.copyWith(
-                        color: color,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
+          ],
         ),
       ),
     );
@@ -197,7 +162,7 @@ class _Icon extends StatelessWidget {
     return Stack(
       clipBehavior: Clip.none,
       children: [
-        Icon(icon, size: 22, color: color),
+        Icon(icon, size: 25, color: color),
         if (showBadge)
           Positioned(
             top: -2,
@@ -208,7 +173,7 @@ class _Icon extends StatelessWidget {
               decoration: BoxDecoration(
                 color: t.accent,
                 shape: BoxShape.circle,
-                border: Border.all(color: t.glass, width: 1.5),
+                border: Border.all(color: t.surface, width: 1.5),
               ),
             ),
           ),

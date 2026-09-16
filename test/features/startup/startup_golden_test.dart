@@ -61,9 +61,10 @@ void main() {
     if (settle) {
       await tester.pumpAndSettle();
     } else {
-      // Le splash s'anime pendant environ 2,6 s ; on passe au-delà pour que
-      // le golden capture la marque achevée, et non une image au hasard.
-      await tester.pump(const Duration(seconds: 3));
+      // L'intro du splash dure 1,3 s et la ligne « préparation » n'apparaît
+      // qu'à 2,5 s : 1,6 s capture la marque achevée, seule, et non une
+      // image au hasard du tracé.
+      await tester.pump(const Duration(milliseconds: 1600));
     }
   }
 

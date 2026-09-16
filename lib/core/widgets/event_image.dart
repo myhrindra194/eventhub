@@ -1,7 +1,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:eventhub/app/theme/theme.dart';
+import 'package:eventhub/core/media/cloudinary_url.dart';
 import 'package:eventhub/core/utils/image_data_url.dart';
-import 'package:eventhub/core/utils/in_memory_images.dart';
 import 'package:eventhub/core/widgets/app_skeleton.dart';
 import 'package:flutter/material.dart';
 
@@ -46,20 +46,22 @@ class EventImage extends StatelessWidget {
   ];
 
   /// L'`ImageProvider` correspondant à une URL du produit, quelle que soit sa
-  /// provenance — registre mémoire, image portée par le document (`data:`) ou
-  /// réseau. Renvoie `null` quand il n'y a rien à afficher, ce qui laisse
-  /// l'appelant poser son propre repli.
-  static ImageProvider? providerFor(String? url) {
+  /// provenance — Cloudinary, image héritée portée par le document (`data:`)
+  /// ou lien distant. Renvoie `null` quand il n'y a rien à afficher, ce qui
+  /// laisse l'appelant poser son propre repli.
+  ///
+  /// [width] est la largeur **physique** voulue ; sans elle, une image
+  /// Cloudinary est servie au palier le plus large, ce qui convient à un
+  /// fond plein écran mais gaspille de la bande passante partout ailleurs.
+  static ImageProvider? providerFor(String? url, {int? width}) {
     if (url == null || url.isEmpty) return null;
-    if (InMemoryImages.isMemoryUrl(url)) {
-      final bytes = InMemoryImages.get(url);
-      return bytes == null ? null : MemoryImage(bytes);
-    }
     if (ImageDataUrl.isDataUrl(url)) {
       final bytes = ImageDataUrl.decode(url);
       return bytes == null ? null : MemoryImage(bytes);
     }
-    return CachedNetworkImageProvider(url);
+    return CachedNetworkImageProvider(
+      CloudinaryUrl.sized(url, width: width ?? CloudinaryUrl.widths.last),
+    );
   }
 
   List<Color> get _fallbackGradient {
@@ -89,31 +91,47 @@ class EventImage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final url = imageUrl;
-    // Trois provenances derrière une seule chaîne : le registre mémoire (
-    // aperçus), une URL `data:` (image portée par le document Firestore,
-    // faute de Cloud Storage) et le réseau.
-    final memoryBytes = InMemoryImages.isMemoryUrl(url)
-        ? InMemoryImages.get(url!)
-        : ImageDataUrl.isDataUrl(url)
-        ? ImageDataUrl.decode(url!)
-        : null;
+    if (url == null || url.isEmpty) {
+      return ClipRRect(borderRadius: borderRadius, child: _fallback(context));
+    }
+
+    // Deux provenances derrière une seule chaîne : une URL `data:` héritée
+    // (photo embarquée dans le document avant Cloudinary) et le réseau.
+    if (ImageDataUrl.isDataUrl(url)) {
+      final bytes = ImageDataUrl.decode(url);
+      return ClipRRect(
+        borderRadius: borderRadius,
+        child: bytes == null
+            ? _fallback(context)
+            : Image.memory(bytes, height: height, width: width, fit: fit),
+      );
+    }
 
     return ClipRRect(
       borderRadius: borderRadius,
-      child: url == null || url.isEmpty
-          ? _fallback(context)
-          : memoryBytes != null
-          ? Image.memory(memoryBytes, height: height, width: width, fit: fit)
-          : CachedNetworkImage(
-              imageUrl: url,
-              height: height,
-              width: width,
-              fit: fit,
-              fadeInDuration: AppMotion.medium,
-              placeholder: (_, __) =>
-                  Skeleton(height: height ?? 200, radius: 0),
-              errorWidget: (context, _, __) => _fallback(context),
-            ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          // La largeur réellement occupée décide de la variante téléchargée :
+          // la même affiche part en 640 px dans une carte de téléphone et en
+          // 1 920 px dans la fiche d'un écran de bureau Retina.
+          final logicalWidth = constraints.hasBoundedWidth
+              ? constraints.maxWidth
+              : (height ?? 200) * 16 / 9;
+          final physical = CloudinaryUrl.bucketFor(
+            logicalWidth,
+            MediaQuery.devicePixelRatioOf(context),
+          );
+          return CachedNetworkImage(
+            imageUrl: CloudinaryUrl.sized(url, width: physical),
+            height: height,
+            width: width,
+            fit: fit,
+            fadeInDuration: AppMotion.medium,
+            placeholder: (_, __) => Skeleton(height: height ?? 200, radius: 0),
+            errorWidget: (context, _, __) => _fallback(context),
+          );
+        },
+      ),
     );
   }
 }

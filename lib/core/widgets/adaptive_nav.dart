@@ -11,7 +11,8 @@ import 'package:flutter/services.dart';
 /// pointeur que la mise en page le permet, et gâche l’espace latéral que
 /// toute application desktop lui consacre. D’où :
 ///
-///  * **< 600 dp** — l’[AppNavBar] flottante en bas, d’abord pour le pouce ;
+///  * **< 600 dp** — la barre d'onglets [AppNavBar] en bas, d’abord pour le
+///    pouce ;
 ///  * **600–1023 dp** — un rail d’icônes sur le bord d’attaque (tablettes,
 ///    fenêtres en écran partagé, petites fenêtres desktop) ;
 ///  * **>= 1024 dp** — le même rail, étendu avec les libellés, parce qu’à
@@ -19,7 +20,8 @@ import 'package:flutter/services.dart';
 ///    devinette.
 ///
 /// Le rail est le même objet que la barre, tourné sur le côté : mêmes
-/// destinations, même pilule de sélection, même retour haptique. Passer de
+/// destinations, même surface, même sélection par la teinte, même
+/// retour haptique. Passer de
 /// l’un à l’autre est un changement de mise en page, jamais un changement de
 /// modèle — le shell conserve son état.
 class AdaptiveNavigation extends StatelessWidget {
@@ -112,7 +114,7 @@ class _NavRail extends StatelessWidget {
       ),
       decoration: BoxDecoration(
         color: t.surface,
-        border: Border(right: BorderSide(color: t.borderSubtle)),
+        border: Border(right: BorderSide(color: t.border, width: 0.5)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -153,7 +155,10 @@ class _RailButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = context.tokens;
     final text = Theme.of(context).textTheme;
-    final color = selected ? t.textOnBrand : t.textSecondary;
+    // Sélection par la teinte, comme la barre d'onglets ; un fond de marque
+    // très léger aide seulement l'œil à retrouver la ligne dans une liste
+    // verticale, là où la barre basse n'en a pas besoin.
+    final color = selected ? t.brand : t.textSecondary;
     final showBadge = (destination.badgeCount ?? 0) > 0;
 
     final icon = Stack(
@@ -174,10 +179,7 @@ class _RailButton extends StatelessWidget {
               decoration: BoxDecoration(
                 color: t.accent,
                 shape: BoxShape.circle,
-                border: Border.all(
-                  color: selected ? t.brand : t.surface,
-                  width: 1.5,
-                ),
+                border: Border.all(color: t.surface, width: 1.5),
               ),
             ),
           ),
@@ -201,7 +203,7 @@ class _RailButton extends StatelessWidget {
               vertical: AppSpacing.md,
             ),
             decoration: BoxDecoration(
-              gradient: selected ? t.brandGradient : null,
+              color: selected ? t.brandSoft : null,
               borderRadius: AppRadius.brButton,
             ),
             child: extended

@@ -46,6 +46,21 @@ bool canReviewEvent(Ref ref, String eventId) {
   return result is Ok<void>;
 }
 
+/// Vrai quand seule l'adresse non confirmée empêche de laisser un avis : la
+/// fiche affiche alors le bandeau qui envoie le lien, au lieu de masquer le
+/// bouton sans explication.
+@riverpod
+bool reviewBlockedByVerification(Ref ref, String eventId) {
+  final user = ref.watch(currentUserProvider);
+  if (user == null || user.emailVerified) return false;
+  final result = ReviewPolicy.canReview(
+    user: user.copyWith(emailVerified: true),
+    reservation: ref.watch(myReservationForEventProvider(eventId)).value,
+    now: ref.watch(clockProvider)(),
+  );
+  return result is Ok<void>;
+}
+
 @riverpod
 class ReviewController extends _$ReviewController {
   @override

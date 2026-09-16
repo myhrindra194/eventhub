@@ -287,3 +287,74 @@ AsyncValue<List<Event>> trendingEvents(Ref ref) =>
         ..sort((a, b) => b.fillRate.compareTo(a.fillRate));
       return list.take(10).toList();
     });
+
+// ---------------------------------------------------------------------------
+// Parcours par activité et catalogue complet
+// ---------------------------------------------------------------------------
+
+/// Une section « activité » de l'accueil : une catégorie et ses événements,
+/// dans l'ordre chronologique du catalogue.
+class CategorySection {
+  const CategorySection({required this.category, required this.events});
+
+  final EventCategory category;
+  final List<Event> events;
+}
+
+/// Le catalogue regroupé par activité, dans l'ordre de l'énumération
+/// [EventCategory] — le même que celui du rail de catégories, pour que l'œil
+/// retrouve les sections là où il a vu les pastilles.
+///
+/// Les catégories vides sont omises : une section « Sport — 0 événement »
+/// ne sert qu'à dire que le produit est pauvre. Le groupement se fait en une
+/// passe sur ce qui est déjà chargé, sans requête Firestore de plus.
+@riverpod
+AsyncValue<List<CategorySection>> categorySections(Ref ref) =>
+    ref.watch(catalogueProvider).whenData((events) {
+      final byCategory = <EventCategory, List<Event>>{};
+      for (final event in events) {
+        (byCategory[event.category] ??= []).add(event);
+      }
+      return [
+        for (final category in EventCategory.values)
+          if (byCategory[category] case final list?)
+            CategorySection(
+              category: category,
+              events: List<Event>.unmodifiable(list),
+            ),
+      ];
+    });
+
+/// Le catalogue de l'écran « Tous les événements », pour une [category]
+/// donnée (`null` = toutes).
+///
+/// Il applique les **mêmes** réglages globaux que [filteredEvents] — période,
+/// tri, masquage des complets — pour que le menu « Filtres » ait le même
+/// effet partout. Deux écarts délibérés :
+///  * la catégorie est un paramètre et non le filtre global : ouvrir « Tout
+///    voir » sur la section Concert ne doit pas replier l'accueil en mode
+///    filtré au retour ;
+///  * la requête texte est ignorée : elle appartient à l'onglet Recherche, et
+///    un mot tapé là-bas ne doit pas vider silencieusement ce catalogue.
+///
+/// Contrepartie assumée : le compteur de résultats du menu « Filtres » lit
+/// [filteredEvents], et peut donc différer de cette liste quand la catégorie
+/// locale n'est pas la catégorie globale.
+@riverpod
+AsyncValue<List<Event>> browsableEvents(Ref ref, EventCategory? category) {
+  final period = ref.watch(eventPeriodFilterProvider);
+  final sort = ref.watch(eventSortOrderProvider);
+  final hideSoldOut = ref.watch(hideSoldOutProvider);
+  final now = ref.watch(clockProvider)();
+
+  return ref.watch(catalogueProvider).whenData((events) {
+    final result =
+        events
+            .where((e) => category == null || e.category == category)
+            .where((e) => period.matches(e.startsAt, now))
+            .where((e) => !hideSoldOut || !e.isFull)
+            .toList()
+          ..sort(_comparator(sort));
+    return List<Event>.unmodifiable(result);
+  });
+}

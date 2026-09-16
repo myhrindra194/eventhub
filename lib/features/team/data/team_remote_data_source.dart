@@ -6,6 +6,7 @@ import 'package:eventhub/core/errors/failure_exception.dart';
 import 'package:eventhub/core/firebase/firebase_providers.dart';
 import 'package:eventhub/core/firebase/firestore_paths.dart';
 import 'package:eventhub/core/utils/app_logger.dart';
+import 'package:eventhub/features/notifications/data/push_dispatcher.dart';
 import 'package:eventhub/features/team/data/staff_invitation_dto.dart';
 import 'package:eventhub/features/team/domain/team.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -29,10 +30,19 @@ import 'package:firebase_auth/firebase_auth.dart';
 ///    juste après le fait, au mieux : chacune est autorisée indépendamment par
 ///    l’état validé, et aucune ne doit faire échouer l’action qu’elle annonce.
 class TeamRemoteDataSource {
-  const TeamRemoteDataSource(this._db, this._auth);
+  const TeamRemoteDataSource(
+    this._db,
+    this._auth, {
+    PushDispatcher push = const NoPushDispatcher(),
+  }) : _push = push;
 
   final FirebaseFirestore _db;
   final FirebaseAuth _auth;
+
+  /// Porte-voix vers FCM : appelé après chaque notification écrite, pour
+  /// que son destinataire la reçoive aussi app fermée. Aucun envoi par
+  /// défaut, ce qui garde les tests et les builds sans Worker inchangés.
+  final PushDispatcher _push;
 
   /// Une équipe compte au plus dix personnes ; la borne couvre les invitations
   /// déjà répondues laissées derrière eux par d’anciens membres.
@@ -145,22 +155,20 @@ class TeamRemoteDataSource {
     unawaited(
       _bestEffort(
         'staff invitation notice',
-        () => _notifications(inviteeId)
-            .doc(
-              'staffInvite_${eventId}_${inviteeId}_'
-              '${DateTime.now().millisecondsSinceEpoch}',
-            )
-            .set(
-              _notice(
-                type: 'staffInvite',
-                title: 'Invitation à co-organiser',
-                body:
-                    '${event['organizerName']} vous invite à co-organiser '
-                    '« ${event['title']} ».',
-                eventId: eventId,
-                actorId: _uid,
-              ),
-            ),
+        () => _writeNotice(
+          inviteeId,
+          'staffInvite_${eventId}_${inviteeId}_'
+          '${DateTime.now().millisecondsSinceEpoch}',
+          _notice(
+            type: 'staffInvite',
+            title: 'Invitation à co-organiser',
+            body:
+                '${event['organizerName']} vous invite à co-organiser '
+                '« ${event['title']} ».',
+            eventId: eventId,
+            actorId: _uid,
+          ),
+        ),
       ),
     );
   }
@@ -221,17 +229,17 @@ class TeamRemoteDataSource {
     unawaited(
       _bestEffort(
         'staff joined notice',
-        () => _notifications(owner)
-            .doc('staffJoined_${eventId}_$uid')
-            .set(
-              _notice(
-                type: 'staffJoined',
-                title: 'Nouveau co-organisateur',
-                body: '$name a rejoint l’équipe de « ${event['title']} ».',
-                eventId: eventId,
-                actorId: uid,
-              ),
-            ),
+        () => _writeNotice(
+          owner,
+          'staffJoined_${eventId}_$uid',
+          _notice(
+            type: 'staffJoined',
+            title: 'Nouveau co-organisateur',
+            body: '$name a rejoint l’équipe de « ${event['title']} ».',
+            eventId: eventId,
+            actorId: uid,
+          ),
+        ),
       ),
     );
   }
@@ -257,27 +265,36 @@ class TeamRemoteDataSource {
     unawaited(
       _bestEffort(
         'staff removed notice',
-        () => _notifications(userId)
-            .doc(
-              'staffRemoved_${eventId}_${userId}_'
-              '${DateTime.now().millisecondsSinceEpoch}',
-            )
-            .set(
-              _notice(
-                type: 'staffRemoved',
-                title: 'Vous ne co-organisez plus',
-                body:
-                    'Vous avez été retiré de l’équipe de '
-                    '« ${event['title']} ».',
-                eventId: eventId,
-                actorId: uid,
-              ),
-            ),
+        () => _writeNotice(
+          userId,
+          'staffRemoved_${eventId}_${userId}_'
+          '${DateTime.now().millisecondsSinceEpoch}',
+          _notice(
+            type: 'staffRemoved',
+            title: 'Vous ne co-organisez plus',
+            body:
+                'Vous avez été retiré de l’équipe de '
+                '« ${event['title']} ».',
+            eventId: eventId,
+            actorId: uid,
+          ),
+        ),
       ),
     );
   }
 
   // ---------------------------------------------------------- utilitaires
+
+  /// Écrit une notification puis en demande le push. L'écriture seule décide
+  /// du succès : le push part après, au mieux, et ne peut rien défaire.
+  Future<void> _writeNotice(
+    String recipientId,
+    String notificationId,
+    Map<String, Object?> data,
+  ) async {
+    await _notifications(recipientId).doc(notificationId).set(data);
+    _push.notify(recipientId: recipientId, notificationId: notificationId);
+  }
 
   static const _pending = 'pending';
 

@@ -9,6 +9,7 @@ import 'package:eventhub/core/result/result.dart';
 import 'package:eventhub/core/utils/app_logger.dart';
 import 'package:eventhub/features/auth/domain/entities/app_user.dart';
 import 'package:eventhub/features/events/domain/entities/event.dart';
+import 'package:eventhub/features/notifications/data/push_dispatcher.dart';
 import 'package:eventhub/features/reservations/data/dtos/booking_event.dart';
 import 'package:eventhub/features/reservations/data/dtos/reservation_dto.dart';
 import 'package:eventhub/features/reservations/domain/attendee_name.dart';
@@ -47,10 +48,19 @@ typedef CancellationCheck = Result<void> Function(Reservation reservation);
 ///    la phrase exacte atteint l’écran au lieu d’un simple
 ///    `permission-denied`.
 class ReservationRemoteDataSource {
-  const ReservationRemoteDataSource(this._db, this._auth);
+  const ReservationRemoteDataSource(
+    this._db,
+    this._auth, {
+    PushDispatcher push = const NoPushDispatcher(),
+  }) : _push = push;
 
   final FirebaseFirestore _db;
   final FirebaseAuth _auth;
+
+  /// Porte-voix vers FCM : appelé après chaque notification écrite, pour
+  /// que son destinataire la reçoive aussi app fermée. Aucun envoi par
+  /// défaut, ce qui garde les tests et les builds sans Worker inchangés.
+  final PushDispatcher _push;
 
   /// Les règles refusent une liste de réservations au-delà de 500 documents.
   static const maxPageSize = 500;
@@ -235,23 +245,21 @@ class ReservationRemoteDataSource {
       for (final recipient in booking.teamIds)
         _bestEffort(
           'booking notice',
-          () => _notifications(recipient)
-              .doc(
-                'booking_${booking.id}_${uid}_'
-                '${reservedAt.millisecondsSinceEpoch}',
-              )
-              .set(
-                _notice(
-                  type: 'booking',
-                  title: 'Nouvelle réservation',
-                  body:
-                      '${participant.name} a réservé une place pour '
-                      '« ${reservation.eventTitle} ».',
-                  eventId: booking.id,
-                  reservationId: reservation.id,
-                  actorId: uid,
-                ),
-              ),
+          () => _writeNotice(
+            recipient,
+            'booking_${booking.id}_${uid}_'
+            '${reservedAt.millisecondsSinceEpoch}',
+            _notice(
+              type: 'booking',
+              title: 'Nouvelle réservation',
+              body:
+                  '${participant.name} a réservé une place pour '
+                  '« ${reservation.eventTitle} ».',
+              eventId: booking.id,
+              reservationId: reservation.id,
+              actorId: uid,
+            ),
+          ),
         ),
     ]);
   }
@@ -342,23 +350,21 @@ class ReservationRemoteDataSource {
         for (final recipient in booking.teamIds)
           _bestEffort(
             'cancellation notice',
-            () => _notifications(recipient)
-                .doc(
-                  'cancellation_${booking.id}_${uid}_'
-                  '${cancelledAt.millisecondsSinceEpoch}',
-                )
-                .set(
-                  _notice(
-                    type: 'cancellation',
-                    title: 'Réservation annulée',
-                    body:
-                        '${reservation.userName} a annulé sa place pour '
-                        '« ${reservation.eventTitle} ».',
-                    eventId: booking.id,
-                    reservationId: reservation.id,
-                    actorId: uid,
-                  ),
-                ),
+            () => _writeNotice(
+              recipient,
+              'cancellation_${booking.id}_${uid}_'
+              '${cancelledAt.millisecondsSinceEpoch}',
+              _notice(
+                type: 'cancellation',
+                title: 'Réservation annulée',
+                body:
+                    '${reservation.userName} a annulé sa place pour '
+                    '« ${reservation.eventTitle} ».',
+                eventId: booking.id,
+                reservationId: reservation.id,
+                actorId: uid,
+              ),
+            ),
           ),
         if (booking.event.startsAt.isAfter(DateTime.now()))
           _bestEffort(
@@ -395,12 +401,11 @@ class ReservationRemoteDataSource {
     // Les deux écritures ou aucune : les règles vérifient que l’entrée
     // existe au moment où la notification est écrite, et une entrée déjà
     // prévenue ne l’est jamais deux fois.
+    final noticeId = 'waitlist_${booking.id}_${head.id}_${cancelled.userId}';
     final batch = _db.batch()
       ..update(head.reference, {'notifiedAt': FieldValue.serverTimestamp()})
       ..set(
-        _notifications(
-          head.id,
-        ).doc('waitlist_${booking.id}_${head.id}_${cancelled.userId}'),
+        _notifications(head.id).doc(noticeId),
         _notice(
           type: 'waitlist',
           title: 'Une place s’est libérée',
@@ -412,9 +417,21 @@ class ReservationRemoteDataSource {
         ),
       );
     await batch.commit();
+    _push.notify(recipientId: head.id, notificationId: noticeId);
   }
 
   // ---------------------------------------------------------- utilitaires
+
+  /// Écrit une notification puis en demande le push. L'écriture seule décide
+  /// du succès : le push part après, au mieux, et ne peut rien défaire.
+  Future<void> _writeNotice(
+    String recipientId,
+    String notificationId,
+    Map<String, Object?> data,
+  ) async {
+    await _notifications(recipientId).doc(notificationId).set(data);
+    _push.notify(recipientId: recipientId, notificationId: notificationId);
+  }
 
   /// La liste exacte des champs de `validNotice()` dans les règles.
   static Map<String, Object?> _notice({

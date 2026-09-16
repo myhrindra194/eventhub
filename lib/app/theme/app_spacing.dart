@@ -96,11 +96,15 @@ abstract final class AppSizes {
   static const buttonLg = 56.0;
 
   static const inputHeight = 56.0;
-  static const navBarHeight = 68.0;
+
+  /// Hauteur utile de la barre d'onglets, hors zone du geste d'accueil :
+  /// 49 points sur iOS, arrondis à 52 pour la cible tactile d'Android.
+  static const navBarHeight = 52.0;
 
   /// Espace qu’une zone scrollable doit réserver pour que son dernier
-  /// élément passe au-dessus de la barre de navigation flottante.
-  static const navBarInset = 108.0;
+  /// élément passe au-dessus de la barre d'onglets : sa hauteur, la zone du
+  /// geste d'accueil la plus haute (34 points) et une respiration.
+  static const navBarInset = 104.0;
 
   /// Largeur de contenu maximale — au-delà, une colonne unique paraît
   /// étirée sur tablettes et pliables ; le contenu est donc centré.

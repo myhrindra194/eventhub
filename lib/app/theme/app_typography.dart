@@ -1,5 +1,5 @@
+import 'package:eventhub/app/theme/appearance.dart';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 /// Système typographique.
 ///
@@ -15,12 +15,16 @@ import 'package:google_fonts/google_fonts.dart';
 /// palier au-dessus de 20 px reçoit un tracking négatif : un grand texte au
 /// tracking par défaut paraît lâche.
 abstract final class AppTypography {
+  /// [font] choisit le couple de familles (titres, texte) ; l'échelle, les
+  /// graisses et le tracking restent ceux décrits ci-dessus, pour que changer
+  /// de police ne casse aucune mise en page.
   static TextTheme textTheme({
     required Color primary,
     required Color secondary,
+    FontChoice font = FontChoice.modern,
   }) {
-    final display = GoogleFonts.plusJakartaSansTextTheme();
-    final body = GoogleFonts.interTextTheme();
+    final display = font.display;
+    final body = font.body;
 
     TextStyle d(TextStyle? base) => (base ?? const TextStyle()).copyWith(
       color: primary,

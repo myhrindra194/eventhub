@@ -1,4 +1,6 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:eventhub/app/theme/theme.dart';
+import 'package:eventhub/core/media/cloudinary_url.dart';
 import 'package:eventhub/core/utils/image_data_url.dart';
 import 'package:flutter/material.dart';
 
@@ -85,9 +87,9 @@ class AppAvatar extends StatelessWidget {
   /// La photo, si le compte en a une.
   ///
   /// Deux provenances possibles, et une seule chaîne pour les décrire : une
-  /// URL `https:` (image distante) ou une URL `data:` (photo embarquée dans
-  /// le profil, faute de Cloud Storage sur le plan Spark). Dans les deux cas
-  /// un échec retombe sur les initiales, qui restent une identité lisible.
+  /// URL `https:` (Cloudinary, ou un lien plus ancien) ou une URL `data:`
+  /// (photo embarquée dans le profil avant Cloudinary). Dans les deux cas un
+  /// échec retombe sur les initiales, qui restent une identité lisible.
   Widget? _picture(BuildContext context) {
     final url = imageUrl;
     if (url == null || url.isEmpty) return null;
@@ -104,8 +106,17 @@ class AppAvatar extends StatelessWidget {
       );
     }
 
-    return Image.network(
-      url,
+    // Un avatar de 40 px n'a pas à télécharger la photo de 1 024 px envoyée
+    // par l'utilisateur : on demande un carré centré sur le visage, au palier
+    // qui couvre la densité de l'écran.
+    final side = CloudinaryUrl.bucketFor(
+      size,
+      MediaQuery.devicePixelRatioOf(context),
+    );
+    return Image(
+      image: CachedNetworkImageProvider(
+        CloudinaryUrl.sized(url, width: side, square: true),
+      ),
       width: size,
       height: size,
       fit: BoxFit.cover,

@@ -10,6 +10,7 @@ import 'package:eventhub/features/events/application/event_form_controller.dart'
 import 'package:eventhub/features/events/application/event_providers.dart';
 import 'package:eventhub/features/events/domain/entities/event.dart';
 import 'package:eventhub/features/organizer/presentation/widgets/organizer_event_tile.dart';
+import 'package:eventhub/features/organizer/presentation/widgets/scan_tickets_action.dart';
 import 'package:eventhub/features/team/application/team_providers.dart';
 import 'package:eventhub/routes/routes.dart';
 import 'package:flutter/material.dart';
@@ -82,6 +83,10 @@ class _OrganizerDashboardScreenState
         title: AppStrings.myEvents,
         subtitle: AppStrings.myEventsSubtitle,
         actions: [
+          // Le scanner à un toucher de l'accueil organisateur : voir
+          // ScanTicketsAction.
+          ScanTicketsAction(events: [...?events.value, ...coOrganized]),
+          const SizedBox(width: AppSpacing.sm),
           GradientFab(
             icon: Icons.add_rounded,
             size: 40,

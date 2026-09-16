@@ -35,6 +35,10 @@ abstract class UserDto with _$UserDto {
 
     /// Horodaté au moment où la notification de bienvenue a été écrite.
     @NullableTimestampConverter() DateTime? welcomedAt,
+
+    /// Rôle choisi à l'inscription ; voir [AppUser.intendedRole].
+    @JsonKey(unknownEnumValue: JsonKey.nullForUndefinedEnumValue)
+    UserRole? intendedRole,
   }) = _UserDto;
 
   factory UserDto.fromJson(Map<String, dynamic> json) =>
@@ -49,5 +53,6 @@ abstract class UserDto with _$UserDto {
     bio: bio,
     photoUrl: photoUrl,
     coverUrl: coverUrl,
+    intendedRole: intendedRole,
   );
 }

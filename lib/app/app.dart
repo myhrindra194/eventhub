@@ -38,6 +38,7 @@ class EventHubApp extends ConsumerWidget {
     final config = ref.watch(appConfigProvider);
     final router = ref.watch(appRouterProvider);
     final themeMode = ref.watch(themeModeControllerProvider);
+    final appearance = ref.watch(appearanceControllerProvider);
     // Démarre le pipeline push (l’enregistrement du token suit la session).
     ref.watch(pushNotificationsProvider);
 
@@ -66,8 +67,8 @@ class EventHubApp extends ConsumerWidget {
       // écrans, et il donne aux captures et aux démos un air inachevé.
       debugShowCheckedModeBanner: false,
 
-      theme: AppTheme.light(),
-      darkTheme: AppTheme.dark(),
+      theme: AppTheme.light(appearance: appearance),
+      darkTheme: AppTheme.dark(appearance: appearance),
       themeMode: themeMode,
       themeAnimationDuration: AppTheme.themeSwitchDuration,
       themeAnimationCurve: AppMotion.standard,

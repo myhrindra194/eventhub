@@ -6,6 +6,7 @@ import 'package:eventhub/core/firebase/firestore_paths.dart';
 import 'package:eventhub/features/admin/data/moderation_dtos.dart';
 import 'package:eventhub/features/admin/domain/moderation.dart';
 import 'package:eventhub/features/moderation/domain/report.dart';
+import 'package:eventhub/features/notifications/data/push_dispatcher.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 /// Le back-office de modération : la file, les signalements derrière chaque
@@ -18,10 +19,19 @@ import 'package:firebase_auth/firebase_auth.dart';
 /// et déplacer cette note, annuler ces places et supprimer cet événement — et
 /// chaque étape est prouvée indépendamment côté serveur.
 class ModerationRemoteDataSource {
-  const ModerationRemoteDataSource(this._db, this._auth);
+  const ModerationRemoteDataSource(
+    this._db,
+    this._auth, {
+    PushDispatcher push = const NoPushDispatcher(),
+  }) : _push = push;
 
   final FirebaseFirestore _db;
   final FirebaseAuth _auth;
+
+  /// Porte-voix vers FCM : appelé après chaque notification écrite, pour
+  /// que son destinataire la reçoive aussi app fermée. Aucun envoi par
+  /// défaut, ce qui garde les tests et les builds sans Worker inchangés.
+  final PushDispatcher _push;
 
   static const pageSize = 100;
   static const decisionsPageSize = 50;
@@ -166,6 +176,7 @@ class ModerationRemoteDataSource {
     final organizerId = review['organizerId'] as String? ?? '';
     final step = hidden ? -1 : 1;
 
+    final notices = <({String recipientId, String notificationId})>[];
     final batch = _db.batch()
       ..update(ref, {'hidden': hidden})
       ..update(_db.collection(Collections.organizers).doc(organizerId), {
@@ -181,6 +192,7 @@ class ModerationRemoteDataSource {
       status: 'resolved',
     );
     _tell(
+      notices,
       batch,
       userId: review['authorId'] as String? ?? '',
       type: hidden ? 'reviewHidden' : 'reviewRestored',
@@ -191,6 +203,7 @@ class ModerationRemoteDataSource {
       eventId: review['eventId'] as String? ?? '',
     );
     await batch.commit();
+    _announce(notices);
     return null;
   }
 
@@ -215,6 +228,7 @@ class ModerationRemoteDataSource {
         .get();
 
     final title = event['title'] as String? ?? '';
+    final notices = <({String recipientId, String notificationId})>[];
     final batch = _db.batch();
     for (final seat in seats.docs) {
       batch.update(seat.reference, {
@@ -223,6 +237,7 @@ class ModerationRemoteDataSource {
         'cancelledBy': 'moderation',
       });
       _tell(
+        notices,
         batch,
         userId: seat.data()['userId'] as String? ?? '',
         type: 'eventRemoved',
@@ -235,6 +250,7 @@ class ModerationRemoteDataSource {
       );
     }
     _tell(
+      notices,
       batch,
       userId: event['organizerId'] as String? ?? '',
       type: 'eventRemoved',
@@ -251,6 +267,7 @@ class ModerationRemoteDataSource {
       status: 'resolved',
     );
     await batch.commit();
+    _announce(notices);
     return seats.docs.length;
   }
 
@@ -271,9 +288,11 @@ class ModerationRemoteDataSource {
     final page = _db.collection(Collections.organizers).doc(entry.targetId);
     final hasPage = (await page.get()).exists;
 
+    final notices = <({String recipientId, String notificationId})>[];
     final batch = _db.batch()..update(userRef, {'suspended': suspended});
     if (hasPage) batch.update(page, {'suspended': suspended});
     _tell(
+      notices,
       batch,
       userId: entry.targetId,
       type: suspended ? 'accountSuspended' : 'accountReinstated',
@@ -291,6 +310,7 @@ class ModerationRemoteDataSource {
       status: 'resolved',
     );
     await batch.commit();
+    _announce(notices);
     return null;
   }
 
@@ -336,6 +356,7 @@ class ModerationRemoteDataSource {
   /// Une notification de modération à la personne concernée. Une décision dont
   /// personne n’est informé est une décision que personne ne peut contester.
   void _tell(
+    List<({String recipientId, String notificationId})> notices,
     WriteBatch batch, {
     required String userId,
     required String type,
@@ -344,12 +365,14 @@ class ModerationRemoteDataSource {
     required String? eventId,
   }) {
     if (userId.isEmpty) return;
+    final id = '${type}_${_uid}_${DateTime.now().millisecondsSinceEpoch}';
+    notices.add((recipientId: userId, notificationId: id));
     batch.set(
       _db
           .collection(Collections.users)
           .doc(userId)
           .collection(Collections.notifications)
-          .doc('${type}_${_uid}_${DateTime.now().millisecondsSinceEpoch}'),
+          .doc(id),
       {
         'type': type,
         'title': _clamp(title, 120),
@@ -364,6 +387,17 @@ class ModerationRemoteDataSource {
         ),
       },
     );
+  }
+
+  /// Les push d'une décision, une fois le lot committé : avant, les
+  /// notifications n'existent pas encore et le Worker les refuserait.
+  void _announce(List<({String recipientId, String notificationId})> notices) {
+    for (final notice in notices) {
+      _push.notify(
+        recipientId: notice.recipientId,
+        notificationId: notice.notificationId,
+      );
+    }
   }
 
   static String _clamp(String value, int max) =>

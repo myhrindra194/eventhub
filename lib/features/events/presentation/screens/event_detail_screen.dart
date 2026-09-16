@@ -644,10 +644,12 @@ class _ActionBar extends ConsumerWidget {
         .reserve(event.id, tierId: tierId);
     if (!context.mounted) return;
     switch (result) {
+      // La place est prise : on montre tout de suite le billet, QR compris —
+      // c'est ce que la personne vient chercher, et ce qu'elle présentera à
+      // l'entrée (le parcours d'Eventbrite et de Dice).
       case Ok(:final value):
-        unawaited(
-          context.push(AppRoutes.reservationConfirmationPath(value.id)),
-        );
+        context.showSuccess(AppStrings.bookedShowTicket);
+        unawaited(context.push(AppRoutes.ticketPath(value.id)));
       case Err(:final failure):
         context.showFailure(failure);
     }

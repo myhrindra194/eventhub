@@ -27,6 +27,13 @@ class AppConfig {
     this.webPushVapidKey = const String.fromEnvironment(
       'FIREBASE_WEB_VAPID_KEY',
     ),
+    this.cloudinaryCloudName = const String.fromEnvironment(
+      'CLOUDINARY_CLOUD_NAME',
+    ),
+    this.cloudinaryUploadPreset = const String.fromEnvironment(
+      'CLOUDINARY_UPLOAD_PRESET',
+    ),
+    this.apiWorkerUrl = const String.fromEnvironment('API_WORKER_URL'),
   });
 
   factory AppConfig.fromFlavor(Flavor flavor) => switch (flavor) {
@@ -66,6 +73,25 @@ class AppConfig {
   /// Clé publique « Web Push certificate » du projet Firebase
   /// (`--dart-define=FIREBASE_WEB_VAPID_KEY=…`). Vide → aucun token push web.
   final String webPushVapidKey;
+
+  /// Nom du cloud Cloudinary qui héberge les images
+  /// (`--dart-define=CLOUDINARY_CLOUD_NAME=…`). Cloud Storage exigeant le
+  /// plan Blaze, c'est Cloudinary qui reçoit les photos et les affiches ;
+  /// Firestore n'en garde que l'URL.
+  final String cloudinaryCloudName;
+
+  /// Nom d'un *upload preset* **non signé** du même compte
+  /// (`--dart-define=CLOUDINARY_UPLOAD_PRESET=…`). Ce n'est pas un secret :
+  /// il voyage dans le binaire, et c'est le preset lui-même qui borne ce
+  /// qu'on peut envoyer. Vide → l'import d'images est masqué.
+  final String cloudinaryUploadPreset;
+
+  /// Adresse du Worker Cloudflare qui envoie les notifications push FCM
+  /// (`--dart-define=API_WORKER_URL=https://eventhub-api.<compte>.workers.dev`).
+  /// Cloud Functions exigeant le plan Blaze, c'est lui qui détient la clé du
+  /// compte de service. Vide → aucun push : les notifications restent
+  /// visibles dans l'app, seulement pas app fermée.
+  final String apiWorkerUrl;
 
   /// Google Sign-In ne demande aucune configuration supplémentaire sur le
   /// web (popup Firebase) ni sur iOS (client id dans Info.plist) ; Android a

@@ -55,7 +55,7 @@ final class ModerationRepositoryProvider
 }
 
 String _$moderationRepositoryHash() =>
-    r'83631893d377e57dafc178414c74afb4fc00db37';
+    r'1a41bf5dba4c2ae63b6f9c993f36fad5cb09ac1a';
 
 @ProviderFor(moderationQueue)
 final moderationQueueProvider = ModerationQueueFamily._();

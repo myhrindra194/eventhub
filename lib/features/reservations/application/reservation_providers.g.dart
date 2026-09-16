@@ -55,7 +55,7 @@ final class ReservationRepositoryProvider
 }
 
 String _$reservationRepositoryHash() =>
-    r'9ac15adf85ae454131ecebe0e36ea91d22adc62a';
+    r'5b4e8f8051062383c692460d94c68fdfae2e1af8';
 
 /// Réservations du compte connecté (son espace participant).
 

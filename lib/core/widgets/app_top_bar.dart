@@ -15,10 +15,16 @@ import 'package:flutter/material.dart';
 ///    selon un autre, c'est exactement ce qui fait qu'une application paraît
 ///    assemblée par morceaux.
 ///
-/// Le fond est transparent : la barre laisse voir le fond ambiant de
-/// [AppScaffold] et ne porte ni ombre ni élévation — la séparation d'avec le
-/// contenu se fait au défilement, par la densité du texte, pas par un trait
-/// gris permanent.
+/// Le fond est **exactement** celui de la barre d'onglets ([AppNavBar]) : la
+/// surface opaque `surface`, avec un filet d'un demi-point côté contenu. Les
+/// deux barres encadrent ainsi le contenu d'une seule couleur, identique
+/// quel que soit ce qui défile dessous. Ni ombre ni élévation : c'est le
+/// filet qui sépare.
+///
+/// **Pourquoi plus de flou.** La barre du haut ne recouvre rien au repos : le
+/// corps de l'écran commence *sous* elle. Un `BackdropFilter` sans rien à
+/// flouter est rendu en noir par le moteur Impeller d'Android — c'est ce qui
+/// peignait la barre en noir sur un téléphone, avec un titre illisible.
 class AppTopBar extends StatelessWidget implements PreferredSizeWidget {
   /// Barre d'une destination de premier niveau.
   const AppTopBar.root({
@@ -65,11 +71,17 @@ class AppTopBar extends StatelessWidget implements PreferredSizeWidget {
 
     return AppBar(
       automaticallyImplyLeading: false,
-      backgroundColor: Colors.transparent,
+      // Couleur opaque portée par l'AppBar elle-même, et non un fond
+      // transparent recouvert d'un décor : sur certains GPU Android (Mali /
+      // MediaTek sous Impeller), le `Material` transparent d'une AppBar est
+      // composé en noir, quel que soit ce qu'on peint dessous.
+      backgroundColor: t.surface,
       surfaceTintColor: Colors.transparent,
+      shadowColor: Colors.transparent,
       elevation: 0,
       scrolledUnderElevation: 0,
       toolbarHeight: preferredSize.height,
+      shape: Border(bottom: BorderSide(color: t.border, width: 0.5)),
       // Sans retour, le titre s'aligne sur la gouttière de l'écran ; avec
       // retour, il se cale à droite du disque, à la même distance.
       titleSpacing: hasBack ? AppSpacing.md : AppSpacing.gutter,

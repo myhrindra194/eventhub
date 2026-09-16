@@ -14,6 +14,8 @@ import 'package:eventhub/features/auth/presentation/screens/settings_screen.dart
 import 'package:eventhub/features/auth/presentation/screens/splash_screen.dart';
 import 'package:eventhub/features/auth/presentation/screens/welcome_screen.dart';
 import 'package:eventhub/features/checkin/presentation/screens/check_in_screen.dart';
+import 'package:eventhub/features/events/domain/entities/event_category.dart';
+import 'package:eventhub/features/events/presentation/screens/all_events_screen.dart';
 import 'package:eventhub/features/events/presentation/screens/event_detail_screen.dart';
 import 'package:eventhub/features/events/presentation/screens/event_form_screen.dart';
 import 'package:eventhub/features/events/presentation/screens/event_list_screen.dart';
@@ -36,6 +38,7 @@ import 'package:eventhub/features/reservations/presentation/screens/payment_scre
 import 'package:eventhub/features/reservations/presentation/screens/reservation_confirmation_screen.dart';
 import 'package:eventhub/features/reservations/presentation/screens/ticket_screen.dart';
 import 'package:eventhub/features/support/presentation/screens/about_screen.dart';
+import 'package:eventhub/features/support/presentation/screens/contact_screen.dart';
 import 'package:eventhub/features/support/presentation/screens/help_center_screen.dart';
 import 'package:eventhub/features/support/presentation/screens/privacy_screen.dart';
 import 'package:eventhub/features/team/presentation/screens/event_team_screen.dart';
@@ -45,6 +48,7 @@ import 'package:eventhub/routes/route_guard.dart';
 import 'package:eventhub/routes/route_observer.dart';
 import 'package:eventhub/routes/route_transitions.dart';
 import 'package:eventhub/routes/router_refresh.dart';
+import 'package:eventhub/routes/startup_intro.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
@@ -78,6 +82,7 @@ GoRouter appRouter(Ref ref) {
   ref
     ..listen(authSessionProvider, (_, __) => refresh.notify())
     ..listen(onboardingSeenProvider, (_, __) => refresh.notify())
+    ..listen(startupIntroProvider, (_, __) => refresh.notify())
     ..onDispose(refresh.dispose);
 
   return GoRouter(
@@ -112,7 +117,13 @@ RouteGuardState _guardState(Ref ref) {
   return RouteGuardState(
     session: session.value,
     onboardingSeen: onboarding.value,
-    isBooting: (session.isLoading && !session.hasValue) || onboarding.isLoading,
+    // L'intro du splash compte comme une partie du démarrage : sans elle, une
+    // session en cache ferait disparaître la marque au milieu de son tracé
+    // (voir StartupIntro).
+    isBooting:
+        (session.isLoading && !session.hasValue) ||
+        onboarding.isLoading ||
+        !ref.read(startupIntroProvider),
   );
 }
 
@@ -188,6 +199,12 @@ final _commonRoutes = <RouteBase>[
     parentNavigatorKey: rootNavigatorKey,
     pageBuilder: (_, state) =>
         AppPage.screen(state, const NotificationsScreen()),
+  ),
+  GoRoute(
+    path: AppRoutes.contact,
+    name: AppRoutes.contactName,
+    parentNavigatorKey: rootNavigatorKey,
+    pageBuilder: (_, state) => AppPage.screen(state, const ContactScreen()),
   ),
   GoRoute(
     path: AppRoutes.about,
@@ -296,7 +313,13 @@ String _paymentLocation(GoRouterState state) {
 
 final _participantShell = StatefulShellRoute.indexedStack(
   parentNavigatorKey: rootNavigatorKey,
-  builder: (_, __, shell) => ParticipantShell(navigationShell: shell),
+  // Entrée en fondu : c'est la page qui succède au splash, et un changement
+  // d'espace (participant ↔ organisateur) n'a pas de direction à suggérer.
+  pageBuilder: (_, state, shell) => AppPage.of(
+    state,
+    ParticipantShell(navigationShell: shell),
+    transition: AppTransition.fadeThrough,
+  ),
   branches: [
     StatefulShellBranch(
       navigatorKey: _participantShellKey,
@@ -309,6 +332,29 @@ final _participantShell = StatefulShellRoute.indexedStack(
             const EventListScreen(),
             transition: AppTransition.none,
           ),
+          routes: [
+            // Sous-route de l'onglet, sans `parentNavigatorKey` : elle
+            // s'empile dans le navigator de la branche, la barre d'onglets
+            // reste visible et revenir à l'onglet Explorer retrouve le
+            // catalogue là où on l'avait laissé. Hors du shell, elle serait
+            // aussi hors de portée d'un organisateur : `/events/**` n'est pas
+            // dans son espace, et RouteGuard l'y renvoie.
+            GoRoute(
+              path: 'all',
+              name: AppRoutes.allEventsName,
+              pageBuilder: (_, state) => AppPage.screen(
+                state,
+                AllEventsScreen(
+                  // Une valeur inconnue (lien ancien, faute de frappe) ouvre
+                  // simplement le catalogue entier plutôt qu'une erreur.
+                  initialCategory:
+                      EventCategory.values.asNameMap()[state
+                          .uri
+                          .queryParameters[AppRoutes.categoryParam]],
+                ),
+              ),
+            ),
+          ],
         ),
       ],
     ),
@@ -419,7 +465,13 @@ final _participantLeafRoutes = <RouteBase>[
 
 final _organizerShell = StatefulShellRoute.indexedStack(
   parentNavigatorKey: rootNavigatorKey,
-  builder: (_, __, shell) => OrganizerShell(navigationShell: shell),
+  // Entrée en fondu : c'est la page qui succède au splash, et un changement
+  // d'espace (participant ↔ organisateur) n'a pas de direction à suggérer.
+  pageBuilder: (_, state, shell) => AppPage.of(
+    state,
+    OrganizerShell(navigationShell: shell),
+    transition: AppTransition.fadeThrough,
+  ),
   branches: [
     StatefulShellBranch(
       navigatorKey: _organizerShellKey,

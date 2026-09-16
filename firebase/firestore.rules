@@ -23,10 +23,10 @@ rules_version = '2';
 //
 //  Identité
 //  --------
-//   * rôle : `users/{uid}.role` — 'participant' à l’inscription, 'organizer'
-//     dès que le compte active l’espace organisateur (adresse vérifiée, sans
-//     retour en arrière). Un organisateur conserve tous les droits d’un
-//     participant (un compte, deux espaces) ;
+//   * rôle : `users/{uid}.role` — 'participant' ou 'organizer', choisi à
+//     l’inscription et **définitif**. Les deux rôles sont exclusifs : un
+//     organisateur crée et gère des événements, un participant réserve,
+//     s’inscrit en liste d’attente et laisse des avis ;
 //   * administrateur : le document `admins/{uid}`, créé uniquement depuis la
 //     console Firebase — aucune écriture cliente ne peut l’accorder ;
 //   * suspension : `users/{uid}.suspended`, posée par un administrateur. Un
@@ -107,6 +107,11 @@ service cloud.firestore {
       return isActive() && me().role == 'organizer';
     }
 
+    // lecture (partagée avec isActive, donc sans coût supplémentaire)
+    function isParticipant() {
+      return isActive() && me().role == 'participant';
+    }
+
     // lecture
     function isAdmin() {
       return signedIn()
@@ -150,12 +155,36 @@ service cloud.firestore {
       return value is int && value >= minValue && value <= maxValue;
     }
 
-    function isHttpsUrl(value) {
-      return value is string && value.size() <= 2048 && value.matches('https://.+');
+    /// Une image livrée par Cloudinary, seul hébergement d'images du projet
+    /// (Cloud Storage exige le plan Blaze). Restreindre l'hôte plutôt
+    /// qu'accepter tout lien https a deux effets : aucun document ne peut
+    /// faire charger à chaque lecteur une image posée sur un serveur tiers
+    /// (qui verrait passer leurs adresses IP), et tout ce qu'affiche l'app
+    /// passe par une médiathèque que la modération peut consulter.
+    ///
+    /// Le nom du cloud (`n9urnfhj`) est figé : les règles ne lisent pas la
+    /// configuration de build, et sans lui un client forgé pourrait afficher
+    /// une image hébergée sur n'importe quel autre compte Cloudinary, hors de
+    /// portée de la modération. Changer de compte impose donc de modifier
+    /// cette ligne en même temps que `CLOUDINARY_CLOUD_NAME` — voir
+    /// docs/SECURITY.md §11.
+    function isCloudinaryImage(value) {
+      return value is string
+        && value.size() <= 2048
+        && value.matches('https://res[.]cloudinary[.]com/n9urnfhj/image/upload/[^ ]+');
     }
 
-    function optionalHttpsUrl(data, key) {
-      return !(key in data) || data[key] == null || isHttpsUrl(data[key]);
+    /// Champ image facultatif : absent, nul, un nouveau lien Cloudinary — ou
+    /// la valeur déjà enregistrée, laissée telle quelle. Cette dernière
+    /// branche garde modifiables les documents écrits avant Cloudinary (lien
+    /// collé, image `data:` embarquée) : changer le titre d'un événement ne
+    /// doit pas exiger de remplacer son affiche. `resource != null` exclut la
+    /// branche à la création, où il n'existe rien à conserver.
+    function validImageField(key) {
+      return !(key in incoming())
+        || incoming()[key] == null
+        || isCloudinaryImage(incoming()[key])
+        || (resource != null && unchanged(key));
     }
 
     /// Heure serveur : le client envoie `FieldValue.serverTimestamp()`.
@@ -187,23 +216,12 @@ service cloud.firestore {
         return !('bio' in data) || data.bio == null || isString(data.bio, 0, 500);
       }
 
-      /// Une image de profil est soit une URL https, soit une image portée
-      /// par le document lui-même (`data:`) — faute de Cloud Storage sur le
-      /// plan Spark. Dans les deux cas la taille est bornée : un document
-      /// Firestore ne dépasse pas 1 Mio, et une photo qui s'en approcherait
-      /// rendrait la lecture du profil coûteuse à chaque écran.
-      function validImageRef(data, key, maxLength) {
-        return !(key in data)
-          || data[key] == null
-          || (data[key] is string
-              && data[key].size() <= maxLength
-              && (data[key].matches('https://.+')
-                  || data[key].matches('data:image/(jpeg|png|webp);base64,.+')));
-      }
-
-      function validPhotos(data) {
-        return validImageRef(data, 'photoUrl', 140000)
-          && validImageRef(data, 'coverUrl', 280000);
+      /// Photo et couverture : un lien Cloudinary, ou la valeur déjà en
+      /// place (voir `validImageField`). Les images `data:` embarquées
+      /// d'avant Cloudinary restent lisibles mais ne peuvent plus être
+      /// écrites : elles alourdissaient chaque lecture du profil.
+      function validPhotos() {
+        return validImageField('photoUrl') && validImageField('coverUrl');
       }
 
       allow get: if isSelf(userId) || isAdmin();
@@ -214,12 +232,19 @@ service cloud.firestore {
       // l’espace organisateur s’active plus tard, jamais à l’inscription.
       allow create: if isSelf(userId)
         && incoming().keys().hasAll(['name', 'email', 'role', 'createdAt'])
-        && incoming().keys().hasOnly(['name', 'email', 'role', 'bio', 'photoUrl', 'coverUrl', 'createdAt', 'updatedAt'])
+        && incoming().keys().hasOnly(['name', 'email', 'role', 'intendedRole', 'bio', 'photoUrl', 'coverUrl', 'createdAt', 'updatedAt'])
         && validName(incoming())
         && validBio(incoming())
-        && validPhotos(incoming())
+        && validPhotos()
         && incoming().email == request.auth.token.email
-        && incoming().role == 'participant'
+        // Le rôle choisi à l'inscription est accordé tout de suite, et ne
+        // changera plus (aucune branche d'update ne touche `role`). Un
+        // organisateur naît avec sa page publique, dans le même batch — sans
+        // elle, son espace n'aurait rien à afficher. Ce qui reste réservé aux
+        // adresses vérifiées : publier un événement (events.create).
+        && (incoming().role == 'participant'
+            || (incoming().role == 'organizer' && existsAfter(organizerDoc(userId))))
+        && (!('intendedRole' in incoming()) || incoming().intendedRole in ['participant', 'organizer'])
         && isServerTime(incoming().createdAt);
 
       allow update: if
@@ -229,19 +254,9 @@ service cloud.firestore {
           && onlyChanged(['name', 'bio', 'photoUrl', 'coverUrl', 'welcomedAt', 'updatedAt'])
           && validName(incoming())
           && validBio(incoming())
-          && validPhotos(incoming())
+          && validPhotos()
           && (unchanged('welcomedAt') || (existing().get('welcomedAt', null) == null && isServerTime(incoming().welcomedAt)))
           && (unchanged('updatedAt') || isServerTime(incoming().updatedAt)))
-        ||
-        // ---- « Devenir organisateur » : sans retour, adresse vérifiée, page
-        //      publique créée dans le même batch ---------------------------
-        (isSelf(userId)
-          && existing().get('suspended', false) != true
-          && onlyChanged(['role', 'updatedAt'])
-          && existing().role == 'participant'
-          && incoming().role == 'organizer'
-          && verified()
-          && existsAfter(organizerDoc(userId)))
         ||
         // ---- la modération suspend ou rétablit ----------------------------
         (isAdmin() && !isSelf(userId)
@@ -473,9 +488,13 @@ service cloud.firestore {
 
       allow read: if signedIn();
 
-      // Créée par le propriétaire dans le batch « Devenir organisateur », vide.
+      // Créée vide par le propriétaire, uniquement dans le batch qui crée son
+      // compte organisateur : `!exists(userDoc)` interdit à un participant
+      // existant de s'en fabriquer une pour changer de rôle. L'entrée de
+      // recherche par e-mail (organizerEmails) suppose une adresse vérifiée,
+      // et arrive donc plus tard, à la confirmation.
       allow create: if isSelf(organizerId)
-        && verified()
+        && !exists(userDoc(organizerId))
         && incoming().keys().hasOnly(['name', 'bio', 'photoUrl', 'memberSince', 'followerCount', 'eventCount', 'ratingSum', 'ratingCount'])
         && isString(incoming().name, 2, 80)
         && isString(incoming().bio, 0, 500)
@@ -484,8 +503,7 @@ service cloud.firestore {
         && incoming().eventCount == 0
         && incoming().ratingSum == 0
         && incoming().ratingCount == 0
-        && getAfter(userDoc(organizerId)).data.role == 'organizer'
-        && existsAfter(/databases/$(database)/documents/organizerEmails/$(emailKey(request.auth.token.email)));
+        && getAfter(userDoc(organizerId)).data.role == 'organizer';
 
       allow update: if
         // ---- le propriétaire garde la page alignée sur le profil privé ----
@@ -544,7 +562,7 @@ service cloud.firestore {
     //  events/{eventId}
     //    title 3..120 · description 1..5000 · category · startsAt · location
     //    capacity 1..100000 · availablePlaces 0..capacity
-    //    organizerId (immuable) · organizerName · imageUrl? (https)
+    //    organizerId (immuable) · organizerName · imageUrl? (Cloudinary)
     //    staffIds [≤ 10] · tiers {id: {name, description, price, capacity,
     //    available, order}} [≤ 6] · currency? · createdAt · updatedAt?
     //
@@ -572,7 +590,7 @@ service cloud.firestore {
           && isInt(incoming().availablePlaces, 0, 100000)
           && incoming().availablePlaces <= incoming().capacity
           && isString(incoming().organizerName, 1, 80)
-          && optionalHttpsUrl(incoming(), 'imageUrl')
+          && validImageField('imageUrl')
           && (!('staffIds' in incoming()) || (incoming().staffIds is list && incoming().staffIds.size() <= 10))
           && (!('tiers' in incoming()) || (incoming().tiers is map && incoming().tiers.size() <= 6))
           && (!('currency' in incoming()) || incoming().currency == null || incoming().currency in ['EUR', 'USD', 'MGA']);
@@ -680,7 +698,7 @@ service cloud.firestore {
       match /waitlist/{userId} {
         allow get: if isSelf(userId) || isEventTeam(eventId);
         allow list: if signedIn() && request.query.limit <= 20;
-        allow create: if isSelf(userId) && isActive()
+        allow create: if isSelf(userId) && isParticipant()
           && incoming().keys().hasOnly(['userId', 'createdAt', 'notifiedAt'])
           && incoming().userId == uid()
           && incoming().get('notifiedAt', null) == null
@@ -852,7 +870,7 @@ service cloud.firestore {
             || isEventTeam(resource.data.eventId)
             || isAdmin());
 
-      allow create: if isActive()
+      allow create: if isParticipant()
         && validShape()
         && reservationId == incoming().eventId + '_' + uid()
         && incoming().userId == uid()
@@ -938,7 +956,7 @@ service cloud.firestore {
         && request.query.limit <= 200
         && (resource.data.hidden == false || resource.data.authorId == uid() || isAdmin());
 
-      allow create: if isActive()
+      allow create: if isParticipant()
         && verified()
         && reviewId == incoming().eventId + '_' + uid()
         && incoming().keys().hasOnly(['eventId', 'organizerId', 'authorId', 'authorName', 'rating', 'comment', 'hidden', 'createdAt'])
@@ -1053,6 +1071,30 @@ service cloud.firestore {
           && isServerTime(incoming().at);
         allow update, delete: if false;
       }
+    }
+
+    // ========================================================= push FCM
+    //
+    //  pushReceipts/{recipientId}:{notificationId}
+    //  Reçus d'envoi écrits par le Worker Cloudflare `eventhub-api` avec le
+    //  compte de service (qui contourne ces règles). Ils garantissent qu'une
+    //  notification ne part qu'une fois en push. Aucun client n'a à les lire
+    //  ni à les écrire : un reçu forgé suffirait à bloquer le push d'autrui.
+    //  Supprimés toutes les heures par la tâche planifiée du Worker (les
+    //  politiques TTL exigent un compte de facturation).
+    match /pushReceipts/{receiptId} {
+      allow read, write: if false;
+    }
+
+    //  mailReceipts/{kind}:{uid} — un mail de bienvenue par compte.
+    //  contactThrottle/{uid}     — heure du dernier message « Nous contacter ».
+    //  Écrits par le Worker seul : un client qui forgerait un reçu
+    //  s'empêcherait de recevoir son mail, ou contournerait la limite.
+    match /mailReceipts/{receiptId} {
+      allow read, write: if false;
+    }
+    match /contactThrottle/{userId} {
+      allow read, write: if false;
     }
 
     // ========================================================= attrape-tout

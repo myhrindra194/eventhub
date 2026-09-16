@@ -11,10 +11,9 @@ part of 'event_form_controller.dart';
 /// Parcours de création / modification. [existingEventId] == null signifie
 /// « création ».
 ///
-/// La couverture est une URL https saisie dans le formulaire (voir
-/// [EventDraft.imageUrl]) : sur le plan Spark, il n’y a pas de Cloud
-/// Storage vers lequel envoyer un fichier, et un événement sans couverture
-/// conserve son visuel généré.
+/// La couverture est déjà hébergée sur Cloudinary quand ce contrôleur est
+/// appelé (voir [EventDraft.imageUrl]) : il n’écrit que son lien, et un
+/// événement sans couverture conserve son visuel généré.
 
 @ProviderFor(EventFormController)
 final eventFormControllerProvider = EventFormControllerProvider._();
@@ -22,19 +21,17 @@ final eventFormControllerProvider = EventFormControllerProvider._();
 /// Parcours de création / modification. [existingEventId] == null signifie
 /// « création ».
 ///
-/// La couverture est une URL https saisie dans le formulaire (voir
-/// [EventDraft.imageUrl]) : sur le plan Spark, il n’y a pas de Cloud
-/// Storage vers lequel envoyer un fichier, et un événement sans couverture
-/// conserve son visuel généré.
+/// La couverture est déjà hébergée sur Cloudinary quand ce contrôleur est
+/// appelé (voir [EventDraft.imageUrl]) : il n’écrit que son lien, et un
+/// événement sans couverture conserve son visuel généré.
 final class EventFormControllerProvider
     extends $AsyncNotifierProvider<EventFormController, void> {
   /// Parcours de création / modification. [existingEventId] == null signifie
   /// « création ».
   ///
-  /// La couverture est une URL https saisie dans le formulaire (voir
-  /// [EventDraft.imageUrl]) : sur le plan Spark, il n’y a pas de Cloud
-  /// Storage vers lequel envoyer un fichier, et un événement sans couverture
-  /// conserve son visuel généré.
+  /// La couverture est déjà hébergée sur Cloudinary quand ce contrôleur est
+  /// appelé (voir [EventDraft.imageUrl]) : il n’écrit que son lien, et un
+  /// événement sans couverture conserve son visuel généré.
   EventFormControllerProvider._()
     : super(
         from: null,
@@ -60,10 +57,9 @@ String _$eventFormControllerHash() =>
 /// Parcours de création / modification. [existingEventId] == null signifie
 /// « création ».
 ///
-/// La couverture est une URL https saisie dans le formulaire (voir
-/// [EventDraft.imageUrl]) : sur le plan Spark, il n’y a pas de Cloud
-/// Storage vers lequel envoyer un fichier, et un événement sans couverture
-/// conserve son visuel généré.
+/// La couverture est déjà hébergée sur Cloudinary quand ce contrôleur est
+/// appelé (voir [EventDraft.imageUrl]) : il n’écrit que son lien, et un
+/// événement sans couverture conserve son visuel généré.
 
 abstract class _$EventFormController extends $AsyncNotifier<void> {
   FutureOr<void> build();

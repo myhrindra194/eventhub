@@ -64,9 +64,20 @@
 	<!-- Analytics collects nothing until the user consents. -->
 	<key>FIREBASE_ANALYTICS_COLLECTION_ENABLED</key>
 	<false/>
-	<!-- Door check-in: the organizer scans tickets with the camera. -->
+	<!-- Appareil photo : scan des billets à l'entrée et prise de la photo de
+	     profil ou de couverture. iOS affiche cette phrase dans l'invite
+	     système ; elle doit couvrir les deux usages, sinon la revue d'Apple
+	     peut rejeter l'app pour justification incomplète. Sa présence active
+	     aussi la permission caméra de permission_handler sous Swift Package
+	     Manager. -->
 	<key>NSCameraUsageDescription</key>
-	<string>La caméra sert à scanner les billets à l'entrée de vos événements.</string>
+	<string>EventHub utilise l'appareil photo pour prendre votre photo de profil ou de couverture, et pour scanner les billets à l'entrée de vos événements.</string>
+	<!-- Photothèque : choix d'une photo de profil, de couverture ou d'une
+	     affiche d'événement. Le sélecteur système n'exige normalement pas
+	     d'autorisation, mais iOS met fin à l'app si un accès est tenté sans
+	     cette clé. -->
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>EventHub accède à vos photos pour que vous choisissiez une photo de profil, de couverture ou l'affiche d'un événement.</string>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>

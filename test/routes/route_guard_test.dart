@@ -101,17 +101,35 @@ void main() {
       );
     });
 
-    // Un compte, deux espaces (le modèle Eventbrite / Airbnb) : le verrou est
-    // à sens unique. L'espace organisateur reste fermé tant qu'il n'est pas
-    // activé, mais un organisateur demeure un participant — il navigue,
-    // réserve et détient des billets comme tout le monde — si bien que rien
-    // ne le chasse de l'espace participant.
-    test('gates the organizer area, and only it', () {
+    // Deux rôles exclusifs, fixés à l'inscription : le verrou joue dans les
+    // deux sens. Un participant n'entre pas dans l'espace organisateur, et
+    // un organisateur — qui ne réserve pas — reste dans le sien.
+    test('confines each role to its own area', () {
       expect(
         redirect(signedIn(participant), AppRoutes.organizerEvents),
         AppRoutes.events,
       );
-      expect(redirect(signedIn(organizer), AppRoutes.events), isNull);
+      expect(
+        redirect(signedIn(organizer), AppRoutes.events),
+        AppRoutes.organizerEvents,
+      );
+      expect(
+        redirect(signedIn(organizer), AppRoutes.reservations),
+        AppRoutes.organizerEvents,
+      );
+    });
+
+    // « Tous les événements » appartient à l'espace participant : la route
+    // vit dans la branche Explorer du shell, et ne doit pas devenir une
+    // porte dérobée pour un organisateur.
+    test('confines the all-events catalogue to participants', () {
+      expect(redirect(signedIn(participant), AppRoutes.allEvents), isNull);
+      expect(
+        redirect(signedIn(organizer), AppRoutes.allEvents),
+        AppRoutes.organizerEvents,
+      );
+      expect(AppRoutes.isRoleAgnostic(AppRoutes.allEvents), isFalse);
+      expect(AppRoutes.isOrganizerArea(AppRoutes.allEvents), isFalse);
     });
 
     test('lets a role browse its own area', () {
@@ -151,20 +169,26 @@ void main() {
       }
     });
 
-    test('the door check-in is the organizer’s; favourites are everyone’s', () {
-      expect(redirect(signedIn(participant), AppRoutes.favorites), isNull);
-      expect(redirect(signedIn(organizer), AppRoutes.favorites), isNull);
-      final checkIn = AppRoutes.organizerEventCheckInPath('e1');
-      expect(checkIn, '/organizer/events/e1/checkin');
-      expect(redirect(signedIn(organizer), checkIn), isNull);
-      expect(redirect(signedIn(participant), checkIn), AppRoutes.events);
-    });
+    test(
+      'the door check-in is the organizer’s; favourites the participant’s',
+      () {
+        expect(redirect(signedIn(participant), AppRoutes.favorites), isNull);
+        expect(
+          redirect(signedIn(organizer), AppRoutes.favorites),
+          AppRoutes.organizerEvents,
+        );
+        final checkIn = AppRoutes.organizerEventCheckInPath('e1');
+        expect(checkIn, '/organizer/events/e1/checkin');
+        expect(redirect(signedIn(organizer), checkIn), isNull);
+        expect(redirect(signedIn(participant), checkIn), AppRoutes.events);
+      },
+    );
 
-    test('a ticket opens for whoever holds it, organizer included', () {
+    test('a ticket belongs to the participant space', () {
       final ticket = AppRoutes.ticketPath('evt_u1');
       expect(ticket, '/reservations/evt_u1/ticket');
       expect(redirect(signedIn(participant), ticket), isNull);
-      expect(redirect(signedIn(organizer), ticket), isNull);
+      expect(redirect(signedIn(organizer), ticket), AppRoutes.organizerEvents);
     });
 
     test('routes the end of the sign-up funnel to the welcome screen', () {
@@ -256,10 +280,15 @@ void main() {
   });
 
   group('payments', () {
-    test('the Stripe return link reaches whoever booked, in either space', () {
+    // Seul un participant réserve, donc seul un participant paie : un
+    // organisateur qui suivrait le lien de retour reste dans son espace.
+    test('the Stripe return link belongs to the participant space', () {
       expect(AppRoutes.paymentPath('e1_u1'), '/reservations/e1_u1/payment');
       expect(redirect(signedIn(participant), AppRoutes.paySuccess), isNull);
-      expect(redirect(signedIn(organizer), AppRoutes.paySuccess), isNull);
+      expect(
+        redirect(signedIn(organizer), AppRoutes.paySuccess),
+        AppRoutes.organizerEvents,
+      );
       expect(
         redirect(signedIn(participant), AppRoutes.paymentPath('e1_u1')),
         isNull,

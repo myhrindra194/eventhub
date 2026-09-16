@@ -14,17 +14,53 @@ class UserRemoteDataSource {
   DocumentReference<Map<String, dynamic>> _user(String uid) =>
       _db.collection(Collections.users).doc(uid);
 
-  /// Tout compte démarre en participant ; les règles refusent autre chose.
+  /// Crée le profil avec le rôle choisi à l'inscription.
+  ///
+  /// Un organisateur naît avec sa page publique vide, dans le même batch :
+  /// les règles refusent un rôle organisateur sans elle. `intendedRole` garde
+  /// la réponse brute du formulaire, utile pour réparer un compte dont
+  /// l'écriture aurait été interrompue.
   Future<void> create(
     String uid, {
     required String name,
     required String email,
-  }) => _user(uid).set({
+    UserRole intendedRole = UserRole.participant,
+  }) async {
+    final batch = _db.batch()
+      ..set(_user(uid), {
+        'name': name,
+        'email': email,
+        'role': intendedRole.name,
+        'intendedRole': intendedRole.name,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+    if (intendedRole == UserRole.organizer) {
+      batch.set(_organizerPage(uid), _emptyPage(name, ''));
+    }
+    await batch.commit();
+  }
+
+  DocumentReference<Map<String, dynamic>> _organizerPage(String uid) =>
+      _db.collection(Collections.organizers).doc(uid);
+
+  static Map<String, Object?> _emptyPage(String name, String bio) => {
     'name': name,
-    'email': email,
-    'role': UserRole.participant.name,
-    'createdAt': FieldValue.serverTimestamp(),
-  });
+    'bio': bio,
+    'memberSince': FieldValue.serverTimestamp(),
+    'followerCount': 0,
+    'eventCount': 0,
+    'ratingSum': 0,
+    'ratingCount': 0,
+  };
+
+  /// L'entrée qui permet de retrouver un organisateur par son adresse (pour
+  /// l'inviter à co-organiser). Les règles la réservent aux adresses
+  /// vérifiées : elle est donc écrite à la confirmation, pas à l'inscription.
+  /// Idempotente — réécrire la même valeur est sans effet.
+  Future<void> registerOrganizerEmail(String uid, String email) => _db
+      .collection(Collections.organizerEmails)
+      .doc(DocIds.emailKey(email))
+      .set({'uid': uid});
 
   /// Le nom, la présentation et les photos avancent ensemble sur le profil
   /// privé et, pour un organisateur, sur la page publique — les règles
@@ -57,36 +93,6 @@ class UserRemoteDataSource {
         if (updatePhotos) 'photoUrl': photoUrl,
       });
     }
-    await batch.commit();
-  }
-
-  /// Active l’espace organisateur, dans l’unique batch que les règles
-  /// acceptent : le rôle, la page publique vide, et l’entrée de recherche par
-  /// e-mail que résolvent les invitations de co-organisateurs.
-  Future<void> becomeOrganizer(
-    String uid, {
-    required String name,
-    required String email,
-    required String bio,
-  }) async {
-    final batch = _db.batch()
-      ..update(_user(uid), {
-        'role': UserRole.organizer.name,
-        'updatedAt': FieldValue.serverTimestamp(),
-      })
-      ..set(_db.collection(Collections.organizers).doc(uid), {
-        'name': name,
-        'bio': bio,
-        'memberSince': FieldValue.serverTimestamp(),
-        'followerCount': 0,
-        'eventCount': 0,
-        'ratingSum': 0,
-        'ratingCount': 0,
-      })
-      ..set(
-        _db.collection(Collections.organizerEmails).doc(DocIds.emailKey(email)),
-        {'uid': uid},
-      );
     await batch.commit();
   }
 

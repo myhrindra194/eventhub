@@ -1,5 +1,4 @@
 import 'package:eventhub/app/theme/theme.dart';
-import 'package:eventhub/core/config/app_links.dart';
 import 'package:eventhub/core/l10n/app_strings.dart';
 import 'package:eventhub/features/support/presentation/widgets/support_page.dart';
 import 'package:flutter/material.dart';
@@ -88,7 +87,8 @@ class PrivacyScreen extends StatelessWidget {
           title: 'Vos droits',
           body:
               'Accès, rectification : votre nom se modifie depuis le profil ; '
-              'pour le reste, écrivez à ${AppLinks.supportEmail}. Suppression : '
+              'pour le reste, écrivez-nous depuis Profil → Nous contacter. '
+              'Suppression : '
               'Paramètres → Supprimer mon compte. Vos données sont effacées, '
               'vos réservations à venir annulées et vos avis anonymisés.',
         ),

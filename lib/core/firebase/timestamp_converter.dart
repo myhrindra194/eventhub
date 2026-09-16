@@ -1,15 +1,17 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:json_annotation/json_annotation.dart';
 
-/// Firestore [Timestamp] <-> [DateTime] for DTOs.
+/// [Timestamp] Firestore <-> [DateTime] pour les DTO.
 ///
-/// Read in local time, because every formatter in the app reads the fields
-/// of the DateTime as they are. [DateTime], ISO-8601 strings and epoch millis
-/// are accepted too, for fixtures and the local cache.
+/// La lecture se fait en heure locale, parce que tous les formateurs de
+/// l’app lisent les champs du DateTime tels quels. [DateTime], les chaînes
+/// ISO-8601 et les millisecondes epoch sont également acceptées, pour les
+/// fixtures et le cache local.
 ///
-/// A field written with `FieldValue.serverTimestamp()` is `null` in the
-/// pending local snapshot, until the server acknowledges the write: DTOs
-/// declare such fields with [NullableTimestampConverter].
+/// Un champ écrit avec `FieldValue.serverTimestamp()` vaut `null` dans le
+/// snapshot local en attente, tant que le serveur n’a pas acquitté
+/// l’écriture : les DTO déclarent ces champs avec
+/// [NullableTimestampConverter].
 class TimestampConverter implements JsonConverter<DateTime, Object> {
   const TimestampConverter();
 

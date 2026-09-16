@@ -2,11 +2,11 @@ import 'dart:convert';
 
 import 'package:crypto/crypto.dart';
 
-/// Every collection the app reads or writes, in one place.
+/// Toutes les collections lues ou écrites par l’app, au même endroit.
 ///
-/// Mirrors `firebase/firestore.rules`: a renamed collection is a compile
-/// error here rather than a `permission-denied` at runtime (the catch-all
-/// rule refuses any path it does not know).
+/// Reflète `firebase/firestore.rules` : une collection renommée devient une
+/// erreur de compilation ici, plutôt qu’un `permission-denied` à l’exécution
+/// (la règle attrape-tout refuse tout chemin qu’elle ne connaît pas).
 abstract final class Collections {
   static const users = 'users';
   static const admins = 'admins';
@@ -35,42 +35,45 @@ abstract final class Collections {
   static const decisions = 'decisions';
 }
 
-/// Deterministic document ids. The security rules rebuild the same ids to
-/// prove a fact ("this booking exists", "one report per person"), so they
-/// are composed here and nowhere else.
+/// Identifiants de documents déterministes. Les règles de sécurité
+/// reconstruisent les mêmes ids pour prouver un fait (« cette réservation
+/// existe », « un signalement par personne ») : ils sont donc composés ici
+/// et nulle part ailleurs.
 abstract final class DocIds {
-  /// The private preferences document under `users/{uid}/private`.
+  /// Le document de préférences privées sous `users/{uid}/private`.
   static const notificationPreferences = 'notifications';
 
-  /// One seat per person per event: re-booking after a cancellation reuses
-  /// the same document, hence the same ticket code.
+  /// Une place par personne et par événement : re-réserver après une
+  /// annulation réutilise le même document, donc le même code de billet.
   static String reservation(String eventId, String userId) =>
       '${eventId}_$userId';
 
-  /// One review per person per event.
+  /// Un avis par personne et par événement.
   static String review(String eventId, String userId) => '${eventId}_$userId';
 
-  /// `(eventId, userId)` of a reservation or review id. Firestore auto-ids
-  /// never contain an underscore, so the last one separates the pair.
+  /// `(eventId, userId)` d’un id de réservation ou d’avis. Les auto-ids
+  /// Firestore ne contiennent jamais d’underscore : le dernier sépare donc
+  /// la paire.
   static (String eventId, String userId)? splitPair(String id) {
     final cut = id.lastIndexOf('_');
     if (cut <= 0 || cut == id.length - 1) return null;
     return (id.substring(0, cut), id.substring(cut + 1));
   }
 
-  /// One report per person per target.
+  /// Un signalement par personne et par cible.
   static String report(String targetType, String targetId, String reporterId) =>
       '${targetType}_${targetId}_$reporterId';
 
   static String moderationEntry(String targetType, String targetId) =>
       '${targetType}_$targetId';
 
-  /// Key of `organizerEmails`: finds a co-organizer by the address the owner
-  /// typed without exposing a list of accounts.
+  /// Clé de `organizerEmails` : retrouve un co-organisateur à partir de
+  /// l’adresse saisie par le propriétaire, sans exposer une liste de comptes.
   static String emailKey(String email) =>
       sha256.convert(utf8.encode(email.trim().toLowerCase())).toString();
 
-  /// Key of `events/{id}/attendees`: the social proof never shows a uid.
+  /// Clé de `events/{id}/attendees` : la preuve sociale n’expose jamais un
+  /// uid.
   static String attendeeKey(String userId) =>
       sha256.convert(utf8.encode(userId)).toString();
 }

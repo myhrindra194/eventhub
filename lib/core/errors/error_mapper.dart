@@ -4,26 +4,31 @@ import 'package:eventhub/core/errors/failure.dart';
 import 'package:eventhub/core/errors/failure_exception.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
-/// Single place where SDK exceptions become domain [Failure]s.
+/// Seul endroit où les exceptions des SDK deviennent des [Failure] du
+/// domaine.
 ///
-/// Firestore says *that* a write was refused, never *why*: the rules return
-/// a bare `permission-denied`. That is why every repository checks the
-/// domain policies first (`ReservationPolicy`, `EventPolicy`…) and turns
-/// their precise sentence into a failure before writing; a refusal that still
-/// reaches this mapper is a race (the last seat just went) or a tampered
-/// client, and gets a generic but honest message.
+/// Firestore dit *qu’une* écriture a été refusée, jamais *pourquoi* : les
+/// règles renvoient un `permission-denied` nu. C’est pour cela que chaque
+/// repository vérifie d’abord les policies du domaine (`ReservationPolicy`,
+/// `EventPolicy`…) et transforme leur phrase précise en failure avant
+/// d’écrire ; un refus qui parvient malgré tout jusqu’à ce mapper est une
+/// course perdue (la dernière place vient de partir) ou un client trafiqué,
+/// et reçoit un message générique mais honnête.
 abstract final class ErrorMapper {
   static Failure fromAny(Object error, StackTrace stackTrace) {
     return switch (error) {
       FailureException(:final failure) => failure,
       FirebaseAuthException() => fromAuth(error, stackTrace),
       FirebaseException() => fromFirebase(error, stackTrace),
-      TimeoutException() => NetworkFailure(cause: error, stackTrace: stackTrace),
+      TimeoutException() => NetworkFailure(
+        cause: error,
+        stackTrace: stackTrace,
+      ),
       _ => UnexpectedFailure(cause: error, stackTrace: stackTrace),
     };
   }
 
-  /// Firestore (and other Firebase services) error codes, see
+  /// Codes d’erreur de Firestore (et des autres services Firebase), voir
   /// https://firebase.google.com/docs/reference/node/firebase.firestore#firestoreerrorcode
   static Failure fromFirebase(FirebaseException e, StackTrace st) {
     return switch (e.code) {
@@ -52,7 +57,8 @@ abstract final class ErrorMapper {
         cause: e,
         stackTrace: st,
       ),
-      // A transaction lost a race too many times (the last seat, a counter).
+      // Une transaction a perdu la course trop de fois (la dernière place,
+      // un compteur).
       'aborted' => BusinessRuleFailure(
         rule: BusinessRule.actionRefused,
         message: 'Beaucoup de demandes en même temps. Réessayez.',
@@ -64,8 +70,9 @@ abstract final class ErrorMapper {
         cause: e,
         stackTrace: st,
       ),
-      'unavailable' || 'deadline-exceeded' || 'network-request-failed' =>
-        NetworkFailure(cause: e, stackTrace: st),
+      'unavailable' ||
+      'deadline-exceeded' ||
+      'network-request-failed' => NetworkFailure(cause: e, stackTrace: st),
       'resource-exhausted' => NetworkFailure(
         message: 'Service saturé pour le moment. Réessayez plus tard.',
         cause: e,
@@ -99,10 +106,8 @@ abstract final class ErrorMapper {
         AuthFailureCode.weakPassword,
         'Mot de passe trop faible : 8 caractères minimum, lettres et chiffres.',
       ),
-      'invalid-email' || 'missing-email' => (
-        AuthFailureCode.invalidEmail,
-        'Email invalide.',
-      ),
+      'invalid-email' ||
+      'missing-email' => (AuthFailureCode.invalidEmail, 'Email invalide.'),
       'user-disabled' => (
         AuthFailureCode.userDisabled,
         'Ce compte est désactivé.',

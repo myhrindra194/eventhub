@@ -1,13 +1,14 @@
 import 'package:intl/intl.dart';
 
-/// Amounts are integers in the currency's minor unit: cents for EUR and USD,
-/// whole ariary for MGA (no decimals in practice, and zero-decimal for
-/// Stripe). One formatter, so the app, the CSV export and the Cloud
-/// Functions (`formatMoney`) print the same thing.
+/// Les montants sont des entiers dans l’unité mineure de la devise :
+/// centimes pour l’EUR et l’USD, ariary entiers pour le MGA (pas de
+/// décimales en pratique, et devise « zero-decimal » chez Stripe). Un seul
+/// formateur, pour que l’app, l’export CSV et les Cloud Functions
+/// (`formatMoney`) affichent la même chose.
 abstract final class Money {
   static const currencies = ['EUR', 'USD', 'MGA'];
 
-  /// Upper bound of a ticket price, in minor units (1 000 000,00 €).
+  /// Borne haute du prix d’un billet, en unités mineures (1 000 000,00 €).
   static const maxAmount = 100000000;
 
   static bool isZeroDecimal(String currency) => currency.toUpperCase() == 'MGA';
@@ -21,7 +22,8 @@ abstract final class Money {
     final other => other,
   };
 
-  /// `15,00 €`, `12,50 $`, `15 000 Ar` (French grouping and decimal comma).
+  /// `15,00 €`, `12,50 $`, `15 000 Ar` (groupement et virgule décimale à la
+  /// française).
   static String format(int amount, String currency) {
     final code = currency.toUpperCase();
     final digits = decimals(code);
@@ -33,8 +35,8 @@ abstract final class Money {
     ).format(digits == 0 ? amount : amount / 100);
   }
 
-  /// What an organizer typed ("12,5", "12.50", "15 000") in minor units;
-  /// `null` when it is not a non-negative amount.
+  /// Ce qu’un organisateur a saisi (« 12,5 », « 12.50 », « 15 000 ») en
+  /// unités mineures ; `null` si ce n’est pas un montant positif ou nul.
   static int? parse(String input, String currency) {
     final cleaned = input
         .replaceAll(RegExp('[\\s  ]'), '')
@@ -47,7 +49,7 @@ abstract final class Money {
     return isZeroDecimal(currency) ? value.round() : (value * 100).round();
   }
 
-  /// The inverse of [parse], for pre-filling a text field.
+  /// L’inverse de [parse], pour pré-remplir un champ de saisie.
   static String inputValue(int amount, String currency) =>
       isZeroDecimal(currency)
       ? '$amount'

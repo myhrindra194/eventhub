@@ -18,12 +18,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
-/// Shared startup sequence for every flavor entrypoint.
+/// Séquence de démarrage commune à tous les points d'entrée de flavor.
 ///
-/// Firebase is the backend: Authentication, Cloud Firestore, FCM, Crashlytics
-/// and Analytics. It is not optional — there is no simulated backend to fall
-/// back to, so a failure shows an explicit error screen instead of
-/// pretending to work.
+/// Firebase *est* le backend : Authentication, Cloud Firestore, FCM,
+/// Crashlytics et Analytics. Il n'est pas optionnel — il n'existe aucun
+/// backend simulé sur lequel se rabattre — donc un échec affiche un écran
+/// d'erreur explicite au lieu de faire semblant de fonctionner.
 Future<void> bootstrap(Flavor flavor) async {
   WidgetsFlutterBinding.ensureInitialized();
   final config = AppConfig.fromFlavor(flavor);
@@ -57,8 +57,9 @@ Future<void> bootstrap(Flavor flavor) async {
     await _configureFirestore(config);
     if (_supportsMobileServices) {
       await _enableCrashReporting();
-      // Must be registered from the main isolate, before any other
-      // messaging call. Web push goes through web/firebase-messaging-sw.js.
+      // Doit être enregistré depuis l'isolat principal, avant tout autre
+      // appel de messagerie. Le push web, lui, passe par
+      // web/firebase-messaging-sw.js.
       FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
     }
   } catch (error, stack) {
@@ -78,16 +79,17 @@ Future<void> bootstrap(Flavor flavor) async {
   );
 }
 
-/// Crashlytics and background FCM exist on Android, iOS and macOS only.
+/// Crashlytics et le FCM en arrière-plan n'existent que sur Android, iOS et
+/// macOS.
 bool get _supportsMobileServices =>
     !kIsWeb &&
     (defaultTargetPlatform == TargetPlatform.android ||
         defaultTargetPlatform == TargetPlatform.iOS ||
         defaultTargetPlatform == TargetPlatform.macOS);
 
-/// Offline cache on every platform (the web SDK keeps it off by default),
-/// sized so a long catalogue does not evict the tickets a person needs at
-/// the door without network.
+/// Cache hors ligne sur toutes les plateformes — le SDK web le laisse désactivé
+/// par défaut — dimensionné pour qu'un long catalogue ne chasse pas du cache
+/// les billets dont on a besoin à la porte, sans réseau.
 Future<void> _configureFirestore(AppConfig config) async {
   final firestore = FirebaseFirestore.instance;
   if (config.useEmulator) {
@@ -101,8 +103,8 @@ Future<void> _configureFirestore(AppConfig config) async {
   );
 }
 
-/// Crashlytics collects in profile/release only: debug crashes are the
-/// developer's console, not production statistics.
+/// Crashlytics ne collecte qu'en profile et en release : un plantage en debug
+/// appartient à la console du développeur, pas aux statistiques de production.
 Future<void> _enableCrashReporting() async {
   try {
     final crashlytics = FirebaseCrashlytics.instance;

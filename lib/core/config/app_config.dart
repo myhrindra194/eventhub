@@ -4,11 +4,11 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'app_config.g.dart';
 
-/// Immutable runtime configuration derived from the [Flavor].
+/// Configuration d’exécution immuable, dérivée du [Flavor].
 ///
-/// There is no simulated backend: every flavor talks to the Firebase project
-/// described by `lib/firebase_options.dart`. For development against
-/// disposable data, start the emulators (`make emulators`) and run with
+/// Il n’y a aucun backend simulé : chaque flavor parle au projet Firebase
+/// décrit par `lib/firebase_options.dart`. Pour développer sur des données
+/// jetables, démarrez les émulateurs (`make emulators`) et lancez avec
 /// `--dart-define=USE_FIREBASE_EMULATOR=true`.
 @immutable
 class AppConfig {
@@ -44,32 +44,33 @@ class AppConfig {
   final Flavor flavor;
   final String appName;
 
-  /// Talk to the local Auth (9099) and Firestore (8080) emulators instead of
-  /// the cloud project. Never set for a release build.
+  /// Parler aux émulateurs locaux Auth (9099) et Firestore (8080) plutôt
+  /// qu’au projet cloud. Ne jamais l’activer pour un build de release.
   final bool useEmulator;
 
-  /// Host of the emulators: `localhost` on desktop, web and the iOS
-  /// simulator; `10.0.2.2` from the Android emulator; the computer's LAN
-  /// address from a physical phone.
+  /// Hôte des émulateurs : `localhost` sur desktop, web et simulateur iOS ;
+  /// `10.0.2.2` depuis l’émulateur Android ; l’adresse LAN de la machine
+  /// depuis un téléphone physique.
   final String emulatorHost;
 
-  /// Delay tolerated between account creation and its profile document
-  /// before the session is reported as `ProfileMissing`.
+  /// Délai toléré entre la création d’un compte et celle de son document de
+  /// profil avant que la session ne soit signalée comme `ProfileMissing`.
   final Duration profileGracePeriod;
 
-  /// OAuth *web* client id of the Firebase project, which native Google
-  /// Sign-In on Android needs to obtain an ID token Firebase Auth accepts
+  /// Client id OAuth *web* du projet Firebase, dont le Google Sign-In natif
+  /// sur Android a besoin pour obtenir un ID token accepté par Firebase Auth
   /// (`--dart-define=GOOGLE_SERVER_CLIENT_ID=…apps.googleusercontent.com`).
-  /// Empty → the Google button is hidden on Android rather than failing.
+  /// Vide → le bouton Google est masqué sur Android plutôt que d’échouer.
   final String googleServerClientId;
 
-  /// Public "Web Push certificate" key of the Firebase project
-  /// (`--dart-define=FIREBASE_WEB_VAPID_KEY=…`). Empty → no web push token.
+  /// Clé publique « Web Push certificate » du projet Firebase
+  /// (`--dart-define=FIREBASE_WEB_VAPID_KEY=…`). Vide → aucun token push web.
   final String webPushVapidKey;
 
-  /// Google Sign-In needs no extra configuration on the web (Firebase popup)
-  /// and on iOS (client id in Info.plist); Android needs
-  /// [googleServerClientId]. Desktop has no Google provider in FlutterFire.
+  /// Google Sign-In ne demande aucune configuration supplémentaire sur le
+  /// web (popup Firebase) ni sur iOS (client id dans Info.plist) ; Android a
+  /// besoin de [googleServerClientId]. Le desktop n’a pas de provider Google
+  /// dans FlutterFire.
   bool get isGoogleSignInAvailable =>
       kIsWeb ||
       defaultTargetPlatform == TargetPlatform.iOS ||
@@ -77,13 +78,14 @@ class AppConfig {
           googleServerClientId.isNotEmpty);
 }
 
-/// Must be overridden in `bootstrap()`; the default throws on purpose so a
-/// missing override is caught immediately instead of silently using dev.
+/// Doit être surchargé dans `bootstrap()` ; l’implémentation par défaut lève
+/// volontairement, pour qu’un oubli de surcharge soit détecté immédiatement
+/// au lieu d’utiliser silencieusement la configuration dev.
 @Riverpod(keepAlive: true)
 AppConfig appConfig(Ref ref) =>
     throw StateError('appConfigProvider must be overridden in bootstrap()');
 
-/// Injectable clock. Override in tests to freeze time.
+/// Horloge injectable. À surcharger dans les tests pour figer le temps.
 typedef Clock = DateTime Function();
 
 @Riverpod(keepAlive: true)

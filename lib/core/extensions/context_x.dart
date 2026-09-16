@@ -2,15 +2,17 @@ import 'package:eventhub/app/theme/theme.dart';
 import 'package:eventhub/core/errors/failure.dart';
 import 'package:flutter/material.dart';
 
-/// Ergonomics on [BuildContext]: theme access and the two feedback helpers
-/// every screen needs. Keeping snack bars here guarantees one visual
-/// treatment for success/error messages across the whole product.
+/// Ergonomie sur [BuildContext] : accès au thème et les deux helpers de
+/// retour visuel dont tout écran a besoin. Centraliser ici les snack bars
+/// garantit un traitement visuel unique des messages de succès et d’erreur
+/// dans tout le produit.
 extension BuildContextX on BuildContext {
   ThemeData get theme => Theme.of(this);
   ColorScheme get colors => theme.colorScheme;
   TextTheme get textTheme => theme.textTheme;
 
-  /// Screen metrics, read without rebuilding on unrelated MediaQuery changes.
+  /// Métriques de l’écran, lues sans reconstruire sur les changements de
+  /// MediaQuery sans rapport.
   Size get screenSize => MediaQuery.sizeOf(this);
   EdgeInsets get viewPadding => MediaQuery.paddingOf(this);
   bool get isCompact => AppBreakpoints.isCompact(screenSize.width);

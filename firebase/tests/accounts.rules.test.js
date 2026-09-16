@@ -147,6 +147,54 @@ describe('organizer space', () => {
   });
 });
 
+describe('photos de profil', () => {
+  /** Une URL `data:` de la longueur voulue — le contenu importe peu ici. */
+  const dataUrl = (length) => `data:image/jpeg;base64,${'A'.repeat(length)}`;
+
+  test('le propriétaire pose sa photo et sa couverture', async () => {
+    await seedUser(env, 'p1');
+    await assertSucceeds(updateDoc(doc(as(env, 'p1').firestore(), 'users/p1'), {
+      photoUrl: dataUrl(1000),
+      coverUrl: 'https://example.com/cover.jpg',
+    }));
+  });
+
+  test('une image hors gabarit, ou qui n\'en est pas une, est refusée', async () => {
+    await seedUser(env, 'p1');
+    const db = as(env, 'p1').firestore();
+    // Au-delà du plafond : un document Firestore ne dépasse pas 1 Mio.
+    await assertFails(updateDoc(doc(db, 'users/p1'), { photoUrl: dataUrl(140001) }));
+    await assertFails(updateDoc(doc(db, 'users/p1'), { coverUrl: dataUrl(280001) }));
+    // Ni https ni data:image — le champ ne sert qu'à afficher une image.
+    await assertFails(updateDoc(doc(db, 'users/p1'), { photoUrl: 'javascript:alert(1)' }));
+    await assertFails(updateDoc(doc(db, 'users/p1'), { photoUrl: 'data:text/html;base64,AAAA' }));
+  });
+
+  test('la page publique porte exactement la photo du profil', async () => {
+    await seedUser(env, 'o1', { role: 'organizer' });
+    const db = as(env, 'o1').firestore();
+    const photo = dataUrl(500);
+
+    const batch = writeBatch(db);
+    batch.update(doc(db, 'users/o1'), { name: 'Name o1', photoUrl: photo });
+    batch.update(doc(db, 'organizers/o1'), { name: 'Name o1', bio: '', photoUrl: photo });
+    await assertSucceeds(batch.commit());
+
+    // Une photo publiée que le profil ne porte pas : refusée.
+    const forged = writeBatch(db);
+    forged.update(doc(db, 'organizers/o1'), { name: 'Name o1', bio: '', photoUrl: dataUrl(600) });
+    await assertFails(forged.commit());
+  });
+
+  test('personne ne pose une photo sur le profil d\'autrui', async () => {
+    await seedUser(env, 'p1');
+    await seedUser(env, 'p2');
+    await assertFails(updateDoc(doc(as(env, 'p2').firestore(), 'users/p1'), {
+      photoUrl: dataUrl(100),
+    }));
+  });
+});
+
 describe('private sub-collections', () => {
   test('preferences, favorites and devices belong to their owner', async () => {
     await seedUser(env, 'p1');
@@ -174,7 +222,7 @@ describe('private sub-collections', () => {
     await seedUser(env, 'p1');
     await seedAdmin(env, 'a1');
     const db = as(env, 'p1').firestore();
-    // The marker does not exist: the read is allowed and simply finds nothing.
+    // Le marqueur n’existe pas : la lecture est permise et ne trouve rien.
     await assertSucceeds(getDoc(doc(db, 'admins/p1')));
     await assertFails(getDoc(doc(db, 'admins/a1')));
     await assertFails(getDocs(query(collection(db, 'admins'), limit(5))));

@@ -1,4 +1,4 @@
 import { createHash } from 'node:crypto';
 
-/** The organizer lookup key the rules expect: sha256(lowercase email), hex. */
+/** La clé de recherche organisateur attendue : sha256(e-mail minuscule), hexa. */
 export const emailKey = (email) => createHash('sha256').update(email.toLowerCase()).digest('hex');

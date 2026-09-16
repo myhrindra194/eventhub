@@ -9,7 +9,7 @@ import { Timestamp, doc, serverTimestamp, setDoc } from 'firebase/firestore';
 
 const here = dirname(fileURLToPath(import.meta.url));
 
-/** `demo-` project: the emulator never asks for credentials. */
+/** Projet `demo-` : l’émulateur ne demande jamais d’identifiants. */
 export const PROJECT_ID = 'demo-eventhub';
 
 export { assertFails, assertSucceeds };
@@ -26,9 +26,9 @@ export async function createTestEnv() {
   });
 }
 
-// ---------------------------------------------------------------- identities
+// ----------------------------------------------------------------- identités
 
-/** A signed-in person. Roles live in `users/{uid}`, seeded by [seedUser]. */
+/** Une personne authentifiée. Le rôle vit dans `users/{uid}`, via [seedUser]. */
 export function as(env, uid, { verified = true } = {}) {
   return env.authenticatedContext(uid, { email: `${uid}@example.com`, email_verified: verified });
 }
@@ -37,7 +37,7 @@ export function asAnonymous(env) {
   return env.unauthenticatedContext();
 }
 
-/** Writes documents bypassing the rules (fixtures). */
+/** Écrit des documents en contournant les règles (jeux d’essai). */
 export async function seed(env, writes) {
   await env.withSecurityRulesDisabled(async (ctx) => {
     const db = ctx.firestore();
@@ -64,7 +64,7 @@ export async function seedAdmin(env, uid) {
   await seed(env, [[`admins/${uid}`, { grantedAt: Timestamp.now() }]]);
 }
 
-// ------------------------------------------------------------------ fixtures
+// -------------------------------------------------------------- jeux d’essai
 
 const CLOCK = Date.now();
 export const inDays = (days) => Timestamp.fromMillis(CLOCK + days * 86_400_000);
@@ -107,7 +107,7 @@ export function reservationData(overrides = {}) {
 
 export const reservationId = (eventId, userId) => `${eventId}_${userId}`;
 
-/** The attendee key the rules expect: sha256(uid) in lowercase hex. */
+/** La clé de participant attendue par les règles : sha256(uid), hexa minuscule. */
 export const attendeeKey = (uid) => createHash('sha256').update(uid).digest('hex');
 
 export { serverTimestamp, assert };

@@ -1,12 +1,12 @@
-/// Typed, exhaustive failure hierarchy.
+/// Hiérarchie d’erreurs typée et exhaustive.
 ///
-/// Repositories never throw: they return `Result<T>` whose error side is one
-/// of these. UI maps them to messages via `failure.message` and can branch on
-/// the concrete type with a `switch`.
+/// Les repositories ne lèvent jamais : ils renvoient un `Result<T>` dont le
+/// côté erreur est l’une de ces classes. L’UI les traduit en messages via
+/// `failure.message` et peut discriminer le type concret avec un `switch`.
 sealed class Failure {
   const Failure({required this.message, this.cause, this.stackTrace});
 
-  /// Human-readable (French) message safe to show to the user.
+  /// Message lisible (en français), sûr à montrer à l’utilisateur.
   final String message;
   final Object? cause;
   final StackTrace? stackTrace;
@@ -25,7 +25,8 @@ enum AuthFailureCode {
   notSignedIn,
   profileMissing,
 
-  /// The user closed the Google picker or popup: not an error to display.
+  /// L’utilisateur a fermé le sélecteur ou la popup Google : ce n’est pas
+  /// une erreur à afficher.
   cancelled,
   accountExistsWithDifferentCredential,
   requiresRecentLogin,
@@ -84,11 +85,11 @@ final class ValidationFailure extends Failure {
     super.stackTrace,
   });
 
-  /// Field name -> error message.
+  /// Nom du champ -> message d’erreur.
   final Map<String, String> fieldErrors;
 }
 
-/// Domain rule violations (see `ReservationPolicy`, `EventPolicy`).
+/// Violations des règles du domaine (voir `ReservationPolicy`, `EventPolicy`).
 enum BusinessRule {
   eventFull,
   alreadyReserved,
@@ -100,15 +101,16 @@ enum BusinessRule {
   eventHasReservations,
   emailNotVerified,
 
-  /// The server refused an action whose preconditions are not met
-  /// (`failed-precondition` from a callable function); the message says why.
+  /// Le serveur a refusé une action dont les préconditions ne sont pas
+  /// réunies (`failed-precondition` renvoyé par une callable function) ; le
+  /// message dit pourquoi.
   actionRefused,
   notAttendee,
   eventNotStarted,
   waitlistNotAvailable,
   cannotFollowSelf,
 
-  /// Ticket types and payments (F-12, F-11).
+  /// Types de billets et paiements (F-12, F-11).
   tierRequired,
   tierSoldOut,
   paymentRequired,

@@ -5,7 +5,8 @@ import 'package:eventhub/core/errors/failure.dart';
 
 typedef AsyncResult<T> = Future<Result<T>>;
 
-/// Railway-oriented result type. Pattern-match with `switch` or use [fold].
+/// Type résultat orienté « railway ». Se filtre par motif avec `switch`, ou
+/// s’exploite via [fold].
 ///
 /// ```dart
 /// switch (await repo.signIn(...)) {
@@ -84,8 +85,8 @@ final class Err<T> extends Result<T> {
   String toString() => 'Err($failure)';
 }
 
-/// Runs [body] and converts any thrown error into `Err` via [ErrorMapper].
-/// This is the only try/catch repositories should need.
+/// Exécute [body] et convertit toute erreur levée en `Err` via [ErrorMapper].
+/// C’est le seul try/catch dont un repository devrait avoir besoin.
 AsyncResult<T> guard<T>(FutureOr<T> Function() body) async {
   try {
     return Ok(await body());

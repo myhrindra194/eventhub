@@ -8,29 +8,32 @@ part of 'connectivity_providers.dart';
 
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // ignore_for_file: type=lint, type=warning
-/// Whether the device has a network interface up.
+/// Indique si l’appareil a une interface réseau active.
 ///
-/// "Up" is not "Firebase reachable" (a captive portal says online), which is
-/// why this only drives an informational banner: Firestore itself keeps
-/// working from its cache and replays writes when the link comes back.
+/// « Active » ne veut pas dire « Firebase joignable » (un portail captif se
+/// déclare en ligne) : c’est pourquoi ce provider ne pilote qu’un bandeau
+/// informatif. Firestore, lui, continue de fonctionner depuis son cache et
+/// rejoue les écritures au retour du lien.
 
 @ProviderFor(isOnline)
 final isOnlineProvider = IsOnlineProvider._();
 
-/// Whether the device has a network interface up.
+/// Indique si l’appareil a une interface réseau active.
 ///
-/// "Up" is not "Firebase reachable" (a captive portal says online), which is
-/// why this only drives an informational banner: Firestore itself keeps
-/// working from its cache and replays writes when the link comes back.
+/// « Active » ne veut pas dire « Firebase joignable » (un portail captif se
+/// déclare en ligne) : c’est pourquoi ce provider ne pilote qu’un bandeau
+/// informatif. Firestore, lui, continue de fonctionner depuis son cache et
+/// rejoue les écritures au retour du lien.
 
 final class IsOnlineProvider
     extends $FunctionalProvider<AsyncValue<bool>, bool, Stream<bool>>
     with $FutureModifier<bool>, $StreamProvider<bool> {
-  /// Whether the device has a network interface up.
+  /// Indique si l’appareil a une interface réseau active.
   ///
-  /// "Up" is not "Firebase reachable" (a captive portal says online), which is
-  /// why this only drives an informational banner: Firestore itself keeps
-  /// working from its cache and replays writes when the link comes back.
+  /// « Active » ne veut pas dire « Firebase joignable » (un portail captif se
+  /// déclare en ligne) : c’est pourquoi ce provider ne pilote qu’un bandeau
+  /// informatif. Firestore, lui, continue de fonctionner depuis son cache et
+  /// rejoue les écritures au retour du lien.
   IsOnlineProvider._()
     : super(
         from: null,

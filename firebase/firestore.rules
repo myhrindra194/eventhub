@@ -1,42 +1,45 @@
 rules_version = '2';
 
 // =============================================================================
-//  EventHub — Cloud Firestore security rules (Spark plan: no server code)
+//  EventHub — Règles de sécurité Cloud Firestore (Spark : sans code serveur)
 // =============================================================================
 //
-//  Threat model
-//  ------------
-//  The client is hostile: anyone can sign in and call Firestore directly with
-//  a crafted payload. With no Cloud Functions, these rules are the ONLY code
-//  that runs on Google's side, so every business invariant lives here.
+//  Modèle de menace
+//  ----------------
+//  Le client est hostile : n’importe qui peut s’authentifier et appeler
+//  Firestore directement avec une charge utile forgée. En l’absence de Cloud
+//  Functions, ces règles sont le SEUL code qui s’exécute du côté de Google :
+//  tout invariant métier réside donc ici.
 //
-//  How cross-document invariants hold without a server
-//  ----------------------------------------------------
-//  A value that depends on another document (a seat counter, a follower
-//  count, a rating, a staff list) is only accepted inside the batch or
-//  transaction that also writes the document justifying it. `getAfter()` /
-//  `existsAfter()` read the state *as it will be once the whole batch is
-//  committed*: a counter moves by exactly what the justifying document
-//  changed, and a client that skips half of the batch is refused.
+//  Comment les invariants inter-documents tiennent sans serveur
+//  ------------------------------------------------------------
+//  Une valeur qui dépend d’un autre document (un compteur de places, un
+//  nombre d’abonnés, une note, une liste d’équipiers) n’est acceptée qu’à
+//  l’intérieur du batch ou de la transaction qui écrit aussi le document qui
+//  la justifie. `getAfter()` / `existsAfter()` lisent l’état *tel qu’il sera
+//  une fois le batch entier validé* : un compteur bouge exactement de ce
+//  qu’a changé le document justificatif, et un client qui n’exécute que la
+//  moitié du batch est refusé.
 //
-//  Identity
+//  Identité
 //  --------
-//   * role: `users/{uid}.role` — 'participant' at sign-up, 'organizer' once
-//     the account turns the organizer space on (verified email, one way).
-//     An organizer keeps every participant right (one account, two spaces);
-//   * administrator: the document `admins/{uid}`, created only from the
-//     Firebase console — no client write can grant it;
-//   * suspension: `users/{uid}.suspended`, set by an administrator. A
-//     suspended account still reads, but writes nothing.
+//   * rôle : `users/{uid}.role` — 'participant' à l’inscription, 'organizer'
+//     dès que le compte active l’espace organisateur (adresse vérifiée, sans
+//     retour en arrière). Un organisateur conserve tous les droits d’un
+//     participant (un compte, deux espaces) ;
+//   * administrateur : le document `admins/{uid}`, créé uniquement depuis la
+//     console Firebase — aucune écriture cliente ne peut l’accorder ;
+//   * suspension : `users/{uid}.suspended`, posée par un administrateur. Un
+//     compte suspendu lit toujours, mais n’écrit rien.
 //
-//  Budget: at most 10 document reads per request (20 in a batch or a
-//  transaction). Helpers that read are marked `// read`.
+//  Budget : au plus 10 lectures de documents par requête (20 dans un batch
+//  ou une transaction). Les fonctions qui lisent sont marquées `// lecture`.
 // =============================================================================
 
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // ============================================================= identity
+    // ============================================================= identité
 
     function signedIn() {
       return request.auth != null;
@@ -82,42 +85,42 @@ service cloud.firestore {
       return /databases/$(database)/documents/users/$(userId)/following/$(organizerId);
     }
 
-    /// The e-mail lookup key: sha256 of the lowercase address, hex.
+    /// La clé de recherche e-mail : sha256 de l’adresse en minuscules, hex.
     function emailKey(email) {
       return hashing.sha256(email.lower()).toHexString().lower();
     }
 
-    // read
+    // lecture
     function me() {
       return get(userDoc(uid())).data;
     }
 
-    // read
+    // lecture
     function isActive() {
       return signedIn()
         && exists(userDoc(uid()))
         && me().get('suspended', false) != true;
     }
 
-    // read
+    // lecture
     function isOrganizer() {
       return isActive() && me().role == 'organizer';
     }
 
-    // read
+    // lecture
     function isAdmin() {
       return signedIn()
         && exists(/databases/$(database)/documents/admins/$(uid()));
     }
 
-    // read
+    // lecture
     function isEventTeam(eventId) {
       let event = get(eventDoc(eventId)).data;
       return signedIn()
         && (event.organizerId == uid() || event.get('staffIds', []).hasAny([uid()]));
     }
 
-    // ================================================================ shape
+    // ================================================================ forme
 
     function incoming() {
       return request.resource.data;
@@ -155,13 +158,14 @@ service cloud.firestore {
       return !(key in data) || data[key] == null || isHttpsUrl(data[key]);
     }
 
-    /// Server time: the client sends `FieldValue.serverTimestamp()`.
+    /// Heure serveur : le client envoie `FieldValue.serverTimestamp()`.
     function isServerTime(value) {
       return value == request.time;
     }
 
-    /// A time the client must know before committing (it is part of a
-    /// deterministic id): close to the server clock, never far ahead.
+    /// Une heure que le client doit connaître avant de valider (elle fait
+    /// partie d’un identifiant déterministe) : proche de l’horloge serveur,
+    /// jamais loin devant.
     function isRecentTime(value) {
       return value is timestamp
         && value <= request.time + duration.value(2, 'm')
@@ -171,7 +175,7 @@ service cloud.firestore {
     // ================================================================ users
     //
     //  users/{userId}
-    //    name 2..80 · email (= token, immutable) · role · bio? ..500
+    //    name 2..80 · email (= jeton, immuable) · role · bio? ..500
     //    suspended? (admin) · welcomedAt? · createdAt · updatedAt?
     //
     match /users/{userId} {
@@ -183,33 +187,54 @@ service cloud.firestore {
         return !('bio' in data) || data.bio == null || isString(data.bio, 0, 500);
       }
 
+      /// Une image de profil est soit une URL https, soit une image portée
+      /// par le document lui-même (`data:`) — faute de Cloud Storage sur le
+      /// plan Spark. Dans les deux cas la taille est bornée : un document
+      /// Firestore ne dépasse pas 1 Mio, et une photo qui s'en approcherait
+      /// rendrait la lecture du profil coûteuse à chaque écran.
+      function validImageRef(data, key, maxLength) {
+        return !(key in data)
+          || data[key] == null
+          || (data[key] is string
+              && data[key].size() <= maxLength
+              && (data[key].matches('https://.+')
+                  || data[key].matches('data:image/(jpeg|png|webp);base64,.+')));
+      }
+
+      function validPhotos(data) {
+        return validImageRef(data, 'photoUrl', 140000)
+          && validImageRef(data, 'coverUrl', 280000);
+      }
+
       allow get: if isSelf(userId) || isAdmin();
-      // Enumerating accounts is never allowed, administrators included.
+      // Énumérer les comptes n’est jamais permis, administrateurs compris.
       allow list: if false;
 
-      // Every account starts as a participant (the Eventbrite / Airbnb
-      // model): the organizer space is turned on later, never at sign-up.
+      // Tout compte démarre en participant (le modèle Eventbrite / Airbnb) :
+      // l’espace organisateur s’active plus tard, jamais à l’inscription.
       allow create: if isSelf(userId)
         && incoming().keys().hasAll(['name', 'email', 'role', 'createdAt'])
-        && incoming().keys().hasOnly(['name', 'email', 'role', 'bio', 'createdAt', 'updatedAt'])
+        && incoming().keys().hasOnly(['name', 'email', 'role', 'bio', 'photoUrl', 'coverUrl', 'createdAt', 'updatedAt'])
         && validName(incoming())
         && validBio(incoming())
+        && validPhotos(incoming())
         && incoming().email == request.auth.token.email
         && incoming().role == 'participant'
         && isServerTime(incoming().createdAt);
 
       allow update: if
-        // ---- the owner edits their presentation ---------------------------
+        // ---- le propriétaire modifie sa présentation ----------------------
         (isSelf(userId)
           && existing().get('suspended', false) != true
-          && onlyChanged(['name', 'bio', 'welcomedAt', 'updatedAt'])
+          && onlyChanged(['name', 'bio', 'photoUrl', 'coverUrl', 'welcomedAt', 'updatedAt'])
           && validName(incoming())
           && validBio(incoming())
+          && validPhotos(incoming())
           && (unchanged('welcomedAt') || (existing().get('welcomedAt', null) == null && isServerTime(incoming().welcomedAt)))
           && (unchanged('updatedAt') || isServerTime(incoming().updatedAt)))
         ||
-        // ---- "Devenir organisateur": one way, verified email, the public
-        //      page created in the same batch ------------------------------
+        // ---- « Devenir organisateur » : sans retour, adresse vérifiée, page
+        //      publique créée dans le même batch ---------------------------
         (isSelf(userId)
           && existing().get('suspended', false) != true
           && onlyChanged(['role', 'updatedAt'])
@@ -218,15 +243,16 @@ service cloud.firestore {
           && verified()
           && existsAfter(organizerDoc(userId)))
         ||
-        // ---- moderation suspends or reinstates ----------------------------
+        // ---- la modération suspend ou rétablit ----------------------------
         (isAdmin() && !isSelf(userId)
           && onlyChanged(['suspended', 'updatedAt'])
           && incoming().suspended is bool);
 
-      // Account deletion: the owner, once their own data is cleaned up.
+      // Suppression de compte : par le propriétaire, une fois ses propres
+      // données nettoyées.
       allow delete: if isSelf(userId);
 
-      // ---- preferences ---------------------------------------------------
+      // ---- préférences ---------------------------------------------------
       match /private/{docId} {
         allow read, delete: if isSelf(userId);
         allow create, update: if isSelf(userId)
@@ -237,7 +263,7 @@ service cloud.firestore {
           && incoming().get('followedOrganizers', true) is bool;
       }
 
-      // ---- push tokens (kept for a future server sender) -------------------
+      // ---- jetons push (conservés pour un futur émetteur serveur) ----------
       match /devices/{deviceId} {
         allow read, delete: if isSelf(userId);
         allow create, update: if isSelf(userId)
@@ -247,7 +273,7 @@ service cloud.firestore {
           && isServerTime(incoming().updatedAt);
       }
 
-      // ---- favorites: id == eventId ---------------------------------------
+      // ---- favoris : id == eventId ----------------------------------------
       match /favorites/{eventId} {
         allow read, delete: if isSelf(userId);
         allow create: if isSelf(userId)
@@ -257,9 +283,9 @@ service cloud.firestore {
         allow update: if false;
       }
 
-      // ---- followed organizers: id == organizerId --------------------------
-      //  Private to the follower. The public follower count moves in the
-      //  same batch (see organizers).
+      // ---- organisateurs suivis : id == organizerId ------------------------
+      //  Privé à l’abonné. Le compteur public d’abonnés bouge dans le même
+      //  batch (voir organizers).
       match /following/{organizerId} {
         allow read: if isSelf(userId);
         allow create: if isSelf(userId)
@@ -277,10 +303,11 @@ service cloud.firestore {
         allow update: if false;
       }
 
-      // ---- in-app notifications -------------------------------------------
-      //  Written by whoever caused them, under strict conditions: a known
-      //  type, a deterministic id (one notice per fact, no flooding), the
-      //  actor is the caller, and the fact itself is proven.
+      // ---- notifications in-app -------------------------------------------
+      //  Écrites par celui qui les provoque, sous conditions strictes : un
+      //  type connu, un identifiant déterministe (un avis par fait, donc
+      //  aucun déluge possible), l’acteur est l’appelant, et le fait
+      //  lui-même est prouvé.
       match /notifications/{notificationId} {
         function validNotice() {
           return incoming().keys().hasOnly([
@@ -299,12 +326,12 @@ service cloud.firestore {
             && incoming().expiresAt <= request.time + duration.value(400, 'd');
         }
 
-        // read
+        // lecture
         function callerReservation(eventId) {
           return getAfter(reservationDoc(eventId + '_' + uid())).data;
         }
 
-        // read
+        // lecture
         function recipientIsTeam(eventId) {
           let event = get(eventDoc(eventId)).data;
           return event.organizerId == userId || event.get('staffIds', []).hasAny([userId]);
@@ -332,7 +359,7 @@ service cloud.firestore {
             && recipientIsTeam(incoming().eventId);
         }
 
-        // A seat opened: the person giving it back tells those waiting.
+        // Une place se libère : celui qui la rend prévient ceux qui attendent.
         function waitlistNotice() {
           let event = get(eventDoc(incoming().eventId)).data;
           return incoming().type == 'waitlist'
@@ -366,7 +393,7 @@ service cloud.firestore {
         }
 
         function moderationNotice() {
-          return incoming().type in ['eventRemoved', 'reviewHidden', 'accountSuspended', 'accountReinstated']
+          return incoming().type in ['eventRemoved', 'reviewHidden', 'reviewRestored', 'accountSuspended', 'accountReinstated']
             && isAdmin();
         }
 
@@ -388,13 +415,13 @@ service cloud.firestore {
       }
     }
 
-    // ======================================================== administrators
+    // ======================================================= administrateurs
     //
-    //  admins/{uid} {email, name?, grantedAt} — created and removed from the
-    //  Firebase console only (see docs/SECURITY.md).
+    //  admins/{uid} {email, name?, grantedAt} — créés et supprimés depuis la
+    //  console Firebase uniquement (voir docs/SECURITY.md).
     //
     match /admins/{adminId} {
-      // Anyone may ask "am I an administrator?" about themself only.
+      // Chacun peut demander « suis-je administrateur ? » pour soi seulement.
       allow get: if isSelf(adminId) || isAdmin();
       allow list: if isAdmin();
       allow write: if false;
@@ -402,7 +429,7 @@ service cloud.firestore {
 
     // ============================================================ organizers
     //
-    //  organizers/{uid} — the public face of an organizer.
+    //  organizers/{uid} — le visage public d’un organisateur.
     //    name · bio · memberSince · followerCount · eventCount
     //    ratingSum · ratingCount · lastEventId? · lastReviewId? · suspended?
     //
@@ -411,8 +438,8 @@ service cloud.firestore {
         return incoming()[key] - existing()[key];
       }
 
-      /// eventCount moves by what `lastEventId` proves: created or deleted
-      /// in this very batch, by its owner (or by moderation).
+      /// eventCount bouge de ce que prouve `lastEventId` : créé ou supprimé
+      /// dans ce batch même, par son propriétaire (ou par la modération).
       function eventCountProven() {
         let ref = eventDoc(incoming().lastEventId);
         return incoming().lastEventId is string
@@ -430,8 +457,8 @@ service cloud.firestore {
           : (exists(ref) && get(ref).data.get('hidden', false) != true ? get(ref).data.rating : 0);
       }
 
-      /// The rating moves by exactly what `lastReviewId` changed in this
-      /// batch: written, edited, removed, hidden or restored.
+      /// La note bouge exactement de ce que `lastReviewId` a changé dans ce
+      /// batch : avis écrit, modifié, supprimé, masqué ou rétabli.
       function ratingProven() {
         let ref = reviewDoc(incoming().lastReviewId);
         let review = existsAfter(ref) ? getAfter(ref).data : get(ref).data;
@@ -446,10 +473,10 @@ service cloud.firestore {
 
       allow read: if signedIn();
 
-      // Created by the owner in the "Devenir organisateur" batch, empty.
+      // Créée par le propriétaire dans le batch « Devenir organisateur », vide.
       allow create: if isSelf(organizerId)
         && verified()
-        && incoming().keys().hasOnly(['name', 'bio', 'memberSince', 'followerCount', 'eventCount', 'ratingSum', 'ratingCount'])
+        && incoming().keys().hasOnly(['name', 'bio', 'photoUrl', 'memberSince', 'followerCount', 'eventCount', 'ratingSum', 'ratingCount'])
         && isString(incoming().name, 2, 80)
         && isString(incoming().bio, 0, 500)
         && isServerTime(incoming().memberSince)
@@ -461,13 +488,19 @@ service cloud.firestore {
         && existsAfter(/databases/$(database)/documents/organizerEmails/$(emailKey(request.auth.token.email)));
 
       allow update: if
-        // ---- the owner keeps the page in step with the private profile ----
+        // ---- le propriétaire garde la page alignée sur le profil privé ----
+        //      La photo est recopiée ici parce que `users/{uid}` est privé :
+        //      sans ce miroir, personne ne pourrait voir le visage d'un
+        //      organisateur sur sa page publique. Elle doit valoir exactement
+        //      celle du profil après le batch, donc aucune photo ne peut être
+        //      publiée sans l'être aussi sur le compte.
         (isSelf(organizerId)
-          && onlyChanged(['name', 'bio'])
+          && onlyChanged(['name', 'bio', 'photoUrl'])
           && incoming().name == getAfter(userDoc(organizerId)).data.name
+          && incoming().get('photoUrl', null) == getAfter(userDoc(organizerId)).data.get('photoUrl', null)
           && isString(incoming().bio, 0, 500))
         ||
-        // ---- a follow or unfollow, proven by the follower's document -----
+        // ---- (dés)abonnement, prouvé par le document de l’abonné ---------
         (signedIn() && !isSelf(organizerId)
           && onlyChanged(['followerCount'])
           && ((stepOf('followerCount') == 1
@@ -475,25 +508,26 @@ service cloud.firestore {
               || (stepOf('followerCount') == -1
                 && exists(followDoc(uid(), organizerId)) && !existsAfter(followDoc(uid(), organizerId)))))
         ||
-        // ---- an event published or deleted --------------------------------
+        // ---- un événement publié ou supprimé ------------------------------
         ((isSelf(organizerId) || isAdmin())
           && onlyChanged(['eventCount', 'lastEventId'])
           && eventCountProven())
         ||
-        // ---- a review written, edited, removed or moderated ---------------
+        // ---- un avis écrit, modifié, supprimé ou modéré -------------------
         (signedIn()
           && onlyChanged(['ratingSum', 'ratingCount', 'lastReviewId'])
           && ratingProven())
         ||
-        // ---- moderation mirrors a suspension ------------------------------
+        // ---- la modération recopie une suspension -------------------------
         (isAdmin() && onlyChanged(['suspended']) && incoming().suspended is bool);
 
       allow delete: if isSelf(organizerId);
     }
 
-    //  organizerEmails/{sha256(lowercase email)} {uid}
-    //  Finds a co-organizer from the address the owner typed, without ever
-    //  letting anyone enumerate accounts: `get` of one exact hash only.
+    //  organizerEmails/{sha256(email en minuscules)} {uid}
+    //  Retrouve un co-organisateur à partir de l'adresse saisie par le
+    //  propriétaire, sans jamais permettre à quiconque d'énumérer les
+    //  comptes : un `get` sur un seul hash exact, et rien d'autre.
     match /organizerEmails/{key} {
       allow get: if isOrganizer();
       allow list: if false;
@@ -510,7 +544,7 @@ service cloud.firestore {
     //  events/{eventId}
     //    title 3..120 · description 1..5000 · category · startsAt · location
     //    capacity 1..100000 · availablePlaces 0..capacity
-    //    organizerId (immutable) · organizerName · imageUrl? (https)
+    //    organizerId (immuable) · organizerName · imageUrl? (https)
     //    staffIds [≤ 10] · tiers {id: {name, description, price, capacity,
     //    available, order}} [≤ 6] · currency? · createdAt · updatedAt?
     //
@@ -552,13 +586,13 @@ service cloud.firestore {
         return data.get('tiers', {}).size() > 0;
       }
 
-      // read
+      // lecture
       function reservationAfter() {
         return getAfter(reservationDoc(eventId + '_' + uid())).data;
       }
 
-      /// A seat moves in exactly one free ticket type — the one named by the
-      /// caller's own reservation at the end of the batch — by the same ±1.
+      /// Une place bouge dans un seul type de billet gratuit — celui que
+      /// nomme la réservation de l’appelant à la fin du batch — du même ±1.
       function tierMoved(tierId, delta) {
         return tierId in existing().tiers
           && incoming().tiers.diff(existing().tiers).affectedKeys().hasOnly([tierId])
@@ -574,15 +608,16 @@ service cloud.firestore {
           : unchanged('tiers');
       }
 
-      /// The owner's public page counts the event in the same batch.
+      /// La page publique du propriétaire compte l’événement dans le même
+      /// batch.
       function countedOnPage(delta) {
         return getAfter(organizerDoc(uid())).data.eventCount
              == get(organizerDoc(uid())).data.eventCount + delta
           && getAfter(organizerDoc(uid())).data.lastEventId == eventId;
       }
 
-      // Events are public by nature: the shared link page reads one without
-      // an account. Listing (scraping) requires one, and a bounded page.
+      // Un événement est public par nature : la page d’un lien partagé se
+      // lit sans compte. Lister (scraper) en exige un, et une page bornée.
       allow get: if true;
       allow list: if signedIn() && request.query.limit <= 200;
 
@@ -598,7 +633,7 @@ service cloud.firestore {
         && countedOnPage(1);
 
       allow update: if
-        // ---- (a) the team edits the content -------------------------------
+        // ---- (a) l’équipe modifie le contenu ------------------------------
         (isOrganizer()
           && (existing().organizerId == uid() || existing().get('staffIds', []).hasAny([uid()]))
           && validShape()
@@ -609,7 +644,7 @@ service cloud.firestore {
           && incoming().availablePlaces == incoming().capacity - takenSeats()
           && (unchanged('updatedAt') || isServerTime(incoming().updatedAt)))
         ||
-        // ---- (b) anyone booking or giving back exactly one free seat ------
+        // ---- (b) quiconque prend ou rend exactement une place gratuite ----
         (isActive()
           && !isEventTeam(eventId)
           && onlyChanged(['availablePlaces', 'tiers'])
@@ -622,7 +657,7 @@ service cloud.firestore {
                 && seatTierConsistent(1)))
           && incoming().availablePlaces <= existing().capacity)
         ||
-        // ---- (c) an invitee joins the team, or a member leaves it ---------
+        // ---- (c) un invité rejoint l’équipe, ou un membre la quitte -------
         (isActive()
           && onlyChanged(['staffIds'])
           && ((incoming().staffIds.toSet().difference(existing().get('staffIds', []).toSet()) == [uid()].toSet()
@@ -634,14 +669,14 @@ service cloud.firestore {
                 && (existing().organizerId == uid()
                     || existing().get('staffIds', []).toSet().difference(incoming().staffIds.toSet()) == [uid()].toSet()))));
 
-      // The owner deletes an event nobody booked (and the page counts it);
-      // moderation removes any event.
+      // Le propriétaire supprime un événement que personne n’a réservé (et
+      // la page le décompte) ; la modération retire n’importe quel événement.
       allow delete: if (isActive() && existing().organizerId == uid() && takenSeats() == 0 && countedOnPage(-1))
         || isAdmin();
 
-      // ---- waiting list ----------------------------------------------------
-      //  {userId, createdAt, notifiedAt?} — FIFO by createdAt. The person
-      //  giving a seat back reads the head of the queue to tell them.
+      // ---- liste d’attente -------------------------------------------------
+      //  {userId, createdAt, notifiedAt?} — FIFO par createdAt. Celui qui
+      //  rend une place lit la tête de file pour la prévenir.
       match /waitlist/{userId} {
         allow get: if isSelf(userId) || isEventTeam(eventId);
         allow list: if signedIn() && request.query.limit <= 20;
@@ -661,7 +696,7 @@ service cloud.firestore {
         allow delete: if isSelf(userId) || isEventTeam(eventId);
       }
 
-      // ---- door check-in: the team, append-only ----------------------------
+      // ---- contrôle à l’entrée : l’équipe, en ajout seul -------------------
       match /checkins/{reservationId} {
         allow read: if isEventTeam(eventId);
         allow create: if isActive() && isEventTeam(eventId)
@@ -674,7 +709,7 @@ service cloud.firestore {
         allow update, delete: if false;
       }
 
-      // ---- co-organizer invitations ----------------------------------------
+      // ---- invitations de co-organisateurs ---------------------------------
       match /invitations/{inviteeId} {
         allow get: if isSelf(inviteeId) || isEventTeam(eventId);
         allow list: if isEventTeam(eventId);
@@ -706,9 +741,9 @@ service cloud.firestore {
         allow delete: if isSelf(inviteeId) || get(eventDoc(eventId)).data.organizerId == uid();
       }
 
-      // ---- social proof: "Soa, Hery R. et 40 autres y vont" ----------------
-      //  One entry per attendee, keyed by a hash of the uid (never the uid),
-      //  holding only a short name.
+      // ---- preuve sociale : « Soa, Hery R. et 40 autres y vont » -----------
+      //  Une entrée par participant, indexée par un hachage de l’uid (jamais
+      //  l’uid lui-même), ne portant qu’un nom court.
       match /attendees/{attendeeKey} {
         allow read: if signedIn();
         allow create: if isActive()
@@ -723,7 +758,7 @@ service cloud.firestore {
       }
     }
 
-    // The invitee finds their invitations across events.
+    // L’invité retrouve ses invitations à travers les événements.
     match /{path=**}/invitations/{inviteeId} {
       allow list: if signedIn() && resource.data.userId == uid();
     }
@@ -732,12 +767,12 @@ service cloud.firestore {
     //
     //  reservations/{eventId}_{userId}
     //    eventId · userId · organizerId · userName · userEmail
-    //    eventTitle · eventStartsAt · eventLocation (copied from the event)
+    //    eventTitle · eventStartsAt · eventLocation (copiés de l’événement)
     //    status confirmed|cancelled · reservedAt · cancelledAt? · cancelledBy?
-    //    tierId? · tierName? · pricePaid (always 0 without a payment server)
+    //    tierId? · tierName? · pricePaid (toujours 0 sans serveur de paiement)
     //
     match /reservations/{reservationId} {
-      // read
+      // lecture
       function event() {
         return get(eventDoc(incoming().eventId)).data;
       }
@@ -758,7 +793,7 @@ service cloud.firestore {
           && incoming().get('pricePaid', 0) == 0;
       }
 
-      /// The copy matches the event it claims to come from.
+      /// La copie correspond à l’événement dont elle se réclame.
       function matchesEvent() {
         return incoming().organizerId == event().organizerId
           && incoming().eventTitle == event().title
@@ -766,7 +801,7 @@ service cloud.firestore {
           && incoming().eventLocation == event().location;
       }
 
-      /// Only a free seat is bookable without a payment server.
+      /// Sans serveur de paiement, seule une place gratuite est réservable.
       function tierBookable() {
         return event().get('tiers', {}).size() > 0
           ? (incoming().get('tierId', '') in event().tiers
@@ -775,7 +810,7 @@ service cloud.firestore {
           : incoming().get('tierId', null) == null;
       }
 
-      /// The seat counter moved in the same transaction.
+      /// Le compteur de places a bougé dans la même transaction.
       function seatTaken() {
         return getAfter(eventDoc(incoming().eventId)).data.availablePlaces
           == event().availablePlaces - 1;
@@ -798,8 +833,8 @@ service cloud.firestore {
           && seatTaken();
       }
 
-      // A missing document has no `resource`: a caller may probe only the
-      // id of their own seat ("have I booked this?").
+      // Un document absent n’a pas de `resource` : l’appelant ne peut sonder
+      // que l’identifiant de sa propre place (« ai-je réservé ? »).
       allow get: if signedIn()
         && (resource == null
           ? reservationId.matches('.+_' + uid())
@@ -808,8 +843,8 @@ service cloud.firestore {
              || isEventTeam(existing().eventId)
              || isAdmin()));
 
-      // The query pins `userId ==` (participant), `organizerId ==` (owner)
-      // or `eventId ==` (team).
+      // La requête épingle `userId ==` (participant), `organizerId ==`
+      // (propriétaire) ou `eventId ==` (équipe).
       allow list: if signedIn()
         && request.query.limit <= 500
         && (resource.data.userId == uid()
@@ -832,7 +867,7 @@ service cloud.firestore {
           && incoming().userId == existing().userId
           && incoming().eventId == existing().eventId
           && (
-            // confirmed → cancelled, seat given back in the same transaction
+            // confirmed → cancelled, place rendue dans la même transaction
             (existing().status == 'confirmed'
               && incoming().status == 'cancelled'
               && onlyChanged(['status', 'cancelledAt', 'cancelledBy'])
@@ -840,21 +875,21 @@ service cloud.firestore {
               && incoming().cancelledBy == uid()
               && (!exists(eventDoc(existing().eventId)) || seatReleased()))
             ||
-            // cancelled → confirmed: a new booking on the same ticket
+            // cancelled → confirmed : nouvelle réservation sur le même billet
             (existing().status == 'cancelled'
               && incoming().status == 'confirmed'
               && incoming().userEmail == request.auth.token.email
               && newBooking())
           ))
         ||
-        // account deletion: the history stays, anonymised
+        // suppression de compte : l’historique reste, anonymisé
         (signedIn() && existing().userId == uid()
           && onlyChanged(['userId', 'userName', 'userEmail'])
           && incoming().userId == ''
           && incoming().userName == 'Compte supprimé'
           && incoming().userEmail == 'supprime@eventhub.invalid')
         ||
-        // moderation removes the event: every seat is cancelled
+        // la modération retire l’événement : chaque place est annulée
         (isAdmin()
           && existing().status == 'confirmed'
           && incoming().status == 'cancelled'
@@ -862,25 +897,25 @@ service cloud.firestore {
           && incoming().cancelledBy == 'moderation'
           && isRecentTime(incoming().cancelledAt));
 
-      // History is never destroyed.
+      // L’historique n’est jamais détruit.
       allow delete: if false;
     }
 
     // =============================================================== reviews
     //
-    //  reviews/{eventId}_{userId} — an attendee, once the event started.
+    //  reviews/{eventId}_{userId} — un participant, après le démarrage.
     //    eventId · organizerId · authorId · authorName · rating 1..5
-    //    comment ..2000 · hidden (false at creation) · createdAt · updatedAt?
-    //  The organizer's rating moves in the same batch.
+    //    comment ..2000 · hidden (false à la création) · createdAt · updatedAt?
+    //  La note de l’organisateur bouge dans le même batch.
     //
     match /reviews/{reviewId} {
-      // read
+      // lecture
       function attended(eventId) {
         let r = get(reservationDoc(eventId + '_' + uid())).data;
         return r.status == 'confirmed' && r.eventStartsAt < request.time;
       }
 
-      // read
+      // lecture
       function ratingFollows(organizerId, sumDelta, countDelta) {
         let before = get(organizerDoc(organizerId)).data;
         let after = getAfter(organizerDoc(organizerId)).data;
@@ -898,7 +933,7 @@ service cloud.firestore {
             || existing().authorId == uid()
             || isAdmin());
 
-      // Lists pin `hidden == false`, except for moderation.
+      // Les listes épinglent `hidden == false`, sauf pour la modération.
       allow list: if signedIn()
         && request.query.limit <= 200
         && (resource.data.hidden == false || resource.data.authorId == uid() || isAdmin());
@@ -925,13 +960,13 @@ service cloud.firestore {
           && (existing().hidden == true
               || ratingFollows(existing().organizerId, incoming().rating - existing().rating, 0)))
         ||
-        // anonymisation at account deletion
+        // anonymisation à la suppression du compte
         (signedIn() && existing().authorId == uid()
           && onlyChanged(['authorId', 'authorName'])
           && incoming().authorId == ''
           && incoming().authorName == 'Compte supprimé')
         ||
-        // moderation hides or restores, and the rating follows
+        // la modération masque ou rétablit, et la note suit
         (isAdmin()
           && onlyChanged(['hidden'])
           && incoming().hidden is bool
@@ -948,8 +983,9 @@ service cloud.firestore {
 
     // =============================================================== reports
     //
-    //  reports/{type}_{targetId}_{reporterId} — write-only, one per person.
-    //  The moderation queue entry is opened or counted in the same batch.
+    //  reports/{type}_{targetId}_{reporterId} — en écriture seule, un par
+    //  personne. L’entrée de la file de modération est ouverte ou comptée
+    //  dans le même batch.
     //
     match /reports/{reportId} {
       allow read: if isAdmin();
@@ -1019,7 +1055,7 @@ service cloud.firestore {
       }
     }
 
-    // ============================================================ catch-all
+    // ========================================================= attrape-tout
     match /{document=**} {
       allow read, write: if false;
     }

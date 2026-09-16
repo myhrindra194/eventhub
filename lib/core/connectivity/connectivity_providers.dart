@@ -3,11 +3,12 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'connectivity_providers.g.dart';
 
-/// Whether the device has a network interface up.
+/// Indique si l’appareil a une interface réseau active.
 ///
-/// "Up" is not "Firebase reachable" (a captive portal says online), which is
-/// why this only drives an informational banner: Firestore itself keeps
-/// working from its cache and replays writes when the link comes back.
+/// « Active » ne veut pas dire « Firebase joignable » (un portail captif se
+/// déclare en ligne) : c’est pourquoi ce provider ne pilote qu’un bandeau
+/// informatif. Firestore, lui, continue de fonctionner depuis son cache et
+/// rejoue les écritures au retour du lien.
 @Riverpod(keepAlive: true)
 Stream<bool> isOnline(Ref ref) async* {
   final connectivity = Connectivity();

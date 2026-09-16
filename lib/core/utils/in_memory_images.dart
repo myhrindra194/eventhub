@@ -1,8 +1,9 @@
 import 'dart:typed_data';
 
-/// Registry for images that only exist in memory (mock backend, previews).
-/// Such images are referenced with a `memory://<id>` URL that `EventImage`
-/// resolves back to bytes, so the rest of the app keeps using plain URLs.
+/// Registre des images qui n’existent qu’en mémoire (backend simulé,
+/// aperçus). Ces images sont référencées par une URL `memory://<id>` que
+/// `EventImage` retransforme en octets, de sorte que le reste de l’app
+/// continue de manipuler de simples URL.
 abstract final class InMemoryImages {
   static const scheme = 'memory://';
 

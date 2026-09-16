@@ -8,33 +8,39 @@ part of 'analytics_consent.dart';
 
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // ignore_for_file: type=lint, type=warning
-/// The user's decision about audience measurement on this install.
+/// La décision de l’utilisateur sur la mesure d’audience, pour cette
+/// installation.
 ///
-/// `null` means "never asked": nothing is collected and the consent sheet is
-/// offered once after sign-in. Stored locally because it is a device-level
-/// choice (the same account on a shared tablet may decide differently).
-/// Firebase Analytics is not exempt from consent under the CNIL guidelines,
-/// hence opt-in rather than opt-out.
+/// `null` signifie « jamais demandé » : rien n’est collecté et la feuille de
+/// consentement est proposée une fois après la connexion. Le choix est
+/// stocké localement parce qu’il relève de l’appareil (le même compte sur
+/// une tablette partagée peut trancher autrement). Firebase Analytics n’est
+/// pas exempté de consentement au regard des lignes directrices de la CNIL,
+/// d’où un opt-in plutôt qu’un opt-out.
 
 @ProviderFor(AnalyticsConsent)
 final analyticsConsentProvider = AnalyticsConsentProvider._();
 
-/// The user's decision about audience measurement on this install.
+/// La décision de l’utilisateur sur la mesure d’audience, pour cette
+/// installation.
 ///
-/// `null` means "never asked": nothing is collected and the consent sheet is
-/// offered once after sign-in. Stored locally because it is a device-level
-/// choice (the same account on a shared tablet may decide differently).
-/// Firebase Analytics is not exempt from consent under the CNIL guidelines,
-/// hence opt-in rather than opt-out.
+/// `null` signifie « jamais demandé » : rien n’est collecté et la feuille de
+/// consentement est proposée une fois après la connexion. Le choix est
+/// stocké localement parce qu’il relève de l’appareil (le même compte sur
+/// une tablette partagée peut trancher autrement). Firebase Analytics n’est
+/// pas exempté de consentement au regard des lignes directrices de la CNIL,
+/// d’où un opt-in plutôt qu’un opt-out.
 final class AnalyticsConsentProvider
     extends $AsyncNotifierProvider<AnalyticsConsent, bool?> {
-  /// The user's decision about audience measurement on this install.
+  /// La décision de l’utilisateur sur la mesure d’audience, pour cette
+  /// installation.
   ///
-  /// `null` means "never asked": nothing is collected and the consent sheet is
-  /// offered once after sign-in. Stored locally because it is a device-level
-  /// choice (the same account on a shared tablet may decide differently).
-  /// Firebase Analytics is not exempt from consent under the CNIL guidelines,
-  /// hence opt-in rather than opt-out.
+  /// `null` signifie « jamais demandé » : rien n’est collecté et la feuille de
+  /// consentement est proposée une fois après la connexion. Le choix est
+  /// stocké localement parce qu’il relève de l’appareil (le même compte sur
+  /// une tablette partagée peut trancher autrement). Firebase Analytics n’est
+  /// pas exempté de consentement au regard des lignes directrices de la CNIL,
+  /// d’où un opt-in plutôt qu’un opt-out.
   AnalyticsConsentProvider._()
     : super(
         from: null,
@@ -56,13 +62,15 @@ final class AnalyticsConsentProvider
 
 String _$analyticsConsentHash() => r'b0a894a07b4c0748ec065c42926a8bc8743c5fff';
 
-/// The user's decision about audience measurement on this install.
+/// La décision de l’utilisateur sur la mesure d’audience, pour cette
+/// installation.
 ///
-/// `null` means "never asked": nothing is collected and the consent sheet is
-/// offered once after sign-in. Stored locally because it is a device-level
-/// choice (the same account on a shared tablet may decide differently).
-/// Firebase Analytics is not exempt from consent under the CNIL guidelines,
-/// hence opt-in rather than opt-out.
+/// `null` signifie « jamais demandé » : rien n’est collecté et la feuille de
+/// consentement est proposée une fois après la connexion. Le choix est
+/// stocké localement parce qu’il relève de l’appareil (le même compte sur
+/// une tablette partagée peut trancher autrement). Firebase Analytics n’est
+/// pas exempté de consentement au regard des lignes directrices de la CNIL,
+/// d’où un opt-in plutôt qu’un opt-out.
 
 abstract class _$AnalyticsConsent extends $AsyncNotifier<bool?> {
   FutureOr<bool?> build();

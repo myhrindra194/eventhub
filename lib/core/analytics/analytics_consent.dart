@@ -4,13 +4,15 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 part 'analytics_consent.g.dart';
 
-/// The user's decision about audience measurement on this install.
+/// La décision de l’utilisateur sur la mesure d’audience, pour cette
+/// installation.
 ///
-/// `null` means "never asked": nothing is collected and the consent sheet is
-/// offered once after sign-in. Stored locally because it is a device-level
-/// choice (the same account on a shared tablet may decide differently).
-/// Firebase Analytics is not exempt from consent under the CNIL guidelines,
-/// hence opt-in rather than opt-out.
+/// `null` signifie « jamais demandé » : rien n’est collecté et la feuille de
+/// consentement est proposée une fois après la connexion. Le choix est
+/// stocké localement parce qu’il relève de l’appareil (le même compte sur
+/// une tablette partagée peut trancher autrement). Firebase Analytics n’est
+/// pas exempté de consentement au regard des lignes directrices de la CNIL,
+/// d’où un opt-in plutôt qu’un opt-out.
 @Riverpod(keepAlive: true)
 class AnalyticsConsent extends _$AnalyticsConsent {
   static const _key = 'analytics_consent_v1';
@@ -19,8 +21,8 @@ class AnalyticsConsent extends _$AnalyticsConsent {
   Future<bool?> build() async {
     final prefs = await SharedPreferences.getInstance();
     final granted = prefs.getBool(_key);
-    // Collection is off by default (manifest / Info.plist); only an explicit
-    // yes turns it on for this install.
+    // La collecte est désactivée par défaut (manifest / Info.plist) ; seul
+    // un oui explicite l’active pour cette installation.
     await ref.read(appAnalyticsProvider).setCollectionEnabled(granted ?? false);
     return granted;
   }

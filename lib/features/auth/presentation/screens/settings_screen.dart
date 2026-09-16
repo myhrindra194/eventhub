@@ -14,13 +14,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-/// Settings.
+/// Réglages.
 ///
-/// Every switch here does something real. Notification preferences are
-/// stored in Firestore and read by the Cloud Functions before each send, so
-/// a switch turned off stops the very next push. Only the notifications that
-/// actually exist for the role are offered: a participant gets reminders, an
-/// organizer gets booking alerts — no toggle for a message nobody sends.
+/// Chaque interrupteur ici fait vraiment quelque chose. Les préférences de
+/// notification sont stockées dans Firestore et lues par les Cloud Functions
+/// avant chaque envoi : un interrupteur éteint arrête donc la toute prochaine
+/// push. Seules les notifications qui existent réellement pour le rôle sont
+/// proposées : un participant reçoit des rappels, un organisateur des alertes
+/// de réservation — aucune bascule pour un message que personne n’envoie.
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
 
@@ -30,7 +31,10 @@ class SettingsScreen extends ConsumerWidget {
 
     return AppScaffold(
       dense: true,
-      appBar: AppBar(title: const Text(AppStrings.settings)),
+      appBar: AppTopBar.subPage(
+        title: AppStrings.settings,
+        onBack: () => context.pop(),
+      ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(
           AppSpacing.gutter,
@@ -47,7 +51,6 @@ class SettingsScreen extends ConsumerWidget {
           const SizedBox(height: AppSpacing.md),
           AppSurface(
             padding: EdgeInsets.zero,
-            elevation: SurfaceElevation.flat,
             child: InkWell(
               onTap: () => context.push(AppRoutes.changePassword),
               child: Padding(
@@ -86,7 +89,6 @@ class SettingsScreen extends ConsumerWidget {
           const SizedBox(height: AppSpacing.md),
           AppSurface(
             padding: EdgeInsets.zero,
-            elevation: SurfaceElevation.flat,
             borderColor: context.tokens.danger.border,
             child: InkWell(
               onTap: () => showDeleteAccountSheet(context),
@@ -121,7 +123,6 @@ class SettingsScreen extends ConsumerWidget {
           const SectionLabel(AppStrings.about),
           const SizedBox(height: AppSpacing.md),
           AppSurface(
-            elevation: SurfaceElevation.flat,
             child: Column(
               children: [
                 _InfoRow(
@@ -183,7 +184,6 @@ class _NotificationSwitches extends ConsumerWidget {
         horizontal: AppSpacing.lg,
         vertical: AppSpacing.xs,
       ),
-      elevation: SurfaceElevation.flat,
       child: Column(
         children: [
           SwitchListTile.adaptive(
@@ -194,7 +194,7 @@ class _NotificationSwitches extends ConsumerWidget {
             subtitle: Text(hint, style: context.textTheme.bodySmall),
           ),
           const AppDivider(height: 1),
-          // Both roles may follow organizers (F-10).
+          // Les deux rôles peuvent suivre des organisateurs (F-10).
           SwitchListTile.adaptive(
             contentPadding: EdgeInsets.zero,
             value: prefs?.followedOrganizers ?? true,
@@ -217,8 +217,8 @@ class _NotificationSwitches extends ConsumerWidget {
   }
 }
 
-/// Consent to audience measurement, changeable at any time (same storage as
-/// the first-sign-in sheet).
+/// Consentement à la mesure d’audience, modifiable à tout moment (même
+/// stockage que la feuille de première connexion).
 class _AnalyticsSwitch extends ConsumerWidget {
   const _AnalyticsSwitch();
 
@@ -230,7 +230,6 @@ class _AnalyticsSwitch extends ConsumerWidget {
         horizontal: AppSpacing.lg,
         vertical: AppSpacing.xs,
       ),
-      elevation: SurfaceElevation.flat,
       child: SwitchListTile.adaptive(
         contentPadding: EdgeInsets.zero,
         value: consent.value ?? false,
@@ -250,10 +249,11 @@ class _AnalyticsSwitch extends ConsumerWidget {
   }
 }
 
-/// Three-way appearance picker.
+/// Sélecteur d’apparence à trois positions.
 ///
-/// "Automatique" is offered first and is the default: an app that fights
-/// the system setting is an app people notice for the wrong reason.
+/// « Automatique » est proposé en premier et fait office de valeur par
+/// défaut : une application qui contrarie le réglage système est une
+/// application qu’on remarque pour de mauvaises raisons.
 class _ThemeSelector extends ConsumerWidget {
   const _ThemeSelector();
 
@@ -264,7 +264,6 @@ class _ThemeSelector extends ConsumerWidget {
 
     return AppSurface(
       padding: const EdgeInsets.all(AppSpacing.md),
-      elevation: SurfaceElevation.flat,
       child: Row(
         children: [
           for (final mode in ThemeMode.values)

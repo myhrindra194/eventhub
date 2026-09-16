@@ -10,10 +10,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-/// Post-registration celebration, shown once.
+/// Célébration d’après inscription, affichée une seule fois.
 ///
-/// It auto-advances after three seconds *and* offers the button: the timer
-/// keeps a passive user moving, the button respects an impatient one.
+/// Elle enchaîne toute seule au bout de trois secondes *et* propose le
+/// bouton : la minuterie fait avancer l’utilisateur passif, le bouton
+/// respecte l’impatient.
 class WelcomeScreen extends ConsumerStatefulWidget {
   const WelcomeScreen({super.key});
 

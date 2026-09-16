@@ -45,10 +45,11 @@ class AuthRepositoryImpl implements AuthRepository {
 
   @override
   Stream<AuthSession> watchSession() {
-    // Auth emits on every token refresh; only a change of account or of
-    // email verification changes the session. switchMap: the profile stream
-    // never completes, so the previous one must be cancelled when the
-    // account changes (and before its listener is refused on sign-out).
+    // Auth émet à chaque rafraîchissement de token ; seul un changement de
+    // compte ou de vérification d’e-mail change la session. switchMap : le
+    // flux de profil ne se termine jamais, il faut donc annuler le précédent
+    // quand le compte change (et avant que son écouteur ne soit refusé à la
+    // déconnexion).
     return _auth
         .userChanges()
         .distinct((a, b) => _sessionKey(a) == _sessionKey(b))
@@ -69,16 +70,16 @@ class AuthRepositoryImpl implements AuthRepository {
     ).switchMap<AuthSession>((pair) {
       final (dto, admin) = pair;
       if (dto != null && dto.suspended) {
-        // Moderation suspended the account while it was signed in.
+        // La modération a suspendu le compte alors qu’il était connecté.
         unawaited(_auth.signOut());
         return Stream.value(const SignedOut());
       }
       if (dto != null) {
         return Stream.value(SignedIn(_toUser(user, dto, isAdmin: admin)));
       }
-      // A password sign-up writes its profile right after the account; a
-      // first Google sign-in has none yet. Give the document a moment to
-      // show up, then ask for a name.
+      // Une inscription par mot de passe écrit son profil juste après le
+      // compte ; une première connexion Google n’en a pas encore. On laisse
+      // au document un instant pour apparaître, puis on réclame un nom.
       return TimerStream(
         ProfileMissing(
           uid: user.uid,
@@ -137,7 +138,8 @@ class AuthRepositoryImpl implements AuthRepository {
       );
       final address = user.email ?? email.trim();
       await _users.create(user.uid, name: trimmed, email: address);
-      // Never fails the sign-up: the banner offers to resend.
+      // Ne fait jamais échouer l’inscription : le bandeau propose de renvoyer
+      // le lien.
       await _auth.sendEmailVerification().catchError((_) {});
       return AppUser(
         id: user.uid,
@@ -172,7 +174,7 @@ class AuthRepositoryImpl implements AuthRepository {
     return guard(() async {
       final user = _auth.currentUser;
       if (user == null) throw const FailureException(AuthFailure.notSignedIn());
-      // The rules read `email_verified` from the token: make it current.
+      // Les règles lisent `email_verified` dans le token : on le met à jour.
       if (!await _auth.refreshEmailVerification()) {
         throw const FailureException(
           BusinessRuleFailure(
@@ -200,7 +202,13 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
-  AsyncResult<AppUser> updateProfile({required String name, String? bio}) {
+  AsyncResult<AppUser> updateProfile({
+    required String name,
+    String? bio,
+    String? photoUrl,
+    String? coverUrl,
+    bool updatePhotos = false,
+  }) {
     return guard(() async {
       final user = _auth.currentUser;
       if (user == null) throw const FailureException(AuthFailure.notSignedIn());
@@ -211,6 +219,9 @@ class AuthRepositoryImpl implements AuthRepository {
         user.uid,
         name: name.trim(),
         bio: trimmedBio,
+        photoUrl: photoUrl,
+        coverUrl: coverUrl,
+        updatePhotos: updatePhotos,
         isOrganizer: current.role == UserRole.organizer,
       );
       return _toUser(
@@ -220,6 +231,11 @@ class AuthRepositoryImpl implements AuthRepository {
           bio: trimmedBio == null
               ? current.bio
               : (trimmedBio.isEmpty ? null : trimmedBio),
+          // Sans [updatePhotos], les photos ne sont pas touchées : c'est ce
+          // qui distingue « je ne change que mon nom » de « je retire ma
+          // photo », les deux passant par un `null`.
+          photoUrl: updatePhotos ? photoUrl : current.photoUrl,
+          coverUrl: updatePhotos ? coverUrl : current.coverUrl,
         ),
       );
     });
@@ -262,7 +278,8 @@ class AuthRepositoryImpl implements AuthRepository {
     return guard(() async {
       final user = _auth.currentUser;
       if (user == null) throw const FailureException(AuthFailure.notSignedIn());
-      // First: a wrong password must stop everything before any data moves.
+      // D’abord : un mot de passe erroné doit tout arrêter avant que la
+      // moindre donnée ne bouge.
       await _auth.reauthenticate(password: password);
       final dto = await _users.get(user.uid);
       if (dto != null) {

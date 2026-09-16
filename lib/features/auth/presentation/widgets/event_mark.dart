@@ -1,16 +1,17 @@
 import 'package:flutter/material.dart';
 
-/// The EventHub mark, drawn stroke by stroke.
+/// La marque EventHub, tracée trait après trait.
 ///
-/// A **ticket** with its perforation, and three sparks going off above it.
-/// The subject had to say "événement" at a glance and survive at 30 px: a
-/// ticket silhouette does that, a calendar does not (it reads "agenda"), and
-/// a musical note would exclude conferences and sport.
+/// Un **billet** avec sa perforation, et trois étincelles qui jaillissent
+/// au-dessus. Le sujet devait dire « événement » en un coup d’œil et tenir à
+/// 30 px : une silhouette de billet y parvient, un calendrier non (il se lit
+/// « agenda »), et une note de musique exclurait les conférences et le sport.
 ///
-/// The reveal is a genuine path trace — `PathMetric.extractPath` over an
-/// animated fraction, the Flutter equivalent of SVG `stroke-dashoffset`. It
-/// is not decoration: a boot screen that draws itself tells the user the app
-/// is working, where a static logo just looks frozen.
+/// L’apparition est un véritable tracé de chemin — `PathMetric.extractPath`
+/// sur une fraction animée, l’équivalent Flutter du `stroke-dashoffset` de
+/// SVG. Ce n’est pas décoratif : un écran de démarrage qui se dessine
+/// lui-même dit à l’utilisateur que l’application travaille, là où un logo
+/// statique a simplement l’air figé.
 class EventMark extends StatelessWidget {
   const EventMark({
     required this.progress,
@@ -21,7 +22,7 @@ class EventMark extends StatelessWidget {
     this.strokeWidth = 5,
   });
 
-  /// 0 → nothing drawn, 1 → fully drawn.
+  /// 0 → rien de tracé, 1 → entièrement tracé.
   final Animation<double> progress;
   final Color stroke;
   final Color accent;
@@ -62,11 +63,13 @@ class _EventMarkPainter extends CustomPainter {
   final Color accent;
   final double strokeWidth;
 
-  /// The mark is authored on a 200 × 200 grid and scaled to the widget.
+  /// La marque est dessinée sur une grille de 200 × 200, puis mise à
+  /// l’échelle du widget.
   static const _grid = 200.0;
 
-  /// Each element draws inside its own slice of the timeline, so the mark
-  /// assembles in a readable order instead of fading in as one blob.
+  /// Chaque élément se trace dans sa propre tranche de la timeline, pour que
+  /// la marque s’assemble dans un ordre lisible au lieu d’apparaître en fondu
+  /// comme une seule tache.
   static const _ticketSpan = (0.0, 0.46);
   static const _perforationSpan = (0.44, 0.58);
   static const _sparkSpans = [(0.54, 0.76), (0.66, 0.86), (0.76, 0.94)];
@@ -75,7 +78,8 @@ class _EventMarkPainter extends CustomPainter {
   static double _phase((double, double) span, double t) =>
       ((t - span.$1) / (span.$2 - span.$1)).clamp(0.0, 1.0);
 
-  /// A ticket: a rounded rectangle with a bite taken out of each long edge.
+  /// Un billet : un rectangle arrondi dans lequel on a mordu sur chacun de
+  /// ses grands côtés.
   static Path _ticket() {
     final body = Path()
       ..addRRect(RRect.fromLTRBR(34, 80, 166, 158, const Radius.circular(12)));
@@ -93,7 +97,8 @@ class _EventMarkPainter extends CustomPainter {
     ..moveTo(114, 92)
     ..lineTo(114, 146);
 
-  /// Four-point star — the shape confetti and "sparkle" glyphs converge on.
+  /// Étoile à quatre branches — la forme vers laquelle convergent les
+  /// confettis et les glyphes « sparkle ».
   static Path _spark(Offset c, double r) {
     final inner = r * 0.34;
     return Path()
@@ -152,7 +157,7 @@ class _EventMarkPainter extends CustomPainter {
       );
     }
 
-    // The final dot lands with a small overshoot — the one flourish.
+    // Le point final se pose avec un léger dépassement — l’unique fioriture.
     final dot = _phase(_dotSpan, t);
     if (dot > 0) {
       canvas.drawCircle(

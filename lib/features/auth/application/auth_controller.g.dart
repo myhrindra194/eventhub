@@ -8,18 +8,21 @@ part of 'auth_controller.dart';
 
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // ignore_for_file: type=lint, type=warning
-/// Drives auth actions from the UI. `state` mirrors the in-flight action
-/// (loading / error) while the actual session comes from `authSessionProvider`.
+/// Pilote les actions d’authentification depuis l’UI. `state` reflète
+/// l’action en cours (chargement / erreur), tandis que la session réelle,
+/// elle, provient de `authSessionProvider`.
 
 @ProviderFor(AuthController)
 final authControllerProvider = AuthControllerProvider._();
 
-/// Drives auth actions from the UI. `state` mirrors the in-flight action
-/// (loading / error) while the actual session comes from `authSessionProvider`.
+/// Pilote les actions d’authentification depuis l’UI. `state` reflète
+/// l’action en cours (chargement / erreur), tandis que la session réelle,
+/// elle, provient de `authSessionProvider`.
 final class AuthControllerProvider
     extends $AsyncNotifierProvider<AuthController, void> {
-  /// Drives auth actions from the UI. `state` mirrors the in-flight action
-  /// (loading / error) while the actual session comes from `authSessionProvider`.
+  /// Pilote les actions d’authentification depuis l’UI. `state` reflète
+  /// l’action en cours (chargement / erreur), tandis que la session réelle,
+  /// elle, provient de `authSessionProvider`.
   AuthControllerProvider._()
     : super(
         from: null,
@@ -39,10 +42,11 @@ final class AuthControllerProvider
   AuthController create() => AuthController();
 }
 
-String _$authControllerHash() => r'd30956e44c34cad2a5badad8963b80ee41204fcd';
+String _$authControllerHash() => r'3312ef6fb5d272037030c9dbec0753b487bc3e46';
 
-/// Drives auth actions from the UI. `state` mirrors the in-flight action
-/// (loading / error) while the actual session comes from `authSessionProvider`.
+/// Pilote les actions d’authentification depuis l’UI. `state` reflète
+/// l’action en cours (chargement / erreur), tandis que la session réelle,
+/// elle, provient de `authSessionProvider`.
 
 abstract class _$AuthController extends $AsyncNotifier<void> {
   FutureOr<void> build();

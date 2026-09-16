@@ -10,13 +10,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-/// Password reset request.
+/// Demande de réinitialisation du mot de passe.
 ///
-/// Two states in one screen — the form, then a confirmation. Bouncing the
-/// user back to the login screen with a snack bar leaves them wondering
-/// whether anything happened; a confirmation that repeats the address and
-/// mentions the spam folder removes the most common support ticket a reset
-/// flow generates.
+/// Deux états dans un même écran — le formulaire, puis une confirmation.
+/// Renvoyer l’utilisateur vers l’écran de connexion avec un snack bar le
+/// laisse se demander s’il s’est passé quelque chose ; une confirmation qui
+/// répète l’adresse et mentionne le dossier de spam supprime le ticket de
+/// support le plus fréquent que génère un parcours de réinitialisation.
 class ForgotPasswordScreen extends ConsumerStatefulWidget {
   const ForgotPasswordScreen({super.key});
 
@@ -98,13 +98,11 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
           const SizedBox(height: AppSpacing.xxl),
           AppButton.primary(
             label: AppStrings.backToLogin,
-            elevated: false,
             onPressed: () => context.pop(),
           ),
           const SizedBox(height: AppSpacing.md),
           AppButton.secondary(
             label: 'Renvoyer le lien',
-            elevated: false,
             onPressed: () => setState(() => _sent = false),
           ),
         ],
@@ -140,7 +138,6 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
               AppButton.primary(
                 label: AppStrings.sendResetLink,
                 isLoading: isLoading,
-                elevated: false,
                 onPressed: _submit,
               ),
             ],

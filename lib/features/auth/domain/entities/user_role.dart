@@ -1,5 +1,6 @@
-/// Role chosen at sign-up. Persisted as the enum `name` in Firestore
-/// (`participant` / `organizer`) and enforced by security rules.
+/// Rôle choisi à l’inscription. Persisté sous la forme du `name` de l’enum
+/// dans Firestore (`participant` / `organizer`) et imposé par les règles de
+/// sécurité.
 enum UserRole {
   participant,
   organizer;

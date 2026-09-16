@@ -3,16 +3,18 @@ import 'package:eventhub/core/l10n/app_strings.dart';
 import 'package:eventhub/core/widgets/design_system.dart';
 import 'package:flutter/material.dart';
 
-/// Shared chrome for the authentication screens.
+/// Habillage commun aux écrans d’authentification.
 ///
-/// Centre-weighted, following the reference direction: a compact top bar
-/// (circular back · mark · optional action), then a centred hero glyph,
-/// title and lead, then the form. Centring works here — and only here —
-/// because these screens hold one short column with a single decision; the
-/// browsing screens stay left-aligned, where a ragged centre would fight the
-/// scan pattern of a list.
+/// Composition centrée, dans la direction de la référence : une barre
+/// supérieure compacte (retour circulaire · marque · action optionnelle),
+/// puis un glyphe héros centré, le titre et l’accroche, puis le formulaire.
+/// Le centrage fonctionne ici — et seulement ici — parce que ces écrans
+/// tiennent en une courte colonne portant une seule décision ; les écrans de
+/// navigation, eux, restent alignés à gauche, là où un centre irrégulier
+/// contrarierait le balayage visuel d’une liste.
 ///
-/// Deliberately absent: an appearance toggle. It lives in Settings.
+/// Volontairement absente : une bascule d’apparence. Elle vit dans les
+/// réglages.
 class AuthShell extends StatelessWidget {
   const AuthShell({
     required this.title,
@@ -32,18 +34,19 @@ class AuthShell extends StatelessWidget {
   final List<Widget> children;
   final VoidCallback? onBack;
 
-  /// Optional top-right action ("Passer", a step counter…).
+  /// Action optionnelle en haut à droite (« Passer », un compteur d’étapes…).
   final Widget? trailing;
 
-  /// Centred glyph above the title. Defaults to nothing; screens that need a
-  /// subject (a padlock for recovery) pass [AuthHeroIcon].
+  /// Glyphe centré au-dessus du titre. Rien par défaut ; les écrans qui ont
+  /// besoin d’un sujet (un cadenas pour la récupération) passent un
+  /// [AuthHeroIcon].
   final Widget? hero;
 
-  /// `(index, total)` — a discreet counter under the title.
+  /// `(index, total)` — un compteur discret sous le titre.
   final (int, int)? step;
   final Widget? footer;
 
-  /// The small brand mark in the middle of the top bar.
+  /// La petite marque au centre de la barre supérieure.
   final bool showMark;
 
   @override
@@ -53,22 +56,24 @@ class AuthShell extends StatelessWidget {
     final gutter = context.gutter;
 
     return AppScaffold(
-      // Flat by intent: no ambient blooms, no elevated surfaces, no shadows.
+      // Plat par choix : pas de halos d’ambiance, pas de surfaces en
+      // élévation, pas d’ombres.
       showBlooms: false,
       constrainWidth: false,
       resizeToAvoidBottomInset: true,
       body: SafeArea(
         child: ResponsiveColumn(
-          // "Pin the footer to the bottom when there is room, scroll the
-          // whole thing when there is not" — the two-sliver form.
+          // « Coller le pied de page en bas quand il y a la place, faire
+          // défiler l’ensemble sinon » — la forme à deux slivers.
           //
-          // The obvious solutions both break: `IntrinsicHeight` measures flex
-          // children as zero and then pins the column to that under-measured
-          // height, and a lone `SliverFillRemaining(hasScrollBody: false)`
-          // containing a `Spacer` is handed an exact viewport height it
-          // cannot exceed. Here the content keeps its natural height and the
-          // second sliver simply eats whatever is left — zero on a short
-          // screen, which is exactly when scrolling should take over.
+          // Les deux solutions évidentes échouent : `IntrinsicHeight` mesure
+          // les enfants flex à zéro puis fige la colonne sur cette hauteur
+          // sous-évaluée, et un `SliverFillRemaining(hasScrollBody: false)`
+          // seul contenant un `Spacer` se voit imposer une hauteur de
+          // viewport exacte qu’il ne peut pas dépasser. Ici le contenu garde
+          // sa hauteur naturelle et le second sliver se contente d’avaler ce
+          // qui reste — zéro sur un écran court, c’est-à-dire précisément
+          // quand le défilement doit prendre le relais.
           child: CustomScrollView(
             slivers: [
               SliverToBoxAdapter(
@@ -160,8 +165,8 @@ class AuthShell extends StatelessWidget {
   }
 }
 
-/// `[back] · mark · [action]` — the three slots keep the mark optically
-/// centred whether or not the side slots are filled.
+/// `[back] · mark · [action]` — les trois emplacements gardent la marque
+/// optiquement centrée, que les emplacements latéraux soient remplis ou non.
 class _TopBar extends StatelessWidget {
   const _TopBar({
     required this.onBack,
@@ -205,7 +210,7 @@ class _TopBar extends StatelessWidget {
   }
 }
 
-/// Circular tinted disc holding the subject of the screen.
+/// Disque circulaire teinté qui porte le sujet de l’écran.
 class AuthHeroIcon extends StatelessWidget {
   const AuthHeroIcon({
     required this.icon,
@@ -261,11 +266,12 @@ class _StepDots extends StatelessWidget {
   }
 }
 
-/// Four-segment password strength meter.
+/// Jauge de robustesse du mot de passe, en quatre segments.
 ///
-/// Scored on what actually matters — length first, then variety — rather
-/// than on a regex that rejects a perfectly good passphrase for lacking a
-/// punctuation mark.
+/// Notée sur ce qui compte vraiment — la longueur d’abord, puis la variété —
+/// plutôt que sur une expression régulière qui rejetterait une phrase de
+/// passe parfaitement solide au motif qu’il lui manque un signe de
+/// ponctuation.
 class PasswordStrengthMeter extends StatelessWidget {
   const PasswordStrengthMeter({required this.password, super.key});
 
@@ -333,7 +339,7 @@ class PasswordStrengthMeter extends StatelessWidget {
   }
 }
 
-/// "Pas encore de compte ? S'inscrire".
+/// « Pas encore de compte ? S’inscrire ».
 class AuthFooterLink extends StatelessWidget {
   const AuthFooterLink({
     required this.prompt,
@@ -351,8 +357,8 @@ class AuthFooterLink extends StatelessWidget {
     final t = context.tokens;
     final text = Theme.of(context).textTheme;
 
-    // Wrap, not Row: two variable-length strings on one line overflow the
-    // moment the copy or the text scale changes.
+    // Wrap, et non Row : deux chaînes de longueur variable sur une même ligne
+    // débordent dès que le texte ou son échelle change.
     return Wrap(
       alignment: WrapAlignment.center,
       crossAxisAlignment: WrapCrossAlignment.center,

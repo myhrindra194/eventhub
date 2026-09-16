@@ -25,38 +25,49 @@ class _Slide {
 
 const _slides = <_Slide>[
   _Slide(
-    kicker: 'Découvrir',
+    kicker: AppStrings.onboarding1Kicker,
     title: AppStrings.onboarding1Title,
     body: AppStrings.onboarding1Body,
-    icon: Icons.explore_rounded,
+    icon: Icons.explore_outlined,
     tone: AppTone.brand,
   ),
   _Slide(
-    kicker: 'Réserver',
+    kicker: AppStrings.onboarding2Kicker,
     title: AppStrings.onboarding2Title,
     body: AppStrings.onboarding2Body,
-    icon: Icons.confirmation_number_rounded,
+    icon: Icons.confirmation_number_outlined,
     tone: AppTone.accent,
   ),
   _Slide(
-    kicker: 'Organiser',
+    kicker: AppStrings.onboarding3Kicker,
     title: AppStrings.onboarding3Title,
     body: AppStrings.onboarding3Body,
-    icon: Icons.insights_rounded,
+    icon: Icons.insights_outlined,
     tone: AppTone.success,
   ),
 ];
 
 /// Carrousel de premier lancement.
 ///
-/// Trois slides, une promesse chacune, et « Passer » visible dès la première
-/// frame : un onboarding qu’on ne peut pas sauter est un impôt prélevé sur
-/// l’utilisateur qui revient et réinstalle l’application. Le drapeau est
-/// persisté quelle que soit la sortie empruntée.
+/// **Pourquoi cette composition et pas une autre.** Cet écran est pris en
+/// sandwich entre le splash et la connexion, et ces deux-là sont centrés : une
+/// marque au trait posée sur un fond uni d'un côté, une carte de champs
+/// centrée de l'autre. Une version alignée à gauche, si soignée soit-elle, se
+/// lit alors comme un morceau d'une autre application. L'onboarding revient
+/// donc au centre, et emprunte au splash son vocabulaire : un dessin **au
+/// trait**, sans tuile ni pastille colorée derrière lui — le fond coloré était
+/// précisément le réflexe de gabarit qu'il fallait abandonner.
 ///
-/// **Pas de bascule d’apparence**, même raisonnement que pour le splash : le
-/// chemin de démarrage suit le système, et la surcharge vit dans les
-/// réglages.
+/// La progression reste une **règle segmentée** plutôt qu'une rangée de
+/// points : elle occupe la largeur et répond à la barre de chargement du
+/// splash, ce qui prolonge la même idée d'avancement d'un écran à l'autre.
+///
+/// « Passer » est visible dès la première frame : un onboarding qu'on ne peut
+/// pas sauter est un impôt prélevé sur l'utilisateur qui revient et réinstalle
+/// l'application. Le drapeau est persisté quelle que soit la sortie empruntée.
+///
+/// **Pas de bascule d'apparence**, même raisonnement que pour le splash : le
+/// chemin de démarrage suit le système, et la surcharge vit dans les réglages.
 class OnboardingScreen extends ConsumerStatefulWidget {
   const OnboardingScreen({super.key});
 
@@ -102,27 +113,34 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       body: SafeArea(
         child: ResponsiveColumn(
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               // [espaceur] · marque · Passer — la marque reste optiquement
-              // centrée.
+              // centrée malgré l'échappatoire à droite.
               Padding(
                 padding: EdgeInsets.fromLTRB(gutter, AppSpacing.md, gutter, 0),
+                // Une superposition, et non trois cases côte à côte : réserver
+                // une largeur fixe à l'échappatoire la comprime au point de
+                // couper le mot sur deux lignes, et fait dépendre le centrage
+                // de la marque de la longueur d'un libellé. Ici le logo est
+                // centré pour de bon, et « Passer » se dimensionne seul.
                 child: SizedBox(
                   height: 44,
-                  child: Row(
+                  child: Stack(
+                    alignment: Alignment.center,
                     children: [
-                      const SizedBox(width: 64),
-                      const Expanded(child: Center(child: AppLogo(size: 34))),
-                      SizedBox(
-                        width: 64,
-                        child: Align(
-                          alignment: Alignment.centerRight,
-                          child: TextButton(
-                            onPressed: _finish,
-                            style: TextButton.styleFrom(
-                              foregroundColor: t.textSecondary,
-                            ),
-                            child: const Text(AppStrings.skip),
+                      const AppLogo(size: 32),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: TextButton(
+                          onPressed: _finish,
+                          style: TextButton.styleFrom(
+                            foregroundColor: t.textSecondary,
+                          ),
+                          child: const Text(
+                            AppStrings.skip,
+                            maxLines: 1,
+                            softWrap: false,
                           ),
                         ),
                       ),
@@ -142,30 +160,14 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
               Padding(
                 padding: EdgeInsets.fromLTRB(
                   gutter,
-                  AppSpacing.xl,
+                  AppSpacing.lg,
                   gutter,
-                  context.responsive(medium: 36, small: 24),
+                  context.responsive(medium: 32, small: 20),
                 ),
                 child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        for (var i = 0; i < _slides.length; i++) ...[
-                          if (i > 0) const SizedBox(width: 6),
-                          AnimatedContainer(
-                            duration: AppMotion.short,
-                            curve: AppMotion.standard,
-                            width: i == _page ? 24 : 8,
-                            height: 8,
-                            decoration: BoxDecoration(
-                              color: i == _page ? t.brand : t.borderStrong,
-                              borderRadius: AppRadius.brPill,
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
+                    _ProgressRule(page: _page, total: _slides.length),
                     const SizedBox(height: AppSpacing.xl),
                     AppButton.primary(
                       label: isLast
@@ -184,6 +186,47 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   }
 }
 
+/// Avancement : trois segments qui remplissent la largeur.
+///
+/// Le segment courant prend la couleur de marque et les précédents une teinte
+/// atténuée : on voit d'un coup d'œil ce qui est fait et ce qui reste, là où
+/// des pastilles identiques ne signalent qu'une position. C'est aussi la même
+/// forme que la barre de chargement du splash, un écran plus tôt.
+class _ProgressRule extends StatelessWidget {
+  const _ProgressRule({required this.page, required this.total});
+
+  final int page;
+  final int total;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+
+    return Row(
+      children: [
+        for (var i = 0; i < total; i++) ...[
+          if (i > 0) const SizedBox(width: 6),
+          Expanded(
+            child: AnimatedContainer(
+              duration: AppMotion.medium,
+              curve: AppMotion.standard,
+              height: 3,
+              decoration: BoxDecoration(
+                color: switch (i) {
+                  _ when i == page => t.brand,
+                  _ when i < page => t.borderStrong,
+                  _ => t.border,
+                },
+                borderRadius: AppRadius.brXs,
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
 class _SlideView extends StatelessWidget {
   const _SlideView({required this.slide, required this.gutter});
 
@@ -195,72 +238,69 @@ class _SlideView extends StatelessWidget {
     final t = context.tokens;
     final colors = t.resolve(slide.tone);
     final text = Theme.of(context).textTheme;
+    final topPad = context.responsive(medium: 24.0, small: 12.0);
 
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: gutter),
-      child: Column(
-        children: [
-          const SizedBox(height: AppSpacing.lg),
-          // L’illustration prend toute la hauteur restante : sur un grand
-          // téléphone elle respire, sur un petit elle cède la place au texte
-          // plutôt que de pousser le bouton hors de l’écran.
-          Expanded(
-            child: Container(
-              width: double.infinity,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: t.surface,
-                borderRadius: AppRadius.brButton,
-                border: Border.all(color: t.border),
+    // Centré tant qu'il reste de la place, défilant dès qu'il n'y en a plus :
+    // avec une police système très agrandie, mieux vaut une colonne qui glisse
+    // qu'un titre tronqué.
+    return LayoutBuilder(
+      builder: (context, constraints) => SingleChildScrollView(
+        padding: EdgeInsets.fromLTRB(gutter, topPad, gutter, AppSpacing.lg),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            minHeight: (constraints.maxHeight - topPad - AppSpacing.lg).clamp(
+              0.0,
+              double.infinity,
+            ),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              // Le dessin au trait, sans fond : c'est le langage de la marque
+              // tracée sur le splash, et non une icône posée dans un carré de
+              // couleur.
+              Icon(
+                slide.icon,
+                size: context.responsive(medium: 104, small: 84, expanded: 124),
+                color: colors.fg,
               ),
-              child: FractionallySizedBox(
-                heightFactor: 0.46,
-                child: AspectRatio(
-                  aspectRatio: 1,
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: colors.bg,
-                      shape: BoxShape.circle,
-                    ),
-                    child: LayoutBuilder(
-                      builder: (context, c) => Icon(
-                        slide.icon,
-                        size: c.maxWidth * 0.42,
-                        color: colors.fg,
-                      ),
-                    ),
+              SizedBox(height: context.responsive(medium: 40, small: 28)),
+              Text(
+                slide.kicker.toUpperCase(),
+                style: text.labelMedium?.copyWith(
+                  color: colors.fg,
+                  letterSpacing: 1.6,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              Text(
+                slide.title,
+                textAlign: TextAlign.center,
+                style: text.displaySmall?.copyWith(
+                  height: 1.14,
+                  fontSize: context.responsive(
+                    medium: 29,
+                    small: 24,
+                    expanded: 33,
                   ),
                 ),
               ),
-            ),
-          ),
-          SizedBox(height: context.responsive(medium: 32, small: 22)),
-          Text(
-            slide.kicker.toUpperCase(),
-            style: text.labelMedium?.copyWith(color: colors.fg),
-          ),
-          const SizedBox(height: AppSpacing.md),
-          Text(
-            slide.title,
-            textAlign: TextAlign.center,
-            style: text.displaySmall?.copyWith(
-              height: 1.15,
-              fontSize: context.responsive(medium: 28, small: 24, expanded: 32),
-            ),
-          ),
-          const SizedBox(height: AppSpacing.md),
-          ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 300),
-            child: Text(
-              slide.body,
-              textAlign: TextAlign.center,
-              style: text.bodyLarge?.copyWith(
-                color: t.textSecondary,
-                height: 1.45,
+              const SizedBox(height: AppSpacing.md),
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 330),
+                child: Text(
+                  slide.body,
+                  textAlign: TextAlign.center,
+                  style: text.bodyLarge?.copyWith(
+                    color: t.textSecondary,
+                    height: 1.5,
+                  ),
+                ),
               ),
-            ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }

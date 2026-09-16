@@ -8,18 +8,21 @@ abstract final class AppStrings {
   // Onboarding
   static const skip = 'Passer';
   static const getStarted = 'Commencer';
-  static const onboarding1Title = 'Découvrez les événements près de vous';
+  static const onboarding1Kicker = 'Découvrir';
+  static const onboarding1Title = 'Ce qui se passe près de vous, cette semaine';
   static const onboarding1Body =
-      'Concerts, conférences, meetups, ateliers : explorez un catalogue '
-      'sélectionné et filtrez par catégorie.';
-  static const onboarding2Title = 'Réservez en un geste';
+      'Concerts, conférences, meetups, ateliers. Un catalogue tenu à jour, '
+      'filtrable par catégorie et par date.';
+  static const onboarding2Kicker = 'Réserver';
+  static const onboarding2Title = 'Une place se prend en un geste';
   static const onboarding2Body =
-      'Une place se réserve en un tap. Retrouvez vos billets et leur statut '
-      'dans « Billets », en temps réel.';
-  static const onboarding3Title = 'Organisez et suivez vos participants';
+      'Votre billet arrive dans « Billets », avec son statut en temps réel. '
+      'Présentez son code à l’entrée, il est scanné sur place.';
+  static const onboarding3Kicker = 'Organiser';
+  static const onboarding3Title = 'Publiez, suivez, accueillez';
   static const onboarding3Body =
-      'Publiez un événement, gérez sa capacité et consultez la liste des '
-      'personnes inscrites.';
+      'Ouvrez votre espace organisateur quand vous le voulez : capacité, '
+      'liste des inscrits, contrôle à l’entrée.';
 
   // Auth
   static const welcomeBack = 'Bon retour';

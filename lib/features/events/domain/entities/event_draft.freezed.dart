@@ -15,12 +15,14 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$EventDraft {
 
- String get title; String get description; EventCategory get category; DateTime get startsAt; String get location;/// Ignored when [tiers] is not empty: the capacity is then their sum.
- int get capacity;/// Cover image, as an `https://` link to an image hosted elsewhere
-/// (there is no upload on the free plan). Blank means none: the event
-/// keeps its generated visual.
- String? get imageUrl;/// Ticket types (F-12). Empty: one free pool of [capacity] seats.
- List<EventTierDraft> get tiers;/// Required as soon as one type is paid.
+ String get title; String get description; EventCategory get category; DateTime get startsAt; String get location;/// Ignorée quand [tiers] n’est pas vide : la capacité est alors leur
+/// somme.
+ int get capacity;/// Image de couverture, sous forme de lien `https://` vers une image
+/// hébergée ailleurs (le plan gratuit n’offre pas d’envoi de fichier).
+/// Vide signifie aucune : l’événement conserve son visuel généré.
+ String? get imageUrl;/// Types de billets (F-12). Vide : un unique pool gratuit de
+/// [capacity] places.
+ List<EventTierDraft> get tiers;/// Obligatoire dès qu’un type de billet est payant.
  String? get currency;
 /// Create a copy of EventDraft
 /// with the given fields replaced by the non-null parameter values.
@@ -234,22 +236,25 @@ class _EventDraft extends EventDraft {
 @override final  EventCategory category;
 @override final  DateTime startsAt;
 @override final  String location;
-/// Ignored when [tiers] is not empty: the capacity is then their sum.
+/// Ignorée quand [tiers] n’est pas vide : la capacité est alors leur
+/// somme.
 @override final  int capacity;
-/// Cover image, as an `https://` link to an image hosted elsewhere
-/// (there is no upload on the free plan). Blank means none: the event
-/// keeps its generated visual.
+/// Image de couverture, sous forme de lien `https://` vers une image
+/// hébergée ailleurs (le plan gratuit n’offre pas d’envoi de fichier).
+/// Vide signifie aucune : l’événement conserve son visuel généré.
 @override final  String? imageUrl;
-/// Ticket types (F-12). Empty: one free pool of [capacity] seats.
+/// Types de billets (F-12). Vide : un unique pool gratuit de
+/// [capacity] places.
  final  List<EventTierDraft> _tiers;
-/// Ticket types (F-12). Empty: one free pool of [capacity] seats.
+/// Types de billets (F-12). Vide : un unique pool gratuit de
+/// [capacity] places.
 @override@JsonKey() List<EventTierDraft> get tiers {
   if (_tiers is EqualUnmodifiableListView) return _tiers;
   // ignore: implicit_dynamic_type
   return EqualUnmodifiableListView(_tiers);
 }
 
-/// Required as soon as one type is paid.
+/// Obligatoire dès qu’un type de billet est payant.
 @override final  String? currency;
 
 /// Create a copy of EventDraft

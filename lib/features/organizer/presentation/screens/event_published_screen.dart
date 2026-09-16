@@ -13,9 +13,10 @@ import 'package:go_router/go_router.dart';
 
 /// Publication confirmation.
 ///
-/// Closes the creation loop with proof: the event as participants will see
-/// it, plus the two next steps an organizer actually takes — share it, or
-/// go back to the dashboard and watch it fill.
+/// Referme la boucle de création par une preuve : l'événement tel que les
+/// participants le verront, puis les deux gestes qu'un organisateur fait
+/// réellement ensuite — le partager, ou revenir au tableau de bord et le
+/// regarder se remplir.
 class EventPublishedScreen extends ConsumerWidget {
   const EventPublishedScreen({required this.eventId, super.key});
 

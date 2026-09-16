@@ -14,17 +14,19 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-/// "Statistiques" — how the organizer's events are doing.
+/// « Statistiques » — comment se portent les événements de l'organisateur.
 ///
-/// Read top to bottom, from the answer to the detail: one hero figure (the
-/// global fill rate — the only number that says "ça marche ?"), four
-/// secondary figures in a hairline grid, the booking rhythm over two weeks,
-/// then each upcoming event ranked by how full it is.
+/// Se lit de haut en bas, de la réponse au détail : un chiffre en vedette —
+/// le taux de remplissage global, le seul qui dise « est-ce que ça
+/// marche ? » — quatre chiffres secondaires dans une grille en filets, le
+/// rythme des réservations sur deux semaines, puis chaque événement à venir
+/// classé par son remplissage.
 ///
-/// The chart follows the data-viz rules of the design system: a single
-/// series in a single hue, thin columns with a 2 px gap, direct labels only
-/// on the peak and on the selected day, and a table view carrying exactly
-/// the same values for anyone who cannot read the chart.
+/// Le graphique suit les règles de visualisation du design system : une seule
+/// série dans une seule teinte, des colonnes fines séparées de 2 px, des
+/// étiquettes directes uniquement sur le pic et sur le jour sélectionné, et
+/// une vue tableau qui porte exactement les mêmes valeurs pour qui ne peut
+/// pas lire un graphique.
 class OrganizerStatsScreen extends ConsumerWidget {
   const OrganizerStatsScreen({super.key});
 
@@ -36,17 +38,15 @@ class OrganizerStatsScreen extends ConsumerWidget {
     return AppScaffold(
       constrainWidth: false,
       dense: true,
+      appBar: const AppTopBar.root(
+        title: AppStrings.statsTitle,
+        subtitle: AppStrings.statsSubtitle,
+      ),
       body: SafeArea(
         bottom: false,
         child: CustomScrollView(
           slivers: [
-            const SliverToBoxAdapter(
-              child: ScreenHeader(
-                eyebrow: AppStrings.organizer,
-                title: AppStrings.statsTitle,
-                subtitle: AppStrings.statsSubtitle,
-              ),
-            ),
+            const SliverToBoxAdapter(child: SizedBox(height: AppSpacing.sm)),
             AsyncValueWidget(
               value: stats,
               sliver: true,
@@ -117,7 +117,7 @@ class OrganizerStatsScreen extends ConsumerWidget {
 
 String _percent(double ratio) => '${(ratio * 100).round()} %';
 
-/// The hero figure. Exactly one per view, proportional digits.
+/// Le chiffre en vedette. Exactement un par vue, en chiffres proportionnels.
 class _Headline extends StatelessWidget {
   const _Headline({required this.stats});
 
@@ -157,8 +157,8 @@ class _Headline extends StatelessWidget {
   }
 }
 
-/// Four secondary figures in one bordered grid, split by hairlines — a
-/// table, not four floating cards.
+/// Quatre chiffres secondaires dans une seule grille bordée, séparés par des
+/// filets — un tableau, et non quatre cartes flottantes.
 class _Figures extends StatelessWidget {
   const _Figures({required this.stats});
 
@@ -275,7 +275,8 @@ class _BookingsChart extends StatefulWidget {
 class _BookingsChartState extends State<_BookingsChart> {
   static const _plotHeight = 120.0;
 
-  /// Today is selected by default: it is the day the organizer asks about.
+  /// Aujourd'hui est sélectionné par défaut : c'est le jour sur lequel porte
+  /// la question que se pose l'organisateur.
   late int _selected = widget.daily.length - 1;
   bool _asTable = false;
 
@@ -363,8 +364,9 @@ class _BookingsChartState extends State<_BookingsChart> {
     return Column(
       children: [
         SizedBox(
-          // Plot plus the band reserved for the value label on a cap, so a
-          // label on the tallest column is never clipped.
+          // La zone de tracé, plus la bande réservée à l'étiquette de valeur
+          // posée au sommet d'une colonne : celle de la plus haute n'est
+          // ainsi jamais rognée.
           height: _plotHeight + 20,
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.end,
@@ -374,7 +376,8 @@ class _BookingsChartState extends State<_BookingsChart> {
                   child: GestureDetector(
                     behavior: HitTestBehavior.opaque,
                     onTap: () => setState(() => _selected = i),
-                    // The whole slot is the hit target, not the column.
+                    // C'est tout l'emplacement qui est la cible du toucher,
+                    // et non la colonne seule.
                     child: LayoutBuilder(
                       builder: (context, box) {
                         final value = daily[i];
@@ -394,7 +397,8 @@ class _BookingsChartState extends State<_BookingsChart> {
                             AnimatedContainer(
                               duration: AppMotion.short,
                               curve: AppMotion.standard,
-                              // ≤ 24 px, and the slot keeps a 2 px surface gap.
+                              // ≤ 24 px, et l'emplacement conserve 2 px de
+                              // respiration.
                               width: math.min(24, box.maxWidth - 2),
                               height: height,
                               decoration: BoxDecoration(
@@ -466,8 +470,9 @@ class _BookingsChartState extends State<_BookingsChart> {
   }
 }
 
-/// Upcoming events, fullest first. The ranking is the point: the event at
-/// the bottom is the one that needs promotion.
+/// Les événements à venir, du plus rempli au moins rempli. C'est le
+/// classement qui fait tout l'intérêt : celui du bas est celui qu'il faut
+/// aller promouvoir.
 class _Ranking extends StatelessWidget {
   const _Ranking({required this.items});
 

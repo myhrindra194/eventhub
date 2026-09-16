@@ -5,9 +5,10 @@ part 'reservation.freezed.dart';
 enum ReservationStatus {
   confirmed,
 
-  /// A paid seat held while the buyer pays (F-11). Kept in the domain for
-  /// the day a payment server exists; on the Spark plan it is never written
-  /// (the security rules accept `confirmed` and `cancelled` only).
+  /// Une place payante retenue pendant que l’acheteur paie (F-11).
+  /// Conservée dans le domaine pour le jour où un serveur de paiement
+  /// existera ; sur le plan Spark elle n’est jamais écrite (les règles de
+  /// sécurité n’acceptent que `confirmed` et `cancelled`).
   pending,
   cancelled;
 
@@ -18,18 +19,20 @@ enum ReservationStatus {
   };
 }
 
-/// A participant's seat on an event.
+/// La place d’un participant sur un événement.
 ///
-/// Event and user fields are denormalised so that "Mes réservations" and the
-/// organizer's participant list render without N+1 reads, and keep working
-/// if the event is later deleted.
+/// Les champs de l’événement et de l’utilisateur sont dénormalisés pour que
+/// « Mes réservations » et la liste des participants de l’organisateur
+/// s’affichent sans lectures N+1, et continuent de fonctionner si
+/// l’événement est supprimé par la suite.
 ///
-/// The id is deterministic: `DocIds.reservation(eventId, userId)`, i.e.
-/// `<eventId>_<userId>`. That is how "one seat per person per event" holds
-/// without a unique index — there is only one document to write — and how
-/// the security rules find the caller's own seat to prove a booking, a
-/// cancellation or an attendance. A re-booking after a cancellation rewrites
-/// the same document, hence keeps the same ticket code.
+/// L’id est déterministe : `DocIds.reservation(eventId, userId)`, soit
+/// `<eventId>_<userId>`. C’est ainsi que la règle « une place par personne
+/// et par événement » tient sans index unique — il n’y a qu’un seul
+/// document à écrire — et ainsi que les règles de sécurité retrouvent la
+/// place de l’appelant pour prouver une réservation, une annulation ou une
+/// présence. Réserver à nouveau après une annulation réécrit le même
+/// document, et conserve donc le même code de billet.
 @freezed
 abstract class Reservation with _$Reservation {
   const Reservation._();
@@ -37,15 +40,15 @@ abstract class Reservation with _$Reservation {
   const factory Reservation({
     required String id,
 
-    /// Empty once the event is deleted: the reservation stays as history,
-    /// with its snapshot of title, date and place.
+    /// Vide une fois l’événement supprimé : la réservation demeure à titre
+    /// d’historique, avec son instantané de titre, de date et de lieu.
     required String eventId,
 
-    /// Empty once the participant's account is deleted (the row is
-    /// anonymised and kept for the organizer's statistics).
+    /// Vide une fois le compte du participant supprimé (la ligne est
+    /// anonymisée et conservée pour les statistiques de l’organisateur).
     required String userId,
 
-    /// Empty once the organizer's account is deleted.
+    /// Vide une fois le compte de l’organisateur supprimé.
     required String organizerId,
     required String userName,
     required String userEmail,
@@ -56,21 +59,22 @@ abstract class Reservation with _$Reservation {
     required DateTime reservedAt,
     DateTime? cancelledAt,
 
-    /// Who cancelled: the holder's uid, or `moderation` when an administrator
-    /// removed the event.
+    /// Qui a annulé : l’uid du titulaire, ou `moderation` lorsqu’un
+    /// administrateur a retiré l’événement.
     String? cancelledBy,
 
-    /// Ticket type (F-12), copied at booking time.
+    /// Type de billet (F-12), copié au moment de la réservation.
     String? tierId,
     String? tierName,
 
-    /// Amount actually paid, minor units. Always 0 without a payment server:
-    /// the rules refuse anything else.
+    /// Montant réellement payé, en unités mineures. Toujours 0 sans serveur
+    /// de paiement : les règles refusent toute autre valeur.
     @Default(0) int pricePaid,
 
-    // Payment fields (F-11). Never stored on the Spark plan — no server can
-    // take a payment — so they stay null; the payment screens keep reading
-    // them for the day a payment backend is added.
+    // Champs de paiement (F-11). Jamais stockés sur le plan Spark — aucun
+    // serveur ne peut encaisser — et restent donc nuls ; les écrans de
+    // paiement continuent de les lire pour le jour où un backend de
+    // paiement sera ajouté.
     int? amountDue,
     String? currency,
     String? paymentStatus,
@@ -78,21 +82,22 @@ abstract class Reservation with _$Reservation {
     DateTime? holdExpiresAt,
   }) = _Reservation;
 
-  /// Human-readable ticket code, e.g. `EH-7K2Q-M9XD`.
+  /// Code de billet lisible par un humain, par exemple `EH-7K2Q-M9XD`.
   ///
-  /// Derived from the id rather than stored: the id is already unique and
-  /// immutable, so the code needs no migration and cannot drift from it. The
-  /// alphabet drops `0/O` and `1/I/L` — this is read aloud at a door, and
-  /// those are exactly the characters people get wrong.
+  /// Dérivé de l’id plutôt que stocké : l’id est déjà unique et immuable,
+  /// donc le code n’exige aucune migration et ne peut pas diverger de lui.
+  /// L’alphabet écarte `0/O` et `1/I/L` — ce code se lit à voix haute à une
+  /// entrée, et ce sont précisément les caractères que l’on confond.
   String get ticketCode => ticketCodeFor(id);
 
-  /// [ticketCode] of the reservation [id], without the reservation itself:
-  /// the door checks a scanned code against the id it came with before
-  /// asking the server anything.
+  /// [ticketCode] de la réservation [id], sans la réservation elle-même :
+  /// l’entrée confronte un code scanné à l’id qui l’accompagne avant de
+  /// demander quoi que ce soit au serveur.
   static String ticketCodeFor(String id) {
     const alphabet = '23456789ABCDEFGHJKMNPQRSTUVWXYZ';
-    // FNV-1a, 32 bits, twice with different offsets: stable across runs and
-    // platforms, unlike `String.hashCode`.
+    // FNV-1a, 32 bits, deux fois avec des offsets différents : stable d’une
+    // exécution et d’une plateforme à l’autre, contrairement à
+    // `String.hashCode`.
     int fnv(int seed) {
       var hash = seed;
       for (final unit in id.codeUnits) {
@@ -115,18 +120,18 @@ abstract class Reservation with _$Reservation {
     return 'EH-${chunk(fnv(0x811C9DC5))}-${chunk(fnv(0x050C5D1F))}';
   }
 
-  /// Payload encoded in the ticket's QR code.
+  /// Charge utile encodée dans le QR code du billet.
   String get ticketPayload => 'eventhub://ticket/$id?code=$ticketCode';
 
   bool get isActive => status == ReservationStatus.confirmed;
   bool get isPending => status == ReservationStatus.pending;
   bool get isCancelled => status == ReservationStatus.cancelled;
 
-  /// Paid ticket: cancelling it means a refund.
+  /// Billet payé : l’annuler passe par un remboursement.
   bool get isPaid => pricePaid > 0;
   bool get isRefunded => paymentStatus == 'refunded';
 
-  /// What the ticket gives access to, as printed on it.
+  /// Ce à quoi le billet donne accès, tel qu’il est imprimé dessus.
   String get accessLabel =>
       (tierName?.isNotEmpty ?? false) ? tierName! : 'Accès général';
 }

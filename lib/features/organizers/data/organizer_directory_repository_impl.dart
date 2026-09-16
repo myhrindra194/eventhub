@@ -18,9 +18,10 @@ class OrganizerDirectoryRepositoryImpl implements OrganizerDirectoryRepository {
   Stream<List<String>> watchFollowingIds(String userId) =>
       _remote.watchFollowingIds(userId);
 
-  /// The rules refuse following oneself with a bare `permission-denied`;
-  /// the same rule is checked here first so the sentence is precise even if
-  /// a caller skipped [FollowPolicy].
+  /// Les règles refusent l'abonnement à soi-même par un simple
+  /// `permission-denied`, qui n'explique rien. La même règle est donc
+  /// revérifiée ici en premier, pour que la phrase affichée reste juste même
+  /// si un appelant a contourné [FollowPolicy].
   @override
   AsyncResult<void> follow({
     required String userId,

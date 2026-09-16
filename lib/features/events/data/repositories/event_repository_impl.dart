@@ -10,12 +10,13 @@ import 'package:eventhub/features/events/domain/entities/event_tier.dart';
 import 'package:eventhub/features/events/domain/policies/event_policy.dart';
 import 'package:eventhub/features/events/domain/repositories/event_repository.dart';
 
-/// Firestore answers a refused write with a bare `permission-denied`: it
-/// never says *which* rule failed. So every domain rule the security rules
-/// enforce is checked here first, on the freshest data available, and turned
-/// into its precise French sentence before anything is written. The rules
-/// remain the authority for what slips through (a concurrent booking, a
-/// tampered client).
+/// Firestore répond à une écriture refusée par un simple
+/// `permission-denied` : il ne dit jamais *quelle* règle a échoué. Chaque
+/// règle métier imposée par les règles de sécurité est donc vérifiée ici
+/// d’abord, sur les données les plus fraîches disponibles, et traduite en
+/// sa phrase française précise avant toute écriture. Les règles restent
+/// l’autorité pour ce qui passe entre les mailles (une réservation
+/// concurrente, un client trafiqué).
 class EventRepositoryImpl implements EventRepository {
   const EventRepositoryImpl({
     required EventRemoteDataSource remote,
@@ -62,8 +63,8 @@ class EventRepositoryImpl implements EventRepository {
         draft: valid,
         plan: valid.tiers.isEmpty ? null : TierPlanner.initial(valid.tiers),
         organizerId: organizer.id,
-        // The rules compare it with `users/{uid}.name`, which the session
-        // mirrors.
+        // Les règles le comparent à `users/{uid}.name`, dont la session est
+        // le miroir.
         organizerName: organizer.name,
       );
     });
@@ -85,12 +86,14 @@ class EventRepositoryImpl implements EventRepository {
     });
   }
 
-  /// The edit of [current] by [user], or the rule it breaks. Pure: it runs
-  /// inside the transaction, possibly several times.
+  /// La modification de [current] par [user], ou la règle qu’elle enfreint.
+  /// Pure : elle s’exécute dans la transaction, potentiellement plusieurs
+  /// fois.
   ///
-  /// * the team (owner or co-organizer) edits, nobody else;
-  /// * with types, [TierPlanner.apply] keeps what each type sold;
-  /// * without, the capacity cannot drop below the seats taken.
+  /// * seule l’équipe (propriétaire ou co-organisateur) modifie ;
+  /// * avec des types, [TierPlanner.apply] préserve ce que chacun a vendu ;
+  /// * sans types, la capacité ne peut pas descendre sous les places
+  ///   prises.
   static ({Failure? failure, EventEdit? edit}) planEdit({
     required Event current,
     required EventDraft draft,

@@ -8,7 +8,8 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'organizer_providers.g.dart';
 
-/// Every reservation on the signed-in organizer's events, all statuses.
+/// Toutes les réservations sur les événements de l’organisateur connecté,
+/// tous statuts confondus.
 @riverpod
 Stream<List<Reservation>> organizerReservations(Ref ref) {
   final user = ref.watch(currentUserProvider);
@@ -32,8 +33,8 @@ AsyncValue<OrganizerStats> organizerStats(Ref ref) {
   );
 }
 
-/// Upcoming events needing attention — also drives the badge on the
-/// "Alertes" tab.
+/// Événements à venir qui demandent attention — pilote aussi la pastille de
+/// l’onglet « Alertes ».
 @riverpod
 AsyncValue<List<OrganizerAlert>> organizerWatchlist(Ref ref) {
   final user = ref.watch(currentUserProvider);
@@ -51,7 +52,8 @@ AsyncValue<List<OrganizerAlert>> organizerActivity(Ref ref) => ref
     .watch(organizerReservationsProvider)
     .whenData((list) => OrganizerAlerts.activity(reservations: list));
 
-/// Joins two async sources: the first error wins, then loading, then data.
+/// Joint deux sources asynchrones : la première erreur l’emporte, puis le
+/// chargement, puis les données.
 AsyncValue<T> _combine<A extends Object, B extends Object, T>(
   AsyncValue<A> a,
   AsyncValue<B> b,

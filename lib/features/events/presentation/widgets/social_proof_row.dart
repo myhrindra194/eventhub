@@ -7,12 +7,13 @@ import 'package:eventhub/features/events/domain/entities/event_attendance.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-/// « Soa, Hery R. et 40 autres y vont » with the faces of the latest people
-/// who booked (F-07).
+/// « Soa, Hery R. et 40 autres y vont », avec les visages des dernières
+/// personnes à avoir réservé (F-07).
 ///
-/// Absent when nobody booked. The count is the event's own seat counter, so
-/// it is exact even before the aggregate document catches up; the names
-/// arrive a moment later and the sentence simply gains them.
+/// Absent quand personne n’a réservé. Le décompte est le compteur de places
+/// de l’événement lui-même : il est donc exact même avant que le document
+/// d’agrégat ne se mette à jour ; les noms arrivent un instant plus tard et
+/// la phrase ne fait que les gagner.
 class SocialProofRow extends ConsumerWidget {
   const SocialProofRow({required this.event, super.key});
 

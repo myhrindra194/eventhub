@@ -18,16 +18,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-/// Public profile of an organizer (F-10).
+/// Page publique d'un organisateur (F-10).
 ///
-/// Laid out like a letterhead rather than a social card: identity and bio
-/// read first, then three facts in a ruled table (events, followers, rating)
-/// — the numbers someone weighs before trusting an organizer — then the one
-/// action, then their dates. Upcoming events come before past ones because
-/// they are the reason to follow.
+/// Composée comme un en-tête de lettre plutôt que comme une carte de réseau
+/// social : l'identité et la présentation se lisent d'abord, puis trois faits
+/// dans un tableau réglé — événements, abonnés, note, soit les chiffres que
+/// l'on soupèse avant de faire confiance à quelqu'un — puis l'unique action,
+/// puis ses dates. Les événements à venir passent avant les passés, parce que
+/// ce sont eux qui donnent une raison de s'abonner.
 ///
-/// Opened by both roles. On one's own profile the follow button becomes
-/// "Modifier ma présentation" and the report action disappears.
+/// Ouverte par les deux rôles. Sur son propre profil, le bouton d'abonnement
+/// devient « Modifier ma présentation » et l'action de signalement disparaît.
 class OrganizerProfileScreen extends ConsumerWidget {
   const OrganizerProfileScreen({required this.organizerId, super.key});
 
@@ -41,8 +42,9 @@ class OrganizerProfileScreen extends ConsumerWidget {
 
     return AppScaffold(
       dense: true,
-      appBar: AppBar(
-        title: const Text(AppStrings.organizerProfileTitle),
+      appBar: AppTopBar.subPage(
+        title: AppStrings.organizerProfileTitle,
+        onBack: () => context.pop(),
         actions: [
           if (user != null && !isSelf && profile.value != null)
             IconButton(
@@ -55,7 +57,6 @@ class OrganizerProfileScreen extends ConsumerWidget {
                 subject: profile.value!.name,
               ),
             ),
-          const SizedBox(width: AppSpacing.xs),
         ],
       ),
       body: AsyncValueWidget(
@@ -93,8 +94,9 @@ class _Body extends ConsumerWidget {
       ..sort((a, b) => a.startsAt.compareTo(b.startsAt));
     final past = all.where((e) => e.hasStarted(now)).take(10).toList();
 
-    // The organizer opens their guest list; anyone else — participants and
-    // other organizers alike, one account two spaces — opens the event.
+    // L'organisateur ouvre sa liste d'invités ; tous les autres — participants
+    // comme organisateurs, un compte et deux espaces — ouvrent la fiche de
+    // l'événement.
     VoidCallback? openerFor(Event e) {
       if (isSelf) {
         return () =>
@@ -133,7 +135,6 @@ class _Body extends ConsumerWidget {
           AppButton.secondary(
             label: AppStrings.editPublicProfile,
             size: AppButtonSize.medium,
-            elevated: false,
             onPressed: () => context.push(AppRoutes.editProfile),
           )
         else ...[
@@ -198,7 +199,7 @@ class _Header extends StatelessWidget {
       children: [
         Row(
           children: [
-            AppAvatar(name: profile.name, size: 64),
+            AppAvatar(name: profile.name, imageUrl: profile.photoUrl, size: 64),
             const SizedBox(width: AppSpacing.lg),
             Expanded(
               child: Column(
@@ -237,7 +238,8 @@ class _Header extends StatelessWidget {
   }
 }
 
-/// Three facts, one ruled row: value large, unit small beneath.
+/// Trois faits sur une seule ligne réglée : la valeur en grand, son unité en
+/// petit juste dessous.
 class _Facts extends StatelessWidget {
   const _Facts({required this.profile});
 

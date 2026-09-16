@@ -19,8 +19,8 @@ WaitlistRepository waitlistRepository(Ref ref) => WaitlistRepositoryImpl(
   WaitlistRemoteDataSource(ref.watch(firestoreProvider)),
 );
 
-/// Any signed-in account may wait (one account, two spaces); the event's
-/// team is excluded by `WaitlistPolicy`, not here.
+/// Tout compte connecté peut attendre (un seul compte, deux espaces) ;
+/// l’équipe de l’événement est exclue par `WaitlistPolicy`, pas ici.
 @riverpod
 Stream<bool> isOnWaitlist(Ref ref, String eventId) {
   final user = ref.watch(currentUserProvider);
@@ -30,7 +30,7 @@ Stream<bool> isOnWaitlist(Ref ref, String eventId) {
       .watchIsWaiting(eventId: eventId, userId: user.id);
 }
 
-/// Organizer view, capped at [WaitlistRepository.queueLengthCap].
+/// Vue organisateur, plafonnée à [WaitlistRepository.queueLengthCap].
 @riverpod
 Stream<int> waitlistLength(Ref ref, String eventId) =>
     ref.watch(waitlistRepositoryProvider).watchQueueLength(eventId);

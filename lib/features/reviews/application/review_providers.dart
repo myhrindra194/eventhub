@@ -32,7 +32,8 @@ Stream<Review?> myReview(Ref ref, String eventId) {
       .watchReview(eventId: eventId, userId: user.id);
 }
 
-/// Whether the signed-in user may review [eventId] now.
+/// Indique si l’utilisateur connecté peut donner un avis sur [eventId]
+/// maintenant.
 @riverpod
 bool canReviewEvent(Ref ref, String eventId) {
   final user = ref.watch(currentUserProvider);

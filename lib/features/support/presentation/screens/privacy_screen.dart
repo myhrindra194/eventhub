@@ -4,14 +4,15 @@ import 'package:eventhub/core/l10n/app_strings.dart';
 import 'package:eventhub/features/support/presentation/widgets/support_page.dart';
 import 'package:flutter/material.dart';
 
-/// Privacy notice.
+/// Politique de confidentialité.
 ///
-/// Written against the real data model, not a template: every statement
-/// here is enforced somewhere — `users/{uid}` is readable by its owner only,
-/// the participant list exposes name and email to the event's organizer
-/// only, analytics collect nothing before consent (see
-/// `firebase/firestore.rules` and `AnalyticsConsent`). If a rule changes,
-/// this page is wrong until it is updated.
+/// Écrite face au vrai modèle de données, pas à partir d’un modèle type :
+/// chaque affirmation qu’on y lit est appliquée quelque part — `users/{uid}`
+/// n’est lisible que par son propriétaire, la liste des participants n’expose
+/// le nom et l’email qu’au seul organisateur de l’événement, la mesure
+/// d’audience ne collecte rien avant le consentement (voir
+/// `firebase/firestore.rules` et `AnalyticsConsent`). Si une règle change,
+/// cette page est fausse tant qu’elle n’est pas mise à jour.
 class PrivacyScreen extends StatelessWidget {
   const PrivacyScreen({super.key});
 

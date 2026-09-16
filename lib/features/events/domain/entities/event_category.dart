@@ -1,4 +1,5 @@
-/// Event categories used for filtering. Persisted as enum `name`.
+/// Catégories d’événement utilisées pour le filtrage. Persistées sous la
+/// forme du `name` de l’enum.
 enum EventCategory {
   conference,
   meetup,

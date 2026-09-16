@@ -6,10 +6,11 @@ import 'package:json_annotation/json_annotation.dart';
 
 part 'organizer_profile_dto.g.dart';
 
-/// Document `organizers/{uid}`: the public page, created by "Devenir
-/// organisateur". Its counters are written by clients, but only inside the
-/// batch that proves them (a follow, a published event, a review), so the
-/// rules keep them honest. The document id is injected by
+/// Document `organizers/{uid}` : la page publique, créée par « Devenir
+/// organisateur ». Ses compteurs sont écrits par les clients, mais uniquement
+/// à l'intérieur du batch qui les justifie — un abonnement, un événement
+/// publié, un avis — ce sont donc les règles qui les gardent honnêtes.
+/// L'identifiant du document est injecté par
 /// [OrganizerProfileDto.fromFirestore].
 @JsonSerializable(createToJson: false)
 class OrganizerProfileDto {
@@ -17,6 +18,7 @@ class OrganizerProfileDto {
     required this.id,
     this.name = '',
     this.bio,
+    this.photoUrl,
     this.followerCount = 0,
     this.eventCount = 0,
     this.ratingSum = 0,
@@ -35,12 +37,18 @@ class OrganizerProfileDto {
   final String id;
   final String name;
   final String? bio;
+
+  /// Recopiée depuis `users/{uid}` dans le même batch, parce que le profil
+  /// privé n'est lisible que par son propriétaire : sans ce miroir, personne
+  /// ne verrait le visage d'un organisateur sur sa page publique.
+  final String? photoUrl;
   final int followerCount;
   final int eventCount;
   final int ratingSum;
   final int ratingCount;
 
-  /// Written with `serverTimestamp()`: `null` in a pending local snapshot.
+  /// Écrit avec `serverTimestamp()` : `null` dans un snapshot local encore en
+  /// attente d'acquittement.
   @NullableTimestampConverter()
   final DateTime? memberSince;
 
@@ -48,8 +56,9 @@ class OrganizerProfileDto {
     id: id,
     name: name,
     bio: bio ?? '',
-    // The rules move counters by ±1 only; the clamp guards a hand-edited
-    // document from ever rendering "-1 abonné".
+    photoUrl: photoUrl,
+    // Les règles ne déplacent les compteurs que de ±1 ; la borne empêche un
+    // document édité à la main d'afficher un jour « -1 abonné ».
     followerCount: math.max(0, followerCount),
     eventCount: math.max(0, eventCount),
     ratingSum: math.max(0, ratingSum),

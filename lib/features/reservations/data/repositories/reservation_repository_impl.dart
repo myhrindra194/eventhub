@@ -36,9 +36,10 @@ class ReservationRepositoryImpl implements ReservationRepository {
   Stream<Reservation?> watchById(String reservationId) =>
       _remote.watchById(reservationId);
 
-  /// The policy is handed to the data source rather than run here: it must
-  /// judge the event and the seat *as the transaction read them*, or two
-  /// people taking the last seat would both pass it.
+  /// La policy est confiée à la data source plutôt qu’exécutée ici : elle
+  /// doit juger l’événement et la place *tels que la transaction les a
+  /// lus*, sinon deux personnes prenant la dernière place la passeraient
+  /// toutes les deux.
   @override
   AsyncResult<Reservation> reserve({
     required String eventId,

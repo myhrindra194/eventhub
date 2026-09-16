@@ -3,17 +3,18 @@ import 'package:eventhub/core/result/result.dart';
 import 'package:eventhub/features/auth/domain/entities/app_user.dart';
 import 'package:eventhub/features/events/domain/entities/event.dart';
 
-/// Ownership, team and capacity rules for organizers. Pure, synchronous,
-/// unit-tested. Mirrored server-side by `firebase/firestore.rules`, which
-/// only ever answer `permission-denied`: these give the sentence.
+/// Règles de propriété, d’équipe et de capacité pour les organisateurs.
+/// Pures, synchrones, couvertes par des tests unitaires. Dupliquées côté
+/// serveur par `firebase/firestore.rules`, qui ne répondent jamais autre
+/// chose que `permission-denied` : ici, on donne la phrase.
 ///
-/// | action                      | owner | co-organizer |
-/// |-----------------------------|:-----:|:------------:|
-/// | edit content, guest list, door | ✓  | ✓            |
-/// | delete the event            | ✓     |              |
-/// | invite / remove members     | ✓     | leave only   |
+/// | action                           | proprio | co-organisateur    |
+/// |----------------------------------|:-------:|:------------------:|
+/// | modifier contenu, liste, accueil | ✓       | ✓                  |
+/// | supprimer l’événement            | ✓       |                    |
+/// | inviter / retirer des membres    | ✓       | quitter uniquement |
 abstract final class EventPolicy {
-  /// Maximum co-organizers per event (owner excluded).
+  /// Nombre maximal de co-organisateurs par événement (propriétaire exclu).
   static const maxStaff = 10;
 
   static Result<void> canManage({required Event event, required AppUser user}) {
@@ -39,9 +40,10 @@ abstract final class EventPolicy {
     return const Ok(null);
   }
 
-  /// An event with seats taken cannot be deleted: people hold tickets for it.
-  /// Mirrors the delete rule (`takenSeats() == 0`), so the organizer gets a
-  /// sentence before the round trip.
+  /// Un événement dont des places sont prises ne peut pas être supprimé :
+  /// des gens en détiennent les billets. Duplique la règle de suppression
+  /// (`takenSeats() == 0`), pour que l’organisateur obtienne une phrase
+  /// avant même l’aller-retour serveur.
   static Result<void> canDelete({required Event event, required AppUser user}) {
     if (_owner(
           event,
@@ -66,13 +68,14 @@ abstract final class EventPolicy {
     return const Ok(null);
   }
 
-  /// Inviting and removing co-organizers is the owner's call.
+  /// Inviter et retirer des co-organisateurs relève du propriétaire.
   static Result<void> canManageTeam({
     required Event event,
     required AppUser user,
   }) => _owner(event, user, 'Seul l’organisateur principal compose l’équipe.');
 
-  /// A capacity change must keep room for existing reservations.
+  /// Un changement de capacité doit laisser de la place aux réservations
+  /// existantes.
   static Result<int> availablePlacesAfterCapacityChange({
     required Event event,
     required int newCapacity,

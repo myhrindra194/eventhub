@@ -22,14 +22,16 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-/// Create / edit an event.
+/// Créer / modifier un événement.
 ///
-/// One long form rather than a wizard: an organizer publishing their second
-/// event knows every field, and a wizard would make them tap "suivant" four
-/// times. What makes it bearable is that constraints are stated *before*
-/// the mistake (https cover link, minimum title, capacity range), server-side
-/// validation errors are mapped back onto the exact field that caused
-/// them, and the submit button never scrolls out of reach.
+/// Un seul formulaire long plutôt qu’un assistant : un organisateur qui
+/// publie son deuxième événement connaît tous les champs, et un assistant
+/// lui ferait taper « suivant » quatre fois. Ce qui le rend supportable :
+/// les contraintes sont énoncées *avant* l’erreur (lien de couverture en
+/// https, longueur minimale du titre, plage de capacité), les erreurs de
+/// validation renvoyées par le serveur sont rapportées sur le champ exact
+/// qui les a provoquées, et le bouton d’envoi ne défile jamais hors de
+/// portée.
 class EventFormScreen extends ConsumerWidget {
   const EventFormScreen({super.key, this.eventId});
 
@@ -45,7 +47,10 @@ class EventFormScreen extends ConsumerWidget {
       value: ref.watch(eventByIdProvider(eventId!)),
       isEmpty: (e) => e == null,
       empty: AppScaffold(
-        appBar: AppBar(),
+        appBar: AppTopBar.subPage(
+          title: AppStrings.editEvent,
+          onBack: () => context.pop(),
+        ),
         body: const EmptyStateView(message: AppStrings.eventNotFound),
       ),
       data: (e) => _EventForm(initial: e),
@@ -75,7 +80,7 @@ class _EventFormState extends ConsumerState<_EventForm> {
   );
   late final _imageUrl = TextEditingController(text: widget.initial?.imageUrl);
 
-  // Ticket types (F-12).
+  // Types de billets (F-12).
   late bool _useTiers = widget.initial?.hasTiers ?? false;
   late String _currency = widget.initial?.currency ?? 'EUR';
   late final List<_TierFields> _tiers = [
@@ -83,9 +88,9 @@ class _EventFormState extends ConsumerState<_EventForm> {
       _TierFields.fromTier(tier, widget.initial!.currencyCode),
   ];
 
-  /// Switching mode is refused once seats were sold in the current mode
-  /// (see `TierPlanner.apply`): the switch is disabled rather than failing
-  /// on save.
+  /// Changer de mode est refusé dès que des places ont été vendues dans le
+  /// mode courant (voir `TierPlanner.apply`) : l’interrupteur est désactivé
+  /// plutôt que d’échouer à l’enregistrement.
   bool get _tierModeLocked => (widget.initial?.reservedCount ?? 0) > 0;
 
   int _soldOf(String? tierId) =>
@@ -165,7 +170,7 @@ class _EventFormState extends ConsumerState<_EventForm> {
                   id: f.id,
                   name: f.name.text,
                   description: f.description.text,
-                  // Validators already refused unreadable prices.
+                  // Les validateurs ont déjà refusé les prix illisibles.
                   price: Money.parse(f.price.text, _currency) ?? -1,
                   capacity: int.tryParse(f.capacity.text.trim()) ?? 0,
                 ),
@@ -186,8 +191,8 @@ class _EventFormState extends ConsumerState<_EventForm> {
           context.pushReplacement(AppRoutes.organizerEventPublishedPath(value));
         }
       case Err(failure: final ValidationFailure failure):
-        // Server-side rules are the source of truth; surface them on the
-        // fields themselves rather than only in a toast.
+        // Les règles côté serveur font foi ; on les remonte sur les champs
+        // eux-mêmes, pas seulement dans un toast.
         setState(() => _serverErrors = failure.fieldErrors);
         _formKey.currentState!.validate();
         context.showFailure(failure);
@@ -206,13 +211,13 @@ class _EventFormState extends ConsumerState<_EventForm> {
     return AppScaffold(
       dense: true,
       resizeToAvoidBottomInset: true,
-      appBar: AppBar(
-        title: Text(_isEditing ? AppStrings.editEvent : AppStrings.createEvent),
-        leading: IconButton(
-          icon: const Icon(Icons.close_rounded),
-          tooltip: AppStrings.cancel,
-          onPressed: () => context.pop(),
-        ),
+      // Même retour que partout ailleurs : un formulaire ouvert par-dessus
+      // reste une sous-page, et une croix ici contre une flèche ailleurs est
+      // exactement ce qui fait paraître une application assemblée en pièces
+      // détachées.
+      appBar: AppTopBar.subPage(
+        title: _isEditing ? AppStrings.editEvent : AppStrings.createEvent,
+        onBack: () => context.pop(),
       ),
       bottomBar: FrostedBar(
         padding: EdgeInsets.fromLTRB(
@@ -363,7 +368,6 @@ class _EventFormState extends ConsumerState<_EventForm> {
                 horizontal: AppSpacing.lg,
                 vertical: AppSpacing.xs,
               ),
-              elevation: SurfaceElevation.flat,
               child: SwitchListTile.adaptive(
                 contentPadding: EdgeInsets.zero,
                 value: _useTiers,
@@ -429,7 +433,6 @@ class _EventFormState extends ConsumerState<_EventForm> {
             if (_isEditing) ...[
               const SizedBox(height: AppSpacing.xl),
               AppSurface(
-                elevation: SurfaceElevation.flat,
                 color: t.info.bg,
                 borderColor: t.info.border,
                 child: Row(
@@ -460,7 +463,7 @@ class _EventFormState extends ConsumerState<_EventForm> {
   }
 }
 
-/// Text controllers of one ticket type row.
+/// Contrôleurs de texte d’une ligne de type de billet.
 class _TierFields {
   _TierFields({
     this.id,
@@ -495,10 +498,10 @@ class _TierFields {
   }
 }
 
-/// One bordered block per ticket type: name, price and seats on one line
-/// (the two numbers people compare), then what it includes. A type that
-/// already sold says so and cannot be removed; its seats cannot go below
-/// what was sold.
+/// Un bloc encadré par type de billet : le nom, puis le prix et les places
+/// sur une même ligne (les deux nombres que l’on compare), puis ce que le
+/// billet inclut. Un type qui a déjà vendu le dit et ne peut plus être
+/// retiré ; ses places ne peuvent pas descendre sous ce qui a été vendu.
 class _TiersEditor extends StatelessWidget {
   const _TiersEditor({
     required this.tiers,
@@ -679,7 +682,6 @@ class _TiersEditor extends StatelessWidget {
           AppButton.secondary(
             label: AppStrings.addTicketType,
             size: AppButtonSize.medium,
-            elevated: false,
             onPressed: onAdd,
           ),
         if (showCurrency) ...[
@@ -719,9 +721,9 @@ class _TiersEditor extends StatelessWidget {
   }
 }
 
-/// Category as a wrap of chips rather than a dropdown: seven options fit on
-/// screen, and seeing them all is faster than opening a menu to discover
-/// them.
+/// La catégorie en pastilles réparties sur plusieurs lignes plutôt qu’en
+/// liste déroulante : sept options tiennent à l’écran, et les voir toutes
+/// va plus vite que d’ouvrir un menu pour les découvrir.
 class _CategoryPicker extends StatelessWidget {
   const _CategoryPicker({required this.value, required this.onChanged});
 

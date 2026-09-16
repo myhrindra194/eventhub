@@ -50,16 +50,18 @@ class ReviewRepositoryImpl implements ReviewRepository {
       try {
         await _remote.save(
           eventId: eventId,
-          // canReview proved the reservation exists; it carries the event's
-          // organizer exactly as the rules expect it.
+          // canReview a prouvé que la réservation existe ; elle porte
+          // l’organisateur de l’événement exactement tel que les règles
+          // l’attendent.
           organizerId: reservation!.organizerId,
           author: user,
           rating: rating,
           comment: comment.trim(),
         );
       } on FirebaseException catch (e) {
-        // ReviewPolicy checks attendance locally, so a refusal here is a
-        // seat cancelled or an event moved after the screen loaded.
+        // ReviewPolicy contrôle la participation localement : un refus ici
+        // signale donc une place annulée ou un événement déplacé après le
+        // chargement de l’écran.
         if (e.code != 'permission-denied') rethrow;
         throw FailureException(
           BusinessRuleFailure(

@@ -6,20 +6,20 @@ import 'package:eventhub/core/firebase/firestore_paths.dart';
 import 'package:eventhub/features/organizers/data/organizer_profile_dto.dart';
 import 'package:eventhub/features/organizers/domain/organizer_profile.dart';
 
-/// `organizers/{uid}` (public, read by any signed-in user) and
-/// `users/{uid}/following/{organizerId}` (private to the follower).
+/// `organizers/{uid}` — public, lisible par tout compte connecté — et
+/// `users/{uid}/following/{organizerId}`, privé à l'abonné.
 ///
-/// A follow is two writes the rules accept only together: the follower's
-/// document and `followerCount ± 1`, the counter proven by the document
-/// appearing or disappearing in the same commit
+/// Un abonnement, ce sont deux écritures que les règles n'acceptent
+/// qu'ensemble : le document de l'abonné et `followerCount ± 1`, le compteur
+/// étant prouvé par le document qui apparaît ou disparaît dans ce même commit
 /// (`firebase/tests/social.rules.test.js`).
 class OrganizerDirectoryRemoteDataSource {
   const OrganizerDirectoryRemoteDataSource(this._db);
 
   final FirebaseFirestore _db;
 
-  /// Generous but bounded: a listener re-reads its whole result after a
-  /// reconnection.
+  /// Large, mais borné : après une reconnexion, un écouteur relit l'intégralité
+  /// de son résultat, et les lectures sont le budget du plan Spark.
   static const maxFollowing = 500;
 
   DocumentReference<Map<String, dynamic>> _organizer(String id) =>
@@ -40,8 +40,9 @@ class OrganizerDirectoryRemoteDataSource {
           .map((s) => s.data() == null ? null : profileFrom(s.id, s.data()!))
           .resilient('organizer-profile');
 
-  /// Organizer ids, most recently followed first. The document id *is* the
-  /// organizer id, so a malformed `organizerId` field cannot mislead.
+  /// Les identifiants des organisateurs, du plus récemment suivi au plus
+  /// ancien. L'identifiant du document *est* celui de l'organisateur : un
+  /// champ `organizerId` malformé ne peut donc induire personne en erreur.
   Stream<List<String>> watchFollowingIds(String uid) => _db
       .collection(Collections.users)
       .doc(uid)
@@ -52,10 +53,10 @@ class OrganizerDirectoryRemoteDataSource {
       .map((s) => List<String>.unmodifiable([for (final d in s.docs) d.id]))
       .resilient('following');
 
-  /// Idempotent follow, in a transaction: the existence check and the writes
-  /// commit together, so two taps racing (or a second device) can never
-  /// count a follower twice — the second attempt sees the document and does
-  /// nothing.
+  /// Abonnement idempotent, dans une transaction : le test d'existence et les
+  /// écritures sont validés ensemble, si bien que deux touchers concurrents —
+  /// ou un second appareil — ne peuvent jamais compter l'abonné deux fois. La
+  /// seconde tentative voit le document et ne fait rien.
   Future<void> follow(String uid, String organizerId) {
     final follow = _follow(uid, organizerId);
     final organizer = _organizer(organizerId);
@@ -80,9 +81,9 @@ class OrganizerDirectoryRemoteDataSource {
     });
   }
 
-  /// Idempotent unfollow. When the organizer page is gone (the account was
-  /// deleted), only the follower's document is removed: the rules allow it,
-  /// and there is no counter left to move.
+  /// Désabonnement idempotent. Quand la page de l'organisateur a disparu — le
+  /// compte a été supprimé — seul le document de l'abonné est retiré : les
+  /// règles l'autorisent, et il ne reste aucun compteur à déplacer.
   Future<void> unfollow(String uid, String organizerId) {
     final follow = _follow(uid, organizerId);
     final organizer = _organizer(organizerId);

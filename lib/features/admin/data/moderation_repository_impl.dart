@@ -41,26 +41,9 @@ class ModerationRepositoryImpl implements ModerationRepository {
     if (ModerationPolicy.validateNote(action, note) case Err(:final failure)) {
       throw FailureException(failure);
     }
-    return _remote.moderate(
-      targetType: entry.target.name,
-      targetId: entry.targetId,
-      action: action.wire,
-      note: note.trim(),
-    );
+    return _remote.moderate(entry: entry, action: action, note: note.trim());
   });
 
   @override
   Stream<List<AdminAccount>> watchAdmins() => _remote.watchAdmins();
-
-  @override
-  AsyncResult<void> setAdmin({required String email, required bool admin}) =>
-      guard(() async {
-        if (ModerationPolicy.validateEmail(email) case Err(:final failure)) {
-          throw FailureException(failure);
-        }
-        await _remote.setAdminRole(
-          email: email.trim().toLowerCase(),
-          admin: admin,
-        );
-      });
 }

@@ -1,9 +1,10 @@
-/// One row of `public.notifications`, written by the database each time a
-/// push is due (purged 30 days later, on `expires_at`).
+/// Une ligne de `public.notifications`, écrite par la base de données chaque
+/// fois qu’un push est dû (purgée 30 jours plus tard, sur `expires_at`).
 ///
-/// The history exists because a push is ephemeral: dismissed from the system
-/// tray, it is gone. The in-app list is where "who booked yesterday?" and
-/// "when is that event again?" are answered afterwards.
+/// L’historique existe parce qu’un push est éphémère : balayé du centre de
+/// notifications, il a disparu. La liste in-app est l’endroit où l’on répond
+/// après coup à « qui a réservé hier ? » et « c’est quand, déjà, cet
+/// événement ? ».
 class AppNotification {
   const AppNotification({
     required this.id,
@@ -18,8 +19,8 @@ class AppNotification {
 
   final String id;
 
-  /// `booking`, `cancellation`, `reminder`, `waitlist` — see
-  /// `NotificationRoute` for what each opens.
+  /// `booking`, `cancellation`, `reminder`, `waitlist` — voir
+  /// `NotificationRoute` pour savoir ce que chacun ouvre.
   final String type;
   final String title;
   final String body;
@@ -30,8 +31,9 @@ class AppNotification {
 
   bool get isRead => readAt != null;
 
-  /// The same shape as the push `data` map, so a tap in the list and a tap
-  /// on the system notification go through one routing function.
+  /// La même forme que la map `data` d’un push, pour qu’un appui dans la liste
+  /// et un appui sur la notification système passent par une seule fonction de
+  /// routage.
   Map<String, Object?> get routeData => {
     'type': type,
     'eventId': eventId,

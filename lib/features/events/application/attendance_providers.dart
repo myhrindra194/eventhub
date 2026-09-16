@@ -8,9 +8,10 @@ part 'attendance_providers.g.dart';
 EventAttendanceRemoteDataSource eventAttendanceDataSource(Ref ref) =>
     EventAttendanceRemoteDataSource(ref.watch(firestoreProvider));
 
-/// Recent attendees' short names for the "who's going" strip (F-07), live:
-/// a booking adds its entry to `events/{id}/attendees` in the same batch as
-/// the seat, so the names move with the counter.
+/// Noms courts des participants récents pour le bandeau « qui y va »
+/// (F-07), en temps réel : une réservation ajoute son entrée dans
+/// `events/{id}/attendees` dans le même batch que la place, si bien que les
+/// noms bougent avec le compteur.
 @riverpod
 Stream<List<String>> eventRecentAttendees(Ref ref, String eventId) =>
     ref.watch(eventAttendanceDataSourceProvider).watchRecentNames(eventId);

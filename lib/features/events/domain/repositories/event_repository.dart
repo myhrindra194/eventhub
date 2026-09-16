@@ -4,37 +4,38 @@ import 'package:eventhub/features/events/domain/entities/event.dart';
 import 'package:eventhub/features/events/domain/entities/event_draft.dart';
 
 abstract interface class EventRepository {
-  /// Events starting at or after [from], ordered by start time.
+  /// Événements commençant à [from] ou après, triés par date de début.
   Stream<List<Event>> watchUpcoming({required DateTime from});
 
-  /// All events of an organizer, most recent first.
+  /// Tous les événements d’un organisateur, du plus récent au plus ancien.
   Stream<List<Event>> watchByOrganizer(String organizerId);
 
-  /// Events [userId] co-organizes, most recent first.
+  /// Événements co-organisés par [userId], du plus récent au plus ancien.
   Stream<List<Event>> watchCoOrganized(String userId);
 
-  /// Emits `null` when the event does not exist (or was deleted).
+  /// Émet `null` quand l’événement n’existe pas (ou a été supprimé).
   Stream<Event?> watchById(String eventId);
 
   AsyncResult<Event> getById(String eventId);
 
-  /// Returns the new event id.
+  /// Renvoie l’identifiant du nouvel événement.
   AsyncResult<String> create({
     required EventDraft draft,
     required AppUser organizer,
   });
 
-  /// Enforces ownership and keeps `availablePlaces` consistent with the
-  /// reservations already made when capacity changes.
+  /// Vérifie la propriété et garde `availablePlaces` cohérent avec les
+  /// réservations déjà faites lorsque la capacité change.
   AsyncResult<void> update({
     required String eventId,
     required EventDraft draft,
     required AppUser organizer,
   });
 
-  /// The [limit] upcoming events that follow [after], in the same order as
-  /// [watchUpcoming] (`startsAt`, then id). One-shot: older pages of the
-  /// catalogue are loaded on demand and refreshed by pulling to refresh.
+  /// Les [limit] événements à venir qui suivent [after], dans le même
+  /// ordre que [watchUpcoming] (`startsAt`, puis id). Requête ponctuelle :
+  /// les pages plus anciennes du catalogue sont chargées à la demande et
+  /// rafraîchies par le tirer-pour-rafraîchir.
   AsyncResult<List<Event>> fetchUpcomingAfter({
     required DateTime from,
     required Event after,

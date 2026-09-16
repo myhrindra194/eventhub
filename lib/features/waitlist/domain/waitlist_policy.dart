@@ -4,13 +4,13 @@ import 'package:eventhub/features/auth/domain/entities/app_user.dart';
 import 'package:eventhub/features/events/domain/entities/event.dart';
 import 'package:eventhub/features/reservations/domain/entities/reservation.dart';
 
-/// `events/{eventId}/waitlist/{userId}` — one entry per person, FIFO by
-/// `createdAt` (server time).
+/// `events/{eventId}/waitlist/{userId}` — une entrée par personne, FIFO sur
+/// `createdAt` (heure du serveur).
 ///
-/// With no server, whoever gives a seat back tells the head of the queue
-/// (the rules check a seat is really free) and stamps [notifiedAt]. There
-/// is no hold on the seat: the first to book gets it. A booking removes the
-/// entry.
+/// En l’absence de serveur, celui qui rend une place prévient la tête de
+/// file (les règles vérifient qu’une place est réellement libre) et horodate
+/// [notifiedAt]. La place n’est retenue pour personne : la première qui
+/// réserve l’emporte. Une réservation supprime l’entrée.
 class WaitlistEntry {
   const WaitlistEntry({
     required this.userId,
@@ -20,18 +20,20 @@ class WaitlistEntry {
 
   final String userId;
 
-  /// `null` in the pending local snapshot of a fresh entry.
+  /// `null` dans l’instantané local en attente d’une entrée fraîche.
   final DateTime? createdAt;
 
-  /// When this person was told a seat opened.
+  /// Quand cette personne a été prévenue qu’une place s’était libérée.
   final DateTime? notifiedAt;
 }
 
-/// Mirrored in the rules' `waitlist` create condition, which decides.
+/// Reflétée dans la condition de création `waitlist` des règles, qui
+/// tranche.
 abstract final class WaitlistPolicy {
-  /// One account holds both spaces: an organizer waits for other people's
-  /// events like anyone else. Only the event's own team is excluded — it
-  /// cannot book the event, so a place in its queue would be meaningless.
+  /// Un seul compte porte les deux espaces : un organisateur attend pour les
+  /// événements des autres comme n’importe qui. Seule l’équipe de
+  /// l’événement est exclue — elle ne peut pas y réserver, une place dans sa
+  /// file n’aurait donc aucun sens.
   static Result<void> canJoin({
     required Event event,
     required AppUser user,

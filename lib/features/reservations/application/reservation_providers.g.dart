@@ -57,12 +57,12 @@ final class ReservationRepositoryProvider
 String _$reservationRepositoryHash() =>
     r'9ac15adf85ae454131ecebe0e36ea91d22adc62a';
 
-/// Reservations of the signed-in account (its participant space).
+/// Réservations du compte connecté (son espace participant).
 
 @ProviderFor(myReservations)
 final myReservationsProvider = MyReservationsProvider._();
 
-/// Reservations of the signed-in account (its participant space).
+/// Réservations du compte connecté (son espace participant).
 
 final class MyReservationsProvider
     extends
@@ -74,7 +74,7 @@ final class MyReservationsProvider
     with
         $FutureModifier<List<Reservation>>,
         $StreamProvider<List<Reservation>> {
-  /// Reservations of the signed-in account (its participant space).
+  /// Réservations du compte connecté (son espace participant).
   MyReservationsProvider._()
     : super(
         from: null,
@@ -103,12 +103,12 @@ final class MyReservationsProvider
 
 String _$myReservationsHash() => r'ad48f3a1737e846624f7a3f20c6c24012a35465a';
 
-/// The signed-in account's reservation for [eventId], if any.
+/// La réservation du compte connecté pour [eventId], s’il y en a une.
 
 @ProviderFor(myReservationForEvent)
 final myReservationForEventProvider = MyReservationForEventFamily._();
 
-/// The signed-in account's reservation for [eventId], if any.
+/// La réservation du compte connecté pour [eventId], s’il y en a une.
 
 final class MyReservationForEventProvider
     extends
@@ -118,7 +118,7 @@ final class MyReservationForEventProvider
           Stream<Reservation?>
         >
     with $FutureModifier<Reservation?>, $StreamProvider<Reservation?> {
-  /// The signed-in account's reservation for [eventId], if any.
+  /// La réservation du compte connecté pour [eventId], s’il y en a une.
   MyReservationForEventProvider._({
     required MyReservationForEventFamily super.from,
     required String super.argument,
@@ -166,7 +166,7 @@ final class MyReservationForEventProvider
 String _$myReservationForEventHash() =>
     r'825632ce46f4eaac551c1000b2c5915adf7c5067';
 
-/// The signed-in account's reservation for [eventId], if any.
+/// La réservation du compte connecté pour [eventId], s’il y en a une.
 
 final class MyReservationForEventFamily extends $Family
     with $FunctionalFamilyOverride<Stream<Reservation?>, String> {
@@ -179,7 +179,7 @@ final class MyReservationForEventFamily extends $Family
         isAutoDispose: true,
       );
 
-  /// The signed-in account's reservation for [eventId], if any.
+  /// La réservation du compte connecté pour [eventId], s’il y en a une.
 
   MyReservationForEventProvider call(String eventId) =>
       MyReservationForEventProvider._(argument: eventId, from: this);
@@ -188,14 +188,16 @@ final class MyReservationForEventFamily extends $Family
   String toString() => r'myReservationForEventProvider';
 }
 
-/// Confirmed reservations of an event the signed-in organizer owns or
-/// co-organizes. The rules refuse the query to anyone outside the team.
+/// Réservations confirmées d’un événement dont l’organisateur connecté est
+/// propriétaire ou co-organisateur. Les règles refusent la requête à
+/// quiconque n’appartient pas à l’équipe.
 
 @ProviderFor(eventParticipants)
 final eventParticipantsProvider = EventParticipantsFamily._();
 
-/// Confirmed reservations of an event the signed-in organizer owns or
-/// co-organizes. The rules refuse the query to anyone outside the team.
+/// Réservations confirmées d’un événement dont l’organisateur connecté est
+/// propriétaire ou co-organisateur. Les règles refusent la requête à
+/// quiconque n’appartient pas à l’équipe.
 
 final class EventParticipantsProvider
     extends
@@ -207,8 +209,9 @@ final class EventParticipantsProvider
     with
         $FutureModifier<List<Reservation>>,
         $StreamProvider<List<Reservation>> {
-  /// Confirmed reservations of an event the signed-in organizer owns or
-  /// co-organizes. The rules refuse the query to anyone outside the team.
+  /// Réservations confirmées d’un événement dont l’organisateur connecté est
+  /// propriétaire ou co-organisateur. Les règles refusent la requête à
+  /// quiconque n’appartient pas à l’équipe.
   EventParticipantsProvider._({
     required EventParticipantsFamily super.from,
     required String super.argument,
@@ -255,8 +258,9 @@ final class EventParticipantsProvider
 
 String _$eventParticipantsHash() => r'0d88dbb0c12b7f191b30c1319bf47101dd40efa7';
 
-/// Confirmed reservations of an event the signed-in organizer owns or
-/// co-organizes. The rules refuse the query to anyone outside the team.
+/// Réservations confirmées d’un événement dont l’organisateur connecté est
+/// propriétaire ou co-organisateur. Les règles refusent la requête à
+/// quiconque n’appartient pas à l’équipe.
 
 final class EventParticipantsFamily extends $Family
     with $FunctionalFamilyOverride<Stream<List<Reservation>>, String> {
@@ -269,8 +273,9 @@ final class EventParticipantsFamily extends $Family
         isAutoDispose: true,
       );
 
-  /// Confirmed reservations of an event the signed-in organizer owns or
-  /// co-organizes. The rules refuse the query to anyone outside the team.
+  /// Réservations confirmées d’un événement dont l’organisateur connecté est
+  /// propriétaire ou co-organisateur. Les règles refusent la requête à
+  /// quiconque n’appartient pas à l’équipe.
 
   EventParticipantsProvider call(String eventId) =>
       EventParticipantsProvider._(argument: eventId, from: this);

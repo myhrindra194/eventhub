@@ -1,7 +1,7 @@
 import 'package:eventhub/core/analytics/app_analytics.dart';
 import 'package:eventhub/core/errors/failure.dart';
+import 'package:eventhub/core/firebase/firebase_providers.dart';
 import 'package:eventhub/core/result/result.dart';
-import 'package:eventhub/core/supabase/supabase_providers.dart';
 import 'package:eventhub/features/auth/application/auth_providers.dart';
 import 'package:eventhub/features/moderation/data/report_remote_data_source.dart';
 import 'package:eventhub/features/moderation/data/report_repository_impl.dart';
@@ -13,7 +13,10 @@ part 'report_providers.g.dart';
 
 @Riverpod(keepAlive: true)
 ReportRepository reportRepository(Ref ref) => ReportRepositoryImpl(
-  ReportRemoteDataSource(ref.watch(supabaseClientProvider)),
+  ReportRemoteDataSource(
+    ref.watch(firestoreProvider),
+    ref.watch(firebaseAuthProvider),
+  ),
 );
 
 @riverpod

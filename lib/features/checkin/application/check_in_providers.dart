@@ -22,8 +22,8 @@ CheckInRepository checkInRepository(Ref ref) => CheckInRepositoryImpl(
 Stream<Map<String, DateTime>> eventCheckIns(Ref ref, String eventId) =>
     ref.watch(checkInRepositoryProvider).watchCheckIns(eventId);
 
-/// One scan at the door: the local precheck (CheckInPolicy), then the
-/// transaction's verdict.
+/// Un scan à l’entrée : le pré-contrôle local (CheckInPolicy), puis le
+/// verdict de la transaction.
 @riverpod
 class CheckInController extends _$CheckInController {
   @override
@@ -35,7 +35,8 @@ class CheckInController extends _$CheckInController {
     required String code,
   }) async {
     final user = ref.read(currentUserProvider);
-    // Co-organizers are organizer accounts too; the rules check the team.
+    // Les co-organisateurs sont aussi des comptes organisateurs ; les
+    // règles vérifient l’équipe.
     if (user == null || !user.isOrganizer) {
       return const Err(AuthFailure.notSignedIn());
     }

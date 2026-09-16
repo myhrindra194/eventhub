@@ -4,14 +4,16 @@ import 'package:eventhub/core/widgets/event_image.dart';
 import 'package:eventhub/features/events/domain/entities/event_draft.dart';
 import 'package:flutter/material.dart';
 
-/// Cover of an event: a link to an image hosted elsewhere, with a preview.
+/// Couverture d’un événement : un lien vers une image hébergée ailleurs,
+/// avec un aperçu.
 ///
-/// Without Cloud Storage (Spark plan) there is nothing to upload to, so the
-/// organizer pastes an `https://` link — the way Luma or a Notion cover
-/// accepts one. The preview answers the only question that matters ("is this
-/// the right picture?") before publishing; while the field is blank or the
-/// link is not yet valid, it shows the generated visual the event will keep,
-/// so an event without a cover never looks broken.
+/// Sans Cloud Storage (plan Spark), il n’y a nulle part où envoyer un
+/// fichier : l’organisateur colle donc un lien `https://`, comme Luma ou
+/// une couverture Notion l’acceptent. L’aperçu répond avant publication à
+/// la seule question qui compte (« est-ce la bonne image ? ») ; tant que le
+/// champ est vide ou que le lien n’est pas encore valide, il montre le
+/// visuel généré que l’événement conservera, pour qu’un événement sans
+/// couverture n’ait jamais l’air cassé.
 class EventCoverField extends StatefulWidget {
   const EventCoverField({
     required this.controller,
@@ -22,10 +24,10 @@ class EventCoverField extends StatefulWidget {
 
   final TextEditingController controller;
 
-  /// Seed of the generated fallback visual (the event id, or the title).
+  /// Graine du visuel généré de repli (l’id de l’événement, ou son titre).
   final String seed;
 
-  /// A server-side error mapped back onto this field.
+  /// Une erreur venue du serveur, rapportée sur ce champ.
   final String? errorText;
 
   @override
@@ -78,8 +80,8 @@ class _EventCoverFieldState extends State<EventCoverField> {
             child: AspectRatio(
               aspectRatio: 16 / 9,
               child: EventImage(
-                // Keyed by URL: a new link replaces the preview instead of
-                // cross-fading from the previous picture.
+                // Clé sur l’URL : un nouveau lien remplace l’aperçu au lieu
+                // de fondre depuis l’image précédente.
                 key: ValueKey(previewUrl),
                 imageUrl: previewUrl,
                 seed: widget.seed,

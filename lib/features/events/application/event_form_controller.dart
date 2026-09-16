@@ -9,17 +9,19 @@ import 'package:riverpod_annotation/riverpod_annotation.dart' hide AsyncResult;
 
 part 'event_form_controller.g.dart';
 
-/// Create / update flow. [existingEventId] == null means "create".
+/// Parcours de création / modification. [existingEventId] == null signifie
+/// « création ».
 ///
-/// The cover is an https URL typed in the form (see [EventDraft.imageUrl]):
-/// on the Spark plan there is no Cloud Storage to upload to, and an event
-/// without a cover keeps its generated visual.
+/// La couverture est une URL https saisie dans le formulaire (voir
+/// [EventDraft.imageUrl]) : sur le plan Spark, il n’y a pas de Cloud
+/// Storage vers lequel envoyer un fichier, et un événement sans couverture
+/// conserve son visuel généré.
 @riverpod
 class EventFormController extends _$EventFormController {
   @override
   FutureOr<void> build() {}
 
-  /// Returns the event id on success.
+  /// Renvoie l’identifiant de l’événement en cas de succès.
   Future<Result<String>> submit({
     required EventDraft draft,
     String? existingEventId,
@@ -45,8 +47,9 @@ class EventFormController extends _$EventFormController {
   ) async {
     final user = ref.read(currentUserProvider);
     if (user == null) return const Err(AuthFailure.notSignedIn());
-    // The rules read `email_verified` from the token on creation: say so
-    // instead of letting the write come back as a bare refusal.
+    // Les règles lisent `email_verified` dans le jeton à la création :
+    // autant le dire ici, plutôt que de laisser l’écriture revenir sous la
+    // forme d’un refus sec.
     if (existingEventId == null && !user.emailVerified) {
       return const Err(
         BusinessRuleFailure(
@@ -66,7 +69,7 @@ class EventFormController extends _$EventFormController {
   }
 }
 
-/// Destructive actions on an existing event.
+/// Actions destructrices sur un événement existant.
 @riverpod
 class EventActionsController extends _$EventActionsController {
   @override

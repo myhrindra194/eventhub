@@ -15,46 +15,52 @@ import 'package:eventhub/features/reservations/domain/attendee_name.dart';
 import 'package:eventhub/features/reservations/domain/entities/reservation.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
-/// Decides a booking on what the transaction read (see `ReservationPolicy`).
+/// Décide d’une réservation d’après ce que la transaction a lu (voir
+/// `ReservationPolicy`).
 typedef BookingCheck =
     Result<void> Function(Event event, Reservation? existing);
 
-/// Decides a cancellation on the reservation the transaction read.
+/// Décide d’une annulation d’après la réservation lue par la transaction.
 typedef CancellationCheck = Result<void> Function(Reservation reservation);
 
-/// `reservations/{eventId}_{userId}` and what a seat moves around it.
+/// `reservations/{eventId}_{userId}` et tout ce qu’une place déplace autour
+/// de lui.
 ///
-/// Without Cloud Functions, the client writes every document itself and
-/// `firebase/firestore.rules` proves each write against the others in the
-/// same transaction (`getAfter`): the seat counter moves by exactly one, in
-/// exactly the ticket type the reservation names, and only if the
-/// reservation changes status in the same commit. The transactions below are
-/// the ones `firebase/tests/reservations.rules.test.js` accepts.
+/// Sans Cloud Functions, le client écrit lui-même chaque document et
+/// `firebase/firestore.rules` prouve chaque écriture à partir des autres de
+/// la même transaction (`getAfter`) : le compteur de places bouge d’une
+/// unité exactement, dans exactement le type de billet que la réservation
+/// nomme, et seulement si la réservation change de statut dans le même
+/// commit. Les transactions ci-dessous sont celles qu’accepte
+/// `firebase/tests/reservations.rules.test.js`.
 ///
-/// Consequences with no server:
-///  * the fact (seat + reservation) is atomic; its echoes — the attendee
-///    entry, the team's notices, the waiting list's heads-up — are written
-///    right after, best effort. Each is independently authorised by the
-///    rules from the committed fact, and none may fail a booking that
-///    succeeded;
-///  * policy refusals are decided *inside* the transaction, on fresh reads,
-///    and returned as a value rather than thrown: a refused transaction then
-///    commits nothing, and the exact sentence reaches the screen instead of
-///    a bare `permission-denied`.
+/// Conséquences en l’absence de serveur :
+///  * le fait (place + réservation) est atomique ; ses échos — l’entrée
+///    dans les participants, les notifications de l’équipe, l’alerte à la
+///    liste d’attente — sont écrits juste après, au mieux. Chacun est
+///    autorisé indépendamment par les règles à partir du fait déjà
+///    committé, et aucun ne doit faire échouer une réservation qui a
+///    réussi ;
+///  * les refus de la policy sont décidés *à l’intérieur* de la
+///    transaction, sur des lectures fraîches, et renvoyés comme valeur
+///    plutôt que levés : une transaction refusée ne committe alors rien, et
+///    la phrase exacte atteint l’écran au lieu d’un simple
+///    `permission-denied`.
 class ReservationRemoteDataSource {
   const ReservationRemoteDataSource(this._db, this._auth);
 
   final FirebaseFirestore _db;
   final FirebaseAuth _auth;
 
-  /// The rules refuse a reservation list above 500 documents.
+  /// Les règles refusent une liste de réservations au-delà de 500 documents.
   static const maxPageSize = 500;
 
-  /// In-app notices expire (TTL on `expiresAt`) instead of piling up.
+  /// Les notifications in-app expirent (TTL sur `expiresAt`) au lieu de
+  /// s’accumuler.
   static const noticeLifetime = Duration(days: 30);
 
-  /// The rules let anyone list at most 20 waiting-list entries: enough to
-  /// find the first person not told yet.
+  /// Les règles n’autorisent à lister que 20 entrées de liste d’attente au
+  /// plus : assez pour trouver la première personne pas encore prévenue.
   static const waitlistScan = 20;
 
   CollectionReference<Map<String, dynamic>> get _reservations =>
@@ -68,9 +74,9 @@ class ReservationRemoteDataSource {
       .doc(userId)
       .collection(Collections.notifications);
 
-  // ---------------------------------------------------------------- reads
+  // ------------------------------------------------------------- lectures
 
-  /// A participant's tickets, most recent first (all statuses).
+  /// Les billets d’un participant, les plus récents d’abord (tous statuts).
   Stream<List<Reservation>> watchByUser(String userId) => _reservations
       .where('userId', isEqualTo: userId)
       .orderBy('reservedAt', descending: true)
@@ -79,8 +85,9 @@ class ReservationRemoteDataSource {
       .map(_toList)
       .resilient('reservations:user');
 
-  /// Confirmed seats of an event, for its team. The rules prove membership
-  /// from `eventId`, so the owner and co-organizers run the same query.
+  /// Les places confirmées d’un événement, pour son équipe. Les règles
+  /// prouvent l’appartenance à partir de `eventId`, si bien que le
+  /// propriétaire et les co-organisateurs lancent la même requête.
   Stream<List<Reservation>> watchActiveByEvent(String eventId) => _reservations
       .where('eventId', isEqualTo: eventId)
       .where('status', isEqualTo: ReservationStatus.confirmed.name)
@@ -90,8 +97,8 @@ class ReservationRemoteDataSource {
       .map(_toList)
       .resilient('reservations:event');
 
-  /// Every status on the organizer's own events: cancellations are part of
-  /// what an organizer monitors.
+  /// Tous les statuts sur les événements propres à l’organisateur : les
+  /// annulations font partie de ce qu’un organisateur surveille.
   Stream<List<Reservation>> watchByOrganizer(String organizerId) =>
       _reservations
           .where('organizerId', isEqualTo: organizerId)
@@ -101,8 +108,9 @@ class ReservationRemoteDataSource {
           .map(_toList)
           .resilient('reservations:organizer');
 
-  /// "Have I booked this?" is one document read, not a query: the id is
-  /// known, and the rules let anyone probe their own missing seat.
+  /// « Ai-je réservé cet événement ? » est une lecture de document, pas une
+  /// requête : l’id est connu, et les règles laissent chacun sonder sa
+  /// propre place absente.
   Stream<Reservation?> watchForEvent({
     required String eventId,
     required String userId,
@@ -114,12 +122,13 @@ class ReservationRemoteDataSource {
       .map(_toDomainOrNull)
       .resilient('reservation:$reservationId');
 
-  // -------------------------------------------------------------- booking
+  // ---------------------------------------------------------- réservation
 
-  /// Books a free seat for [participant]: event counter(s) −1 and the
-  /// reservation set to `confirmed`, in one transaction.
+  /// Réserve une place gratuite pour [participant] : compteur(s) de
+  /// l’événement −1 et réservation passée à `confirmed`, en une seule
+  /// transaction.
   ///
-  /// Throws a `FailureException` carrying [check]'s refusal.
+  /// Lève une `FailureException` portant le refus de [check].
   Future<Reservation> reserve({
     required String eventId,
     required AppUser participant,
@@ -128,8 +137,8 @@ class ReservationRemoteDataSource {
   }) async {
     final uid = participant.id;
     final reservationRef = _reservations.doc(DocIds.reservation(eventId, uid));
-    // The rules compare `userEmail` with the ID token, which follows an
-    // address change; the profile copy is only a fallback.
+    // Les règles comparent `userEmail` au jeton d’identité, qui suit un
+    // changement d’adresse ; la copie du profil n’est qu’un repli.
     final email = _auth.currentUser?.email ?? participant.email;
 
     final outcome = await _db.runTransaction<_Outcome<Map<String, dynamic>>>((
@@ -145,13 +154,14 @@ class ReservationRemoteDataSource {
         return _Outcome.refused(failure);
       }
 
-      // A tier only exists on an event with ticket types; the rules refuse
-      // a `tierId` on an event without.
+      // Un tier n’existe que sur un événement doté de types de billets ;
+      // les règles refusent un `tierId` sur un événement qui n’en a pas.
       final tier = booking.event.hasTiers && tierId != null
           ? booking.event.tier(tierId)
           : null;
-      // Client time, bounded by the rules to the server clock: it is part
-      // of the booking notice id, so it must be known before the commit.
+      // Heure du client, bornée par les règles à l’horloge du serveur :
+      // elle entre dans l’id de la notification de réservation, et doit
+      // donc être connue avant le commit.
       final reservedAt = Timestamp.now();
       final data = <String, dynamic>{
         'eventId': eventId,
@@ -171,8 +181,9 @@ class ReservationRemoteDataSource {
           'availablePlaces': booking.availablePlaces - 1,
           if (tier != null) 'tiers.${tier.id}.available': tier.available - 1,
         })
-        // `set`, not `create`: re-booking after a cancellation rewrites the
-        // same ticket, which the rules accept as cancelled → confirmed.
+        // `set`, pas `create` : réserver à nouveau après une annulation
+        // réécrit le même billet, ce que les règles acceptent comme
+        // cancelled → confirmed.
         ..set(reservationRef, data);
       return _Outcome.done(data, booking);
     });
@@ -194,8 +205,9 @@ class ReservationRemoteDataSource {
     return reservation;
   }
 
-  /// The echoes of a committed booking. Each write is authorised by the
-  /// rules from the confirmed reservation, and none can undo it.
+  /// Les échos d’une réservation déjà committée. Chaque écriture est
+  /// autorisée par les règles à partir de la réservation confirmée, et
+  /// aucune ne peut la défaire.
   Future<void> _afterBooking({
     required BookingEvent booking,
     required AppUser participant,
@@ -215,7 +227,7 @@ class ReservationRemoteDataSource {
               'createdAt': FieldValue.serverTimestamp(),
             }),
       ),
-      // Someone who was waiting and got a seat leaves the queue.
+      // Une personne qui attendait et obtient une place quitte la file.
       _bestEffort(
         'waitlist exit',
         () => eventRef.collection(Collections.waitlist).doc(uid).delete(),
@@ -244,13 +256,14 @@ class ReservationRemoteDataSource {
     ]);
   }
 
-  // --------------------------------------------------------- cancellation
+  // ----------------------------------------------------------- annulation
 
-  /// Gives a free seat back: event counter(s) +1 and the reservation set to
-  /// `cancelled`, in one transaction. The counter is left alone when the
-  /// event no longer exists (the rules allow it: nothing to give back).
+  /// Rend une place gratuite : compteur(s) de l’événement +1 et réservation
+  /// passée à `cancelled`, en une seule transaction. Le compteur est laissé
+  /// tel quel quand l’événement n’existe plus (les règles l’autorisent : il
+  /// n’y a rien à rendre).
   ///
-  /// Throws a `FailureException` carrying [check]'s refusal.
+  /// Lève une `FailureException` portant le refus de [check].
   Future<Reservation> cancel({
     required String reservationId,
     required String userId,
@@ -264,7 +277,8 @@ class ReservationRemoteDataSource {
       if (check(reservation) case Err(:final failure)) {
         return _Outcome.refused(failure);
       }
-      // Every read before the first write: a Firestore transaction rule.
+      // Toutes les lectures avant la première écriture : c’est la règle des
+      // transactions Firestore.
       final eventData = (await tx.get(_event(reservation.eventId))).data();
       final booking = eventData == null
           ? null
@@ -355,12 +369,15 @@ class ReservationRemoteDataSource {
     ]);
   }
 
-  /// Tells the longest-waiting person not told yet that a seat opened. No
-  /// hold: the first to book gets it (the Eventbrite model).
+  /// Prévient qu’une place s’est libérée la personne qui attend depuis le
+  /// plus longtemps et n’a pas encore été prévenue. Aucune place n’est
+  /// retenue à son nom : la première qui réserve l’emporte (le modèle
+  /// Eventbrite).
   ///
-  /// `orderBy('createdAt')` alone uses the automatic single-field index;
-  /// adding `where('notifiedAt', isNull: true)` would need a composite one.
-  /// Twenty entries are scanned instead, which the rules allow.
+  /// `orderBy('createdAt')` seul utilise l’index automatique à champ
+  /// unique ; y ajouter `where('notifiedAt', isNull: true)` en exigerait un
+  /// composite. On parcourt donc vingt entrées, ce que les règles
+  /// autorisent.
   Future<void> _notifyWaitlistHead(
     BookingEvent booking,
     Reservation cancelled,
@@ -375,8 +392,9 @@ class ReservationRemoteDataSource {
         .firstOrNull;
     if (head == null) return;
 
-    // Both writes or neither: the rules check the entry exists while the
-    // notice is written, and a notified entry is never told twice.
+    // Les deux écritures ou aucune : les règles vérifient que l’entrée
+    // existe au moment où la notification est écrite, et une entrée déjà
+    // prévenue ne l’est jamais deux fois.
     final batch = _db.batch()
       ..update(head.reference, {'notifiedAt': FieldValue.serverTimestamp()})
       ..set(
@@ -396,9 +414,9 @@ class ReservationRemoteDataSource {
     await batch.commit();
   }
 
-  // -------------------------------------------------------------- helpers
+  // ---------------------------------------------------------- utilitaires
 
-  /// The exact field list of `validNotice()` in the rules.
+  /// La liste exacte des champs de `validNotice()` dans les règles.
   static Map<String, Object?> _notice({
     required String type,
     required String title,
@@ -421,8 +439,9 @@ class ReservationRemoteDataSource {
   static String _clamp(String value, int max) =>
       value.length <= max ? value : '${value.substring(0, max - 1)}…';
 
-  /// A side effect that must never fail the action it follows: logged, so a
-  /// rules regression still shows up in the logs and Crashlytics.
+  /// Un effet de bord qui ne doit jamais faire échouer l’action qu’il
+  /// suit : journalisé, pour qu’une régression des règles reste visible
+  /// dans les logs et dans Crashlytics.
   static Future<void> _bestEffort(
     String label,
     Future<void> Function() write,
@@ -459,8 +478,9 @@ class ReservationRemoteDataSource {
           .toList(growable: false);
 }
 
-/// What a transaction decided: a value to return, or a policy refusal that
-/// wrote nothing. [event] and [at] carry what the follow-up writes need.
+/// Ce qu’une transaction a décidé : une valeur à renvoyer, ou un refus de
+/// la policy qui n’a rien écrit. [event] et [at] transportent ce dont les
+/// écritures de suivi ont besoin.
 class _Outcome<T> {
   const _Outcome.done(T this.value, this.event, [this.at]) : failure = null;
 

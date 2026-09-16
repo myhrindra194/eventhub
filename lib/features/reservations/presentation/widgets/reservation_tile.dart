@@ -4,13 +4,13 @@ import 'package:eventhub/core/widgets/design_system.dart';
 import 'package:eventhub/features/reservations/domain/entities/reservation.dart';
 import 'package:flutter/material.dart';
 
-/// Ticket card.
+/// Carte de billet.
 ///
-/// Shaped like a physical ticket on purpose — a coloured stub carrying the
-/// date, a perforation, then the details. The metaphor does real work: in a
-/// list of past and upcoming tickets, the stub is what the eye locks onto,
-/// and a used ticket that is visually "torn" (dimmed, greyed stub) needs no
-/// label to read as expired.
+/// Dessinée exprès comme un billet physique — une souche colorée qui porte
+/// la date, une perforation, puis les détails. La métaphore travaille
+/// vraiment : dans une liste de billets passés et à venir, c’est la souche
+/// que l’œil accroche, et un billet utilisé visuellement « déchiré »
+/// (atténué, souche grisée) se lit comme périmé sans la moindre étiquette.
 class TicketCard extends StatelessWidget {
   const TicketCard({
     required this.reservation,
@@ -32,7 +32,6 @@ class TicketCard extends StatelessWidget {
     return Opacity(
       opacity: active ? 1 : 0.62,
       child: AppSurface.bare(
-        elevation: active ? SurfaceElevation.low : SurfaceElevation.flat,
         onTap: onTap,
         child: IntrinsicHeight(
           child: Row(
@@ -168,7 +167,7 @@ class _Stub extends StatelessWidget {
   }
 }
 
-/// The dashed tear line between stub and body.
+/// La ligne de déchirure en pointillés entre la souche et le corps.
 class _Perforation extends StatelessWidget {
   const _Perforation();
 
@@ -221,7 +220,7 @@ class _QrTile extends StatelessWidget {
   );
 }
 
-/// "● Confirmée" / "● Annulée" inline label.
+/// Libellé en ligne « ● Confirmée » / « ● Annulée ».
 class ReservationStatusLabel extends StatelessWidget {
   const ReservationStatusLabel({required this.status, super.key});
 

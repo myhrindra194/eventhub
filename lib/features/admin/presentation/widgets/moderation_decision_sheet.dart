@@ -8,8 +8,8 @@ import 'package:eventhub/features/admin/domain/moderation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-/// Confirms a moderation decision: its consequence in plain words, the note
-/// (required when a person loses something), then the button.
+/// Confirme une décision de modération : sa conséquence en mots simples, la
+/// note (obligatoire lorsqu’une personne perd quelque chose), puis le bouton.
 Future<void> showModerationDecisionSheet(
   BuildContext context, {
   required ModerationEntry entry,
@@ -79,7 +79,7 @@ class _DecisionSheetState extends ConsumerState<_DecisionSheet> {
     return AppSheet(
       title: action.label,
       subtitle:
-          '${widget.entry.target.label} · '
+          '${widget.entry.target.label} Â· '
           '${AppStrings.reportsCount(widget.entry.reportCount)}',
       actions: [
         AppButton(
@@ -87,7 +87,6 @@ class _DecisionSheetState extends ConsumerState<_DecisionSheet> {
           variant: action.destructive
               ? AppButtonVariant.danger
               : AppButtonVariant.primary,
-          elevated: false,
           isLoading: busy,
           loadingLabel: AppStrings.decisionSending,
           onPressed: busy ? null : _confirm,

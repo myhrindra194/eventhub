@@ -3,18 +3,22 @@ import 'dart:convert';
 import 'package:eventhub/core/utils/money.dart';
 import 'package:eventhub/features/reservations/domain/entities/reservation.dart';
 
-/// Serialises a guest list to CSV.
+/// Sérialise une liste d’invités en CSV.
 ///
-/// Choices, each for the tool the file actually ends up in:
-///  * `;` as separator — a French-locale Excel opens a comma-separated file
-///    as a single column, and `;` is what it expects;
-///  * `\r\n` line endings and double-quote escaping, per RFC 4180;
-///  * dates as `yyyy-MM-dd HH:mm` — sortable as text, unambiguous across
-///    locales, unlike `03/04`;
-///  * the ticket type and the amount paid (F-12, F-11), as the door and the
-///    accounting read them.
+/// Les choix faits, chacun pour l’outil dans lequel le fichier finit
+/// réellement :
+///  * `;` comme séparateur — un Excel en locale française ouvre un fichier
+///    séparé par des virgules sur une seule colonne, et c’est `;` qu’il
+///    attend ;
+///  * des fins de ligne `\r\n` et un échappement par guillemets doubles,
+///    conformément à la RFC 4180 ;
+///  * des dates en `yyyy-MM-dd HH:mm` — triables comme du texte et non
+///    ambiguës d’une locale à l’autre, contrairement à `03/04` ;
+///  * le type de billet et le montant payé (F-12, F-11), tels que l’entrée et
+///    la comptabilité les lisent.
 ///
-/// Pure and locale-free so it is unit-testable without a widget tree.
+/// Pur et indépendant de la locale, donc testable unitairement sans arbre de
+/// widgets.
 abstract final class GuestListCsv {
   static const separator = ';';
   static const header = [
@@ -47,16 +51,16 @@ abstract final class GuestListCsv {
     return rows.map((row) => row.map(_escape).join(separator)).join('\r\n');
   }
 
-  /// File contents: UTF-8 **with a byte-order mark**. Without it, Excel on
-  /// Windows decodes the file as ANSI and "Réservé" becomes "RÃ©servÃ©".
-  /// The clipboard path keeps [build] as is — a BOM pasted into a cell is an
-  /// invisible stray character.
+  /// Contenu du fichier : UTF-8 **avec marque d’ordre des octets**. Sans elle,
+  /// Excel sous Windows décode le fichier en ANSI et « Réservé » devient
+  /// « RÃ©servÃ© ». Le chemin presse-papiers, lui, garde [build] tel quel — un
+  /// BOM collé dans une cellule est un caractère parasite invisible.
   static List<int> fileBytes(List<Reservation> guests) =>
       utf8.encode('\uFEFF${build(guests)}');
 
-  /// `participants-flutter-meetup-tana.csv`: lowercase ASCII, accents
-  /// folded, anything else collapsed to single dashes, at most 60 characters
-  /// of title. Falls back to `participants.csv`.
+  /// `participants-flutter-meetup-tana.csv` : ASCII en minuscules, accents
+  /// dépliés, tout le reste réduit à des tirets simples, avec au plus 60
+  /// caractères de titre. Se rabat sur `participants.csv`.
   static String fileNameFor(String eventTitle) {
     const folded = {
       'à': 'a',

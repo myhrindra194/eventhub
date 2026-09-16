@@ -1,30 +1,32 @@
 import 'package:eventhub/features/events/domain/entities/event.dart';
 import 'package:eventhub/features/reservations/domain/entities/reservation.dart';
 
-/// Organizer analytics, derived from data the app already streams.
+/// Analytique de l’organisateur, dérivée de données que l’application diffuse
+/// déjà.
 ///
-/// Pure functions over `Event` and `Reservation` lists: no Firestore
-/// aggregate, no Cloud Function, no extra read. The cost is a known limit —
-/// everything is computed from at most `maxPageSize` reservations, and a
-/// reservation cancelled then re-booked is one document, so its cancellation
-/// is no longer visible. Both are acceptable at MVP scale and are the reason
-/// a server-side aggregate (`aggregates/`, ROADMAP F-07) exists on paper.
+/// Des fonctions pures sur des listes d’`Event` et de `Reservation` : pas
+/// d’agrégat Firestore, pas de Cloud Function, aucune lecture supplémentaire.
+/// Le prix à payer est une limite connue — tout est calculé à partir d’au plus
+/// `maxPageSize` réservations, et une réservation annulée puis reprise ne fait
+/// qu’un seul document, si bien que son annulation n’est plus visible. Les
+/// deux sont acceptables à l’échelle du MVP, et sont la raison pour laquelle
+/// un agrégat côté serveur (`aggregates/`, ROADMAP F-07) existe sur le papier.
 
-/// What happened, or what deserves attention.
+/// Ce qui s’est passé, ou ce qui mérite attention.
 enum AlertKind {
-  /// Someone booked a seat.
+  /// Quelqu’un a réservé une place.
   booking,
 
-  /// Someone gave their seat back.
+  /// Quelqu’un a rendu sa place.
   cancellation,
 
-  /// An upcoming event has no seat left.
+  /// Un événement à venir n’a plus une seule place.
   soldOut,
 
-  /// An upcoming event is down to its last seats.
+  /// Un événement à venir en est à ses dernières places.
   lastSeats,
 
-  /// An event starts within [OrganizerAlerts.startingSoonWindow].
+  /// Un événement commence d’ici [OrganizerAlerts.startingSoonWindow].
   startingSoon,
 }
 
@@ -40,26 +42,27 @@ class OrganizerAlert {
 
   final AlertKind kind;
 
-  /// When it happened — or, for an event-state alert, when the event starts.
+  /// Quand cela s’est produit — ou, pour une alerte d’état d’événement, quand
+  /// l’événement commence.
   final DateTime at;
   final String eventId;
   final String eventTitle;
 
-  /// Set on [AlertKind.booking] and [AlertKind.cancellation].
+  /// Renseigné sur [AlertKind.booking] et [AlertKind.cancellation].
   final String? personName;
 
-  /// Set on event-state alerts.
+  /// Renseigné sur les alertes d’état d’événement.
   final int? seatsLeft;
 }
 
 abstract final class OrganizerAlerts {
-  /// Same threshold as the "dernières places" state of the event detail.
+  /// Le même seuil que l’état « dernières places » de la fiche d’événement.
   static const lastSeatsThreshold = 3;
   static const startingSoonWindow = Duration(hours: 24);
 
-  /// Upcoming events that need a look, soonest first. An event can appear
-  /// twice (starting soon *and* nearly full): those are two different
-  /// reasons to open it.
+  /// Les événements à venir qui méritent un coup d’œil, le plus proche
+  /// d’abord. Un événement peut apparaître deux fois (il commence bientôt *et*
+  /// il est presque plein) : ce sont deux raisons différentes de l’ouvrir.
   static List<OrganizerAlert> watchlist({
     required List<Event> events,
     required DateTime now,
@@ -87,8 +90,8 @@ abstract final class OrganizerAlerts {
     ];
   }
 
-  /// Bookings and cancellations, most recent first. A cancelled reservation
-  /// yields both events — the booking did happen.
+  /// Réservations et annulations, les plus récentes d’abord. Une réservation
+  /// annulée produit les deux entrées — la réservation a bien eu lieu.
   static List<OrganizerAlert> activity({
     required List<Reservation> reservations,
     int limit = 60,
@@ -136,11 +139,11 @@ class OrganizerStats {
     this.revenue = const {},
   });
 
-  /// Computes the statistics at [now].
+  /// Calcule les statistiques à [now].
   ///
-  /// Seat counts come from the events (`capacity - availablePlaces`, the
-  /// transactional source of truth); the timeline and cancellations come
-  /// from the reservation documents.
+  /// Les nombres de places viennent des événements (`capacity -
+  /// availablePlaces`, la source de vérité transactionnelle) ; la chronologie
+  /// et les annulations viennent des documents de réservation.
   factory OrganizerStats.compute({
     required List<Event> events,
     required List<Reservation> reservations,
@@ -160,8 +163,8 @@ class OrganizerStats {
       if (offset >= 0 && offset < window) daily[window - 1 - offset]++;
     }
 
-    // Money actually collected, per currency: active paid tickets only — a
-    // refunded ticket is cancelled and does not count.
+    // L’argent réellement encaissé, par devise : uniquement les billets
+    // payants actifs — un billet remboursé est annulé et ne compte pas.
     final revenue = <String, int>{};
     for (final r in reservations.where((r) => r.isActive && r.isPaid)) {
       revenue.update(
@@ -190,25 +193,26 @@ class OrganizerStats {
     );
   }
 
-  /// Length of [dailyBookings], in days.
+  /// Longueur de [dailyBookings], en jours.
   static const window = 14;
 
   final int eventCount;
   final int upcomingCount;
   final int soldOutCount;
 
-  /// Seats taken, across every event.
+  /// Places prises, tous événements confondus.
   final int booked;
   final int capacity;
   final int cancellations;
 
-  /// Bookings per calendar day, oldest first; the last entry is today.
+  /// Réservations par jour calendaire, la plus ancienne d’abord ; la dernière
+  /// entrée, c’est aujourd’hui.
   final List<int> dailyBookings;
 
-  /// Upcoming events, fullest first.
+  /// Les événements à venir, les plus remplis d’abord.
   final List<EventPerformance> ranking;
 
-  /// Amount collected per currency code, minor units (F-11).
+  /// Montant encaissé par code devise, en unités mineures (F-11).
   final Map<String, int> revenue;
 
   double get fillRate => capacity == 0 ? 0 : booked / capacity;
@@ -221,8 +225,9 @@ class OrganizerStats {
   int get bookingsLast7Days =>
       dailyBookings.skip(window - 7).fold(0, (sum, v) => sum + v);
 
-  /// Calendar day number, immune to daylight-saving shifts (a local
-  /// `difference().inDays` across a DST change is off by one).
+  /// Numéro de jour calendaire, insensible aux changements d’heure (un
+  /// `difference().inDays` local à cheval sur un passage heure d’été / heure
+  /// d’hiver est faux d’un jour).
   static int _dayNumber(DateTime d) =>
       DateTime.utc(d.year, d.month, d.day).millisecondsSinceEpoch ~/
       Duration.millisecondsPerDay;

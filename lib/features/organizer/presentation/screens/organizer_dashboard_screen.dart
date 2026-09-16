@@ -16,12 +16,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-/// Organizer dashboard.
+/// Tableau de bord de l'organisateur.
 ///
-/// Opens on numbers, not on a list: three KPI tiles answer "comment vont
-/// mes événements ?" before the organizer has to read a single title. The
-/// list below is then split into upcoming and past, because the actions
-/// available on a finished event are not the same.
+/// S'ouvre sur des chiffres, non sur une liste : trois tuiles répondent à
+/// « comment vont mes événements ? » avant même qu'il ait eu à lire un seul
+/// titre. La liste, en dessous, sépare ensuite les événements à venir des
+/// passés, parce que les actions possibles sur un événement terminé ne sont
+/// pas les mêmes.
 class OrganizerDashboardScreen extends ConsumerStatefulWidget {
   const OrganizerDashboardScreen({super.key});
 
@@ -35,8 +36,8 @@ class _OrganizerDashboardScreenState
   bool _showPast = false;
 
   Future<void> _delete(Event event) async {
-    // Checked before asking for confirmation: confirming an action that the
-    // server will refuse is worse than not offering it.
+    // Vérifié avant même de demander confirmation : faire confirmer une
+    // action que le serveur refusera est pire que de ne pas la proposer.
     if (event.reservedCount > 0) {
       context.showToast(
         AppStrings.cannotDeleteWithReservations(event.reservedCount),
@@ -77,6 +78,18 @@ class _OrganizerDashboardScreenState
 
     return AppScaffold(
       constrainWidth: false,
+      appBar: AppTopBar.root(
+        title: AppStrings.myEvents,
+        subtitle: AppStrings.myEventsSubtitle,
+        actions: [
+          GradientFab(
+            icon: Icons.add_rounded,
+            size: 40,
+            tooltip: AppStrings.createEvent,
+            onPressed: () => context.push(AppRoutes.organizerEventNew),
+          ),
+        ],
+      ),
       body: SafeArea(
         bottom: false,
         child: RefreshIndicator(
@@ -84,20 +97,10 @@ class _OrganizerDashboardScreenState
               ref.invalidate(organizerEventsProvider(user.id)),
           child: CustomScrollView(
             slivers: [
-              SliverToBoxAdapter(
-                child: ScreenHeader(
-                  eyebrow: AppStrings.organizer,
-                  title: AppStrings.myEvents,
-                  subtitle: AppStrings.myEventsSubtitle,
-                  trailing: GradientFab(
-                    icon: Icons.add_rounded,
-                    tooltip: AppStrings.createEvent,
-                    onPressed: () => context.push(AppRoutes.organizerEventNew),
-                  ),
-                ),
-              ),
-              // Publishing requires a verified email (rules): the reminder
-              // belongs where the organizer is about to publish.
+              const SliverToBoxAdapter(child: SizedBox(height: AppSpacing.sm)),
+              // Publier exige une adresse vérifiée — les règles l'imposent :
+              // le rappel a donc sa place là où l'organisateur s'apprête
+              // justement à publier.
               const SliverToBoxAdapter(
                 child: EmailVerificationBanner(
                   padding: EdgeInsets.fromLTRB(
@@ -163,7 +166,7 @@ class _OrganizerDashboardScreenState
   }
 }
 
-/// "2 invitations à co-organiser" — a ruled strip, not a card.
+/// « 2 invitations à co-organiser » — un bandeau réglé, pas une carte.
 class _InvitationsBanner extends StatelessWidget {
   const _InvitationsBanner({required this.count});
 

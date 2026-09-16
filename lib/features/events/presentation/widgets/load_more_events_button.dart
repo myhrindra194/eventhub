@@ -5,11 +5,12 @@ import 'package:eventhub/features/events/application/event_providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-/// "Charger plus d'événements" at the end of a catalogue list.
+/// « Charger plus d’événements », en bas d’une liste du catalogue.
 ///
-/// An explicit button rather than infinite scroll: filters and search run
-/// over what is loaded, so the user should know when more exists and choose
-/// to fetch it. Renders nothing when there is nothing more.
+/// Un bouton explicite plutôt qu’un défilement infini : les filtres et la
+/// recherche portent sur ce qui est déjà chargé, l’utilisateur doit donc
+/// savoir qu’il existe une suite et choisir de la charger. N’affiche rien
+/// quand il n’y a plus rien à charger.
 class LoadMoreEventsButton extends ConsumerWidget {
   const LoadMoreEventsButton({super.key});
 
@@ -26,7 +27,6 @@ class LoadMoreEventsButton extends ConsumerWidget {
       child: AppButton.secondary(
         label: AppStrings.loadMoreEvents,
         isLoading: loading,
-        elevated: false,
         onPressed: () =>
             ref.read(catalogueExtraPagesProvider.notifier).loadMore(),
       ),

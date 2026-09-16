@@ -4,8 +4,8 @@ import 'package:json_annotation/json_annotation.dart';
 
 part 'review_dto.g.dart';
 
-/// Document `reviews/{eventId}_{authorId}`; the id is read from the
-/// snapshot. `authorId` becomes `''` when the account is deleted.
+/// Document `reviews/{eventId}_{authorId}` ; l’id est lu depuis le snapshot.
+/// `authorId` devient `''` lorsque le compte est supprimé.
 @JsonSerializable(createToJson: false)
 class ReviewDto {
   const ReviewDto({
@@ -31,7 +31,8 @@ class ReviewDto {
   final String comment;
   final bool hidden;
 
-  /// Server time: `null` in the author's pending local snapshot.
+  /// Heure du serveur : `null` dans l’instantané local en attente de
+  /// l’auteur.
   @NullableTimestampConverter()
   final DateTime? createdAt;
   @NullableTimestampConverter()
@@ -45,8 +46,8 @@ class ReviewDto {
     authorName: authorName,
     rating: rating,
     comment: comment,
-    // A review just written shows at once, dated now, until the server
-    // time arrives a moment later.
+    // Un avis tout juste écrit s’affiche immédiatement, daté de maintenant,
+    // jusqu’à ce que l’heure du serveur arrive un instant plus tard.
     createdAt: createdAt ?? DateTime.now(),
     updatedAt: updatedAt,
     hidden: hidden,

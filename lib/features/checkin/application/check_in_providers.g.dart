@@ -133,18 +133,18 @@ final class EventCheckInsFamily extends $Family
   String toString() => r'eventCheckInsProvider';
 }
 
-/// One scan at the door: the local precheck (CheckInPolicy), then the
-/// transaction's verdict.
+/// Un scan à l’entrée : le pré-contrôle local (CheckInPolicy), puis le
+/// verdict de la transaction.
 
 @ProviderFor(CheckInController)
 final checkInControllerProvider = CheckInControllerProvider._();
 
-/// One scan at the door: the local precheck (CheckInPolicy), then the
-/// transaction's verdict.
+/// Un scan à l’entrée : le pré-contrôle local (CheckInPolicy), puis le
+/// verdict de la transaction.
 final class CheckInControllerProvider
     extends $AsyncNotifierProvider<CheckInController, void> {
-  /// One scan at the door: the local precheck (CheckInPolicy), then the
-  /// transaction's verdict.
+  /// Un scan à l’entrée : le pré-contrôle local (CheckInPolicy), puis le
+  /// verdict de la transaction.
   CheckInControllerProvider._()
     : super(
         from: null,
@@ -166,8 +166,8 @@ final class CheckInControllerProvider
 
 String _$checkInControllerHash() => r'7f4533f56cdb320f5f71b16bb9e69dd3006d8445';
 
-/// One scan at the door: the local precheck (CheckInPolicy), then the
-/// transaction's verdict.
+/// Un scan à l’entrée : le pré-contrôle local (CheckInPolicy), puis le
+/// verdict de la transaction.
 
 abstract class _$CheckInController extends $AsyncNotifier<void> {
   FutureOr<void> build();

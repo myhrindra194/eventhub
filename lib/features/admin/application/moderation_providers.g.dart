@@ -55,7 +55,7 @@ final class ModerationRepositoryProvider
 }
 
 String _$moderationRepositoryHash() =>
-    r'b869454e5ed9b3a438dc37bbef681aa24c25b614';
+    r'83631893d377e57dafc178414c74afb4fc00db37';
 
 @ProviderFor(moderationQueue)
 final moderationQueueProvider = ModerationQueueFamily._();
@@ -134,17 +134,17 @@ final class ModerationQueueFamily extends $Family
   String toString() => r'moderationQueueProvider';
 }
 
-/// Badge on the "Modération" menu entry.
+/// Pastille sur l’entrée de menu « Modération ».
 
 @ProviderFor(openModerationCount)
 final openModerationCountProvider = OpenModerationCountProvider._();
 
-/// Badge on the "Modération" menu entry.
+/// Pastille sur l’entrée de menu « Modération ».
 
 final class OpenModerationCountProvider
     extends $FunctionalProvider<int, int, int>
     with $Provider<int> {
-  /// Badge on the "Modération" menu entry.
+  /// Pastille sur l’entrée de menu « Modération ».
   OpenModerationCountProvider._()
     : super(
         from: null,
@@ -486,20 +486,23 @@ final class ReportedAccountFamily extends $Family
   String toString() => r'reportedAccountProvider';
 }
 
-/// A reported review, hidden or not (RLS shows hidden reviews to
-/// administrators). [reviewId] is the uuid carried by the queue entry.
+/// Un avis signalé, masqué ou non (les règles montrent un avis masqué à son
+/// auteur et aux administrateurs). [reviewId] est l’identifiant que porte
+/// l’entrée.
 
 @ProviderFor(moderatedReview)
 final moderatedReviewProvider = ModeratedReviewFamily._();
 
-/// A reported review, hidden or not (RLS shows hidden reviews to
-/// administrators). [reviewId] is the uuid carried by the queue entry.
+/// Un avis signalé, masqué ou non (les règles montrent un avis masqué à son
+/// auteur et aux administrateurs). [reviewId] est l’identifiant que porte
+/// l’entrée.
 
 final class ModeratedReviewProvider
     extends $FunctionalProvider<AsyncValue<Review?>, Review?, Stream<Review?>>
     with $FutureModifier<Review?>, $StreamProvider<Review?> {
-  /// A reported review, hidden or not (RLS shows hidden reviews to
-  /// administrators). [reviewId] is the uuid carried by the queue entry.
+  /// Un avis signalé, masqué ou non (les règles montrent un avis masqué à son
+  /// auteur et aux administrateurs). [reviewId] est l’identifiant que porte
+  /// l’entrée.
   ModeratedReviewProvider._({
     required ModeratedReviewFamily super.from,
     required String super.argument,
@@ -545,8 +548,9 @@ final class ModeratedReviewProvider
 
 String _$moderatedReviewHash() => r'de3add5458939245e05a94397d55c703461a7157';
 
-/// A reported review, hidden or not (RLS shows hidden reviews to
-/// administrators). [reviewId] is the uuid carried by the queue entry.
+/// Un avis signalé, masqué ou non (les règles montrent un avis masqué à son
+/// auteur et aux administrateurs). [reviewId] est l’identifiant que porte
+/// l’entrée.
 
 final class ModeratedReviewFamily extends $Family
     with $FunctionalFamilyOverride<Stream<Review?>, String> {
@@ -559,8 +563,9 @@ final class ModeratedReviewFamily extends $Family
         isAutoDispose: true,
       );
 
-  /// A reported review, hidden or not (RLS shows hidden reviews to
-  /// administrators). [reviewId] is the uuid carried by the queue entry.
+  /// Un avis signalé, masqué ou non (les règles montrent un avis masqué à son
+  /// auteur et aux administrateurs). [reviewId] est l’identifiant que porte
+  /// l’entrée.
 
   ModeratedReviewProvider call(String reviewId) =>
       ModeratedReviewProvider._(argument: reviewId, from: this);
@@ -635,7 +640,7 @@ final class ModerationControllerProvider
 }
 
 String _$moderationControllerHash() =>
-    r'2b8d257e069e0516bef2b40f69a35ef0c7368bc7';
+    r'0f8fce8a528b364d08404c25bf08ac35f3d0af96';
 
 abstract class _$ModerationController extends $AsyncNotifier<void> {
   FutureOr<void> build();

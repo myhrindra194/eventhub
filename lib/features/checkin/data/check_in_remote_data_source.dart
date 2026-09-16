@@ -17,9 +17,9 @@ class CheckInRemoteDataSource {
       .doc(eventId)
       .collection(Collections.checkins);
 
-  /// Feeds the live "12 / 80" counter and "Entré · HH:mm" on the guest list.
-  /// A scan just made on this device has no server time yet: it counts
-  /// immediately, at the local time.
+  /// Alimente le compteur « 12 / 80 » en direct et « Entré · HH:mm » sur la
+  /// liste des invités. Un scan qui vient d’être fait sur cet appareil n’a
+  /// pas encore d’heure serveur : il compte immédiatement, à l’heure locale.
   Stream<Map<String, DateTime>> watchCheckIns(String eventId) =>
       _checkins(eventId)
           .snapshots()
@@ -35,14 +35,16 @@ class CheckInRemoteDataSource {
           )
           .resilient('checkins:$eventId');
 
-  /// One transaction: read the ticket and its check-in entry, decide with
-  /// [CheckInPolicy.judge], create the entry only when admitting.
+  /// Une seule transaction : lire le billet et son entrée de check-in,
+  /// décider avec [CheckInPolicy.judge], ne créer l’entrée qu’en cas
+  /// d’admission.
   ///
-  /// A reservation id that does not exist cannot be read by the team (the
-  /// rules only let a person probe their own missing seat), so the read is
-  /// refused with `permission-denied`. `CheckInPolicy.precheck` has already
-  /// proven the id belongs to this event and the screen is reserved to its
-  /// team, so that refusal means an unknown ticket.
+  /// Un id de réservation inexistant ne peut pas être lu par l’équipe (les
+  /// règles ne laissent une personne sonder que sa propre place absente) :
+  /// la lecture est donc refusée par un `permission-denied`.
+  /// `CheckInPolicy.precheck` a déjà prouvé que l’id appartient à cet
+  /// événement et l’écran est réservé à son équipe, si bien que ce refus
+  /// signifie un billet inconnu.
   Future<CheckInVerdict> checkIn({
     required String eventId,
     required String reservationId,

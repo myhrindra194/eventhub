@@ -18,11 +18,11 @@ import 'package:share_plus/share_plus.dart';
 
 /// Guest list for one event.
 ///
-/// The search box is not a nice-to-have: on the door, an organizer is
-/// looking for *one* name in a list while someone waits in front of them.
-/// Filtering happens on name and email, both of which a participant can
-/// quote from memory. Each row shows whether the person has already been
-/// scanned in, and the scanner is one tap away in the app bar.
+/// Le champ de recherche n'est pas un agrément : à la porte, l'organisateur
+/// cherche *un* nom dans une liste pendant que quelqu'un attend devant lui.
+/// Le filtre porte sur le nom et sur l'e-mail, deux informations qu'un
+/// participant récite de mémoire. Chaque ligne indique si la personne a déjà
+/// été scannée, et le scanner est à un appui dans la barre.
 class EventParticipantsScreen extends ConsumerStatefulWidget {
   const EventParticipantsScreen({required this.eventId, super.key});
 
@@ -44,9 +44,9 @@ class _EventParticipantsScreenState
     super.dispose();
   }
 
-  /// The whole list, not the filtered view: an export that silently drops
-  /// the people hidden by a search query would be a nasty surprise at the
-  /// door.
+  /// La liste entière, et non la vue filtrée : un export qui laisserait
+  /// silencieusement de côté les personnes masquées par une recherche serait
+  /// une très mauvaise surprise à la porte.
   Future<void> _copy(List<Reservation> guests) async {
     await Clipboard.setData(ClipboardData(text: GuestListCsv.build(guests)));
     if (!mounted) return;
@@ -56,9 +56,10 @@ class _EventParticipantsScreenState
     );
   }
 
-  /// A real `.csv` file through the system share sheet (F-15): straight to
-  /// Drive, an email or a spreadsheet app. Where files cannot be shared (some
-  /// browsers, desktop), falls back to the clipboard rather than failing.
+  /// Un vrai fichier `.csv` passé à la feuille de partage du système (F-15) :
+  /// directement vers Drive, un e-mail ou un tableur. Là où le partage de
+  /// fichier n'existe pas — certains navigateurs, le bureau — on retombe sur
+  /// le presse-papiers plutôt que d'échouer.
   Future<void> _shareFile(List<Reservation> guests, String? title) async {
     final name = GuestListCsv.fileNameFor(title ?? '');
     final box = context.findRenderObject() as RenderBox?;
@@ -116,7 +117,6 @@ class _EventParticipantsScreenState
               child: AppButton.secondary(
                 label: AppStrings.exportCsvFile,
                 size: AppButtonSize.medium,
-                elevated: false,
                 onPressed: guests.isEmpty
                     ? null
                     : () => _shareFile(guests, event?.title),
@@ -132,8 +132,13 @@ class _EventParticipantsScreenState
           ],
         ),
       ),
-      appBar: AppBar(
-        title: const Text(AppStrings.participants),
+      appBar: AppTopBar.subPage(
+        title: AppStrings.participants,
+        // Le titre de l'événement tient lieu de ligne de contexte : c'est
+        // l'information qui répond à « les participants de quoi ? », et elle
+        // n'a pas besoin d'une bande supplémentaire sous la barre.
+        subtitle: event?.title,
+        onBack: () => context.pop(),
         actions: [
           IconButton(
             tooltip: AppStrings.teamTitle,
@@ -148,28 +153,7 @@ class _EventParticipantsScreenState
               AppRoutes.organizerEventCheckInPath(widget.eventId),
             ),
           ),
-          const SizedBox(width: AppSpacing.xs),
         ],
-        bottom: event == null
-            ? null
-            : PreferredSize(
-                preferredSize: const Size.fromHeight(24),
-                child: Padding(
-                  padding: const EdgeInsets.only(
-                    left: AppSpacing.gutter,
-                    bottom: AppSpacing.md,
-                  ),
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      event.title,
-                      style: text.bodySmall,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ),
-              ),
       ),
       body: Column(
         children: [
@@ -324,7 +308,7 @@ class _ParticipantRow extends StatelessWidget {
   final Reservation reservation;
   final int index;
 
-  /// Set once the ticket has been scanned at the door.
+  /// Renseigné une fois le billet scanné à l'entrée.
   final DateTime? checkedInAt;
 
   @override
@@ -335,7 +319,6 @@ class _ParticipantRow extends StatelessWidget {
 
     return AppSurface(
       padding: const EdgeInsets.all(AppSpacing.md),
-      elevation: SurfaceElevation.flat,
       borderColor: scanned ? t.success.border : null,
       child: Row(
         children: [

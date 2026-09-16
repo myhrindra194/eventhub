@@ -199,16 +199,19 @@ final class MyReviewFamily extends $Family
   String toString() => r'myReviewProvider';
 }
 
-/// Whether the signed-in user may review [eventId] now.
+/// Indique si l’utilisateur connecté peut donner un avis sur [eventId]
+/// maintenant.
 
 @ProviderFor(canReviewEvent)
 final canReviewEventProvider = CanReviewEventFamily._();
 
-/// Whether the signed-in user may review [eventId] now.
+/// Indique si l’utilisateur connecté peut donner un avis sur [eventId]
+/// maintenant.
 
 final class CanReviewEventProvider extends $FunctionalProvider<bool, bool, bool>
     with $Provider<bool> {
-  /// Whether the signed-in user may review [eventId] now.
+  /// Indique si l’utilisateur connecté peut donner un avis sur [eventId]
+  /// maintenant.
   CanReviewEventProvider._({
     required CanReviewEventFamily super.from,
     required String super.argument,
@@ -262,7 +265,8 @@ final class CanReviewEventProvider extends $FunctionalProvider<bool, bool, bool>
 
 String _$canReviewEventHash() => r'6b92f70cc8b01379faf3c8adaac8594615dc6f23';
 
-/// Whether the signed-in user may review [eventId] now.
+/// Indique si l’utilisateur connecté peut donner un avis sur [eventId]
+/// maintenant.
 
 final class CanReviewEventFamily extends $Family
     with $FunctionalFamilyOverride<bool, String> {
@@ -275,7 +279,8 @@ final class CanReviewEventFamily extends $Family
         isAutoDispose: true,
       );
 
-  /// Whether the signed-in user may review [eventId] now.
+  /// Indique si l’utilisateur connecté peut donner un avis sur [eventId]
+  /// maintenant.
 
   CanReviewEventProvider call(String eventId) =>
       CanReviewEventProvider._(argument: eventId, from: this);

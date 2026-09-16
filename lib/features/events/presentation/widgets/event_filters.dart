@@ -7,8 +7,9 @@ import 'package:eventhub/features/events/presentation/widgets/event_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-/// Clears every filter in one call — the escape hatch every empty result
-/// offers, so a user is never stuck staring at a list they filtered away.
+/// Remet tous les filtres à zéro en un appel — l’issue de secours que tout
+/// résultat vide propose, pour qu’un utilisateur ne reste jamais bloqué
+/// devant une liste qu’il a lui-même filtrée.
 extension EventFilterReset on WidgetRef {
   void resetEventFilters() {
     read(eventSearchQueryProvider.notifier).clear();
@@ -19,11 +20,11 @@ extension EventFilterReset on WidgetRef {
   }
 }
 
-/// Search input bound to `eventSearchQueryProvider`.
+/// Champ de recherche relié à `eventSearchQueryProvider`.
 ///
-/// In [readOnly] mode it is a decoy that navigates to the search tab: the
-/// home screen keeps the affordance without paying for a live query on
-/// every keystroke of the feed.
+/// En mode [readOnly], c’est un leurre qui navigue vers l’onglet Recherche :
+/// l’accueil garde l’affordance sans payer une requête en direct à chaque
+/// frappe sur le fil.
 class EventSearchField extends ConsumerStatefulWidget {
   const EventSearchField({
     super.key,
@@ -56,8 +57,8 @@ class _EventSearchFieldState extends ConsumerState<EventSearchField> {
   @override
   Widget build(BuildContext context) {
     final query = ref.watch(eventSearchQueryProvider);
-    // Keep the field in sync when the query is cleared from elsewhere
-    // (empty-state button, filter sheet reset).
+    // Garde le champ synchronisé quand la requête est vidée depuis ailleurs
+    // (bouton de l’état vide, réinitialisation de la feuille de filtres).
     if (_controller.text != query) {
       _controller.value = TextEditingValue(
         text: query,
@@ -81,11 +82,55 @@ class _EventSearchFieldState extends ConsumerState<EventSearchField> {
   }
 }
 
-/// Horizontal category rail.
+/// Recherche et filtres sur **une seule ligne**.
 ///
-/// A selected pill takes the category's own hue rather than the brand
-/// colour: after two uses, the colour *is* the category, and users start
-/// aiming at the colour instead of reading the label.
+/// Les deux commandes répondent à la même question — « réduire ce que je
+/// vois » — et les séparer sur deux lignes coûtait une bande entière de
+/// hauteur sur un téléphone, tout en laissant croire que le filtre agissait
+/// sur autre chose que la recherche. C'est la disposition qu'ont retenue
+/// Eventbrite comme Airbnb.
+class EventSearchBar extends StatelessWidget {
+  const EventSearchBar({
+    super.key,
+    this.hint = AppStrings.searchEvents,
+    this.readOnly = false,
+    this.autofocus = false,
+    this.onTap,
+  });
+
+  final String hint;
+
+  /// Champ leurre de l'accueil, qui ouvre l'onglet Recherche au lieu de
+  /// lancer une requête à chaque frappe.
+  final bool readOnly;
+  final bool autofocus;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: EventSearchField(
+            hint: hint,
+            readOnly: readOnly,
+            autofocus: autofocus,
+            onTap: onTap,
+          ),
+        ),
+        const SizedBox(width: AppSpacing.sm),
+        const FilterButton(compact: true),
+      ],
+    );
+  }
+}
+
+/// Rail horizontal de catégories.
+///
+/// Une pastille sélectionnée prend la teinte propre à sa catégorie plutôt
+/// que la couleur de marque : au bout de deux usages, la couleur *est* la
+/// catégorie, et les utilisateurs visent la couleur au lieu de lire le
+/// libellé.
 class CategoryFilterRail extends ConsumerWidget {
   const CategoryFilterRail({super.key, this.padding});
 
@@ -150,18 +195,11 @@ class _Pill extends StatelessWidget {
       duration: AppMotion.short,
       curve: AppMotion.standard,
       decoration: BoxDecoration(
+        // Sélectionnée, la pastille prend la teinte pleine de sa catégorie :
+        // le contraste suffit à la désigner, sans halo porté.
         color: selected ? color : t.surface,
         borderRadius: AppRadius.brButton,
         border: Border.all(color: selected ? color : t.border),
-        boxShadow: selected
-            ? [
-                BoxShadow(
-                  color: color.withValues(alpha: 0.3),
-                  blurRadius: 14,
-                  offset: const Offset(0, 5),
-                ),
-              ]
-            : null,
       ),
       child: Material(
         color: Colors.transparent,
@@ -197,16 +235,23 @@ class _Pill extends StatelessWidget {
   }
 }
 
-/// Button opening the advanced filter sheet, badged with the number of
-/// active filters.
+/// Ouvre la feuille de filtres avancés, avec le nombre de filtres actifs.
+///
+/// En mode [compact], c'est un carré de la hauteur exacte du champ de
+/// recherche, à côté duquel il se pose ; le compteur devient une pastille sur
+/// l'icône. C'est une commande à icône seule, comme une action de barre — pas
+/// un bouton à libellé, qui lui reste toujours en texte seul.
 class FilterButton extends ConsumerWidget {
-  const FilterButton({super.key});
+  const FilterButton({super.key, this.compact = false});
+
+  final bool compact;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final count = ref.watch(activeFilterCountProvider);
     final t = context.tokens;
     final active = count > 0;
+    final foreground = active ? t.textOnBrand : t.textSecondary;
 
     return Material(
       color: active ? t.brand : t.surface,
@@ -215,60 +260,90 @@ class FilterButton extends ConsumerWidget {
       child: InkWell(
         onTap: () => showEventFilterSheet(context),
         child: Container(
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.md,
-            vertical: AppSpacing.sm,
-          ),
+          width: compact ? AppSizes.inputHeight : null,
+          height: compact ? AppSizes.inputHeight : null,
+          alignment: compact ? Alignment.center : null,
+          padding: compact
+              ? null
+              : const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.md,
+                  vertical: AppSpacing.sm,
+                ),
           decoration: BoxDecoration(
             borderRadius: AppRadius.brSm,
             border: Border.all(color: active ? t.brand : t.border),
           ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                Icons.tune_rounded,
-                size: 16,
-                color: active ? t.textOnBrand : t.textSecondary,
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              Text(
-                AppStrings.filters,
-                style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                  color: active ? t.textOnBrand : t.textPrimary,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              if (active) ...[
-                const SizedBox(width: AppSpacing.sm),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.25),
-                    borderRadius: AppRadius.brButton,
-                  ),
-                  child: Text(
-                    '$count',
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: t.textOnBrand,
-                      letterSpacing: 0,
+          child: compact
+              ? Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    Icon(Icons.tune_rounded, size: 20, color: foreground),
+                    if (active)
+                      Positioned(
+                        top: -6,
+                        right: -8,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 5),
+                          decoration: BoxDecoration(
+                            color: t.accent,
+                            borderRadius: AppRadius.brButton,
+                          ),
+                          child: Text(
+                            '$count',
+                            style: Theme.of(context).textTheme.labelSmall
+                                ?.copyWith(
+                                  color: Colors.white,
+                                  letterSpacing: 0,
+                                ),
+                          ),
+                        ),
+                      ),
+                  ],
+                )
+              : Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.tune_rounded, size: 16, color: foreground),
+                    const SizedBox(width: AppSpacing.sm),
+                    Text(
+                      AppStrings.filters,
+                      style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                        color: active ? t.textOnBrand : t.textPrimary,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
-                  ),
+                    if (active) ...[
+                      const SizedBox(width: AppSpacing.sm),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.25),
+                          borderRadius: AppRadius.brButton,
+                        ),
+                        child: Text(
+                          '$count',
+                          style: Theme.of(context).textTheme.labelSmall
+                              ?.copyWith(
+                                color: t.textOnBrand,
+                                letterSpacing: 0,
+                              ),
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
-              ],
-            ],
-          ),
         ),
       ),
     );
   }
 }
 
-/// Advanced filters: period, sort order, availability.
+/// Filtres avancés : période, tri, disponibilité.
 ///
-/// Applied **live** while the sheet is open, so the result count updates as
-/// the user tweaks. There is no "Apply" that could be forgotten — the
-/// primary button simply closes the sheet.
+/// Appliqués **en direct** tant que la feuille est ouverte : le nombre de
+/// résultats se met à jour au fur et à mesure des réglages. Il n’y a pas
+/// d’« Appliquer » qu’on pourrait oublier — le bouton principal ne fait que
+/// refermer la feuille.
 Future<void> showEventFilterSheet(BuildContext context) => showAppSheet<void>(
   context: context,
   builder: (context) => const _FilterSheet(),
@@ -341,7 +416,6 @@ class _FilterSheet extends ConsumerWidget {
                 horizontal: AppSpacing.lg,
                 vertical: AppSpacing.sm,
               ),
-              elevation: SurfaceElevation.flat,
               color: t.surfaceSunken,
               child: SwitchListTile.adaptive(
                 contentPadding: EdgeInsets.zero,

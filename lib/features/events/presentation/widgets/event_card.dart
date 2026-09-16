@@ -9,12 +9,13 @@ import 'package:eventhub/features/favorites/presentation/widgets/favorite_button
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-/// Visual identity of a category.
+/// Identité visuelle d’une catégorie.
 ///
-/// Each category owns a hue and a glyph, declared once and reused by the
-/// filter rail, the cards, the detail header and the organizer list. Two
-/// variants per hue keep contrast comparable in both themes — a colour that
-/// pops on white washes out on near-black.
+/// Chaque catégorie possède une teinte et un glyphe, déclarés une fois et
+/// réutilisés par le rail de filtres, les cartes, l’en-tête du détail et la
+/// liste des organisateurs. Deux variantes par teinte gardent un contraste
+/// comparable dans les deux thèmes — une couleur qui claque sur du blanc se
+/// délave sur un fond presque noir.
 extension EventCategoryStyle on EventCategory {
   IconData get icon => switch (this) {
     EventCategory.concert => Icons.graphic_eq_rounded,
@@ -41,12 +42,13 @@ extension EventCategoryStyle on EventCategory {
     return context.tokens.isDark ? dark : light;
   }
 
-  /// Low-alpha version for chip and tile backgrounds.
+  /// Version très transparente, pour les fonds de pastilles et de tuiles.
   Color tint(BuildContext context) =>
       color(context).withValues(alpha: context.tokens.isDark ? 0.18 : 0.12);
 }
 
-/// Small category chip used over imagery and inside rows.
+/// Petite pastille de catégorie, posée sur les images comme à l’intérieur
+/// des lignes.
 class CategoryChip extends StatelessWidget {
   const CategoryChip({
     required this.category,
@@ -92,13 +94,14 @@ class CategoryChip extends StatelessWidget {
   }
 }
 
-/// **Hero card** — the main unit of the feed.
+/// **Carte héros** — l’unité principale du fil.
 ///
-/// Full-bleed artwork with the metadata laid over a scrim, in the order the
-/// eye needs it: date badge (when), category (what kind), title (what),
-/// place and time (where), scarcity meter (should I act now). Everything a
-/// user needs to decide is on the card, so the detail page is a
-/// confirmation step rather than a mandatory detour.
+/// Un visuel pleine largeur, les métadonnées posées par-dessus un voile,
+/// dans l’ordre où l’œil en a besoin : badge de date (quand), catégorie (de
+/// quel genre), titre (quoi), lieu et heure (où), jauge de rareté (dois-je
+/// agir maintenant). Tout ce qu’il faut à l’utilisateur pour décider tient
+/// sur la carte : la page de détail devient une étape de confirmation, pas
+/// un détour obligatoire.
 class EventCard extends StatelessWidget {
   const EventCard({
     required this.event,
@@ -119,7 +122,6 @@ class EventCard extends StatelessWidget {
     final text = Theme.of(context).textTheme;
 
     return AppSurface.bare(
-      elevation: SurfaceElevation.medium,
       borderColor: t.borderSubtle,
       onTap: onTap,
       child: AspectRatio(
@@ -194,8 +196,9 @@ class EventCard extends StatelessWidget {
   }
 }
 
-/// Gap + heart, collapsing entirely when the button renders nothing (not a
-/// participant) so the chip stays flush with the edge.
+/// Espacement + cœur, qui s’efface entièrement quand le bouton n’affiche
+/// rien (utilisateur non participant), pour que la pastille reste collée au
+/// bord.
 class _FavoriteSlot extends ConsumerWidget {
   const _FavoriteSlot({required this.eventId});
 
@@ -203,7 +206,7 @@ class _FavoriteSlot extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Organizers keep every participant right, favorites included.
+    // Les organisateurs gardent tous les droits participant, favoris compris.
     if (ref.watch(currentUserProvider) == null) return const SizedBox.shrink();
     return Padding(
       padding: const EdgeInsets.only(left: AppSpacing.sm),
@@ -243,9 +246,9 @@ class _MetaLine extends StatelessWidget {
   }
 }
 
-/// **Rail card** — a narrow portrait card for horizontal sections
-/// ("Cette semaine", "Ça se remplit vite"). Same language as the hero card,
-/// a third of the surface.
+/// **Carte de rail** — une carte portrait étroite pour les sections
+/// horizontales (« Cette semaine », « Ça se remplit vite »). Le même
+/// langage que la carte héros, sur un tiers de la surface.
 class EventRailCard extends StatelessWidget {
   const EventRailCard({
     required this.event,
@@ -359,8 +362,9 @@ class EventRailCard extends StatelessWidget {
   }
 }
 
-/// **Result row** — dense horizontal layout for search results and any
-/// list where scanning many items beats admiring a few.
+/// **Ligne de résultat** — disposition horizontale dense pour les résultats
+/// de recherche et toute liste où parcourir beaucoup d’éléments prime sur
+/// en admirer quelques-uns.
 class EventResultTile extends StatelessWidget {
   const EventResultTile({required this.event, required this.onTap, super.key});
 
@@ -374,7 +378,6 @@ class EventResultTile extends StatelessWidget {
 
     return AppSurface(
       padding: const EdgeInsets.all(AppSpacing.md),
-      elevation: SurfaceElevation.flat,
       onTap: onTap,
       child: Row(
         children: [
@@ -453,8 +456,8 @@ class EventResultTile extends StatelessWidget {
   }
 }
 
-/// Placeholder matching [EventCard]'s footprint, so the feed does not
-/// reflow when data arrives.
+/// Emplacement réservé à l’empreinte exacte d’[EventCard], pour que le fil
+/// ne se réagence pas à l’arrivée des données.
 class EventCardSkeleton extends StatelessWidget {
   const EventCardSkeleton({super.key, this.aspectRatio = 4 / 3.15});
 

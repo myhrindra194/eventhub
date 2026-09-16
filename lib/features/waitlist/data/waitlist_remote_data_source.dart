@@ -5,9 +5,10 @@ import 'package:eventhub/features/waitlist/domain/waitlist_repository.dart';
 
 /// `events/{eventId}/waitlist/{userId}` {userId, createdAt, notifiedAt?}.
 ///
-/// The document id is the uid: one entry per person without a query, and
-/// the rules find "is this person waiting" with a single `exists()`. The
-/// position is the server clock (`createdAt`), never a client value.
+/// L’id du document est l’uid : une entrée par personne sans requête, et les
+/// règles répondent à « cette personne attend-elle ? » par un unique
+/// `exists()`. La position est donnée par l’horloge du serveur
+/// (`createdAt`), jamais par une valeur du client.
 class WaitlistRemoteDataSource {
   const WaitlistRemoteDataSource(this._db);
 
@@ -25,10 +26,11 @@ class WaitlistRemoteDataSource {
       .distinct()
       .resilient('waitlist:mine:$eventId');
 
-  /// A count aggregate would be exact, but the rules bound every list of a
-  /// queue to 20 documents (the queue must not be scraped for uids), and
-  /// that bound applies to aggregates too. The team's badge therefore reads
-  /// the first 20 entries live and shows "20+" at the cap.
+  /// Un agrégat `count` serait exact, mais les règles bornent toute liste
+  /// d’une file à 20 documents (la file ne doit pas être moissonnée pour ses
+  /// uid), et cette borne vaut aussi pour les agrégats. Le badge de l’équipe
+  /// lit donc les 20 premières entrées en direct et affiche « 20+ » au
+  /// plafond.
   Stream<int> watchLength(String eventId) => _queue(eventId)
       .limit(WaitlistRepository.queueLengthCap)
       .snapshots()
@@ -36,8 +38,9 @@ class WaitlistRemoteDataSource {
       .distinct()
       .resilient('waitlist:$eventId');
 
-  /// Idempotent: a second tap must not turn into an update the rules refuse
-  /// (and would reset nothing anyway — the position is kept).
+  /// Idempotent : un second appui ne doit pas se transformer en une mise à
+  /// jour que les règles refusent (et qui ne réinitialiserait rien de toute
+  /// façon — la position est conservée).
   Future<void> join(String eventId, String userId) async {
     final entry = _queue(eventId).doc(userId);
     if ((await entry.get()).exists) return;

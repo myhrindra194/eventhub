@@ -11,7 +11,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-/// Invitations to co-organize waiting for an answer (F-16).
+/// Invitations à co-organiser en attente de réponse (F-16).
 class StaffInvitationsScreen extends ConsumerWidget {
   const StaffInvitationsScreen({super.key});
 
@@ -51,7 +51,10 @@ class StaffInvitationsScreen extends ConsumerWidget {
 
     return AppScaffold(
       dense: true,
-      appBar: AppBar(title: const Text(AppStrings.invitationsTitle)),
+      appBar: AppTopBar.subPage(
+        title: AppStrings.invitationsTitle,
+        onBack: () => context.pop(),
+      ),
       body: AsyncValueWidget(
         value: invitations,
         onRetry: () => ref.invalidate(myStaffInvitationsProvider),
@@ -102,7 +105,6 @@ class StaffInvitationsScreen extends ConsumerWidget {
                         child: AppButton.secondary(
                           label: AppStrings.decline,
                           size: AppButtonSize.medium,
-                          elevated: false,
                           onPressed: busy
                               ? null
                               : () => _respond(
@@ -118,7 +120,6 @@ class StaffInvitationsScreen extends ConsumerWidget {
                         child: AppButton.primary(
                           label: AppStrings.accept,
                           size: AppButtonSize.medium,
-                          elevated: false,
                           onPressed: busy
                               ? null
                               : () => _respond(

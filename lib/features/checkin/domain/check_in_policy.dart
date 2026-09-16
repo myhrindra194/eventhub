@@ -1,38 +1,38 @@
 import 'package:eventhub/features/checkin/domain/ticket_payload.dart';
 import 'package:eventhub/features/reservations/domain/entities/reservation.dart';
 
-/// Outcome of scanning one ticket at the door, most severe first.
+/// Résultat du scan d’un billet à l’entrée, du plus grave au moins grave.
 enum CheckInStatus {
-  /// No reservation behind this QR.
+  /// Aucune réservation derrière ce QR.
   notFound,
 
-  /// A real ticket, for another event.
+  /// Un vrai billet, mais pour un autre événement.
   wrongEvent,
 
-  /// The short code does not match the reservation id it came with: the QR
-  /// was tampered with.
+  /// Le code court ne correspond pas à l’id de réservation qui
+  /// l’accompagne : le QR a été trafiqué.
   invalidCode,
 
-  /// A paid seat still on hold (F-11). Never produced without a payment
-  /// server, kept so the door is ready for it.
+  /// Une place payante encore retenue (F-11). Jamais produit sans serveur
+  /// de paiement, conservé pour que l’entrée y soit prête.
   unpaid,
 
-  /// The participant cancelled: the seat was released.
+  /// Le participant a annulé : la place a été libérée.
   cancelled,
 
-  /// Valid ticket, already used — the most likely fraud at a door (a
-  /// screenshot shared with a friend).
+  /// Billet valide, déjà utilisé — la fraude la plus probable à une entrée
+  /// (une capture d’écran partagée avec un ami).
   alreadyCheckedIn,
 
-  /// Let them in.
+  /// On laisse entrer.
   admitted,
 }
 
-/// The door's answer, and what it can say about the ticket holder.
+/// La réponse de l’entrée, et ce qu’elle peut dire du titulaire du billet.
 ///
-/// The holder fields are only filled once the ticket is known to belong to
-/// the scanned event: a volunteer never learns anything about another
-/// event's guests.
+/// Les champs du titulaire ne sont renseignés qu’une fois établi que le
+/// billet appartient à l’événement scanné : un bénévole n’apprend jamais
+/// rien sur les invités d’un autre événement.
 class CheckInVerdict {
   const CheckInVerdict(
     this.status, {
@@ -47,39 +47,43 @@ class CheckInVerdict {
   final String? holderName;
   final String? tierName;
 
-  /// When the ticket was scanned: now for [CheckInStatus.admitted], the
-  /// first time for [CheckInStatus.alreadyCheckedIn].
+  /// Quand le billet a été scanné : maintenant pour
+  /// [CheckInStatus.admitted], la première fois pour
+  /// [CheckInStatus.alreadyCheckedIn].
   final DateTime? checkedInAt;
 
   bool get isAdmitted => status == CheckInStatus.admitted;
 
-  /// What the ticket gives access to, as printed on it.
+  /// Ce à quoi le billet donne accès, tel qu’il est imprimé dessus.
   String get accessLabel =>
       (tierName?.isNotEmpty ?? false) ? tierName! : 'Accès général';
 }
 
-/// What the door decides, in two pure steps.
+/// Ce que l’entrée décide, en deux étapes pures.
 ///
-/// Admission itself is recorded by a Firestore transaction that reads the
-/// reservation and `events/{id}/checkins/{reservationId}` and creates the
-/// latter only if it is absent. The check-in document is append-only in the
-/// rules, so two doors scanning one ticket at the same instant never both
-/// admit it: the second transaction retries, finds the entry and answers
+/// L’admission elle-même est enregistrée par une transaction Firestore qui
+/// lit la réservation et `events/{id}/checkins/{reservationId}`, et ne crée
+/// ce dernier que s’il est absent. Le document de check-in est en ajout seul
+/// dans les règles : deux entrées qui scannent le même billet au même
+/// instant ne l’admettent donc jamais toutes les deux, la seconde
+/// transaction rejoue, trouve l’entrée et répond
 /// [CheckInStatus.alreadyCheckedIn].
 abstract final class CheckInPolicy {
-  /// `<eventId>_<userId>` (see `DocIds.reservation`): Firestore auto ids and
-  /// Firebase Auth uids are both `[A-Za-z0-9]`.
+  /// `<eventId>_<userId>` (voir `DocIds.reservation`) : les ids automatiques
+  /// de Firestore et les uid Firebase Auth sont tous deux `[A-Za-z0-9]`.
   static final _reservationId = RegExp(r'^[A-Za-z0-9]+_[A-Za-z0-9]+$');
 
-  /// A verdict the scanner can give without the server, or `null` when the
-  /// ticket must be checked there.
+  /// Un verdict que le scanner peut rendre sans le serveur, ou `null`
+  /// lorsque le billet doit y être vérifié.
   ///
-  /// * an id that cannot be a reservation id is no ticket;
-  /// * the short code is derived from the id, so a QR whose code does not
-  ///   match its own id is forged — no need to reveal whether the id exists;
-  /// * the id names its event: a ticket for another event is refused here,
-  ///   which also matters because the rules would not even let this team
-  ///   read another event's reservation.
+  /// * un id qui ne peut pas être un id de réservation n’est pas un billet ;
+  /// * le code court est dérivé de l’id : un QR dont le code ne correspond
+  ///   pas à son propre id est donc forgé — inutile de révéler si l’id
+  ///   existe ;
+  /// * l’id nomme son événement : un billet pour un autre événement est
+  ///   refusé ici, ce qui importe d’autant plus que les règles ne
+  ///   laisseraient même pas cette équipe lire la réservation d’un autre
+  ///   événement.
   static CheckInVerdict? precheck({
     required String eventId,
     required String reservationId,
@@ -108,9 +112,10 @@ abstract final class CheckInPolicy {
     return null;
   }
 
-  /// The verdict on what the check-in transaction read: the [reservation]
-  /// (`null` when it does not exist) and whether a check-in entry already
-  /// exists ([alreadyScanned], first scanned at [scannedAt]).
+  /// Le verdict sur ce que la transaction de check-in a lu : la
+  /// [reservation] (`null` quand elle n’existe pas) et l’existence
+  /// éventuelle d’une entrée de check-in ([alreadyScanned], premier scan à
+  /// [scannedAt]).
   static CheckInVerdict judge({
     required String eventId,
     required String reservationId,

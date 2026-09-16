@@ -8,8 +8,8 @@ import 'package:eventhub/features/events/domain/entities/event.dart';
 import 'package:eventhub/features/events/domain/entities/event_draft.dart';
 import 'package:eventhub/features/events/domain/entities/event_tier.dart';
 
-/// What an edit writes, decided from the event as read inside the
-/// transaction.
+/// Ce qu’une modification écrit, décidé à partir de l’événement tel qu’il
+/// est lu dans la transaction.
 class EventEdit {
   const EventEdit({
     required this.draft,
@@ -18,34 +18,36 @@ class EventEdit {
     required this.tiers,
   });
 
-  /// Validated draft.
+  /// Brouillon validé.
   final EventDraft draft;
   final int capacity;
   final int availablePlaces;
   final List<EventTier> tiers;
 }
 
-/// Decides an edit from the fresh event: a [Failure] to refuse it, an
-/// [EventEdit] to write.
+/// Décide d’une modification à partir de l’événement frais : une [Failure]
+/// pour la refuser, un [EventEdit] à écrire.
 typedef EventEditDecision =
     ({Failure? failure, EventEdit? edit}) Function(Event current);
 
-/// Cloud Firestore access for `events/{eventId}`.
+/// Accès Cloud Firestore à `events/{eventId}`.
 ///
-/// There is no server code on the Spark plan: every write here is shaped
-/// exactly as `firebase/firestore.rules` expects (see
-/// `firebase/tests/events.rules.test.js`) — the event and the organizer's
-/// public counter move in one batch, and an edit recomputes the seat counter
-/// from the document read in the same transaction. SDK exceptions pass
-/// through for `ErrorMapper`.
+/// Il n’y a pas de code serveur sur le plan Spark : chaque écriture est ici
+/// façonnée exactement comme `firebase/firestore.rules` l’attend (voir
+/// `firebase/tests/events.rules.test.js`) — l’événement et le compteur
+/// public de l’organisateur bougent dans un même batch, et une modification
+/// recalcule le compteur de places depuis le document lu dans la même
+/// transaction. Les exceptions du SDK remontent telles quelles, pour
+/// `ErrorMapper`.
 class EventRemoteDataSource {
   const EventRemoteDataSource(this._db);
 
   final FirebaseFirestore _db;
 
-  /// Every list is explicitly bounded: the rules refuse an event query
-  /// without `limit` (≤ 200), and a listener re-reads its whole result after
-  /// a reconnection — on the free quota, reads are the budget.
+  /// Toute liste est explicitement bornée : les règles refusent une requête
+  /// d’événements sans `limit` (≤ 200), et un listener relit tout son
+  /// résultat après une reconnexion — sur le quota gratuit, ce sont les
+  /// lectures qui constituent le budget.
   static const maxPageSize = 100;
 
   CollectionReference<Map<String, dynamic>> get _events =>
@@ -54,16 +56,16 @@ class EventRemoteDataSource {
   DocumentReference<Map<String, dynamic>> _organizer(String uid) =>
       _db.collection(Collections.organizers).doc(uid);
 
-  /// First page of the catalogue, live, in catalogue order (`startsAt`, then
-  /// id — the document id breaks ties so the cursor of
-  /// [fetchUpcomingAfter] is exact).
+  /// Première page du catalogue, en temps réel, dans l’ordre du catalogue
+  /// (`startsAt`, puis id — l’identifiant du document départage les ex
+  /// æquo, pour que le curseur de [fetchUpcomingAfter] soit exact).
   Stream<List<Event>> watchUpcoming({required DateTime from}) => _upcoming(
     from,
   ).limit(maxPageSize).snapshots().map(_toEvents).resilient('events.upcoming');
 
-  /// The page after [after] in catalogue order: a keyset cursor on
-  /// (`startsAt`, id), so two events at the same minute are neither skipped
-  /// nor repeated.
+  /// La page qui suit [after] dans l’ordre du catalogue : un curseur keyset
+  /// sur (`startsAt`, id), pour que deux événements à la même minute ne
+  /// soient ni sautés ni répétés.
   Future<List<Event>> fetchUpcomingAfter({
     required DateTime from,
     required Event after,
@@ -81,8 +83,8 @@ class EventRemoteDataSource {
       .orderBy('startsAt')
       .orderBy(FieldPath.documentId);
 
-  /// All events of an organizer, most recent first (composite index
-  /// `organizerId ASC, startsAt DESC`).
+  /// Tous les événements d’un organisateur, du plus récent au plus ancien
+  /// (index composite `organizerId ASC, startsAt DESC`).
   Stream<List<Event>> watchByOrganizer(String organizerId) => _events
       .where('organizerId', isEqualTo: organizerId)
       .orderBy('startsAt', descending: true)
@@ -91,9 +93,10 @@ class EventRemoteDataSource {
       .map(_toEvents)
       .resilient('events.organizer');
 
-  /// Events the user co-organizes (F-16), most recent first: `staffIds` is
-  /// on the event itself, so one `array-contains` query replaces a join
-  /// (composite index `staffIds CONTAINS, startsAt DESC`).
+  /// Événements que l’utilisateur co-organise (F-16), du plus récent au
+  /// plus ancien : `staffIds` est porté par l’événement lui-même, donc une
+  /// seule requête `array-contains` remplace une jointure (index composite
+  /// `staffIds CONTAINS, startsAt DESC`).
   Stream<List<Event>> watchByStaff(String userId) => _events
       .where('staffIds', arrayContains: userId)
       .orderBy('startsAt', descending: true)
@@ -102,7 +105,7 @@ class EventRemoteDataSource {
       .map(_toEvents)
       .resilient('events.staff');
 
-  /// Emits `null` when the event does not exist or was deleted.
+  /// Émet `null` quand l’événement n’existe pas ou a été supprimé.
   Stream<Event?> watchById(String eventId) => _events
       .doc(eventId)
       .snapshots()
@@ -116,9 +119,10 @@ class EventRemoteDataSource {
     return _event(snapshot.id, data);
   }
 
-  /// Publishes a new event and returns its id, in the one batch the rules
-  /// accept: the event (every seat free, `createdAt` from the server) and
-  /// `organizers/{uid}.eventCount + 1` proven by `lastEventId`.
+  /// Publie un nouvel événement et renvoie son id, dans l’unique batch que
+  /// les règles acceptent : l’événement (toutes places libres, `createdAt`
+  /// venant du serveur) et `organizers/{uid}.eventCount + 1`, attesté par
+  /// `lastEventId`.
   Future<String> create({
     required EventDraft draft,
     required TierPlan? plan,
@@ -144,14 +148,15 @@ class EventRemoteDataSource {
     return ref.id;
   }
 
-  /// Edits an event inside a transaction.
+  /// Modifie un événement à l’intérieur d’une transaction.
   ///
-  /// The seats already taken are read from the document the write is
-  /// conditioned on: a booking landing in between makes Firestore retry the
-  /// transaction with the new counter, so `availablePlaces = capacity −
-  /// taken` always holds. [decide] runs on each attempt with the fresh event
-  /// and may refuse; the refusal is returned, not thrown, so it is never
-  /// confused with a transaction error.
+  /// Les places déjà prises sont lues sur le document auquel l’écriture est
+  /// conditionnée : une réservation qui s’intercale fait rejouer la
+  /// transaction par Firestore avec le nouveau compteur, si bien que
+  /// `availablePlaces = capacity − taken` reste toujours vrai. [decide] est
+  /// exécuté à chaque tentative avec l’événement frais et peut refuser ; le
+  /// refus est renvoyé, pas levé, pour ne jamais être confondu avec une
+  /// erreur de transaction.
   Future<Failure?> update(String eventId, EventEditDecision decide) {
     final ref = _events.doc(eventId);
     return _db.runTransaction<Failure?>((tx) async {
@@ -174,9 +179,10 @@ class EventRemoteDataSource {
     });
   }
 
-  /// Owner only, and only while no seat is taken (the rules check both).
-  /// The public counter goes down in the same batch. Favorites pointing at
-  /// the event stay behind and are ignored by the lists that resolve them.
+  /// Réservé au propriétaire, et seulement tant qu’aucune place n’est prise
+  /// (les règles vérifient les deux). Le compteur public décroît dans le
+  /// même batch. Les favoris qui pointent vers l’événement subsistent et
+  /// sont ignorés par les listes qui les résolvent.
   Future<void> delete({
     required String eventId,
     required String organizerId,

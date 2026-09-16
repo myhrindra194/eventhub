@@ -15,16 +15,16 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$Reservation {
 
- String get id;/// Empty once the event is deleted: the reservation stays as history,
-/// with its snapshot of title, date and place.
- String get eventId;/// Empty once the participant's account is deleted (the row is
-/// anonymised and kept for the organizer's statistics).
- String get userId;/// Empty once the organizer's account is deleted.
- String get organizerId; String get userName; String get userEmail; String get eventTitle; DateTime get eventStartsAt; String get eventLocation; ReservationStatus get status; DateTime get reservedAt; DateTime? get cancelledAt;/// Who cancelled: the holder's uid, or `moderation` when an administrator
-/// removed the event.
- String? get cancelledBy;/// Ticket type (F-12), copied at booking time.
- String? get tierId; String? get tierName;/// Amount actually paid, minor units. Always 0 without a payment server:
-/// the rules refuse anything else.
+ String get id;/// Vide une fois l’événement supprimé : la réservation demeure à titre
+/// d’historique, avec son instantané de titre, de date et de lieu.
+ String get eventId;/// Vide une fois le compte du participant supprimé (la ligne est
+/// anonymisée et conservée pour les statistiques de l’organisateur).
+ String get userId;/// Vide une fois le compte de l’organisateur supprimé.
+ String get organizerId; String get userName; String get userEmail; String get eventTitle; DateTime get eventStartsAt; String get eventLocation; ReservationStatus get status; DateTime get reservedAt; DateTime? get cancelledAt;/// Qui a annulé : l’uid du titulaire, ou `moderation` lorsqu’un
+/// administrateur a retiré l’événement.
+ String? get cancelledBy;/// Type de billet (F-12), copié au moment de la réservation.
+ String? get tierId; String? get tierName;/// Montant réellement payé, en unités mineures. Toujours 0 sans serveur
+/// de paiement : les règles refusent toute autre valeur.
  int get pricePaid; int? get amountDue; String? get currency; String? get paymentStatus; String? get checkoutUrl; DateTime? get holdExpiresAt;
 /// Create a copy of Reservation
 /// with the given fields replaced by the non-null parameter values.
@@ -246,13 +246,13 @@ class _Reservation extends Reservation {
   
 
 @override final  String id;
-/// Empty once the event is deleted: the reservation stays as history,
-/// with its snapshot of title, date and place.
+/// Vide une fois l’événement supprimé : la réservation demeure à titre
+/// d’historique, avec son instantané de titre, de date et de lieu.
 @override final  String eventId;
-/// Empty once the participant's account is deleted (the row is
-/// anonymised and kept for the organizer's statistics).
+/// Vide une fois le compte du participant supprimé (la ligne est
+/// anonymisée et conservée pour les statistiques de l’organisateur).
 @override final  String userId;
-/// Empty once the organizer's account is deleted.
+/// Vide une fois le compte de l’organisateur supprimé.
 @override final  String organizerId;
 @override final  String userName;
 @override final  String userEmail;
@@ -262,14 +262,14 @@ class _Reservation extends Reservation {
 @override final  ReservationStatus status;
 @override final  DateTime reservedAt;
 @override final  DateTime? cancelledAt;
-/// Who cancelled: the holder's uid, or `moderation` when an administrator
-/// removed the event.
+/// Qui a annulé : l’uid du titulaire, ou `moderation` lorsqu’un
+/// administrateur a retiré l’événement.
 @override final  String? cancelledBy;
-/// Ticket type (F-12), copied at booking time.
+/// Type de billet (F-12), copié au moment de la réservation.
 @override final  String? tierId;
 @override final  String? tierName;
-/// Amount actually paid, minor units. Always 0 without a payment server:
-/// the rules refuse anything else.
+/// Montant réellement payé, en unités mineures. Toujours 0 sans serveur
+/// de paiement : les règles refusent toute autre valeur.
 @override@JsonKey() final  int pricePaid;
 @override final  int? amountDue;
 @override final  String? currency;

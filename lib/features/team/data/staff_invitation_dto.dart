@@ -1,13 +1,16 @@
-import 'package:eventhub/core/supabase/timestamp_converter.dart';
+import 'package:eventhub/core/firebase/timestamp_converter.dart';
 import 'package:eventhub/features/team/domain/team.dart';
 import 'package:json_annotation/json_annotation.dart';
 
 part 'staff_invitation_dto.g.dart';
 
-/// Row of `public.staff_invitations`, written only by the team RPCs. It
-/// carries a copy of what the invitee needs to decide (event title, date,
-/// inviter's name) because the invitee cannot read the inviter's profile.
-@JsonSerializable(fieldRename: FieldRename.snake, createToJson: false)
+/// Document `events/{eventId}/invitations/{inviteeId}`.
+///
+/// Il porte une copie de ce dont l’invité a besoin pour décider — titre et
+/// date de l’événement, nom de celui qui invite — parce que l’invité ne peut
+/// pas lire le profil de l’invitant, et ne peut lire l’événement qu’une fois
+/// dans l’équipe.
+@JsonSerializable(createToJson: false)
 class StaffInvitationDto {
   const StaffInvitationDto({
     this.eventId = '',
@@ -30,12 +33,15 @@ class StaffInvitationDto {
   final String name;
   final String invitedByName;
   final String eventTitle;
+
   @NullableTimestampConverter()
   final DateTime? eventStartsAt;
 
-  /// Kept as text: an unknown value reads as pending rather than failing
-  /// the whole list.
+  /// Conservé en texte : une valeur inconnue se lit comme « en attente »
+  /// plutôt que de faire échouer toute la liste.
   final String? status;
+
+  /// Heure serveur : `null` dans l’instantané local en attente de l’invitant.
   @NullableTimestampConverter()
   final DateTime? createdAt;
 

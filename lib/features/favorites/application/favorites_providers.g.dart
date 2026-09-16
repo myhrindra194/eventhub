@@ -96,33 +96,39 @@ final class FavoriteIdsProvider
 
 String _$favoriteIdsHash() => r'359f1e8746aeb0570f14a468053378e3e5e5902c';
 
-/// Toggles sent but not yet reflected by the listener: event id → starred.
+/// Bascules envoyées mais pas encore reflétées par le listener :
+/// id d’événement → mis en favori.
 ///
-/// Firestore shows a local write at once, but starring first reads the
-/// document (the rules refuse a `set` over an existing favorite), so the
-/// write — and the listener — lag by that round trip. Overlaying the intent
-/// keeps the heart flipping at the tap; an entry is dropped once the stream
-/// agrees, or when the write fails.
+/// Firestore rend une écriture locale visible immédiatement, mais mettre en
+/// favori lit d’abord le document (les règles refusent un `set` par-dessus
+/// un favori existant) : l’écriture — et donc le listener — accusent ce
+/// temps d’aller-retour. Superposer l’intention garde le cœur qui bascule
+/// dès la tape ; une entrée est retirée dès que le flux confirme, ou quand
+/// l’écriture échoue.
 
 @ProviderFor(PendingFavorites)
 final pendingFavoritesProvider = PendingFavoritesProvider._();
 
-/// Toggles sent but not yet reflected by the listener: event id → starred.
+/// Bascules envoyées mais pas encore reflétées par le listener :
+/// id d’événement → mis en favori.
 ///
-/// Firestore shows a local write at once, but starring first reads the
-/// document (the rules refuse a `set` over an existing favorite), so the
-/// write — and the listener — lag by that round trip. Overlaying the intent
-/// keeps the heart flipping at the tap; an entry is dropped once the stream
-/// agrees, or when the write fails.
+/// Firestore rend une écriture locale visible immédiatement, mais mettre en
+/// favori lit d’abord le document (les règles refusent un `set` par-dessus
+/// un favori existant) : l’écriture — et donc le listener — accusent ce
+/// temps d’aller-retour. Superposer l’intention garde le cœur qui bascule
+/// dès la tape ; une entrée est retirée dès que le flux confirme, ou quand
+/// l’écriture échoue.
 final class PendingFavoritesProvider
     extends $NotifierProvider<PendingFavorites, Map<String, bool>> {
-  /// Toggles sent but not yet reflected by the listener: event id → starred.
+  /// Bascules envoyées mais pas encore reflétées par le listener :
+  /// id d’événement → mis en favori.
   ///
-  /// Firestore shows a local write at once, but starring first reads the
-  /// document (the rules refuse a `set` over an existing favorite), so the
-  /// write — and the listener — lag by that round trip. Overlaying the intent
-  /// keeps the heart flipping at the tap; an entry is dropped once the stream
-  /// agrees, or when the write fails.
+  /// Firestore rend une écriture locale visible immédiatement, mais mettre en
+  /// favori lit d’abord le document (les règles refusent un `set` par-dessus
+  /// un favori existant) : l’écriture — et donc le listener — accusent ce
+  /// temps d’aller-retour. Superposer l’intention garde le cœur qui bascule
+  /// dès la tape ; une entrée est retirée dès que le flux confirme, ou quand
+  /// l’écriture échoue.
   PendingFavoritesProvider._()
     : super(
         from: null,
@@ -152,13 +158,15 @@ final class PendingFavoritesProvider
 
 String _$pendingFavoritesHash() => r'55040799600f6c397a9281ce36f05eeb2ad6a172';
 
-/// Toggles sent but not yet reflected by the listener: event id → starred.
+/// Bascules envoyées mais pas encore reflétées par le listener :
+/// id d’événement → mis en favori.
 ///
-/// Firestore shows a local write at once, but starring first reads the
-/// document (the rules refuse a `set` over an existing favorite), so the
-/// write — and the listener — lag by that round trip. Overlaying the intent
-/// keeps the heart flipping at the tap; an entry is dropped once the stream
-/// agrees, or when the write fails.
+/// Firestore rend une écriture locale visible immédiatement, mais mettre en
+/// favori lit d’abord le document (les règles refusent un `set` par-dessus
+/// un favori existant) : l’écriture — et donc le listener — accusent ce
+/// temps d’aller-retour. Superposer l’intention garde le cœur qui bascule
+/// dès la tape ; une entrée est retirée dès que le flux confirme, ou quand
+/// l’écriture échoue.
 
 abstract class _$PendingFavorites extends $Notifier<Map<String, bool>> {
   Map<String, bool> build();

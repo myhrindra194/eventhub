@@ -9,8 +9,9 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 part 'event_dto.freezed.dart';
 part 'event_dto.g.dart';
 
-/// Top-level rather than static: freezed copies the `@JsonKey` annotation
-/// into the generated part, where a bare static member name does not resolve.
+/// Fonction de premier niveau plutôt que statique : freezed recopie
+/// l’annotation `@JsonKey` dans le fichier généré, où un simple nom de
+/// membre statique ne se résout pas.
 List<EventTierDto> _tiersFromJson(Object? json) => EventDto.tiersFromMap(json);
 
 List<String> _staffIdsFromJson(Object? json) => [
@@ -21,14 +22,16 @@ List<String> _staffIdsFromJson(Object? json) => [
 
 /// Document `events/{eventId}`.
 ///
-/// One document holds the whole event — ticket types included, as a map
-/// `{tierId: {name, description, price, capacity, available, order}}` — so a
-/// single snapshot listener renders a card, and a booking moves the event
-/// counter and its type counter in the same write (the rules compare both).
-/// A map rather than a list because the rules address one type by its key
-/// (`tiers[tierId].available`) and a list cannot be diffed that way.
+/// Un seul document porte tout l’événement — types de billets compris, sous
+/// forme de map `{tierId: {name, description, price, capacity, available,
+/// order}}` — de sorte qu’un unique listener de snapshot suffit à afficher
+/// une carte, et qu’une réservation déplace le compteur de l’événement et
+/// celui de son type dans la même écriture (les règles comparent les deux).
+/// Une map plutôt qu’une liste, parce que les règles adressent un type par
+/// sa clé (`tiers[tierId].available`) et qu’une liste ne se compare pas
+/// ainsi.
 ///
-/// The document id is not a field: [EventDto.fromFirestore] injects it.
+/// L’id du document n’est pas un champ : [EventDto.fromFirestore] l’injecte.
 @freezed
 abstract class EventDto with _$EventDto {
   const EventDto._();
@@ -42,19 +45,21 @@ abstract class EventDto with _$EventDto {
     @TimestampConverter() required DateTime startsAt,
     required String location,
 
-    /// With ticket types, both counters are the sums of the types: the
-    /// client computes them in the write and the rules check the arithmetic.
+    /// Avec des types de billets, les deux compteurs sont la somme de ceux
+    /// des types : le client les calcule dans l’écriture et les règles en
+    /// vérifient l’arithmétique.
     required int capacity,
     required int availablePlaces,
     required String organizerId,
     required String organizerName,
     String? imageUrl,
 
-    /// Written with `serverTimestamp()`: `null` in a pending local snapshot.
+    /// Écrits avec `serverTimestamp()` : `null` dans un snapshot local en
+    /// attente.
     @NullableTimestampConverter() DateTime? createdAt,
     @NullableTimestampConverter() DateTime? updatedAt,
 
-    /// `EUR`, `USD` or `MGA`; null unless a type is paid.
+    /// `EUR`, `USD` ou `MGA` ; null tant qu’aucun type n’est payant.
     String? currency,
     @JsonKey(fromJson: _tiersFromJson)
     @Default(<EventTierDto>[])
@@ -67,7 +72,8 @@ abstract class EventDto with _$EventDto {
   factory EventDto.fromJson(Map<String, dynamic> json) =>
       _$EventDtoFromJson(json);
 
-  /// The id wins over any `id` key a hand-written document might carry.
+  /// L’id l’emporte sur toute clé `id` que porterait un document écrit à la
+  /// main.
   factory EventDto.fromFirestore(String id, Map<String, dynamic> data) =>
       EventDto.fromJson({...data, 'id': id});
 
@@ -90,9 +96,10 @@ abstract class EventDto with _$EventDto {
     currency: currency,
   );
 
-  /// `{tierId: {...}}` → types in display order: `order`, then id so that
-  /// equal orders (a hand-edited document) stay stable. A malformed entry is
-  /// skipped rather than failing the whole event.
+  /// `{tierId: {...}}` → les types dans l’ordre d’affichage : `order`, puis
+  /// l’id pour que des `order` égaux (document édité à la main) restent
+  /// stables. Une entrée malformée est ignorée plutôt que de faire échouer
+  /// tout l’événement.
   static List<EventTierDto> tiersFromMap(Object? json) {
     if (json is! Map) return const [];
     final tiers =
@@ -109,8 +116,9 @@ abstract class EventDto with _$EventDto {
     return tiers;
   }
 
-  /// Types → the map stored on the event. `order` is rewritten from the list
-  /// position so the display order is exactly the one of the form.
+  /// Les types → la map stockée sur l’événement. `order` est réécrit depuis
+  /// la position dans la liste, pour que l’ordre d’affichage soit
+  /// exactement celui du formulaire.
   static Map<String, Map<String, Object>> tiersToMap(List<EventTier> tiers) => {
     for (var i = 0; i < tiers.length; i++)
       tiers[i].id: {
@@ -123,13 +131,15 @@ abstract class EventDto with _$EventDto {
       },
   };
 
-  /// The content fields an organizer controls, shared by creation and edit.
+  /// Les champs de contenu que l’organisateur maîtrise, partagés par la
+  /// création et la modification.
   ///
-  /// [draft] must be validated (trimmed, capacity summed). Counters and types
-  /// come from the plan computed against the current document, never from
-  /// the draft: the rules require `availablePlaces == capacity − taken`.
-  /// `imageUrl` and `currency` are written even when null, so clearing them in
-  /// the form clears them in the document.
+  /// [draft] doit être validé (chaînes nettoyées, capacité sommée). Les
+  /// compteurs et les types viennent du plan calculé face au document
+  /// courant, jamais du brouillon : les règles exigent
+  /// `availablePlaces == capacity − taken`. `imageUrl` et `currency` sont
+  /// écrits même à null, pour que les vider dans le formulaire les vide
+  /// aussi dans le document.
   static Map<String, Object?> contentFields(
     EventDraft draft, {
     required int capacity,
@@ -148,8 +158,9 @@ abstract class EventDto with _$EventDto {
     'tiers': tiersToMap(tiers),
   };
 
-  /// A new document: the only shape `allow create` accepts — every seat
-  /// free, no team yet, the organizer name copied from `users/{uid}.name`.
+  /// Un nouveau document : la seule forme qu’`allow create` accepte —
+  /// toutes les places libres, pas encore d’équipe, et le nom de
+  /// l’organisateur recopié depuis `users/{uid}.name`.
   static Map<String, Object?> createFields(
     EventDraft draft, {
     required String organizerId,
@@ -169,7 +180,7 @@ abstract class EventDto with _$EventDto {
   };
 }
 
-/// One entry of `events/{id}.tiers`, keyed by [id].
+/// Une entrée de `events/{id}.tiers`, indexée par [id].
 @freezed
 abstract class EventTierDto with _$EventTierDto {
   const EventTierDto._();
@@ -180,20 +191,21 @@ abstract class EventTierDto with _$EventTierDto {
     required int capacity,
     required int available,
 
-    /// What the type includes ("Accès backstage"), possibly empty.
+    /// Ce que le type inclut (« Accès backstage »), éventuellement vide.
     @Default('') String description,
 
-    /// Integer minor units (cents; ariary for MGA).
+    /// Unités mineures entières (centimes ; ariary pour MGA).
     @Default(0) int price,
 
-    /// 0..5, the display order chosen in the form.
+    /// 0..5, l’ordre d’affichage choisi dans le formulaire.
     @Default(0) int order,
   }) = _EventTierDto;
 
   factory EventTierDto.fromJson(Map<String, dynamic> json) =>
       _$EventTierDtoFromJson(json);
 
-  /// `null` when the entry lacks a required field or has the wrong type.
+  /// `null` quand l’entrée n’a pas un champ obligatoire, ou qu’un champ a
+  /// le mauvais type.
   static EventTierDto? tryParse(String id, Map<String, dynamic> data) {
     try {
       return EventTierDto.fromJson({...data, 'id': id});

@@ -7,7 +7,7 @@ import 'package:eventhub/features/events/domain/entities/event.dart';
 import 'package:eventhub/features/events/domain/entities/event_tier.dart';
 import 'package:flutter/material.dart';
 
-/// "Gratuit", "25,00 €", "Dès 15,00 €", "Gratuit ou payant".
+/// « Gratuit », « 25,00 € », « Dès 15,00 € », « Gratuit ou payant ».
 String eventPriceLabel(Event event) {
   final min = event.minPrice;
   if (min == null) return AppStrings.free;
@@ -20,8 +20,9 @@ String eventPriceLabel(Event event) {
 String tierPriceLabel(EventTier tier, String currency) =>
     tier.isFree ? AppStrings.free : Money.format(tier.price, currency);
 
-/// The ticket types of an event, as a ruled price list: what it includes on
-/// the left, price and seats left on the right (F-12).
+/// Les types de billets d’un événement, présentés comme une grille
+/// tarifaire à filets : ce que le billet inclut à gauche, le prix et les
+/// places restantes à droite (F-12).
 class TicketTypesSection extends StatelessWidget {
   const TicketTypesSection({required this.event, super.key});
 
@@ -108,10 +109,12 @@ class TicketTypesSection extends StatelessWidget {
   }
 }
 
-/// Picks one ticket type before booking. Sold-out and paid types stay listed
-/// (the price list must not change under the user's eyes) but cannot be
-/// selected: without a payment server, only a free seat can be booked, and a
-/// paid type says so instead of opening a payment flow that cannot finish.
+/// Choisit un type de billet avant la réservation. Les types complets ou
+/// payants restent listés (la grille tarifaire ne doit pas changer sous les
+/// yeux de l’utilisateur) mais ne peuvent pas être sélectionnés : sans
+/// serveur de paiement, seule une place gratuite est réservable, et un type
+/// payant le dit plutôt que d’ouvrir un parcours de paiement qui ne peut
+/// pas aboutir.
 Future<EventTier?> showTicketTypePicker(BuildContext context, Event event) {
   return showAppSheet<EventTier>(
     context: context,
@@ -148,7 +151,6 @@ class _TicketTypePickerState extends State<_TicketTypePicker> {
           label: selected == null
               ? AppStrings.chooseTicket
               : AppStrings.bookFree,
-          elevated: false,
           onPressed: selected == null
               ? null
               : () => Navigator.of(context).pop(selected),

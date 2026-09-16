@@ -11,6 +11,7 @@ OrganizerProfileDto _$OrganizerProfileDtoFromJson(Map<String, dynamic> json) =>
       id: json['id'] as String,
       name: json['name'] as String? ?? '',
       bio: json['bio'] as String?,
+      photoUrl: json['photoUrl'] as String?,
       followerCount: (json['followerCount'] as num?)?.toInt() ?? 0,
       eventCount: (json['eventCount'] as num?)?.toInt() ?? 0,
       ratingSum: (json['ratingSum'] as num?)?.toInt() ?? 0,

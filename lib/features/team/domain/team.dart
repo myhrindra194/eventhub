@@ -16,9 +16,10 @@ enum InvitationStatus {
   };
 }
 
-/// An invitation to co-organize (F-16): a row of `public.staff_invitations`,
-/// read by the invitee and by the event team, written only by the team
-/// database functions.
+/// Une invitation à co-organiser (F-16) : une ligne de
+/// `public.staff_invitations`, lue par l’invité et par l’équipe de
+/// l’événement, écrite uniquement par les fonctions de base de données de
+/// l’équipe.
 class StaffInvitation {
   const StaffInvitation({
     required this.eventId,
@@ -45,8 +46,9 @@ class StaffInvitation {
   bool get isPending => status == InvitationStatus.pending;
 }
 
-/// Client-side checks before calling the team RPCs, so the owner gets
-/// a sentence instead of a round trip. The server re-checks everything.
+/// Contrôles côté client avant d’appeler les RPC d’équipe, pour que le
+/// propriétaire obtienne une phrase plutôt qu’un aller-retour. Le serveur
+/// revérifie tout.
 abstract final class TeamPolicy {
   static Result<void> canInvite({
     required Event event,

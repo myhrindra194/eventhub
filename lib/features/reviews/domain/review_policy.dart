@@ -3,13 +3,15 @@ import 'package:eventhub/core/result/result.dart';
 import 'package:eventhub/features/auth/domain/entities/app_user.dart';
 import 'package:eventhub/features/reservations/domain/entities/reservation.dart';
 
-/// Who may review, and what a valid review is. Mirrors the `reviews` create
-/// rule (`attended()`): a confirmed seat, the event started, a verified
-/// email, rating 1..5, comment ≤ 2 000 characters.
+/// Qui peut donner un avis, et ce qu’est un avis valide. Reflète la règle de
+/// création `reviews` (`attended()`) : une place confirmée, l’événement
+/// commencé, une adresse e-mail vérifiée, une note de 1 à 5, un commentaire
+/// de 2 000 caractères au plus.
 ///
-/// No role condition: one account holds both spaces, and an organizer who
-/// attended someone else's event reviews it like anyone. The event's own
-/// team cannot hold a seat on it, so it can never review itself.
+/// Aucune condition de rôle : un seul compte porte les deux espaces, et un
+/// organisateur qui a assisté à l’événement d’un autre le note comme
+/// n’importe qui. L’équipe de l’événement ne peut pas y détenir de place,
+/// elle ne peut donc jamais se noter elle-même.
 abstract final class ReviewPolicy {
   static const maxCommentLength = 2000;
 

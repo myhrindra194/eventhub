@@ -47,14 +47,16 @@ const _slides = <_Slide>[
   ),
 ];
 
-/// First-launch carousel.
+/// Carrousel de premier lancement.
 ///
-/// Three slides, one promise each, and "Passer" visible from the first frame:
-/// onboarding that cannot be skipped is a tax on returning users reinstalling
-/// the app. The flag is persisted whichever exit the user takes.
+/// Trois slides, une promesse chacune, et « Passer » visible dès la première
+/// frame : un onboarding qu’on ne peut pas sauter est un impôt prélevé sur
+/// l’utilisateur qui revient et réinstalle l’application. Le drapeau est
+/// persisté quelle que soit la sortie empruntée.
 ///
-/// **No appearance toggle**, same reasoning as the splash: the startup path
-/// follows the system, and the override lives in Settings.
+/// **Pas de bascule d’apparence**, même raisonnement que pour le splash : le
+/// chemin de démarrage suit le système, et la surcharge vit dans les
+/// réglages.
 class OnboardingScreen extends ConsumerStatefulWidget {
   const OnboardingScreen({super.key});
 
@@ -101,7 +103,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
         child: ResponsiveColumn(
           child: Column(
             children: [
-              // [spacer] · mark · Passer — the mark stays optically centred.
+              // [espaceur] · marque · Passer — la marque reste optiquement
+              // centrée.
               Padding(
                 padding: EdgeInsets.fromLTRB(gutter, AppSpacing.md, gutter, 0),
                 child: SizedBox(
@@ -168,7 +171,6 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                       label: isLast
                           ? AppStrings.getStarted
                           : AppStrings.continueLabel,
-                      elevated: false,
                       onPressed: _next,
                     ),
                   ],
@@ -199,9 +201,9 @@ class _SlideView extends StatelessWidget {
       child: Column(
         children: [
           const SizedBox(height: AppSpacing.lg),
-          // The illustration takes whatever height is left: on a tall phone
-          // it breathes, on a short one it yields to the copy rather than
-          // pushing the button off-screen.
+          // L’illustration prend toute la hauteur restante : sur un grand
+          // téléphone elle respire, sur un petit elle cède la place au texte
+          // plutôt que de pousser le bouton hors de l’écran.
           Expanded(
             child: Container(
               width: double.infinity,

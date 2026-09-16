@@ -11,13 +11,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-/// "Mes favoris" — events starred, most recent first.
+/// « Mes favoris » — les événements mis en favori, du plus récent au plus
+/// ancien.
 ///
-/// Each row watches its event by id rather than filtering the catalogue: a
-/// favourite may be sold out, past or far in the future, none of which the
-/// upcoming-events feed is guaranteed to contain. Deleting an event deletes
-/// its favorites in the database; the "deleted" row only covers the moment
-/// between the event stream and the favorites stream catching up.
+/// Chaque ligne observe son événement par id plutôt que de filtrer le
+/// catalogue : un favori peut être complet, passé ou très lointain, et rien
+/// ne garantit que le fil des événements à venir le contienne. La
+/// suppression d’un événement supprime ses favoris en base ; la ligne
+/// « supprimé » ne couvre que l’instant où le flux des événements et celui
+/// des favoris se rattrapent.
 class FavoritesScreen extends ConsumerWidget {
   const FavoritesScreen({super.key});
 
@@ -27,7 +29,10 @@ class FavoritesScreen extends ConsumerWidget {
 
     return AppScaffold(
       dense: true,
-      appBar: AppBar(title: const Text(AppStrings.myFavorites)),
+      appBar: AppTopBar.subPage(
+        title: AppStrings.myFavorites,
+        onBack: () => context.pop(),
+      ),
       body: AsyncValueWidget(
         value: ids,
         onRetry: () => ref.invalidate(favoriteIdsProvider),
@@ -39,7 +44,6 @@ class FavoritesScreen extends ConsumerWidget {
           action: AppButton.primary(
             label: AppStrings.exploreEvents,
             expand: false,
-            elevated: false,
             onPressed: () => context.go(AppRoutes.events),
           ),
         ),
@@ -76,7 +80,6 @@ class _FavoriteRow extends ConsumerWidget {
       data: (e) {
         if (e == null) {
           return AppSurface(
-            elevation: SurfaceElevation.flat,
             child: Row(
               children: [
                 Icon(Icons.link_off_rounded, color: t.textTertiary),

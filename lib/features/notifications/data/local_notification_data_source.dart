@@ -3,8 +3,8 @@ import 'dart:convert';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
-/// Displays pushes received while the app is in the foreground — FCM does
-/// not show those — and owns the Android notification channel.
+/// Affiche les pushs reçus pendant que l’application est au premier plan —
+/// FCM ne les affiche pas — et détient le canal de notification Android.
 class LocalNotificationDataSource {
   LocalNotificationDataSource([FlutterLocalNotificationsPlugin? plugin])
     : _plugin = plugin ?? FlutterLocalNotificationsPlugin();
@@ -12,8 +12,9 @@ class LocalNotificationDataSource {
   final FlutterLocalNotificationsPlugin _plugin;
   bool _initialized = false;
 
-  /// Must match `default_notification_channel_id` in AndroidManifest.xml and
-  /// `ANDROID_CHANNEL` in `supabase/functions/_shared/fcm.ts`.
+  /// Doit correspondre à `default_notification_channel_id` dans
+  /// AndroidManifest.xml — et au canal que viserait un futur émetteur côté
+  /// serveur.
   static const channelId = 'eventhub_default';
 
   static const _channel = AndroidNotificationChannel(
@@ -23,7 +24,7 @@ class LocalNotificationDataSource {
     importance: Importance.high,
   );
 
-  /// [onTap] receives the message data (the same map FCM delivers).
+  /// [onTap] reçoit les données du message (la map même que FCM délivre).
   Future<void> initialize({
     required void Function(Map<String, Object?> data) onTap,
   }) async {
@@ -31,8 +32,8 @@ class LocalNotificationDataSource {
     await _plugin.initialize(
       settings: const InitializationSettings(
         android: AndroidInitializationSettings('@mipmap/ic_launcher'),
-        // FCM already asks for permission; asking twice would show two
-        // prompts on iOS.
+        // FCM demande déjà la permission ; la demander deux fois afficherait
+        // deux invites sur iOS.
         iOS: DarwinInitializationSettings(
           requestAlertPermission: false,
           requestBadgePermission: false,

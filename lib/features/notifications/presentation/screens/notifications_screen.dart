@@ -14,13 +14,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-/// Notification history — what the pushes said, after the push is gone.
+/// Historique des notifications — ce que disaient les pushs, une fois le push
+/// disparu.
 ///
-/// Grouped by day, unread entries marked by a dot and a heavier title. A tap
-/// marks the entry read and opens what it is about (same routing as the
-/// system notification); a swipe deletes it. Entries expire after 30 days
-/// server-side (TTL), which the empty state says so nobody hunts for an old
-/// one.
+/// Groupé par jour, les entrées non lues signalées par une pastille et un
+/// titre plus gras. Un appui marque l’entrée comme lue et ouvre ce dont elle
+/// parle (même routage que la notification système) ; un balayage la supprime.
+/// Les entrées expirent au bout de 30 jours côté serveur (TTL), ce que l’état
+/// vide annonce pour que personne ne parte à la recherche d’une ancienne.
 class NotificationsScreen extends ConsumerWidget {
   const NotificationsScreen({super.key});
 
@@ -32,8 +33,9 @@ class NotificationsScreen extends ConsumerWidget {
 
     return AppScaffold(
       dense: true,
-      appBar: AppBar(
-        title: const Text(AppStrings.notificationsTitle),
+      appBar: AppTopBar.subPage(
+        title: AppStrings.notificationsTitle,
+        onBack: () => context.pop(),
         actions: [
           if (unread > 0)
             TextButton(
@@ -53,7 +55,6 @@ class NotificationsScreen extends ConsumerWidget {
               ),
               child: const Text(AppStrings.markAllRead),
             ),
-          const SizedBox(width: AppSpacing.sm),
         ],
       ),
       body: AsyncValueWidget(

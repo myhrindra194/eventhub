@@ -16,10 +16,12 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$EventDto {
 
- String get id; String get title; String get description;@JsonKey(unknownEnumValue: EventCategory.other) EventCategory get category;@TimestampConverter() DateTime get startsAt; String get location;/// With ticket types, both counters are the sums of the types: the
-/// client computes them in the write and the rules check the arithmetic.
- int get capacity; int get availablePlaces; String get organizerId; String get organizerName; String? get imageUrl;/// Written with `serverTimestamp()`: `null` in a pending local snapshot.
-@NullableTimestampConverter() DateTime? get createdAt;@NullableTimestampConverter() DateTime? get updatedAt;/// `EUR`, `USD` or `MGA`; null unless a type is paid.
+ String get id; String get title; String get description;@JsonKey(unknownEnumValue: EventCategory.other) EventCategory get category;@TimestampConverter() DateTime get startsAt; String get location;/// Avec des types de billets, les deux compteurs sont la somme de ceux
+/// des types : le client les calcule dans l’écriture et les règles en
+/// vérifient l’arithmétique.
+ int get capacity; int get availablePlaces; String get organizerId; String get organizerName; String? get imageUrl;/// Écrits avec `serverTimestamp()` : `null` dans un snapshot local en
+/// attente.
+@NullableTimestampConverter() DateTime? get createdAt;@NullableTimestampConverter() DateTime? get updatedAt;/// `EUR`, `USD` ou `MGA` ; null tant qu’aucun type n’est payant.
  String? get currency;@JsonKey(fromJson: _tiersFromJson) List<EventTierDto> get tiers;@JsonKey(fromJson: _staffIdsFromJson) List<String> get staffIds;
 /// Create a copy of EventDto
 /// with the given fields replaced by the non-null parameter values.
@@ -243,17 +245,19 @@ class _EventDto extends EventDto {
 @override@JsonKey(unknownEnumValue: EventCategory.other) final  EventCategory category;
 @override@TimestampConverter() final  DateTime startsAt;
 @override final  String location;
-/// With ticket types, both counters are the sums of the types: the
-/// client computes them in the write and the rules check the arithmetic.
+/// Avec des types de billets, les deux compteurs sont la somme de ceux
+/// des types : le client les calcule dans l’écriture et les règles en
+/// vérifient l’arithmétique.
 @override final  int capacity;
 @override final  int availablePlaces;
 @override final  String organizerId;
 @override final  String organizerName;
 @override final  String? imageUrl;
-/// Written with `serverTimestamp()`: `null` in a pending local snapshot.
+/// Écrits avec `serverTimestamp()` : `null` dans un snapshot local en
+/// attente.
 @override@NullableTimestampConverter() final  DateTime? createdAt;
 @override@NullableTimestampConverter() final  DateTime? updatedAt;
-/// `EUR`, `USD` or `MGA`; null unless a type is paid.
+/// `EUR`, `USD` ou `MGA` ; null tant qu’aucun type n’est payant.
 @override final  String? currency;
  final  List<EventTierDto> _tiers;
 @override@JsonKey(fromJson: _tiersFromJson) List<EventTierDto> get tiers {
@@ -351,9 +355,9 @@ as List<String>,
 /// @nodoc
 mixin _$EventTierDto {
 
- String get id; String get name; int get capacity; int get available;/// What the type includes ("Accès backstage"), possibly empty.
- String get description;/// Integer minor units (cents; ariary for MGA).
- int get price;/// 0..5, the display order chosen in the form.
+ String get id; String get name; int get capacity; int get available;/// Ce que le type inclut (« Accès backstage »), éventuellement vide.
+ String get description;/// Unités mineures entières (centimes ; ariary pour MGA).
+ int get price;/// 0..5, l’ordre d’affichage choisi dans le formulaire.
  int get order;
 /// Create a copy of EventTierDto
 /// with the given fields replaced by the non-null parameter values.
@@ -566,11 +570,11 @@ class _EventTierDto extends EventTierDto {
 @override final  String name;
 @override final  int capacity;
 @override final  int available;
-/// What the type includes ("Accès backstage"), possibly empty.
+/// Ce que le type inclut (« Accès backstage »), éventuellement vide.
 @override@JsonKey() final  String description;
-/// Integer minor units (cents; ariary for MGA).
+/// Unités mineures entières (centimes ; ariary pour MGA).
 @override@JsonKey() final  int price;
-/// 0..5, the display order chosen in the form.
+/// 0..5, l’ordre d’affichage choisi dans le formulaire.
 @override@JsonKey() final  int order;
 
 /// Create a copy of EventTierDto

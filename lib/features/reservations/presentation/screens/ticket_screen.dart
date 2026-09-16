@@ -15,14 +15,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
-/// The ticket, as it is shown at the door.
+/// Le billet, tel qu’il est présenté à l’entrée.
 ///
-/// Built for the ten seconds it is actually used: someone in a queue, phone
-/// held out, a volunteer with a scanner. So the QR code is large and on pure
-/// white whatever the theme (scanners struggle with inverted codes), and the
-/// short code under it is set in wide tracking so it can be read aloud when
-/// the scan fails. Everything else — date, place, holder — is secondary and
-/// laid out like a printed pass, fields separated by hairlines.
+/// Conçu pour les dix secondes où il sert vraiment : quelqu’un dans une
+/// file, téléphone tendu, un bénévole avec un scanner. D’où un QR code
+/// grand et posé sur du blanc pur quel que soit le thème (les scanners
+/// peinent sur les codes inversés), et le code court en dessous composé
+/// avec un large interlettrage pour être lu à voix haute quand le scan
+/// échoue. Tout le reste — date, lieu, titulaire — est secondaire et
+/// disposé comme un laissez-passer imprimé, champs séparés par des filets.
 class TicketScreen extends ConsumerWidget {
   const TicketScreen({required this.reservationId, super.key});
 
@@ -35,7 +36,10 @@ class TicketScreen extends ConsumerWidget {
     return AppScaffold(
       dense: true,
       extendBody: false,
-      appBar: AppBar(title: const Text(AppStrings.ticketTitle)),
+      appBar: AppTopBar.subPage(
+        title: AppStrings.ticketTitle,
+        onBack: () => context.pop(),
+      ),
       body: AsyncValueWidget(
         value: reservation,
         onRetry: () => ref.invalidate(reservationByIdProvider(reservationId)),
@@ -116,7 +120,6 @@ class _TicketBody extends ConsumerWidget {
                 child: AppButton.secondary(
                   label: AppStrings.copyCode,
                   size: AppButtonSize.medium,
-                  elevated: false,
                   onPressed: () => _copyCode(context),
                 ),
               ),
@@ -125,7 +128,6 @@ class _TicketBody extends ConsumerWidget {
                 child: AppButton.primary(
                   label: AppStrings.viewEvent,
                   size: AppButtonSize.medium,
-                  elevated: false,
                   onPressed: () => context.push(
                     AppRoutes.eventDetailPath(reservation.eventId),
                   ),
@@ -139,7 +141,8 @@ class _TicketBody extends ConsumerWidget {
   }
 }
 
-/// The printed pass: header, a grid of fields, a tear line, the code.
+/// Le laissez-passer imprimé : en-tête, une grille de champs, une ligne de
+/// déchirure, le code.
 class _Pass extends StatelessWidget {
   const _Pass({required this.reservation, required this.valid});
 
@@ -158,7 +161,6 @@ class _Pass extends StatelessWidget {
         color: t.surface,
         borderRadius: AppRadius.brSm,
         border: Border.all(color: t.border),
-        boxShadow: t.shadows.sm,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -294,8 +296,9 @@ class _Field extends StatelessWidget {
   }
 }
 
-/// Dashed tear line with a notch bitten out of each edge — the pass is
-/// clipped, so the notches read as holes rather than as circles.
+/// Ligne de déchirure en pointillés, avec une encoche mordue dans chaque
+/// bord — le laissez-passer est clippé, si bien que les encoches se lisent
+/// comme des trous plutôt que comme des cercles.
 class _TearLine extends StatelessWidget {
   const _TearLine();
 
@@ -355,9 +358,10 @@ class _DashPainter extends CustomPainter {
   bool shouldRepaint(_DashPainter oldDelegate) => oldDelegate.color != color;
 }
 
-/// The QR code, always dark-on-white. An invalid ticket keeps its code on
-/// screen (the holder may still need the reference) but faded behind a
-/// "no entry" glyph, so nobody at a door mistakes it for a valid pass.
+/// Le QR code, toujours sombre sur blanc. Un billet invalide garde son code
+/// à l’écran (le titulaire peut encore avoir besoin de la référence) mais
+/// estompé derrière un glyphe « sens interdit », pour que personne à une
+/// entrée ne le prenne pour un laissez-passer valide.
 class _Code extends StatelessWidget {
   const _Code({required this.reservation, required this.valid});
 
@@ -412,8 +416,8 @@ class _Code extends StatelessWidget {
   }
 }
 
-/// A rule on the left edge and a tinted strip — no rounded card, the pass
-/// above is already the card.
+/// Un filet sur le bord gauche et un bandeau teinté — pas de carte
+/// arrondie, le laissez-passer au-dessus est déjà la carte.
 class _Notice extends StatelessWidget {
   const _Notice({
     required this.tone,

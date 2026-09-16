@@ -8,11 +8,12 @@ import 'package:eventhub/features/waitlist/application/waitlist_providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-/// Replaces the disabled "Complet" button of a sold-out event.
+/// Remplace le bouton « Complet » désactivé d’un événement complet.
 ///
-/// A dead end becomes a commitment: join, and be told when a seat opens.
-/// Once queued, the bar says so in words and offers the way out — the state
-/// must be readable without remembering having tapped anything.
+/// Une impasse devient un engagement : rejoindre la file, et être prévenu
+/// quand une place se libère. Une fois en file, la barre le dit en toutes
+/// lettres et propose la sortie — l’état doit se lire sans avoir à se
+/// souvenir d’avoir appuyé sur quoi que ce soit.
 class WaitlistAction extends ConsumerWidget {
   const WaitlistAction({required this.event, super.key});
 
@@ -76,7 +77,6 @@ class WaitlistAction extends ConsumerWidget {
           label: AppStrings.leaveWaitlist,
           size: AppButtonSize.medium,
           expand: false,
-          elevated: false,
           isLoading: busy,
           onPressed: () => _run(
             context,

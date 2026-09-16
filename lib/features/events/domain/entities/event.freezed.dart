@@ -15,12 +15,14 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$Event {
 
- String get id; String get title; String get description; EventCategory get category; DateTime get startsAt; String get location; int get capacity; int get availablePlaces; String get organizerId; String get organizerName; String? get imageUrl; DateTime? get createdAt; DateTime? get updatedAt;/// Co-organizers (F-16): organizers who accepted an invitation. They
-/// manage the content, the guest list and the door; only the owner
-/// ([organizerId]) composes the team and may delete the event.
- List<String> get staffIds;/// Ticket types (F-12), in display order. Empty for a simple event with
-/// one free pool of [capacity] seats.
- List<EventTier> get tiers;/// ISO code of the paid types' prices (`EUR`, `USD`, `MGA`).
+ String get id; String get title; String get description; EventCategory get category; DateTime get startsAt; String get location; int get capacity; int get availablePlaces; String get organizerId; String get organizerName; String? get imageUrl; DateTime? get createdAt; DateTime? get updatedAt;/// Co-organisateurs (F-16) : les organisateurs ayant accepté une
+/// invitation. Ils gèrent le contenu, la liste des participants et
+/// l’accueil ; seul le propriétaire ([organizerId]) compose l’équipe
+/// et peut supprimer l’événement.
+ List<String> get staffIds;/// Types de billets (F-12), dans l’ordre d’affichage. Vide pour un
+/// événement simple, doté d’un unique pool gratuit de [capacity]
+/// places.
+ List<EventTier> get tiers;/// Code ISO de la devise des types payants (`EUR`, `USD`, `MGA`).
  String? get currency;
 /// Create a copy of Event
 /// with the given fields replaced by the non-null parameter values.
@@ -249,31 +251,35 @@ class _Event extends Event {
 @override final  String? imageUrl;
 @override final  DateTime? createdAt;
 @override final  DateTime? updatedAt;
-/// Co-organizers (F-16): organizers who accepted an invitation. They
-/// manage the content, the guest list and the door; only the owner
-/// ([organizerId]) composes the team and may delete the event.
+/// Co-organisateurs (F-16) : les organisateurs ayant accepté une
+/// invitation. Ils gèrent le contenu, la liste des participants et
+/// l’accueil ; seul le propriétaire ([organizerId]) compose l’équipe
+/// et peut supprimer l’événement.
  final  List<String> _staffIds;
-/// Co-organizers (F-16): organizers who accepted an invitation. They
-/// manage the content, the guest list and the door; only the owner
-/// ([organizerId]) composes the team and may delete the event.
+/// Co-organisateurs (F-16) : les organisateurs ayant accepté une
+/// invitation. Ils gèrent le contenu, la liste des participants et
+/// l’accueil ; seul le propriétaire ([organizerId]) compose l’équipe
+/// et peut supprimer l’événement.
 @override@JsonKey() List<String> get staffIds {
   if (_staffIds is EqualUnmodifiableListView) return _staffIds;
   // ignore: implicit_dynamic_type
   return EqualUnmodifiableListView(_staffIds);
 }
 
-/// Ticket types (F-12), in display order. Empty for a simple event with
-/// one free pool of [capacity] seats.
+/// Types de billets (F-12), dans l’ordre d’affichage. Vide pour un
+/// événement simple, doté d’un unique pool gratuit de [capacity]
+/// places.
  final  List<EventTier> _tiers;
-/// Ticket types (F-12), in display order. Empty for a simple event with
-/// one free pool of [capacity] seats.
+/// Types de billets (F-12), dans l’ordre d’affichage. Vide pour un
+/// événement simple, doté d’un unique pool gratuit de [capacity]
+/// places.
 @override@JsonKey() List<EventTier> get tiers {
   if (_tiers is EqualUnmodifiableListView) return _tiers;
   // ignore: implicit_dynamic_type
   return EqualUnmodifiableListView(_tiers);
 }
 
-/// ISO code of the paid types' prices (`EUR`, `USD`, `MGA`).
+/// Code ISO de la devise des types payants (`EUR`, `USD`, `MGA`).
 @override final  String? currency;
 
 /// Create a copy of Event

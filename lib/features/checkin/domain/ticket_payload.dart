@@ -1,18 +1,21 @@
-/// What a ticket QR code carries: `eventhub://ticket/<reservationId>?code=<code>`
-/// (see `Reservation.ticketPayload`).
+/// Ce que porte le QR code d’un billet :
+/// `eventhub://ticket/<reservationId>?code=<code>` (voir
+/// `Reservation.ticketPayload`).
 ///
-/// The QR is not signed, and does not need to be: the scanner never trusts
-/// it. It only says *which* reservation to look up; the short code must match
-/// the one derived from that id, and admission is decided by the database
-/// from the reservation row. A forged QR can at best point at someone else's
-/// real booking — which the check-in record then burns.
+/// Le QR n’est pas signé, et n’a pas à l’être : le scanner ne lui fait
+/// jamais confiance. Il dit seulement *quelle* réservation aller chercher ;
+/// le code court doit correspondre à celui dérivé de cet id, et l’admission
+/// est tranchée par la base de données à partir de la ligne de réservation.
+/// Un QR forgé peut au mieux désigner la vraie réservation de quelqu’un
+/// d’autre — que l’enregistrement de check-in brûle alors.
 class TicketPayload {
   const TicketPayload({required this.reservationId, required this.code});
 
   final String reservationId;
   final String code;
 
-  /// `null` for anything that is not an EventHub ticket (a URL, a Wi-Fi QR…).
+  /// `null` pour tout ce qui n’est pas un billet EventHub (une URL, un QR
+  /// Wi-Fi…).
   static TicketPayload? parse(String raw) {
     final uri = Uri.tryParse(raw.trim());
     if (uri == null || uri.scheme != 'eventhub' || uri.host != 'ticket') {
@@ -25,8 +28,8 @@ class TicketPayload {
     return TicketPayload(reservationId: segments.single, code: code);
   }
 
-  /// Codes are read aloud and typed by hand at the door: case and spaces
-  /// must not matter.
+  /// Les codes sont lus à voix haute et saisis à la main à l’entrée : la
+  /// casse et les espaces ne doivent pas compter.
   static String normalizeCode(String code) =>
       code.toUpperCase().replaceAll(RegExp(r'\s'), '');
 }

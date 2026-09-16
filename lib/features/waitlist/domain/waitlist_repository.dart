@@ -4,21 +4,22 @@ import 'package:eventhub/features/events/domain/entities/event.dart';
 import 'package:eventhub/features/reservations/domain/entities/reservation.dart';
 
 abstract interface class WaitlistRepository {
-  /// The rules let a client list at most this many entries of a queue.
+  /// Les règles n’autorisent un client à lister au plus que ce nombre
+  /// d’entrées d’une file.
   static const queueLengthCap = 20;
 
-  /// Whether [userId] is queued for [eventId].
+  /// Indique si [userId] est en file d’attente pour [eventId].
   Stream<bool> watchIsWaiting({
     required String eventId,
     required String userId,
   });
 
-  /// Number of people queued, for the event team, capped at
-  /// [queueLengthCap]: a value equal to the cap reads "20 ou plus".
+  /// Nombre de personnes en file, pour l’équipe de l’événement, plafonné à
+  /// [queueLengthCap] : une valeur égale au plafond se lit « 20 ou plus ».
   Stream<int> watchQueueLength(String eventId);
 
-  /// Checks `WaitlistPolicy.canJoin` before writing; the rules check the
-  /// same conditions again.
+  /// Vérifie `WaitlistPolicy.canJoin` avant d’écrire ; les règles
+  /// revérifient ensuite les mêmes conditions.
   AsyncResult<void> join({
     required Event event,
     required AppUser user,
@@ -26,6 +27,6 @@ abstract interface class WaitlistRepository {
     required DateTime now,
   });
 
-  /// Leaves [userId]'s own entry; a no-op when there is none.
+  /// Retire l’entrée propre à [userId] ; sans effet s’il n’y en a pas.
   AsyncResult<void> leave({required String eventId, required String userId});
 }

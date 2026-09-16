@@ -16,11 +16,13 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$ReservationDto {
 
- String get eventId;/// `''` once the holder deleted their account: the ticket stays,
-/// anonymised, in the organizer's history.
- String get userId; String get organizerId; String get userName; String get userEmail; String get eventTitle;@TimestampConverter() DateTime get eventStartsAt; String get eventLocation;/// A status this build does not know never reads as a valid seat.
-@JsonKey(unknownEnumValue: ReservationStatus.cancelled) ReservationStatus get status;/// Client time (the rules bound it to the server clock): it is part of
-/// the booking notification id, so it is never a pending server value.
+ String get eventId;/// `''` une fois que le titulaire a supprimé son compte : le billet
+/// demeure, anonymisé, dans l’historique de l’organisateur.
+ String get userId; String get organizerId; String get userName; String get userEmail; String get eventTitle;@TimestampConverter() DateTime get eventStartsAt; String get eventLocation;/// Un statut que ce build ne connaît pas n’est jamais lu comme une
+/// place valide.
+@JsonKey(unknownEnumValue: ReservationStatus.cancelled) ReservationStatus get status;/// Heure du client (les règles la bornent à l’horloge du serveur) :
+/// elle entre dans l’id de la notification de réservation, et n’est
+/// donc jamais une valeur serveur en attente.
 @TimestampConverter() DateTime get reservedAt;@NullableTimestampConverter() DateTime? get cancelledAt; String? get cancelledBy; String? get tierId; String? get tierName; int get pricePaid;
 /// Create a copy of ReservationDto
 /// with the given fields replaced by the non-null parameter values.
@@ -236,8 +238,8 @@ class _ReservationDto extends ReservationDto {
   factory _ReservationDto.fromJson(Map<String, dynamic> json) => _$ReservationDtoFromJson(json);
 
 @override@JsonKey() final  String eventId;
-/// `''` once the holder deleted their account: the ticket stays,
-/// anonymised, in the organizer's history.
+/// `''` une fois que le titulaire a supprimé son compte : le billet
+/// demeure, anonymisé, dans l’historique de l’organisateur.
 @override@JsonKey() final  String userId;
 @override@JsonKey() final  String organizerId;
 @override final  String userName;
@@ -245,10 +247,12 @@ class _ReservationDto extends ReservationDto {
 @override final  String eventTitle;
 @override@TimestampConverter() final  DateTime eventStartsAt;
 @override final  String eventLocation;
-/// A status this build does not know never reads as a valid seat.
+/// Un statut que ce build ne connaît pas n’est jamais lu comme une
+/// place valide.
 @override@JsonKey(unknownEnumValue: ReservationStatus.cancelled) final  ReservationStatus status;
-/// Client time (the rules bound it to the server clock): it is part of
-/// the booking notification id, so it is never a pending server value.
+/// Heure du client (les règles la bornent à l’horloge du serveur) :
+/// elle entre dans l’id de la notification de réservation, et n’est
+/// donc jamais une valeur serveur en attente.
 @override@TimestampConverter() final  DateTime reservedAt;
 @override@NullableTimestampConverter() final  DateTime? cancelledAt;
 @override final  String? cancelledBy;

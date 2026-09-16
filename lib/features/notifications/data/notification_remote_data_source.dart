@@ -1,163 +1,169 @@
-import 'package:eventhub/core/errors/failure.dart';
-import 'package:eventhub/core/errors/failure_exception.dart';
-import 'package:eventhub/core/supabase/db.dart';
-import 'package:eventhub/core/supabase/supabase_providers.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:eventhub/core/firebase/firebase_providers.dart';
+import 'package:eventhub/core/firebase/firestore_paths.dart';
 import 'package:eventhub/core/utils/app_logger.dart';
-import 'package:eventhub/core/utils/date_formats.dart';
 import 'package:eventhub/features/notifications/data/device_id_store.dart';
 import 'package:eventhub/features/notifications/data/notification_dto.dart';
 import 'package:eventhub/features/notifications/domain/app_notification.dart';
 import 'package:eventhub/features/notifications/domain/notification_preferences.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
-/// `public.notifications`, `public.notification_preferences` and
-/// `public.devices` for the signed-in user.
+/// Les trois sous-collections privées d’un compte :
+/// `users/{uid}/notifications` (l’historique in-app),
+/// `users/{uid}/private/notifications` (les préférences) et
+/// `users/{uid}/devices` (les jetons FCM).
 ///
-/// Every query also filters on `user_id` although RLS already confines the
-/// rows to their owner: the filter lets Postgres use
-/// `notifications_user_idx`, and turns a wrong uid into an empty result rather
-/// than a silent reliance on the policy.
+/// Tout ici est confiné à l’utilisateur connecté par les règles ; l’uid fait
+/// malgré tout partie de chaque chemin, pour qu’un uid erroné donne une
+/// lecture vide plutôt qu’un appui silencieux sur la politique de sécurité.
+///
+/// Sans Cloud Functions, rien ne tourne du côté de Google : « tout marquer
+/// comme lu » est un lot d’écritures client, pas une instruction serveur —
+/// voir [markAllRead].
 class NotificationRemoteDataSource {
-  NotificationRemoteDataSource(this._client, {DeviceIdStore? deviceIds})
+  NotificationRemoteDataSource(this._db, {DeviceIdStore? deviceIds})
     : _deviceIds = deviceIds ?? DeviceIdStore();
 
-  final SupabaseClient _client;
+  final FirebaseFirestore _db;
   final DeviceIdStore _deviceIds;
 
-  // ------------------------------------------------------------ preferences
+  /// La politique de TTL conserve 30 jours ; un organisateur très actif peut
+  /// tout de même en accumuler des centaines. L’écran affiche les plus
+  /// récentes.
+  static const maxNotifications = 100;
 
-  /// The row is created with the profile; until Realtime delivers it (or if
-  /// it is somehow missing) the defaults apply, which match the column
-  /// defaults.
-  Stream<NotificationPreferences> watchPreferences(String uid) => _client
-      .from(Tables.notificationPreferences)
-      .stream(primaryKey: ['user_id'])
-      .eq('user_id', uid)
-      .map(
-        (rows) => rows.isEmpty
-            ? const NotificationPreferences()
-            : NotificationPreferencesDto.fromJson(rows.first).toDomain(),
-      )
-      .resilient('notification-preferences');
+  /// Un lot Firestore contient au plus 500 écritures.
+  static const maxBatchWrites = 450;
 
-  /// Updates the three granted columns. An update matching no row succeeds
-  /// silently in PostgREST, so the returned rows are checked: a missing row
-  /// would otherwise look like a saved preference that the server ignores.
-  Future<void> savePreferences(
-    String uid,
-    NotificationPreferences prefs,
-  ) async {
-    final rows = await _client
-        .from(Tables.notificationPreferences)
-        .update(NotificationPreferencesDto.fromDomain(prefs).toJson())
-        .eq('user_id', uid)
-        .select('user_id');
-    if (rows.isEmpty) {
-      throw const FailureException(
-        NotFoundFailure(
-          resource: Tables.notificationPreferences,
-          message: 'Préférences introuvables. Reconnectez-vous puis réessayez.',
-        ),
-      );
-    }
-  }
+  DocumentReference<Map<String, dynamic>> _user(String uid) =>
+      _db.collection(Collections.users).doc(uid);
+
+  CollectionReference<Map<String, dynamic>> _notifications(String uid) =>
+      _user(uid).collection(Collections.notifications);
+
+  DocumentReference<Map<String, dynamic>> _preferences(String uid) => _user(
+    uid,
+  ).collection(Collections.private).doc(DocIds.notificationPreferences);
+
+  // ------------------------------------------------------------ préférences
+
+  /// Un document absent signifie « rien n’a jamais été modifié » : les valeurs
+  /// par défaut s’appliquent, et c’est aussi ce que les règles autorisent la
+  /// première écriture à créer.
+  Stream<NotificationPreferences> watchPreferences(String uid) =>
+      _preferences(uid)
+          .snapshots()
+          .map((s) => NotificationPreferences.fromMap(s.data()))
+          .resilient('notification-preferences');
+
+  /// `set` avec merge : le document est créé à la première modification puis
+  /// mis à jour ensuite, sans lecture préalable pour distinguer les deux cas.
+  /// Les règles acceptent exactement ces clés.
+  Future<void> savePreferences(String uid, NotificationPreferences prefs) =>
+      _preferences(uid).set({
+        ...prefs.toMap(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
 
   // ---------------------------------------------------------- notifications
 
-  /// Bounded: the purge keeps 30 days, a very active organizer can still
-  /// accumulate hundreds; the screen shows the most recent ones.
-  static const maxNotifications = 100;
-
-  /// Realtime accepts a single filter, so expiry and the bound are applied in
-  /// [notificationsFromRows].
-  Stream<List<AppNotification>> watchNotifications(String uid) => _client
-      .from(Tables.notifications)
-      .stream(primaryKey: ['id'])
-      .eq('user_id', uid)
-      .order('created_at')
-      .map(notificationsFromRows)
-      .resilient('notifications');
-
-  /// `read_at` is the only column granted for update; the trigger
-  /// `notifications_before_update` replaces the value with the server time
-  /// and never un-reads, so the client clock is irrelevant.
-  Future<void> markRead(String uid, String notificationId) async {
-    await _client
-        .from(Tables.notifications)
-        .update({'read_at': _now()})
-        .eq('id', notificationId)
-        .eq('user_id', uid);
-  }
-
-  /// One statement for every unread row, including those beyond
-  /// [maxNotifications] that the feed does not show: "tout marquer comme lu"
-  /// means all of them.
-  Future<void> markAllRead(String uid) async {
-    await _client
-        .from(Tables.notifications)
-        .update({'read_at': _now()})
-        .eq('user_id', uid)
-        .isFilter('read_at', null);
-  }
-
-  Future<void> deleteNotification(String uid, String notificationId) async {
-    await _client
-        .from(Tables.notifications)
-        .delete()
-        .eq('id', notificationId)
-        .eq('user_id', uid);
-  }
-
-  static String _now() => DateTime.now().toUtc().toIso8601String();
-
-  /// Most recent first, unexpired, bounded.
+  /// Les plus récentes d’abord, en nombre borné, entrées expirées exclues.
   ///
-  /// Tolerant: a row that cannot be parsed is skipped and logged rather than
-  /// failing the whole list, since one emission carries every row.
-  static List<AppNotification> notificationsFromRows(
-    List<Map<String, dynamic>> rows, {
+  /// L’ordre et la borne sont ceux de la requête — Firestore fait ce travail
+  /// et le facture une fois ; il ne reste au client que le parsing et la
+  /// fenêtre d’expiration, dont [notificationsFrom] se charge et que les tests
+  /// couvrent.
+  Stream<List<AppNotification>> watchNotifications(String uid) =>
+      _notifications(uid)
+          .orderBy('createdAt', descending: true)
+          .limit(maxNotifications)
+          .snapshots()
+          .map(
+            (query) => notificationsFrom([
+              for (final d in query.docs) (d.id, d.data()),
+            ]),
+          )
+          .resilient('notifications');
+
+  /// `readAt` est le seul champ que les règles laissent le propriétaire
+  /// modifier, une seule fois, avec l’horloge du serveur : celle du client
+  /// n’entre pas en jeu, et une notification ne peut pas redevenir non lue.
+  Future<void> markRead(String uid, String notificationId) => _notifications(
+    uid,
+  ).doc(notificationId).update({'readAt': FieldValue.serverTimestamp()});
+
+  /// Marque comme lues toutes les notifications non lues.
+  ///
+  /// Faute d’instruction serveur à exécuter, les non lues sont relues puis
+  /// écrites en un seul lot — y compris celles plus anciennes que le fil
+  /// borné, parce que « tout marquer comme lu » veut dire toutes. Au-delà de
+  /// [maxBatchWrites], le reste est laissé à l’appel suivant plutôt que de
+  /// valider un lot que Firestore refuserait en bloc.
+  Future<void> markAllRead(String uid) async {
+    final unread = await _notifications(
+      uid,
+    ).where('readAt', isNull: true).limit(maxBatchWrites).get();
+    if (unread.docs.isEmpty) return;
+    final batch = _db.batch();
+    for (final doc in unread.docs) {
+      batch.update(doc.reference, {'readAt': FieldValue.serverTimestamp()});
+    }
+    await batch.commit();
+  }
+
+  Future<void> deleteNotification(String uid, String notificationId) =>
+      _notifications(uid).doc(notificationId).delete();
+
+  /// Analyse les documents d’un instantané, dans leur ordre d’arrivée.
+  ///
+  /// Deux choses se passent ici plutôt que côté serveur. Une notification
+  /// passé son `expiresAt` est masquée : la politique de TTL la supprime sous
+  /// un jour environ, et personne ne devrait lire une notification périmée
+  /// entre-temps. Et un document impossible à analyser est ignoré et
+  /// journalisé plutôt que de faire échouer toute la liste, puisqu’un
+  /// instantané porte toutes les entrées — une seule notification malformée
+  /// viderait sinon l’écran.
+  static List<AppNotification> notificationsFrom(
+    List<(String id, Map<String, dynamic> data)> documents, {
     DateTime? now,
   }) {
     final reference = now ?? DateTime.now();
-    final parsed = <NotificationDto>[];
-    for (final row in rows) {
+    final notifications = <AppNotification>[];
+    for (final (id, data) in documents) {
       try {
-        parsed.add(NotificationDto.fromJson(row));
+        final dto = NotificationDto.fromJson(data);
+        if (dto.expiresAt?.isBefore(reference) ?? false) continue;
+        notifications.add(dto.toDomain(id));
       } on Object catch (error) {
-        AppLogger.warning('Malformed notification ${row['id']}', error: error);
+        AppLogger.warning('Malformed notification $id', error: error);
       }
     }
-    final visible =
-        parsed
-            .where(
-              (n) => n.expiresAt == null || n.expiresAt!.isAfter(reference),
-            )
-            .toList()
-          ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
-    return [for (final dto in visible.take(maxNotifications)) dto.toDomain()];
+    return notifications;
   }
 
-  // ---------------------------------------------------------------- devices
+  // -------------------------------------------------------------- appareils
 
-  /// Registers this installation's FCM [token] for the signed-in user.
+  /// Enregistre le jeton FCM [token] de cette installation sous le compte
+  /// connecté.
   ///
-  /// Goes through `public.register_device` (the table is not client
-  /// writable): it takes the user from the JWT — [uid] is not sent — and
-  /// removes the same token from any other account, so a phone shared
-  /// between two accounts only ever notifies the one signed in.
+  /// Le document est indexé sur l’installation, pas sur le jeton : un jeton
+  /// tourne, et indexée sur le jeton chaque rotation laisserait une ligne
+  /// morte derrière elle.
+  ///
+  /// Rien n’émet vers lui sur le plan Spark — un émetteur exige un serveur —
+  /// mais le jeton est conservé pour qu’activer les Cloud Functions plus tard
+  /// soit un déploiement, pas une migration.
   Future<void> registerDevice({
     required String uid,
     required String token,
     required String platform,
   }) async {
-    await _client.rpc<void>(
-      Rpc.registerDevice,
-      params: {
-        'p_device_id': await _deviceIds.read(token: token),
-        'p_token': token,
-        'p_platform': platform,
-        'p_locale': AppDateFormats.locale,
-      },
-    );
+    await _user(uid)
+        .collection(Collections.devices)
+        .doc(await _deviceIds.read(token: token))
+        .set({
+          'token': token,
+          'platform': platform,
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
   }
 }

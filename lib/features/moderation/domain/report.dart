@@ -1,7 +1,8 @@
 import 'package:eventhub/core/errors/failure.dart';
 import 'package:eventhub/core/result/result.dart';
 
-/// What can be reported. Names match the `report_target` enum in Postgres.
+/// Ce qui peut être signalé. Les noms correspondent à l’enum `report_target`
+/// de Postgres.
 enum ReportTarget {
   event('Événement'),
   user('Organisateur'),
@@ -12,8 +13,8 @@ enum ReportTarget {
   final String label;
 }
 
-/// Closed list, the `report_reason` enum: moderators triage by reason, so
-/// a free-text reason would be a reason nobody can sort.
+/// Liste fermée, l’enum `report_reason` : les modérateurs trient par motif, et
+/// un motif en texte libre serait un motif que personne ne peut trier.
 enum ReportReason {
   misleading(
     'misleading',
@@ -41,8 +42,9 @@ enum ReportReason {
   final String description;
 }
 
-/// Local checks before inserting a report; `reports_before_insert` repeats
-/// them all with the facts the client cannot see (who wrote a review).
+/// Contrôles locaux avant l’insertion d’un signalement ;
+/// `reports_before_insert` les rejoue tous avec les faits que le client ne
+/// peut pas voir (qui a écrit un avis).
 abstract final class ReportPolicy {
   static const maxDetails = 2000;
 
@@ -56,9 +58,10 @@ abstract final class ReportPolicy {
     if (targetId.isEmpty) {
       return const Err(ValidationFailure(message: 'Contenu introuvable.'));
     }
-    // Only an account id says who it belongs to. A review id is an opaque
-    // uuid: the review list hides the report action on one's own review,
-    // and the trigger answers `cannotReportSelf` if it is reached anyway.
+    // Seul un identifiant de compte dit à qui il appartient. Un identifiant
+    // d’avis est un uuid opaque : la liste des avis masque l’action de
+    // signalement sur son propre avis, et le trigger répond
+    // `cannotReportSelf` si on l’atteint malgré tout.
     final isOwn = target == ReportTarget.user && targetId == reporterId;
     if (isOwn) {
       return const Err(

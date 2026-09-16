@@ -21,8 +21,8 @@ class WaitlistRepositoryImpl implements WaitlistRepository {
   @override
   Stream<int> watchQueueLength(String eventId) => _remote.watchLength(eventId);
 
-  /// The policy first: the rules would refuse the same cases with a bare
-  /// `permission-denied`, not with a sentence.
+  /// La policy d’abord : les règles refuseraient les mêmes cas par un simple
+  /// `permission-denied`, pas par une phrase.
   @override
   AsyncResult<void> join({
     required Event event,

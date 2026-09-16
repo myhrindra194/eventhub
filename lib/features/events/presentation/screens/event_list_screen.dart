@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:eventhub/app/theme/theme.dart';
 import 'package:eventhub/core/config/app_config.dart';
 import 'package:eventhub/core/l10n/app_strings.dart';
@@ -15,16 +17,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-/// Participant home.
+/// Accueil participant.
 ///
-/// Two layouts behind one screen:
-///  * **browse** (no filter) — a curated feed: a hero carousel, then named
-///    rails answering distinct intents, then the full catalogue. A
-///    chronological wall of cards is what a database returns; sections are
-///    what a product offers.
-///  * **filtered** (a category or a query is active) — the rails collapse
-///    into a single result list, because once a user has expressed an
-///    intent, editorialising it gets in the way.
+/// Deux dispositions derrière un même écran :
+///  * **parcours** (aucun filtre) — un fil éditorialisé : un carrousel
+///    héros, puis des rails nommés répondant à des intentions distinctes,
+///    puis le catalogue complet. Un mur chronologique de cartes, c’est ce
+///    que renvoie une base de données ; des sections, c’est ce qu’offre un
+///    produit.
+///  * **filtré** (une catégorie ou une requête est active) — les rails se
+///    replient en une seule liste de résultats, car une fois que
+///    l’utilisateur a exprimé une intention, l’éditorialiser ne fait que
+///    gêner.
 class EventListScreen extends ConsumerWidget {
   const EventListScreen({super.key});
 
@@ -43,65 +47,56 @@ class EventListScreen extends ConsumerWidget {
 
     return AppScaffold(
       constrainWidth: false,
-      body: SafeArea(
-        bottom: false,
-        child: RefreshIndicator(
-          onRefresh: () async => ref
-            ..invalidate(upcomingEventsProvider)
-            ..invalidate(catalogueExtraPagesProvider),
-          child: CustomScrollView(
-            slivers: [
-              SliverToBoxAdapter(
-                child: ScreenHeader(
-                  eyebrow: firstName.isEmpty
-                      ? AppStrings.exploreCaption
-                      : '$greeting $firstName 👋',
-                  title: AppStrings.exploreTitle,
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const NotificationBellButton(),
-                      const SizedBox(width: AppSpacing.sm),
-                      GestureDetector(
-                        onTap: () => context.go(AppRoutes.profile),
-                        child: AppAvatar(name: user?.name ?? '', size: 42),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              SliverPadding(
-                padding: const EdgeInsets.fromLTRB(
-                  AppSpacing.gutter,
-                  0,
-                  AppSpacing.gutter,
-                  AppSpacing.lg,
-                ),
-                sliver: SliverToBoxAdapter(
-                  child: EventSearchField(
-                    readOnly: true,
-                    onTap: () => context.go(AppRoutes.search),
-                  ),
-                ),
-              ),
-              const SliverToBoxAdapter(child: CategoryFilterRail()),
-              const SliverToBoxAdapter(child: SizedBox(height: AppSpacing.xxl)),
-              if (isFiltered)
-                const _FilteredResults()
-              else
-                const _CuratedFeed(),
-              const SliverToBoxAdapter(
-                child: SizedBox(height: AppSizes.navBarInset),
-              ),
-            ],
+      // Le salut passe en ligne de contexte de la barre : il situe la page
+      // sans manger la bande de hauteur que prenait un grand titre.
+      appBar: AppTopBar.root(
+        title: AppStrings.exploreTitle,
+        subtitle: firstName.isEmpty
+            ? AppStrings.exploreCaption
+            : '$greeting $firstName 👋',
+        actions: [
+          const NotificationBellButton(),
+          const SizedBox(width: AppSpacing.sm),
+          GestureDetector(
+            onTap: () => context.go(AppRoutes.profile),
+            child: AppAvatar(name: user?.name ?? '', size: 36),
           ),
+        ],
+      ),
+      body: RefreshIndicator(
+        onRefresh: () async => ref
+          ..invalidate(upcomingEventsProvider)
+          ..invalidate(catalogueExtraPagesProvider),
+        child: CustomScrollView(
+          slivers: [
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.gutter,
+                AppSpacing.sm,
+                AppSpacing.gutter,
+                AppSpacing.lg,
+              ),
+              sliver: SliverToBoxAdapter(
+                child: EventSearchBar(
+                  readOnly: true,
+                  onTap: () => context.go(AppRoutes.search),
+                ),
+              ),
+            ),
+            const SliverToBoxAdapter(child: CategoryFilterRail()),
+            const SliverToBoxAdapter(child: SizedBox(height: AppSpacing.xxl)),
+            if (isFiltered) const _FilteredResults() else const _CuratedFeed(),
+            const SliverToBoxAdapter(
+              child: SizedBox(height: AppSizes.navBarInset),
+            ),
+          ],
         ),
       ),
     );
   }
 }
 
-// ---------------------------------------------------------------- curated --
+// --------------------------------------------------------------- parcours --
 
 class _CuratedFeed extends ConsumerWidget {
   const _CuratedFeed();
@@ -114,8 +109,9 @@ class _CuratedFeed extends ConsumerWidget {
     final all = ref.watch(catalogueProvider);
     final forYou = ref.watch(recommendedEventsProvider);
 
-    // A single loading gate for the whole feed: showing three skeleton
-    // rails that resolve at different times reads as a glitch.
+    // Un seul verrou de chargement pour tout le fil : afficher trois rails
+    // squelettes qui se résolvent à des instants différents se lit comme un
+    // défaut d’affichage.
     if (all.isLoading && !all.hasValue) {
       return const SliverToBoxAdapter(child: _FeedSkeleton());
     }
@@ -154,8 +150,8 @@ class _CuratedFeed extends ConsumerWidget {
           _FeaturedCarousel(events: featuredList),
           const SizedBox(height: AppSpacing.xxxl),
         ],
-        // Personal rail second: the carousel sets the tone for everyone,
-        // this one answers "and for me?" (F-18).
+        // Le rail personnel en deuxième : le carrousel donne le ton pour
+        // tout le monde, celui-ci répond à « et pour moi ? » (F-18).
         if (forYou.isNotEmpty) ...[
           const SectionHeader(
             title: AppStrings.forYou,
@@ -200,8 +196,9 @@ class _CuratedFeed extends ConsumerWidget {
   }
 }
 
-/// Edge-peeking carousel: the next card is visible by ~24 px, which is what
-/// tells the user the row is swipeable without adding an arrow or a hint.
+/// Carrousel qui laisse dépasser le bord : la carte suivante déborde
+/// d’environ 24 px, et c’est cela qui dit à l’utilisateur que la rangée se
+/// balaie, sans ajouter de flèche ni d’indication.
 class _FeaturedCarousel extends StatefulWidget {
   const _FeaturedCarousel({required this.events});
 
@@ -212,15 +209,53 @@ class _FeaturedCarousel extends StatefulWidget {
 }
 
 class _FeaturedCarouselState extends State<_FeaturedCarousel> {
+  /// Cadence du défilement automatique.
+  ///
+  /// Cinq secondes, parce que c'est à peu près le temps qu'il faut pour lire
+  /// un titre, une date et un lieu. Plus court, la bannière change sous les
+  /// yeux de qui la lit ; plus long, personne ne voit qu'elle bouge.
+  static const _interval = Duration(seconds: 5);
+
   late final PageController _controller = PageController(
     viewportFraction: 0.88,
   );
+  Timer? _autoScroll;
   int _page = 0;
 
   @override
+  void initState() {
+    super.initState();
+    _startAutoScroll();
+  }
+
+  @override
+  void didUpdateWidget(covariant _FeaturedCarousel oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // La liste peut changer sous le carrousel (rafraîchissement, nouvelle
+    // page) : le minuteur doit repartir sur la nouvelle longueur, sinon il
+    // vise un index qui n'existe plus.
+    if (oldWidget.events.length != widget.events.length) _startAutoScroll();
+  }
+
+  @override
   void dispose() {
+    _autoScroll?.cancel();
     _controller.dispose();
     super.dispose();
+  }
+
+  void _startAutoScroll() {
+    _autoScroll?.cancel();
+    // Une seule carte ne défile pas : elle clignoterait sur place.
+    if (widget.events.length < 2) return;
+    _autoScroll = Timer.periodic(_interval, (_) {
+      if (!mounted || !_controller.hasClients) return;
+      _controller.animateToPage(
+        (_page + 1) % widget.events.length,
+        duration: AppMotion.slow,
+        curve: AppMotion.emphasized,
+      );
+    });
   }
 
   @override
@@ -231,26 +266,61 @@ class _FeaturedCarouselState extends State<_FeaturedCarousel> {
       children: [
         SizedBox(
           height: 268,
-          child: PageView.builder(
-            controller: _controller,
-            padEnds: false,
-            onPageChanged: (i) => setState(() => _page = i),
-            itemCount: widget.events.length,
-            itemBuilder: (context, index) {
-              final event = widget.events[index];
-              return Padding(
-                padding: EdgeInsets.only(
-                  left: index == 0 ? AppSpacing.gutter : AppSpacing.sm,
-                  right: AppSpacing.sm,
-                ),
-                child: EventCard(
-                  event: event,
-                  aspectRatio: 1,
-                  onTap: () =>
-                      context.push(AppRoutes.eventDetailPath(event.id)),
-                ),
-              );
+          // Le défilement automatique ne lutte jamais contre le doigt : dès
+          // que l'utilisateur touche le carrousel, le minuteur s'arrête, et
+          // il ne repart qu'une fois le geste terminé.
+          child: NotificationListener<ScrollNotification>(
+            onNotification: (notification) {
+              if (notification is ScrollStartNotification &&
+                  notification.dragDetails != null) {
+                _autoScroll?.cancel();
+              } else if (notification is ScrollEndNotification) {
+                _startAutoScroll();
+              }
+              return false;
             },
+            child: PageView.builder(
+              controller: _controller,
+              padEnds: false,
+              onPageChanged: (i) => setState(() => _page = i),
+              itemCount: widget.events.length,
+              itemBuilder: (context, index) {
+                final event = widget.events[index];
+                return Padding(
+                  padding: EdgeInsets.only(
+                    left: index == 0 ? AppSpacing.gutter : AppSpacing.sm,
+                    right: AppSpacing.sm,
+                  ),
+                  // Les cartes voisines reculent légèrement : c'est ce
+                  // décalage d'échelle, et non une ombre, qui donne au
+                  // carrousel sa profondeur pendant la transition.
+                  child: AnimatedBuilder(
+                    animation: _controller,
+                    builder: (context, child) {
+                      final position =
+                          _controller.hasClients &&
+                              _controller.position.haveDimensions
+                          ? (_controller.page ?? _page.toDouble())
+                          : _page.toDouble();
+                      final distance = (position - index).abs().clamp(0.0, 1.0);
+                      return Transform.scale(
+                        scale: 1 - distance * 0.06,
+                        child: Opacity(
+                          opacity: 1 - distance * 0.25,
+                          child: child,
+                        ),
+                      );
+                    },
+                    child: EventCard(
+                      event: event,
+                      aspectRatio: 1,
+                      onTap: () =>
+                          context.push(AppRoutes.eventDetailPath(event.id)),
+                    ),
+                  ),
+                );
+              },
+            ),
           ),
         ),
         const SizedBox(height: AppSpacing.lg),
@@ -302,7 +372,7 @@ class _EventRail extends StatelessWidget {
   }
 }
 
-// --------------------------------------------------------------- filtered --
+// ----------------------------------------------------------------- filtré --
 
 class _FilteredResults extends ConsumerWidget {
   const _FilteredResults();

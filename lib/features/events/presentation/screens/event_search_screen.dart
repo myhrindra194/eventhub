@@ -11,12 +11,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-/// Search & discovery.
+/// Recherche et découverte.
 ///
-/// Idle state is not an empty page: with no query and no filter the screen
-/// becomes a **browse** surface (category grid with live counts). A search
-/// screen that shows nothing until you type wastes the moment where the
-/// user does not yet know what they want.
+/// L'état au repos n'est pas une page vide : sans requête ni filtre, l'écran
+/// devient une surface de **parcours** — la grille des catégories avec leur
+/// nombre d'événements en direct. Un écran de recherche qui n'affiche rien
+/// tant qu'on n'a pas tapé gâche exactement le moment où l'utilisateur ne
+/// sait pas encore ce qu'il cherche.
 class EventSearchScreen extends ConsumerWidget {
   const EventSearchScreen({super.key});
 
@@ -31,55 +32,46 @@ class EventSearchScreen extends ConsumerWidget {
     return AppScaffold(
       constrainWidth: false,
       dense: true,
-      body: SafeArea(
-        bottom: false,
-        child: CustomScrollView(
-          slivers: [
-            const SliverToBoxAdapter(
-              child: ScreenHeader(title: AppStrings.search),
+      appBar: const AppTopBar.root(title: AppStrings.search),
+      body: CustomScrollView(
+        slivers: [
+          // Recherche et filtre partagent leur ligne : ce sont deux façons de
+          // répondre à la même question — réduire ce que je vois.
+          const SliverPadding(
+            padding: EdgeInsets.fromLTRB(
+              AppSpacing.gutter,
+              AppSpacing.sm,
+              AppSpacing.gutter,
+              AppSpacing.lg,
             ),
-            const SliverPadding(
-              padding: EdgeInsets.fromLTRB(
-                AppSpacing.gutter,
-                0,
-                AppSpacing.gutter,
-                AppSpacing.lg,
-              ),
-              sliver: SliverToBoxAdapter(
-                child: EventSearchField(hint: AppStrings.searchHint),
-              ),
+            sliver: SliverToBoxAdapter(
+              child: EventSearchBar(hint: AppStrings.searchHint),
             ),
-            const SliverToBoxAdapter(child: CategoryFilterRail()),
-            const SliverToBoxAdapter(child: SizedBox(height: AppSpacing.xl)),
-            SliverPadding(
-              padding: const EdgeInsets.fromLTRB(
-                AppSpacing.gutter,
-                0,
-                AppSpacing.gutter,
-                AppSpacing.md,
-              ),
-              sliver: SliverToBoxAdapter(
-                child: Row(
-                  children: [
-                    SectionLabel(
-                      isIdle
-                          ? AppStrings.browseByCategory
-                          : count == null
-                          ? AppStrings.results
-                          : '${AppStrings.results} ($count)',
-                    ),
-                    const Spacer(),
-                    const FilterButton(),
-                  ],
-                ),
+          ),
+          const SliverToBoxAdapter(child: CategoryFilterRail()),
+          const SliverToBoxAdapter(child: SizedBox(height: AppSpacing.xl)),
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.gutter,
+              0,
+              AppSpacing.gutter,
+              AppSpacing.md,
+            ),
+            sliver: SliverToBoxAdapter(
+              child: SectionLabel(
+                isIdle
+                    ? AppStrings.browseByCategory
+                    : count == null
+                    ? AppStrings.results
+                    : '${AppStrings.results} ($count)',
               ),
             ),
-            if (isIdle) const _CategoryBrowser() else const _Results(),
-            const SliverToBoxAdapter(
-              child: SizedBox(height: AppSizes.navBarInset),
-            ),
-          ],
-        ),
+          ),
+          if (isIdle) const _CategoryBrowser() else const _Results(),
+          const SliverToBoxAdapter(
+            child: SizedBox(height: AppSizes.navBarInset),
+          ),
+        ],
       ),
     );
   }
@@ -90,6 +82,8 @@ class _Results extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final t = context.tokens;
+
     return AsyncValueWidget(
       value: ref.watch(filteredEventsProvider),
       sliver: true,
@@ -100,7 +94,7 @@ class _Results extends ConsumerWidget {
         sliver: SliverList.separated(
           itemCount: 4,
           separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.md),
-          itemBuilder: (_, __) => const Skeleton(height: 108),
+          itemBuilder: (_, __) => const Skeleton(height: 96),
         ),
       ),
       empty: SliverFillRemaining(
@@ -117,28 +111,46 @@ class _Results extends ConsumerWidget {
           ),
         ),
       ),
+      // Les résultats sont des **lignes réglées dans une seule surface**, et
+      // non une pile de cartes : une carte par résultat multiplie les filets
+      // et les coins, alors qu'un balayage de liste se lit d'autant mieux que
+      // rien ne sépare les items sauf un trait d'un pixel.
       data: (list) => SliverPadding(
         padding: const EdgeInsets.symmetric(horizontal: AppSpacing.gutter),
-        sliver: SliverList.separated(
-          itemCount: list.length + 1,
-          separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.md),
-          itemBuilder: (context, index) {
-            if (index == list.length) return const LoadMoreEventsButton();
-            final event = list[index];
-            return EventResultTile(
-              event: event,
-              onTap: () => context.push(AppRoutes.eventDetailPath(event.id)),
-            );
-          },
+        sliver: SliverList.list(
+          children: [
+            Container(
+              clipBehavior: Clip.antiAlias,
+              decoration: BoxDecoration(
+                color: t.surface,
+                borderRadius: AppRadius.brButton,
+                border: Border.all(color: t.border),
+              ),
+              child: Column(
+                children: [
+                  for (var i = 0; i < list.length; i++) ...[
+                    if (i > 0) Divider(height: 1, color: t.borderSubtle),
+                    EventResultTile(
+                      event: list[i],
+                      onTap: () =>
+                          context.push(AppRoutes.eventDetailPath(list[i].id)),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            const LoadMoreEventsButton(),
+          ],
         ),
       ),
     );
   }
 }
 
-/// Category grid with a live count per category — the count is what turns
-/// a decorative grid into a navigation aid ("Concert 12" tells you it is
-/// worth tapping).
+/// Grille des catégories, avec le nombre d'événements de chacune — c'est ce
+/// compte qui transforme une grille décorative en aide à la navigation
+/// (« Concert · 12 événements » dit qu'il vaut la peine d'y toucher).
 class _CategoryBrowser extends ConsumerWidget {
   const _CategoryBrowser();
 
@@ -149,11 +161,16 @@ class _CategoryBrowser extends ConsumerWidget {
     return SliverPadding(
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.gutter),
       sliver: SliverGrid.builder(
+        // `mainAxisExtent` plutôt qu'un `childAspectRatio` : le ratio faisait
+        // dépendre la hauteur de la tuile de la largeur de l'écran, si bien
+        // qu'un téléphone étroit ou un texte agrandi la faisait déborder
+        // (« Bottom overflowed by 26 pixels »). Une hauteur fixe ne déborde
+        // jamais, quelle que soit la largeur.
         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: 2,
           mainAxisSpacing: AppSpacing.md,
           crossAxisSpacing: AppSpacing.md,
-          childAspectRatio: 1.55,
+          mainAxisExtent: 112,
         ),
         itemCount: EventCategory.values.length,
         itemBuilder: (context, index) {
@@ -166,6 +183,9 @@ class _CategoryBrowser extends ConsumerWidget {
   }
 }
 
+/// Tuile de catégorie : un trait de sa teinte, le glyphe en petit, le nom, le
+/// compte. Pas d'aplat teinté plein — sept fonds colorés côte à côte forment
+/// un nuancier, pas une navigation.
 class _CategoryCard extends ConsumerWidget {
   const _CategoryCard({required this.category, required this.count});
 
@@ -174,34 +194,58 @@ class _CategoryCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final t = context.tokens;
     final color = category.color(context);
     final text = Theme.of(context).textTheme;
 
-    return AppSurface(
-      elevation: SurfaceElevation.flat,
-      color: category.tint(context),
-      borderColor: color.withValues(alpha: 0.22),
-      onTap: () =>
-          ref.read(eventCategoryFilterProvider.notifier).select(category),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Icon(category.icon, size: 24, color: color),
-          Column(
+    return Material(
+      color: t.surface,
+      borderRadius: AppRadius.brButton,
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () =>
+            ref.read(eventCategoryFilterProvider.notifier).select(category),
+        child: Container(
+          padding: const EdgeInsets.all(AppSpacing.lg),
+          decoration: BoxDecoration(
+            borderRadius: AppRadius.brButton,
+            border: Border.all(color: t.border),
+          ),
+          child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(category.label, style: text.titleMedium),
-              const SizedBox(height: 2),
-              Text(
-                count == 0
-                    ? 'Aucun événement'
-                    : '$count événement${count > 1 ? 's' : ''}',
-                style: text.bodySmall?.copyWith(color: color),
+              Row(
+                children: [
+                  Container(width: 3, height: 16, color: color),
+                  const SizedBox(width: AppSpacing.sm),
+                  Icon(category.icon, size: 16, color: color),
+                ],
+              ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    category.label,
+                    style: text.titleMedium,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    count == 0
+                        ? AppStrings.noEventInCategory
+                        : '$count ${AppStrings.eventsLabel(count)}',
+                    style: text.bodySmall?.copyWith(color: t.textSecondary),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
               ),
             ],
           ),
-        ],
+        ),
       ),
     );
   }

@@ -1,5 +1,6 @@
-/// Form validators returning a French error message or `null` when valid.
-/// Composable: `Validators.compose([Validators.required, Validators.email])`.
+/// Validateurs de formulaire renvoyant un message d’erreur en français, ou
+/// `null` si la valeur est valide. Composables :
+/// `Validators.compose([Validators.required, Validators.email])`.
 abstract final class Validators {
   static final _emailRegex = RegExp(r'^[\w.+-]+@[\w-]+(\.[\w-]+)+$');
 

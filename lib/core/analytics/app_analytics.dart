@@ -8,18 +8,19 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'app_analytics.g.dart';
 
-/// Product analytics, behind one vocabulary.
+/// L’analytique produit, derrière un vocabulaire unique.
 ///
-/// Two rules make it safe to call from anywhere:
-///  * it never throws and never awaits in the caller's path — analytics must
-///    not break a booking, and tests run without a Firebase app;
-///  * it collects nothing until the user agreed ([setCollectionEnabled],
-///    driven by `AnalyticsConsent`; collection is disabled by default in
-///    AndroidManifest.xml and Info.plist).
+/// Deux règles la rendent sûre à appeler de n’importe où :
+///  * elle ne lève jamais et n’attend jamais dans le chemin de l’appelant —
+///    l’analytique ne doit pas casser une réservation, et les tests tournent
+///    sans app Firebase ;
+///  * elle ne collecte rien tant que l’utilisateur n’a pas accepté
+///    ([setCollectionEnabled], piloté par `AnalyticsConsent` ; la collecte
+///    est désactivée par défaut dans AndroidManifest.xml et Info.plist).
 ///
-/// Event names follow Firebase's recommended events where one exists
-/// (`login`, `sign_up`, `share`, `add_to_wishlist`), custom snake_case
-/// otherwise.
+/// Les noms d’événements reprennent les événements recommandés par Firebase
+/// lorsqu’il en existe un (`login`, `sign_up`, `share`, `add_to_wishlist`),
+/// et sinon un snake_case maison.
 class AppAnalytics {
   FirebaseAnalytics get _analytics => FirebaseAnalytics.instance;
 
@@ -30,8 +31,8 @@ class AppAnalytics {
   void screen(String name) =>
       _fire(() => _analytics.logScreenView(screenName: name));
 
-  /// Ties analytics and crash reports to the account (Firebase uid only, no
-  /// email or name).
+  /// Rattache l’analytique et les rapports de crash au compte (uniquement
+  /// l’uid Firebase, ni email ni nom).
   void identify({required String? userId, String? role}) {
     _fire(() => _analytics.setUserId(id: userId));
     _fire(() => _analytics.setUserProperty(name: 'role', value: role));
@@ -52,8 +53,8 @@ class AppAnalytics {
   void reservationConfirmed(String eventId) =>
       _event('reservation_confirmed', {'event_id': eventId});
 
-  /// Firebase's recommended `begin_checkout` (the purchase itself is
-  /// confirmed server-side by the Stripe webhook).
+  /// Le `begin_checkout` recommandé par Firebase (l’achat lui-même est
+  /// confirmé côté serveur par le webhook Stripe).
   void checkoutStarted(String eventId, String tierId) => _fire(
     () => _analytics.logBeginCheckout(
       items: [AnalyticsEventItem(itemId: eventId, itemVariant: tierId)],
@@ -93,7 +94,7 @@ class AppAnalytics {
     {'organizer_id': organizerId},
   );
 
-  /// Target type and reason only — never the reported content or its id.
+  /// Type de cible et motif uniquement — jamais le contenu signalé ni son id.
   void contentReported(String targetType, String reason) =>
       _event('content_reported', {'target_type': targetType, 'reason': reason});
 
@@ -106,7 +107,7 @@ class AppAnalytics {
         call().catchError((Object e) => AppLogger.debug('analytics: $e')),
       );
     } on Object catch (e) {
-      // No Firebase app (tests) or unsupported platform.
+      // Pas d’app Firebase (tests) ou plateforme non supportée.
       AppLogger.debug('analytics unavailable: $e');
     }
   }

@@ -18,7 +18,7 @@ beforeEach(async () => {
   await seedUser(env, 'p2');
 });
 
-/** What the app does: one transaction reads the event, takes the seat. */
+/** Ce que fait l’app : une transaction lit l’événement et prend la place. */
 function book(db, { eventId = 'e1', userId = 'p1', seatDelta = -1, tierId, overrides = {} } = {}) {
   return runTransaction(db, async (tx) => {
     const eventRef = doc(db, `events/${eventId}`);

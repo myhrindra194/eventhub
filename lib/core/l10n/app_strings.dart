@@ -1,5 +1,6 @@
-/// French UI strings. Kept in one place so a future `flutter_localizations`
-/// ARB migration is a mechanical find/replace.
+/// Les textes français de l'interface. Rassemblés en un seul endroit pour
+/// qu'une future migration vers les fichiers ARB de `flutter_localizations`
+/// se réduise à un remplacement mécanique.
 abstract final class AppStrings {
   static const appName = 'EventHub';
   static const tagline = 'Premium experiences';
@@ -108,7 +109,8 @@ abstract final class AppStrings {
   static const deleteEventConfirm =
       "Cette action est irréversible. L'événement disparaît du catalogue.";
 
-  /// Server rule: an event with seats taken cannot be deleted.
+  /// Règle serveur : un événement dont des places sont prises ne peut pas
+  /// être supprimé.
   static String cannotDeleteWithReservations(int count) =>
       'Impossible de supprimer : $count participant${count > 1 ? 's ont' : ' a'} '
       'réservé. Modifiez l’événement, ou attendez que les places soient '
@@ -590,8 +592,6 @@ abstract final class AppStrings {
   static const noDecisionYet = 'Aucune décision pour le moment.';
   static const lastReason = 'Dernier motif';
   static const unknownReason = 'Motif inconnu';
-  static const autoHidden = 'Masqué automatiquement';
-  static const autoHiddenShort = 'Masqué auto';
   static const hiddenBadge = 'Masqué';
   static const suspendedBadge = 'Suspendu';
   static const deletedContent = 'Contenu supprimé depuis le signalement.';
@@ -616,23 +616,72 @@ abstract final class AppStrings {
   static const adminRolesTitle = 'Administrateurs';
   static const adminRolesLead =
       'Un administrateur voit les signalements et décide : masquer un avis, '
-      'retirer un événement, suspendre un compte. Le compte doit déjà exister '
-      'dans EventHub.';
-  static const adminEmailHint = 'email du compte';
-  static const grantAdmin = 'Accorder le rôle';
-  static const revokeAdmin = 'Retirer';
-  static const revokeAdminTitle = 'Retirer le rôle ?';
-  static String revokeAdminMessage(String email) =>
-      '$email n’aura plus accès à la modération après sa prochaine connexion.';
-  static String adminGranted(String email) =>
-      'Rôle accordé à $email. Il sera actif à sa prochaine connexion.';
-  static String adminRevoked(String email) => 'Rôle retiré à $email.';
+      'retirer un événement, suspendre un compte. Le rôle ne s’accorde pas '
+      'depuis l’application : aucun compte, même administrateur, ne peut en '
+      'créer un autre. C’est ce qui empêche une session volée de s’octroyer '
+      'la modération.';
   static String adminSince(String date) => 'Administrateur depuis le $date';
-  static const adminRelogHint =
-      'Le rôle est porté par le jeton de connexion : la personne doit se '
-      'déconnecter puis se reconnecter pour que le changement s’applique.';
+  static const adminGrantTitle = 'Accorder ou retirer le rôle';
+  static const adminGrantSteps =
+      'Console Firebase → Firestore Database → collection « admins ».\n'
+      '• Accorder : créer un document dont l’identifiant est l’UID du compte '
+      '(Authentication → Users), avec les champs email et grantedAt.\n'
+      '• Retirer : supprimer ce document.\n'
+      'Le changement prend effet au prochain écran chargé, sans '
+      'reconnexion.';
   static const you = 'Vous';
   static const participantRole = 'Participant';
+
+  static const noEventInCategory = 'Aucun événement';
+
+  // Photo de profil et couverture
+  static const profilePhoto = 'Photo de profil';
+  static const profileCover = 'Photo de couverture';
+  static const changePhoto = 'Changer la photo';
+  static const addPhoto = 'Ajouter une photo';
+  static const removePhoto = 'Retirer la photo';
+  static const changeCover = 'Changer la couverture';
+  static const addCover = 'Ajouter une couverture';
+  static const removeCover = 'Retirer la couverture';
+  static const photoFromGallery = 'Choisir dans la galerie';
+  static const photoFromCamera = 'Prendre une photo';
+  static const photoUpdated = 'Photo mise à jour.';
+  static const coverUpdated = 'Couverture mise à jour.';
+  static const photoRemoved = 'Photo retirée.';
+  static const photoHelp =
+      'Votre photo est enregistrée avec votre profil, en petite taille : elle '
+      'est rognée et compressée sur l’appareil avant l’envoi.';
+
+  // Devenir organisateur — un compte, deux espaces
+  static const becomeOrganizer = 'Devenir organisateur';
+  static const becomeOrganizerLead =
+      'Votre compte ne change pas : vous continuez à réserver comme '
+      'participant, et vous gagnez un espace pour publier vos propres '
+      'événements.';
+  static const becomeOrganizerPoint1 =
+      'Publier un événement, fixer la jauge et les types de billets';
+  static const becomeOrganizerPoint2 =
+      'Suivre les réservations et scanner les billets à l’entrée';
+  static const becomeOrganizerPoint3 =
+      'Inviter jusqu’à 10 co-organisateurs sur chaque événement';
+  static const becomeOrganizerBioLabel = 'Présentation (facultative)';
+  static const becomeOrganizerBioHint =
+      'En une ou deux phrases : qui organise, et pour qui. C’est ce que vos '
+      'participants liront sur votre page publique.';
+  static const becomeOrganizerCta = 'Ouvrir mon espace organisateur';
+  static const becomeOrganizerLoading = 'Ouverture…';
+  static const becomeOrganizerDone = 'Votre espace organisateur est ouvert.';
+  static const becomeOrganizerVerifyFirst =
+      'Confirmez d’abord votre adresse email : c’est elle qui autorise la '
+      'publication d’un événement.';
+  static const becomeOrganizerOneWay =
+      'L’espace organisateur ne se referme pas, mais rien ne vous oblige à '
+      'publier : tant que vous ne créez aucun événement, votre page publique '
+      'reste vide.';
+
+  // Bascule entre les deux espaces d'un même compte
+  static const switchToParticipantSpace = 'Espace participant';
+  static const switchToOrganizerSpace = 'Espace organisateur';
 
   // Co-organisateurs (F-16)
   static const teamTitle = 'Équipe';

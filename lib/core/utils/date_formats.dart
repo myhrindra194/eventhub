@@ -1,6 +1,6 @@
 import 'package:intl/intl.dart';
 
-/// Centralised French date/time formatting.
+/// Formatage centralisé des dates et des heures en français.
 abstract final class AppDateFormats {
   static const locale = 'fr_FR';
 
@@ -17,18 +17,18 @@ abstract final class AppDateFormats {
   static String time(DateTime d) => _time.format(d);
   static String dateTime(DateTime d) => _dateTime.format(d);
 
-  /// "OCT" — short month for date badges.
+  /// « OCT » — mois abrégé pour les badges de date.
   static String monthAbbr(DateTime d) =>
       _month.format(d).replaceAll('.', '').toUpperCase();
 
-  /// "24 oct." — chart axis labels.
+  /// « 24 oct. » — libellés des axes de graphiques.
   static String dayMonth(DateTime d) => _dayMonth.format(d);
 
-  /// "24 oct. • 20:00" — card meta line.
+  /// « 24 oct. • 20:00 » — ligne méta d’une carte.
   static String dayMonthTime(DateTime d) =>
       '${_dayMonth.format(d)} • ${_time.format(d)}';
 
-  /// "Vendredi 24 oct. 2026" — detail row headline.
+  /// « Vendredi 24 oct. 2026 » — titre d’une ligne de détail.
   static String weekdayDate(DateTime d) => _capitalize(_weekdayDate.format(d));
 
   static String _capitalize(String s) =>

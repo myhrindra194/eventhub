@@ -1,8 +1,8 @@
 import 'package:eventhub/core/errors/failure.dart';
 
-/// Carries a [Failure] across a boundary that can only propagate exceptions
-/// (e.g. aborting a Firestore transaction). Repositories unwrap it back into
-/// a `Result.err` through `guard()`.
+/// Transporte une [Failure] à travers une frontière qui ne sait propager que
+/// des exceptions (par exemple l’abandon d’une transaction Firestore). Les
+/// repositories la redéballent en `Result.err` grâce à `guard()`.
 class FailureException implements Exception {
   const FailureException(this.failure);
 

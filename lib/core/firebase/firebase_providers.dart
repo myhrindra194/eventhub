@@ -6,11 +6,12 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'firebase_providers.g.dart';
 
-/// Firebase is the whole backend on the Spark plan: Authentication for
-/// accounts, Cloud Firestore for data (protected by `firebase/firestore.rules`),
-/// FCM for push tokens, Crashlytics and Analytics. Data sources receive the
-/// SDK objects through these providers and never touch the singletons
-/// themselves, so tests can override them.
+/// Firebase constitue tout le backend sur le plan Spark : Authentication
+/// pour les comptes, Cloud Firestore pour les données (protégé par
+/// `firebase/firestore.rules`), FCM pour les tokens push, Crashlytics et
+/// Analytics. Les data sources reçoivent les objets du SDK via ces providers
+/// et ne touchent jamais aux singletons eux-mêmes, ce qui permet aux tests
+/// de les surcharger.
 @Riverpod(keepAlive: true)
 FirebaseAuth firebaseAuth(Ref ref) => FirebaseAuth.instance;
 
@@ -21,9 +22,10 @@ FirebaseFirestore firestore(Ref ref) => FirebaseFirestore.instance;
 FirebaseMessaging firebaseMessaging(Ref ref) => FirebaseMessaging.instance;
 
 extension ResilientStream<T> on Stream<T> {
-  /// Keeps a snapshot stream from tearing a screen down on a transient error
-  /// (network loss, a listener revoked while signing out): the error is
-  /// logged, and Firestore resumes the listener by itself when it can.
+  /// Empêche un stream de snapshots de démolir un écran sur une erreur
+  /// passagère (perte de réseau, listener révoqué pendant une déconnexion) :
+  /// l’erreur est journalisée, et Firestore relance le listener de lui-même
+  /// dès qu’il le peut.
   Stream<T> resilient(String label) => handleError((Object error) {
     AppLogger.warning('Snapshot stream "$label" interrupted', error: error);
   });

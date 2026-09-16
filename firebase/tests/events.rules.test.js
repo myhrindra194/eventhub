@@ -181,7 +181,7 @@ describe('team', () => {
     await seed(env, [['events/e1', eventData({ staffIds: ['o2', 'o3'] })]]);
     await assertSucceeds(updateDoc(doc(as(env, 'o2').firestore(), 'events/e1'), { staffIds: ['o3'] }));
     await seed(env, [['events/e1', eventData({ staffIds: ['o2', 'o3'] })]]);
-    // A member removes only themself, never a colleague.
+    // Un membre ne retire que lui-même, jamais un collègue.
     await assertFails(updateDoc(doc(as(env, 'o3').firestore(), 'events/e1'), { staffIds: ['o3'] }));
     await assertSucceeds(updateDoc(doc(as(env, 'o1').firestore(), 'events/e1'), { staffIds: ['o3'] }));
   });

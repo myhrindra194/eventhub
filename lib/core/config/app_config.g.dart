@@ -8,20 +8,23 @@ part of 'app_config.dart';
 
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // ignore_for_file: type=lint, type=warning
-/// Must be overridden in `bootstrap()`; the default throws on purpose so a
-/// missing override is caught immediately instead of silently using dev.
+/// Doit être surchargé dans `bootstrap()` ; l’implémentation par défaut lève
+/// volontairement, pour qu’un oubli de surcharge soit détecté immédiatement
+/// au lieu d’utiliser silencieusement la configuration dev.
 
 @ProviderFor(appConfig)
 final appConfigProvider = AppConfigProvider._();
 
-/// Must be overridden in `bootstrap()`; the default throws on purpose so a
-/// missing override is caught immediately instead of silently using dev.
+/// Doit être surchargé dans `bootstrap()` ; l’implémentation par défaut lève
+/// volontairement, pour qu’un oubli de surcharge soit détecté immédiatement
+/// au lieu d’utiliser silencieusement la configuration dev.
 
 final class AppConfigProvider
     extends $FunctionalProvider<AppConfig, AppConfig, AppConfig>
     with $Provider<AppConfig> {
-  /// Must be overridden in `bootstrap()`; the default throws on purpose so a
-  /// missing override is caught immediately instead of silently using dev.
+  /// Doit être surchargé dans `bootstrap()` ; l’implémentation par défaut lève
+  /// volontairement, pour qu’un oubli de surcharge soit détecté immédiatement
+  /// au lieu d’utiliser silencieusement la configuration dev.
   AppConfigProvider._()
     : super(
         from: null,

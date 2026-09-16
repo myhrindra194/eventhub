@@ -1,4 +1,4 @@
-/// Build flavor, injected at compile time with `--dart-define=FLAVOR=<name>`.
+/// Flavor de build, injecté à la compilation par `--dart-define=FLAVOR=<name>`.
 ///
 /// ```sh
 /// flutter run --dart-define=FLAVOR=dev
@@ -11,7 +11,7 @@ enum Flavor {
 
   static const _envKey = 'FLAVOR';
 
-  /// Resolves the flavor from `--dart-define`, defaulting to [dev].
+  /// Résout le flavor depuis `--dart-define`, avec [dev] par défaut.
   static Flavor fromEnvironment() {
     const raw = String.fromEnvironment(_envKey, defaultValue: 'dev');
     return Flavor.values.firstWhere(

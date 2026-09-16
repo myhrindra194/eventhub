@@ -1,18 +1,19 @@
-/// Public URLs of the product.
+/// Les URL publiques du produit.
 ///
-/// The web host is the Firebase Hosting site of the project: `/e/{id}` is
-/// rendered by the `publicEventPage` Cloud Function (Open Graph preview for
-/// people without the app) and opened directly by the app on Android through
-/// App Links (see AndroidManifest.xml and hosting/public/.well-known).
+/// L’hôte web est le site Firebase Hosting du projet : `/e/{id}` est rendu
+/// par la Cloud Function `publicEventPage` (aperçu Open Graph pour les gens
+/// qui n’ont pas l’app) et ouvert directement par l’app sur Android via les
+/// App Links (voir AndroidManifest.xml et hosting/public/.well-known).
 abstract final class AppLinks {
   static const webHost = 'eventhub-d411f.web.app';
   static const supportEmail = 'support@eventhub.app';
 
-  /// Public page of an event, e.g. `https://eventhub-d411f.web.app/e/abc123`.
+  /// Page publique d’un événement, p. ex.
+  /// `https://eventhub-d411f.web.app/e/abc123`.
   static String event(String eventId) =>
       'https://$webHost/e/${Uri.encodeComponent(eventId)}';
 
-  /// The same link without its scheme, for display where space is tight.
+  /// Le même lien sans son schéma, pour l’afficher là où la place manque.
   static String displayable(String url) =>
       url.replaceFirst(RegExp('^https?://'), '');
 }

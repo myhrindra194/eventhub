@@ -8,29 +8,32 @@ part of 'firebase_providers.dart';
 
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // ignore_for_file: type=lint, type=warning
-/// Firebase is the whole backend on the Spark plan: Authentication for
-/// accounts, Cloud Firestore for data (protected by `firebase/firestore.rules`),
-/// FCM for push tokens, Crashlytics and Analytics. Data sources receive the
-/// SDK objects through these providers and never touch the singletons
-/// themselves, so tests can override them.
+/// Firebase constitue tout le backend sur le plan Spark : Authentication
+/// pour les comptes, Cloud Firestore pour les données (protégé par
+/// `firebase/firestore.rules`), FCM pour les tokens push, Crashlytics et
+/// Analytics. Les data sources reçoivent les objets du SDK via ces providers
+/// et ne touchent jamais aux singletons eux-mêmes, ce qui permet aux tests
+/// de les surcharger.
 
 @ProviderFor(firebaseAuth)
 final firebaseAuthProvider = FirebaseAuthProvider._();
 
-/// Firebase is the whole backend on the Spark plan: Authentication for
-/// accounts, Cloud Firestore for data (protected by `firebase/firestore.rules`),
-/// FCM for push tokens, Crashlytics and Analytics. Data sources receive the
-/// SDK objects through these providers and never touch the singletons
-/// themselves, so tests can override them.
+/// Firebase constitue tout le backend sur le plan Spark : Authentication
+/// pour les comptes, Cloud Firestore pour les données (protégé par
+/// `firebase/firestore.rules`), FCM pour les tokens push, Crashlytics et
+/// Analytics. Les data sources reçoivent les objets du SDK via ces providers
+/// et ne touchent jamais aux singletons eux-mêmes, ce qui permet aux tests
+/// de les surcharger.
 
 final class FirebaseAuthProvider
     extends $FunctionalProvider<FirebaseAuth, FirebaseAuth, FirebaseAuth>
     with $Provider<FirebaseAuth> {
-  /// Firebase is the whole backend on the Spark plan: Authentication for
-  /// accounts, Cloud Firestore for data (protected by `firebase/firestore.rules`),
-  /// FCM for push tokens, Crashlytics and Analytics. Data sources receive the
-  /// SDK objects through these providers and never touch the singletons
-  /// themselves, so tests can override them.
+  /// Firebase constitue tout le backend sur le plan Spark : Authentication
+  /// pour les comptes, Cloud Firestore pour les données (protégé par
+  /// `firebase/firestore.rules`), FCM pour les tokens push, Crashlytics et
+  /// Analytics. Les data sources reçoivent les objets du SDK via ces providers
+  /// et ne touchent jamais aux singletons eux-mêmes, ce qui permet aux tests
+  /// de les surcharger.
   FirebaseAuthProvider._()
     : super(
         from: null,

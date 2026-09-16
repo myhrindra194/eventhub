@@ -16,14 +16,16 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mocktail/mocktail.dart';
 
-/// Rendered snapshots of the four authentication screens, in both themes.
+/// Les captures rendues des quatre écrans d'authentification, dans les deux
+/// thèmes.
 ///
-/// Why goldens rather than a screenshot taken by hand on a phone: the device
-/// used during development refuses synthetic input (`INJECT_EVENTS` is locked
-/// on MIUI), so driving it is a manual chore that nobody repeats. These run on
-/// every `flutter test` and fail the build the day a padding, a radius or a
-/// shadow drifts — which is precisely the class of regression a screenshot in
-/// a chat thread cannot catch.
+/// Pourquoi des goldens plutôt qu'une capture prise à la main sur un
+/// téléphone : l'appareil de développement refuse la saisie synthétique
+/// (`INJECT_EVENTS` est verrouillé sur MIUI), le piloter est donc une corvée
+/// manuelle que personne ne répète. Ceux-ci tournent à chaque `flutter test`
+/// et font échouer le build le jour où une marge, un rayon ou une élévation
+/// dérive — exactement la classe de régression qu'une capture d'écran
+/// envoyée dans une conversation ne rattrapera jamais.
 ///
 /// Regenerate after an intentional design change:
 ///
@@ -31,16 +33,17 @@ import 'package:mocktail/mocktail.dart';
 /// flutter test --update-goldens test/features/auth/presentation/auth_screens_golden_test.dart
 /// ```
 ///
-/// Note on type: `google_fonts` fetches over the network, which is disabled in
-/// tests, so the goldens render with the fallback face. They therefore verify
-/// **layout, colour, radius and elevation** — not the final typography.
+/// Note sur la typographie : `google_fonts` télécharge par le réseau, qui est
+/// coupé en test ; les goldens sont donc rendus avec la police de repli. Ils
+/// vérifient par conséquent **la mise en page, la couleur et les rayons** —
+/// pas la typographie finale.
 class _MockAuthRepository extends Mock implements AuthRepository {}
 
 void main() {
   late _MockAuthRepository repo;
 
   setUpAll(() {
-    // Deterministic goldens: never reach for a font over the network.
+    // Des goldens déterministes : jamais de police cherchée sur le réseau.
     GoogleFonts.config.allowRuntimeFetching = false;
   });
 
@@ -72,7 +75,8 @@ void main() {
     ),
   );
 
-  /// A 360 × 800 dp surface — the phone the design is drawn for.
+  /// Une surface de 360 × 800 dp — le téléphone pour lequel le design est
+  /// dessiné.
   Future<void> pumpPhone(WidgetTester tester, Widget widget) async {
     tester.view.physicalSize = const Size(720, 1600);
     tester.view.devicePixelRatio = 2;

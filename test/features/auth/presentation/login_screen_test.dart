@@ -14,8 +14,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 
-/// Widget-test pattern: override the repository provider with a mock and
-/// pump the screen inside a ProviderScope. No Firebase involved.
+/// Le motif des tests de widget : remplacer le provider du repository par un
+/// mock et monter l'écran dans un ProviderScope. Aucun Firebase n'intervient.
 class MockAuthRepository extends Mock implements AuthRepository {}
 
 void main() {

@@ -2,7 +2,8 @@ import 'package:eventhub/features/reservations/domain/entities/reservation.dart'
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  /// `<eventId>_<uid>`, shaped like Firestore auto ids and Firebase uids.
+  /// `<eventId>_<uid>`, à la forme des identifiants automatiques de Firestore
+  /// et des uid Firebase.
   String idFor(int n) => 'Xk3Pq9LmZr2Tb7Wc4Yd1_${'u$n'.padLeft(28, 'A')}';
 
   Reservation withId(String id) => Reservation(

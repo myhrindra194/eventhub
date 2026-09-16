@@ -145,7 +145,7 @@ void main() {
   });
 
   group('update', () {
-    /// Runs the decision against [current], as the transaction would.
+    /// Exécute la décision sur [current], comme le ferait la transaction.
     void stubUpdate(Event current) =>
         when(() => remote.update(any(), any())).thenAnswer((invocation) async {
           final decide = invocation.positionalArguments[1] as EventEditDecision;

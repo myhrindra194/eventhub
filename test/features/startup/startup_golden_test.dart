@@ -9,24 +9,26 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-/// Startup path — splash and onboarding — rendered at three widths.
+/// Le chemin de démarrage — splash et onboarding — rendu à trois largeurs.
 ///
-/// Two claims are under test here, and neither can be verified by reading the
-/// code:
+/// Deux affirmations sont mises à l'épreuve ici, et aucune ne se vérifie en
+/// lisant le code :
 ///
-///  1. **Responsiveness.** The same screen is rendered on a 320 dp budget
-///     phone, a 390 dp mainstream phone and a 900 dp tablet window. A golden
-///     per band is the only way a layout that silently overflows at 320 dp
-///     stops shipping.
-///  2. **No appearance toggle on the startup path.** The reference design
-///     puts a sun/moon button on both screens; this product does not, and
-///     the goldens are what keeps it that way after the next refactor.
+///  1. **L'adaptabilité.** Le même écran est rendu sur un téléphone d'entrée
+///     de gamme de 320 dp, sur un téléphone courant de 390 dp et dans une
+///     fenêtre de tablette de 900 dp. Un golden par bande est le seul moyen
+///     qu'une mise en page qui déborde silencieusement à 320 dp cesse de
+///     partir en production.
+///  2. **Aucun sélecteur d'apparence sur le chemin de démarrage.** Le design
+///     de référence pose un bouton soleil/lune sur les deux écrans ; ce
+///     produit non, et ce sont les goldens qui le maintiendront ainsi après
+///     le prochain remaniement.
 void main() {
   setUpAll(() {
     GoogleFonts.config.allowRuntimeFetching = false;
   });
 
-  /// The three bands `ScreenSize` distinguishes, in logical pixels.
+  /// Les trois bandes que distingue `ScreenSize`, en pixels logiques.
   const bands = <String, Size>{
     'small': Size(320, 720),
     'medium': Size(390, 844),
@@ -36,7 +38,7 @@ void main() {
   Widget host(Widget child, {required Brightness brightness}) => ProviderScope(
     overrides: [
       appConfigProvider.overrideWithValue(AppConfig.fromFlavor(Flavor.dev)),
-      // The carousel must never write to disk from a test.
+      // Le carrousel ne doit jamais écrire sur le disque depuis un test.
       onboardingSeenProvider.overrideWith(_SeenStub.new),
     ],
     child: MaterialApp(
@@ -59,8 +61,8 @@ void main() {
     if (settle) {
       await tester.pumpAndSettle();
     } else {
-      // The splash animates for ~2.6 s; step past it so the golden captures
-      // the finished mark rather than a random frame.
+      // Le splash s'anime pendant environ 2,6 s ; on passe au-delà pour que
+      // le golden capture la marque achevée, et non une image au hasard.
       await tester.pump(const Duration(seconds: 3));
     }
   }
@@ -106,7 +108,7 @@ void main() {
   });
 }
 
-/// Always-seen stub: the real notifier touches `SharedPreferences`.
+/// Doublure « déjà vu » : le vrai notifier passe par `SharedPreferences`.
 class _SeenStub extends OnboardingSeen {
   @override
   Future<bool> build() async => true;

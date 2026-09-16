@@ -36,7 +36,7 @@ void main() {
     });
 
     test('never names more people than the head count', () {
-      // The aggregate may lag behind a cancellation for a moment.
+      // L'agrégat peut rester un instant en retard sur une annulation.
       expect(s(1, ['Soa', 'Hery R.']), 'Soa y va');
     });
 

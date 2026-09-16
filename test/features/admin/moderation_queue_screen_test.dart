@@ -30,7 +30,6 @@ void main() {
       reportCount: 3,
       status: ModerationStatus.open,
       lastReason: ReportReason.harassment,
-      autoHidden: true,
       updatedAt: DateTime(2026, 9, 14, 9),
     ),
     ModerationEntry(
@@ -68,7 +67,7 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets('lists open files with reason, count and the auto-hide mark', (
+  testWidgets('lists the open files, most reported first, with their reason', (
     tester,
   ) async {
     await pump(tester);
@@ -76,8 +75,9 @@ void main() {
     expect(find.text('À traiter · 2'), findsOneWidget);
     expect(find.text('Avis · Harcèlement'), findsOneWidget);
     expect(find.text('Événement · Arnaque'), findsOneWidget);
-    // Badges are set in capitals.
-    expect(find.text(AppStrings.autoHiddenShort.toUpperCase()), findsOneWidget);
+    // La ligne se lit « 3 signalements · 14 sept. 09:00 » : c'est le nombre
+    // qui sert au tri du modérateur, la date ne dit que la fraîcheur.
+    expect(find.textContaining(AppStrings.reportsCount(3)), findsOneWidget);
   });
 
   testWidgets('filters by target type and shows the empty handled tab', (

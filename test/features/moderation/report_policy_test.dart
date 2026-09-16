@@ -1,17 +1,18 @@
+import 'package:cloud_firestore/cloud_firestore.dart' show FirebaseException;
 import 'package:eventhub/core/errors/failure.dart';
 import 'package:eventhub/core/result/result.dart';
 import 'package:eventhub/features/moderation/data/report_remote_data_source.dart';
 import 'package:eventhub/features/moderation/data/report_repository_impl.dart';
 import 'package:eventhub/features/moderation/domain/report.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
-/// Throws what `public.reports` would answer for the insert.
+/// Tient lieu des deux documents que la vraie source de données écrit
+/// ensemble.
 class _FakeReports implements ReportRemoteDataSource {
   _FakeReports([this.error]);
 
-  final PostgrestException? error;
-  Map<String, String>? inserted;
+  final FirebaseException? error;
+  Map<String, String>? written;
 
   @override
   Future<void> create({
@@ -21,17 +22,20 @@ class _FakeReports implements ReportRemoteDataSource {
     required String details,
   }) async {
     if (error case final e?) throw e;
-    inserted = {
-      'target_type': target.name,
-      'target_id': targetId,
+    written = {
+      'targetType': target.name,
+      'targetId': targetId,
       'reason': reason.wire,
       'details': details,
     };
   }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 void main() {
-  const reviewId = '6f1c9a52-3b7e-4d0a-9c1e-2b8f0d4e7a11';
+  const reviewId = 'evt-1_user-9';
 
   Result<void> validate({
     ReportTarget target = ReportTarget.event,
@@ -47,7 +51,7 @@ void main() {
     details: details,
   );
 
-  test('wire values match the report_reason and report_target enums', () {
+  test('wire values match the lists the security rules accept', () {
     expect(ReportReason.values.map((r) => r.wire).toSet(), {
       'spam',
       'misleading',
@@ -76,21 +80,26 @@ void main() {
     );
   });
 
-  test('refuses reporting oneself; review authorship is the server’s', () {
-    expect(
-      validate(target: ReportTarget.user, targetId: 'p1'),
-      isA<Err<void>>().having(
-        (e) => (e.failure as BusinessRuleFailure).rule,
-        'rule',
-        BusinessRule.cannotReportSelf,
-      ),
-    );
-    // A review id is an opaque uuid: nothing local says who wrote it.
-    expect(
-      validate(target: ReportTarget.review, targetId: reviewId),
-      isA<Ok<void>>(),
-    );
-  });
+  test(
+    'refuses reporting oneself; review authorship is the rules’ business',
+    () {
+      expect(
+        validate(target: ReportTarget.user, targetId: 'p1'),
+        isA<Err<void>>().having(
+          (e) => (e.failure as BusinessRuleFailure).rule,
+          'rule',
+          BusinessRule.cannotReportSelf,
+        ),
+      );
+      // L'identifiant d'un avis se termine par l'uid de son auteur, et les
+      // règles refusent le signalement de son propre avis ; le client ne
+      // duplique pas cette vérification.
+      expect(
+        validate(target: ReportTarget.review, targetId: reviewId),
+        isA<Ok<void>>(),
+      );
+    },
+  );
 
   test('bounds the narrative at 2 000 characters', () {
     expect(validate(details: 'x' * 2001), isA<Err<void>>());
@@ -107,17 +116,12 @@ void main() {
           details: '  Liens répétés  ',
         );
 
-    BusinessRule? rule(Result<void> r) => switch (r) {
-      Err(failure: final BusinessRuleFailure f) => f.rule,
-      _ => null,
-    };
-
-    test('inserts only the client columns, details trimmed', () async {
+    test('writes exactly the report fields, details trimmed', () async {
       final remote = _FakeReports();
       expect(await submit(remote), isA<Ok<void>>());
-      expect(remote.inserted, {
-        'target_type': 'review',
-        'target_id': reviewId,
+      expect(remote.written, {
+        'targetType': 'review',
+        'targetId': reviewId,
         'reason': 'spam',
         'details': 'Liens répétés',
       });
@@ -126,52 +130,42 @@ void main() {
     test('a second report by the same account is alreadyReported', () async {
       final result = await submit(
         _FakeReports(
-          const PostgrestException(
-            message: 'duplicate key value violates unique constraint',
-            code: '23505',
-          ),
-        ),
-      );
-      expect(rule(result), BusinessRule.alreadyReported);
-    });
-
-    test('keeps the rule raised by the trigger', () async {
-      final result = await submit(
-        _FakeReports(
-          const PostgrestException(
-            message: 'Vous ne pouvez pas signaler votre propre avis.',
-            code: 'PT409',
-            hint: 'cannotReportSelf',
-          ),
-        ),
-      );
-      expect(rule(result), BusinessRule.cannotReportSelf);
-      expect(
-        result.failureOrNull?.message,
-        'Vous ne pouvez pas signaler votre propre avis.',
-      );
-    });
-
-    test('"other" without details refused by the trigger is a validation '
-        'failure', () async {
-      final result = await submit(
-        _FakeReports(
-          const PostgrestException(
-            message: 'Certains champs sont invalides.',
-            code: 'PT422',
-            hint: 'validation',
-            details: '{"details": "Précisez ce qui ne va pas."}',
+          FirebaseException(
+            plugin: 'cloud_firestore',
+            code: 'permission-denied',
           ),
         ),
       );
       expect(
         result.failureOrNull,
-        isA<ValidationFailure>().having(
-          (f) => f.fieldErrors['details'],
-          'details',
-          'Précisez ce qui ne va pas.',
+        isA<BusinessRuleFailure>().having(
+          (f) => f.rule,
+          'rule',
+          BusinessRule.alreadyReported,
         ),
       );
+    });
+
+    test('any other backend error keeps its own mapping', () async {
+      final result = await submit(
+        _FakeReports(
+          FirebaseException(plugin: 'cloud_firestore', code: 'unavailable'),
+        ),
+      );
+      expect(result.failureOrNull, isA<NetworkFailure>());
+    });
+
+    test('a local refusal never reaches the backend', () async {
+      final remote = _FakeReports();
+      final result = await ReportRepositoryImpl(remote).submit(
+        reporterId: 'p1',
+        target: ReportTarget.user,
+        targetId: 'p1',
+        reason: ReportReason.spam,
+        details: '',
+      );
+      expect(result, isA<Err<void>>());
+      expect(remote.written, isNull);
     });
   });
 }

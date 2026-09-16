@@ -82,7 +82,8 @@ void main() {
     });
 
     test('checks "already reserved" before "full"', () {
-      // A participant holding the last seat must get the precise message.
+      // Un participant qui détient la dernière place doit recevoir le message
+      // précis, et non un « complet » qui ne lui apprendrait rien.
       final result = ReservationPolicy.canReserve(
         event: Fixtures.event(capacity: 1, availablePlaces: 0),
         existing: Fixtures.reservation(),
@@ -161,7 +162,7 @@ void main() {
       expect(_rule(reserve(tierId: 'full')), BusinessRule.tierSoldOut);
       final paid = reserve(tierId: 'vip');
       expect(_rule(paid), BusinessRule.paymentRequired);
-      // Without a payment server the sentence says it plainly.
+      // Faute de serveur de paiement, la phrase le dit sans détour.
       expect(
         (paid as Err<void>).failure.message,
         ReservationPolicy.paymentUnavailable.message,

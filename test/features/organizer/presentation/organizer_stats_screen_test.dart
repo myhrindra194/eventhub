@@ -47,7 +47,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    // The percentage is typeset with a non-breaking space before "%".
+    // Le pourcentage est composé avec une espace insécable avant le « % ».
     expect(find.textContaining(RegExp(r'^50\s%$')), findsWidgets);
 
     await tester.scrollUntilVisible(

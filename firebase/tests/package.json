@@ -1,0 +1,19 @@
+{
+  "name": "eventhub-rules-tests",
+  "version": "2.0.0",
+  "private": true,
+  "description": "Firestore security-rules suite for EventHub on the Spark plan (no server code): every cross-document invariant is proven by batches and transactions, run against the Firestore emulator.",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "test": "node --test --test-concurrency=1 --test-reporter=spec \"*.rules.test.js\"",
+    "emulate": "firebase --project demo-eventhub emulators:exec --only firestore \"npm test\""
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "^5.0.2",
+    "firebase": "^12.19.0",
+    "firebase-tools": "^15.30.0"
+  }
+}

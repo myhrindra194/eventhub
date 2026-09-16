@@ -1,0 +1,33 @@
+# Worker Cloudflare d'EventHub : notifications push FCM et emails
+# transactionnels (bienvenue, « Nous contacter »).
+#
+# Pourquoi hors de Firebase : Cloud Functions exige le plan Blaze (compte de
+# facturation), écarté pour le projet. Le plan gratuit de Cloudflare Workers
+# suffit largement (100 000 requêtes par jour).
+#
+# Les secrets ne vivent PAS ici :
+#   npx wrangler secret put FIREBASE_SERVICE_ACCOUNT < service-account.json
+#   npx wrangler secret put BREVO_API_KEY
+
+name = "eventhub-api"
+main = "src/index.js"
+compatibility_date = "2026-09-01"
+
+[vars]
+FIREBASE_PROJECT_ID = "eventhub-d411f"
+# Origines de la version web autorisées à appeler le Worker (CORS).
+ALLOWED_ORIGINS = "https://eventhub-d411f.web.app,https://eventhub-d411f.firebaseapp.com,http://localhost:5050"
+# Page ouverte quand on touche un push reçu dans le navigateur.
+APP_ORIGIN = "https://eventhub-d411f.web.app"
+# Boîte de l'entreprise : destinataire du formulaire « Nous contacter » et
+# expéditeur des emails (à vérifier dans Brevo). Vide → emails désactivés.
+COMPANY_EMAIL = ""
+
+# Purge horaire des reçus d'envoi expirés (les politiques TTL de Firestore
+# exigent un compte de facturation). Les déclencheurs planifiés sont inclus
+# dans le plan gratuit de Cloudflare.
+[triggers]
+crons = ["17 * * * *"]
+
+[observability]
+enabled = true

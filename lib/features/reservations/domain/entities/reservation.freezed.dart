@@ -1,0 +1,359 @@
+// GENERATED CODE - DO NOT MODIFY BY HAND
+// coverage:ignore-file
+// ignore_for_file: type=lint, type=warning, deprecated_member_use, deprecated_member_use_from_same_package
+// ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
+
+part of 'reservation.dart';
+
+// **************************************************************************
+// FreezedGenerator
+// **************************************************************************
+
+// GENERATED CODE - DO NOT MODIFY BY HAND
+// dart format off
+T _$identity<T>(T value) => value;
+/// @nodoc
+mixin _$Reservation {
+
+ String get id;/// Vide une fois l’événement supprimé : la réservation demeure à titre
+/// d’historique, avec son instantané de titre, de date et de lieu.
+ String get eventId;/// Vide une fois le compte du participant supprimé (la ligne est
+/// anonymisée et conservée pour les statistiques de l’organisateur).
+ String get userId;/// Vide une fois le compte de l’organisateur supprimé.
+ String get organizerId; String get userName; String get userEmail; String get eventTitle; DateTime get eventStartsAt; String get eventLocation; ReservationStatus get status; DateTime get reservedAt; DateTime? get cancelledAt;/// Qui a annulé : l’uid du titulaire, ou `moderation` lorsqu’un
+/// administrateur a retiré l’événement.
+ String? get cancelledBy;/// Type de billet (F-12), copié au moment de la réservation.
+ String? get tierId; String? get tierName;/// Montant réellement payé, en unités mineures. Toujours 0 sans serveur
+/// de paiement : les règles refusent toute autre valeur.
+ int get pricePaid; int? get amountDue; String? get currency; String? get paymentStatus; String? get checkoutUrl; DateTime? get holdExpiresAt;
+/// Create a copy of Reservation
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$ReservationCopyWith<Reservation> get copyWith => _$ReservationCopyWithImpl<Reservation>(this as Reservation, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  final _this = this as Reservation;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is Reservation&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.eventId, _this.eventId) || other.eventId == _this.eventId)&&(identical(other.userId, _this.userId) || other.userId == _this.userId)&&(identical(other.organizerId, _this.organizerId) || other.organizerId == _this.organizerId)&&(identical(other.userName, _this.userName) || other.userName == _this.userName)&&(identical(other.userEmail, _this.userEmail) || other.userEmail == _this.userEmail)&&(identical(other.eventTitle, _this.eventTitle) || other.eventTitle == _this.eventTitle)&&(identical(other.eventStartsAt, _this.eventStartsAt) || other.eventStartsAt == _this.eventStartsAt)&&(identical(other.eventLocation, _this.eventLocation) || other.eventLocation == _this.eventLocation)&&(identical(other.status, _this.status) || other.status == _this.status)&&(identical(other.reservedAt, _this.reservedAt) || other.reservedAt == _this.reservedAt)&&(identical(other.cancelledAt, _this.cancelledAt) || other.cancelledAt == _this.cancelledAt)&&(identical(other.cancelledBy, _this.cancelledBy) || other.cancelledBy == _this.cancelledBy)&&(identical(other.tierId, _this.tierId) || other.tierId == _this.tierId)&&(identical(other.tierName, _this.tierName) || other.tierName == _this.tierName)&&(identical(other.pricePaid, _this.pricePaid) || other.pricePaid == _this.pricePaid)&&(identical(other.amountDue, _this.amountDue) || other.amountDue == _this.amountDue)&&(identical(other.currency, _this.currency) || other.currency == _this.currency)&&(identical(other.paymentStatus, _this.paymentStatus) || other.paymentStatus == _this.paymentStatus)&&(identical(other.checkoutUrl, _this.checkoutUrl) || other.checkoutUrl == _this.checkoutUrl)&&(identical(other.holdExpiresAt, _this.holdExpiresAt) || other.holdExpiresAt == _this.holdExpiresAt));
+}
+
+
+@override
+int get hashCode {
+  final _this = this as Reservation;
+  return Object.hashAll([runtimeType,_this.id,_this.eventId,_this.userId,_this.organizerId,_this.userName,_this.userEmail,_this.eventTitle,_this.eventStartsAt,_this.eventLocation,_this.status,_this.reservedAt,_this.cancelledAt,_this.cancelledBy,_this.tierId,_this.tierName,_this.pricePaid,_this.amountDue,_this.currency,_this.paymentStatus,_this.checkoutUrl,_this.holdExpiresAt]);
+}
+
+@override
+String toString() {
+  final _this = this as Reservation;
+  return 'Reservation(id: ${_this.id}, eventId: ${_this.eventId}, userId: ${_this.userId}, organizerId: ${_this.organizerId}, userName: ${_this.userName}, userEmail: ${_this.userEmail}, eventTitle: ${_this.eventTitle}, eventStartsAt: ${_this.eventStartsAt}, eventLocation: ${_this.eventLocation}, status: ${_this.status}, reservedAt: ${_this.reservedAt}, cancelledAt: ${_this.cancelledAt}, cancelledBy: ${_this.cancelledBy}, tierId: ${_this.tierId}, tierName: ${_this.tierName}, pricePaid: ${_this.pricePaid}, amountDue: ${_this.amountDue}, currency: ${_this.currency}, paymentStatus: ${_this.paymentStatus}, checkoutUrl: ${_this.checkoutUrl}, holdExpiresAt: ${_this.holdExpiresAt})';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $ReservationCopyWith<$Res>  {
+  factory $ReservationCopyWith(Reservation value, $Res Function(Reservation) _then) = _$ReservationCopyWithImpl;
+@useResult
+$Res call({
+ String id, String eventId, String userId, String organizerId, String userName, String userEmail, String eventTitle, DateTime eventStartsAt, String eventLocation, ReservationStatus status, DateTime reservedAt, DateTime? cancelledAt, String? cancelledBy, String? tierId, String? tierName, int pricePaid, int? amountDue, String? currency, String? paymentStatus, String? checkoutUrl, DateTime? holdExpiresAt
+});
+
+
+
+
+}
+/// @nodoc
+class _$ReservationCopyWithImpl<$Res>
+    implements $ReservationCopyWith<$Res> {
+  _$ReservationCopyWithImpl(this._self, this._then);
+
+  final Reservation _self;
+  final $Res Function(Reservation) _then;
+
+/// Create a copy of Reservation
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? eventId = null,Object? userId = null,Object? organizerId = null,Object? userName = null,Object? userEmail = null,Object? eventTitle = null,Object? eventStartsAt = null,Object? eventLocation = null,Object? status = null,Object? reservedAt = null,Object? cancelledAt = freezed,Object? cancelledBy = freezed,Object? tierId = freezed,Object? tierName = freezed,Object? pricePaid = null,Object? amountDue = freezed,Object? currency = freezed,Object? paymentStatus = freezed,Object? checkoutUrl = freezed,Object? holdExpiresAt = freezed,}) {
+  return _then(Reservation(
+id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
+as String,eventId: null == eventId ? _self.eventId : eventId // ignore: cast_nullable_to_non_nullable
+as String,userId: null == userId ? _self.userId : userId // ignore: cast_nullable_to_non_nullable
+as String,organizerId: null == organizerId ? _self.organizerId : organizerId // ignore: cast_nullable_to_non_nullable
+as String,userName: null == userName ? _self.userName : userName // ignore: cast_nullable_to_non_nullable
+as String,userEmail: null == userEmail ? _self.userEmail : userEmail // ignore: cast_nullable_to_non_nullable
+as String,eventTitle: null == eventTitle ? _self.eventTitle : eventTitle // ignore: cast_nullable_to_non_nullable
+as String,eventStartsAt: null == eventStartsAt ? _self.eventStartsAt : eventStartsAt // ignore: cast_nullable_to_non_nullable
+as DateTime,eventLocation: null == eventLocation ? _self.eventLocation : eventLocation // ignore: cast_nullable_to_non_nullable
+as String,status: null == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
+as ReservationStatus,reservedAt: null == reservedAt ? _self.reservedAt : reservedAt // ignore: cast_nullable_to_non_nullable
+as DateTime,cancelledAt: freezed == cancelledAt ? _self.cancelledAt : cancelledAt // ignore: cast_nullable_to_non_nullable
+as DateTime?,cancelledBy: freezed == cancelledBy ? _self.cancelledBy : cancelledBy // ignore: cast_nullable_to_non_nullable
+as String?,tierId: freezed == tierId ? _self.tierId : tierId // ignore: cast_nullable_to_non_nullable
+as String?,tierName: freezed == tierName ? _self.tierName : tierName // ignore: cast_nullable_to_non_nullable
+as String?,pricePaid: null == pricePaid ? _self.pricePaid : pricePaid // ignore: cast_nullable_to_non_nullable
+as int,amountDue: freezed == amountDue ? _self.amountDue : amountDue // ignore: cast_nullable_to_non_nullable
+as int?,currency: freezed == currency ? _self.currency : currency // ignore: cast_nullable_to_non_nullable
+as String?,paymentStatus: freezed == paymentStatus ? _self.paymentStatus : paymentStatus // ignore: cast_nullable_to_non_nullable
+as String?,checkoutUrl: freezed == checkoutUrl ? _self.checkoutUrl : checkoutUrl // ignore: cast_nullable_to_non_nullable
+as String?,holdExpiresAt: freezed == holdExpiresAt ? _self.holdExpiresAt : holdExpiresAt // ignore: cast_nullable_to_non_nullable
+as DateTime?,
+  ));
+}
+
+}
+
+
+/// Adds pattern-matching-related methods to [Reservation].
+extension ReservationPatterns on Reservation {
+/// A variant of `map` that fallback to returning `orElse`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeMap<TResult extends Object?>(TResult Function( _Reservation value)?  $default,{required TResult orElse(),}){
+final _that = this;
+switch (_that) {
+case _Reservation() when $default != null:
+return $default(_that);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// Callbacks receives the raw object, upcasted.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case final Subclass2 value:
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult map<TResult extends Object?>(TResult Function( _Reservation value)  $default,){
+final _that = this;
+switch (_that) {
+case _Reservation():
+return $default(_that);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `map` that fallback to returning `null`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>(TResult? Function( _Reservation value)?  $default,){
+final _that = this;
+switch (_that) {
+case _Reservation() when $default != null:
+return $default(_that);case _:
+  return null;
+
+}
+}
+/// A variant of `when` that fallback to an `orElse` callback.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String eventId,  String userId,  String organizerId,  String userName,  String userEmail,  String eventTitle,  DateTime eventStartsAt,  String eventLocation,  ReservationStatus status,  DateTime reservedAt,  DateTime? cancelledAt,  String? cancelledBy,  String? tierId,  String? tierName,  int pricePaid,  int? amountDue,  String? currency,  String? paymentStatus,  String? checkoutUrl,  DateTime? holdExpiresAt)?  $default,{required TResult orElse(),}) {final _that = this;
+switch (_that) {
+case _Reservation() when $default != null:
+return $default(_that.id,_that.eventId,_that.userId,_that.organizerId,_that.userName,_that.userEmail,_that.eventTitle,_that.eventStartsAt,_that.eventLocation,_that.status,_that.reservedAt,_that.cancelledAt,_that.cancelledBy,_that.tierId,_that.tierName,_that.pricePaid,_that.amountDue,_that.currency,_that.paymentStatus,_that.checkoutUrl,_that.holdExpiresAt);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// As opposed to `map`, this offers destructuring.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case Subclass2(:final field2):
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String eventId,  String userId,  String organizerId,  String userName,  String userEmail,  String eventTitle,  DateTime eventStartsAt,  String eventLocation,  ReservationStatus status,  DateTime reservedAt,  DateTime? cancelledAt,  String? cancelledBy,  String? tierId,  String? tierName,  int pricePaid,  int? amountDue,  String? currency,  String? paymentStatus,  String? checkoutUrl,  DateTime? holdExpiresAt)  $default,) {final _that = this;
+switch (_that) {
+case _Reservation():
+return $default(_that.id,_that.eventId,_that.userId,_that.organizerId,_that.userName,_that.userEmail,_that.eventTitle,_that.eventStartsAt,_that.eventLocation,_that.status,_that.reservedAt,_that.cancelledAt,_that.cancelledBy,_that.tierId,_that.tierName,_that.pricePaid,_that.amountDue,_that.currency,_that.paymentStatus,_that.checkoutUrl,_that.holdExpiresAt);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `when` that fallback to returning `null`
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String eventId,  String userId,  String organizerId,  String userName,  String userEmail,  String eventTitle,  DateTime eventStartsAt,  String eventLocation,  ReservationStatus status,  DateTime reservedAt,  DateTime? cancelledAt,  String? cancelledBy,  String? tierId,  String? tierName,  int pricePaid,  int? amountDue,  String? currency,  String? paymentStatus,  String? checkoutUrl,  DateTime? holdExpiresAt)?  $default,) {final _that = this;
+switch (_that) {
+case _Reservation() when $default != null:
+return $default(_that.id,_that.eventId,_that.userId,_that.organizerId,_that.userName,_that.userEmail,_that.eventTitle,_that.eventStartsAt,_that.eventLocation,_that.status,_that.reservedAt,_that.cancelledAt,_that.cancelledBy,_that.tierId,_that.tierName,_that.pricePaid,_that.amountDue,_that.currency,_that.paymentStatus,_that.checkoutUrl,_that.holdExpiresAt);case _:
+  return null;
+
+}
+}
+
+}
+
+/// @nodoc
+
+
+class _Reservation extends Reservation {
+  const _Reservation({required this.id, required this.eventId, required this.userId, required this.organizerId, required this.userName, required this.userEmail, required this.eventTitle, required this.eventStartsAt, required this.eventLocation, required this.status, required this.reservedAt, this.cancelledAt, this.cancelledBy, this.tierId, this.tierName, this.pricePaid = 0, this.amountDue, this.currency, this.paymentStatus, this.checkoutUrl, this.holdExpiresAt}): super._();
+  
+
+@override final  String id;
+/// Vide une fois l’événement supprimé : la réservation demeure à titre
+/// d’historique, avec son instantané de titre, de date et de lieu.
+@override final  String eventId;
+/// Vide une fois le compte du participant supprimé (la ligne est
+/// anonymisée et conservée pour les statistiques de l’organisateur).
+@override final  String userId;
+/// Vide une fois le compte de l’organisateur supprimé.
+@override final  String organizerId;
+@override final  String userName;
+@override final  String userEmail;
+@override final  String eventTitle;
+@override final  DateTime eventStartsAt;
+@override final  String eventLocation;
+@override final  ReservationStatus status;
+@override final  DateTime reservedAt;
+@override final  DateTime? cancelledAt;
+/// Qui a annulé : l’uid du titulaire, ou `moderation` lorsqu’un
+/// administrateur a retiré l’événement.
+@override final  String? cancelledBy;
+/// Type de billet (F-12), copié au moment de la réservation.
+@override final  String? tierId;
+@override final  String? tierName;
+/// Montant réellement payé, en unités mineures. Toujours 0 sans serveur
+/// de paiement : les règles refusent toute autre valeur.
+@override@JsonKey() final  int pricePaid;
+@override final  int? amountDue;
+@override final  String? currency;
+@override final  String? paymentStatus;
+@override final  String? checkoutUrl;
+@override final  DateTime? holdExpiresAt;
+
+/// Create a copy of Reservation
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$ReservationCopyWith<_Reservation> get copyWith => __$ReservationCopyWithImpl<_Reservation>(this, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _Reservation&&(identical(other.id, id) || other.id == id)&&(identical(other.eventId, eventId) || other.eventId == eventId)&&(identical(other.userId, userId) || other.userId == userId)&&(identical(other.organizerId, organizerId) || other.organizerId == organizerId)&&(identical(other.userName, userName) || other.userName == userName)&&(identical(other.userEmail, userEmail) || other.userEmail == userEmail)&&(identical(other.eventTitle, eventTitle) || other.eventTitle == eventTitle)&&(identical(other.eventStartsAt, eventStartsAt) || other.eventStartsAt == eventStartsAt)&&(identical(other.eventLocation, eventLocation) || other.eventLocation == eventLocation)&&(identical(other.status, status) || other.status == status)&&(identical(other.reservedAt, reservedAt) || other.reservedAt == reservedAt)&&(identical(other.cancelledAt, cancelledAt) || other.cancelledAt == cancelledAt)&&(identical(other.cancelledBy, cancelledBy) || other.cancelledBy == cancelledBy)&&(identical(other.tierId, tierId) || other.tierId == tierId)&&(identical(other.tierName, tierName) || other.tierName == tierName)&&(identical(other.pricePaid, pricePaid) || other.pricePaid == pricePaid)&&(identical(other.amountDue, amountDue) || other.amountDue == amountDue)&&(identical(other.currency, currency) || other.currency == currency)&&(identical(other.paymentStatus, paymentStatus) || other.paymentStatus == paymentStatus)&&(identical(other.checkoutUrl, checkoutUrl) || other.checkoutUrl == checkoutUrl)&&(identical(other.holdExpiresAt, holdExpiresAt) || other.holdExpiresAt == holdExpiresAt));
+}
+
+
+@override
+int get hashCode {
+    return Object.hashAll([runtimeType,id,eventId,userId,organizerId,userName,userEmail,eventTitle,eventStartsAt,eventLocation,status,reservedAt,cancelledAt,cancelledBy,tierId,tierName,pricePaid,amountDue,currency,paymentStatus,checkoutUrl,holdExpiresAt]);
+}
+
+@override
+String toString() {
+    return 'Reservation(id: $id, eventId: $eventId, userId: $userId, organizerId: $organizerId, userName: $userName, userEmail: $userEmail, eventTitle: $eventTitle, eventStartsAt: $eventStartsAt, eventLocation: $eventLocation, status: $status, reservedAt: $reservedAt, cancelledAt: $cancelledAt, cancelledBy: $cancelledBy, tierId: $tierId, tierName: $tierName, pricePaid: $pricePaid, amountDue: $amountDue, currency: $currency, paymentStatus: $paymentStatus, checkoutUrl: $checkoutUrl, holdExpiresAt: $holdExpiresAt)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class _$ReservationCopyWith<$Res> implements $ReservationCopyWith<$Res> {
+  factory _$ReservationCopyWith(_Reservation value, $Res Function(_Reservation) _then) = __$ReservationCopyWithImpl;
+@override @useResult
+$Res call({
+ String id, String eventId, String userId, String organizerId, String userName, String userEmail, String eventTitle, DateTime eventStartsAt, String eventLocation, ReservationStatus status, DateTime reservedAt, DateTime? cancelledAt, String? cancelledBy, String? tierId, String? tierName, int pricePaid, int? amountDue, String? currency, String? paymentStatus, String? checkoutUrl, DateTime? holdExpiresAt
+});
+
+
+
+
+}
+/// @nodoc
+class __$ReservationCopyWithImpl<$Res>
+    implements _$ReservationCopyWith<$Res> {
+  __$ReservationCopyWithImpl(this._self, this._then);
+
+  final _Reservation _self;
+  final $Res Function(_Reservation) _then;
+
+/// Create a copy of Reservation
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? eventId = null,Object? userId = null,Object? organizerId = null,Object? userName = null,Object? userEmail = null,Object? eventTitle = null,Object? eventStartsAt = null,Object? eventLocation = null,Object? status = null,Object? reservedAt = null,Object? cancelledAt = freezed,Object? cancelledBy = freezed,Object? tierId = freezed,Object? tierName = freezed,Object? pricePaid = null,Object? amountDue = freezed,Object? currency = freezed,Object? paymentStatus = freezed,Object? checkoutUrl = freezed,Object? holdExpiresAt = freezed,}) {
+  return _then(_Reservation(
+id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
+as String,eventId: null == eventId ? _self.eventId : eventId // ignore: cast_nullable_to_non_nullable
+as String,userId: null == userId ? _self.userId : userId // ignore: cast_nullable_to_non_nullable
+as String,organizerId: null == organizerId ? _self.organizerId : organizerId // ignore: cast_nullable_to_non_nullable
+as String,userName: null == userName ? _self.userName : userName // ignore: cast_nullable_to_non_nullable
+as String,userEmail: null == userEmail ? _self.userEmail : userEmail // ignore: cast_nullable_to_non_nullable
+as String,eventTitle: null == eventTitle ? _self.eventTitle : eventTitle // ignore: cast_nullable_to_non_nullable
+as String,eventStartsAt: null == eventStartsAt ? _self.eventStartsAt : eventStartsAt // ignore: cast_nullable_to_non_nullable
+as DateTime,eventLocation: null == eventLocation ? _self.eventLocation : eventLocation // ignore: cast_nullable_to_non_nullable
+as String,status: null == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
+as ReservationStatus,reservedAt: null == reservedAt ? _self.reservedAt : reservedAt // ignore: cast_nullable_to_non_nullable
+as DateTime,cancelledAt: freezed == cancelledAt ? _self.cancelledAt : cancelledAt // ignore: cast_nullable_to_non_nullable
+as DateTime?,cancelledBy: freezed == cancelledBy ? _self.cancelledBy : cancelledBy // ignore: cast_nullable_to_non_nullable
+as String?,tierId: freezed == tierId ? _self.tierId : tierId // ignore: cast_nullable_to_non_nullable
+as String?,tierName: freezed == tierName ? _self.tierName : tierName // ignore: cast_nullable_to_non_nullable
+as String?,pricePaid: null == pricePaid ? _self.pricePaid : pricePaid // ignore: cast_nullable_to_non_nullable
+as int,amountDue: freezed == amountDue ? _self.amountDue : amountDue // ignore: cast_nullable_to_non_nullable
+as int?,currency: freezed == currency ? _self.currency : currency // ignore: cast_nullable_to_non_nullable
+as String?,paymentStatus: freezed == paymentStatus ? _self.paymentStatus : paymentStatus // ignore: cast_nullable_to_non_nullable
+as String?,checkoutUrl: freezed == checkoutUrl ? _self.checkoutUrl : checkoutUrl // ignore: cast_nullable_to_non_nullable
+as String?,holdExpiresAt: freezed == holdExpiresAt ? _self.holdExpiresAt : holdExpiresAt // ignore: cast_nullable_to_non_nullable
+as DateTime?,
+  ));
+}
+
+
+}
+
+// dart format on

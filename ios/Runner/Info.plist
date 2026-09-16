@@ -41,6 +41,43 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<!-- Google Sign-In: iOS client id of the Firebase project and its
+	     reversed form as URL scheme (the OAuth redirect comes back here). -->
+	<key>GIDClientID</key>
+	<string>930281380072-i20pglc1crsues71usoe3gs14a4fvvic.apps.googleusercontent.com</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.googleusercontent.apps.930281380072-i20pglc1crsues71usoe3gs14a4fvvic</string>
+			</array>
+		</dict>
+	</array>
+	<!-- Push notifications (FCM through APNs) delivered in background. -->
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>remote-notification</string>
+	</array>
+	<!-- Analytics collects nothing until the user consents. -->
+	<key>FIREBASE_ANALYTICS_COLLECTION_ENABLED</key>
+	<false/>
+	<!-- Appareil photo : scan des billets à l'entrée et prise de la photo de
+	     profil ou de couverture. iOS affiche cette phrase dans l'invite
+	     système ; elle doit couvrir les deux usages, sinon la revue d'Apple
+	     peut rejeter l'app pour justification incomplète. Sa présence active
+	     aussi la permission caméra de permission_handler sous Swift Package
+	     Manager. -->
+	<key>NSCameraUsageDescription</key>
+	<string>EventHub utilise l'appareil photo pour prendre votre photo de profil ou de couverture, et pour scanner les billets à l'entrée de vos événements.</string>
+	<!-- Photothèque : choix d'une photo de profil, de couverture ou d'une
+	     affiche d'événement. Le sélecteur système n'exige normalement pas
+	     d'autorisation, mais iOS met fin à l'app si un accès est tenté sans
+	     cette clé. -->
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>EventHub accède à vos photos pour que vous choisissiez une photo de profil, de couverture ou l'affiche d'un événement.</string>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>

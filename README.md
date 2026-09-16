@@ -108,6 +108,9 @@ Cloud Functions, Cloud Storage et Cloud Scheduler exigent le plan Blaze
 | Fil éditorialisé | à la une, **pour vous**, ça se remplit vite, cette semaine, catalogue paginé |
 | Pour vous | recommandations calculées sur l'appareil (organisateurs suivis, catégories des billets et favoris) |
 | Recherche et filtres | titre, lieu, organisateur, catégorie ; période, tri, masquer les complets |
+| Accueil Explorer | commence par une **bannière carrousel** toujours présente : événements à la une, ou messages éditoriaux si le catalogue est vide, squelette pendant le chargement (défilement toutes les 5 s, zoom lent, indicateur qui se remplit, pause au toucher, arrêt si les animations sont réduites) ; sections éditoriales, puis **une section par activité** avec « Tout voir ». La recherche et les filtres restent dans l'onglet Recherche et « Tous les événements » |
+| Liste ou grille | bascule mémorisée sur l'appareil, partagée par l'accueil et le catalogue ; grille de 2 à 4 colonnes selon la largeur |
+| Tous les événements | écran `/events/all?category=…` : catalogue complet, rail d'activités, filtres, liste ou grille, « Charger plus » |
 | Favoris | cœur optimiste, annulé si l'écriture échoue |
 | Fiche événement | jauge temps réel, « Soa, Hery R. et 40 autres y vont », types de billets, prix affichés, partage, signalement |
 | Réserver / annuler | **transaction** place + réservation prouvée par les règles : aucune survente, même à plusieurs au même instant ; re-réservation sur le même billet |
@@ -154,11 +157,15 @@ Layout **responsive** (téléphone, tablette, web, bureau) : barre d'onglets
 **façon iOS** en bas sur téléphone (bord à bord, translucide, libellé sous
 chaque icône, sélection par la teinte), de la **même matière que les barres du
 haut** ; rail latéral au-delà de 600 px et rail étendu avec libellés au-delà de
-1024 px. **Apparence personnalisable** depuis Profil (participant comme
-organisateur) : mode clair, sombre ou automatique, **modèle de couleurs**
-(Iris, Océan, Forêt, Corail, Graphite) et **police** (Moderne, Sobre,
-Géométrique, Arrondie, Éditoriale), appliqués à l'instant et mémorisés sur
-l'appareil. Filtres
+1024 px. **Thème** (clair, sombre, automatique) dans Profil ; **modèle de
+couleurs** (Iris, Océan, Forêt, Corail, Graphite) et **police** (Moderne, Sobre,
+Géométrique, Arrondie, Éditoriale) dans Paramètres, appliqués à l'instant et
+mémorisés sur l'appareil. **Photo de profil et couverture** modifiables
+directement depuis l'en-tête de Profil (toucher la photo, bouton
+« Couverture »), enregistrées aussitôt ; une **demande d'autorisation
+expliquée** précède l'ouverture de l'appareil photo comme de la galerie
+(`READ_MEDIA_IMAGES` / stockage selon la version d'Android, photos sur iOS),
+avec renvoi vers les réglages si l'accès a été refusé. Filtres
 du catalogue dans un **menu déroulant** ancré au bouton. Appareil photo :
 explication puis demande d'autorisation système avant la première prise de
 vue ; renvoi vers les réglages si l'accès a été refusé. Bandeau hors ligne,

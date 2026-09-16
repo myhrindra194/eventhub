@@ -8,6 +8,7 @@ import 'package:eventhub/features/events/domain/entities/event.dart';
 import 'package:eventhub/features/events/domain/entities/event_category.dart';
 import 'package:eventhub/features/events/presentation/screens/all_events_screen.dart';
 import 'package:eventhub/features/events/presentation/screens/event_list_screen.dart';
+import 'package:eventhub/features/events/presentation/widgets/event_filters.dart';
 import 'package:eventhub/features/events/presentation/widgets/event_layout_toggle.dart';
 import 'package:eventhub/features/events/presentation/widgets/featured_event_carousel.dart';
 import 'package:eventhub/features/notifications/application/notification_providers.dart';
@@ -50,7 +51,11 @@ void main() {
     event('c', EventCategory.sport, 22),
   ];
 
-  Future<void> pump(WidgetTester tester, {Size size = const Size(390, 844)}) {
+  Future<void> pump(
+    WidgetTester tester, {
+    Size size = const Size(390, 844),
+    AsyncValue<List<Event>>? events,
+  }) {
     tester.view
       ..physicalSize = size
       ..devicePixelRatio = 1;
@@ -74,6 +79,12 @@ void main() {
             ),
           ],
         ),
+        // Onglet « Billets » réduit à un repère : seule la navigation depuis
+        // la bannière éditoriale est vérifiée ici.
+        GoRoute(
+          path: AppRoutes.reservations,
+          builder: (_, __) => const Scaffold(body: Text('écran billets')),
+        ),
       ],
     );
     addTearDown(router.dispose);
@@ -82,7 +93,7 @@ void main() {
       ProviderScope(
         overrides: [
           clockProvider.overrideWithValue(() => now),
-          catalogueProvider.overrideWithValue(AsyncData(catalogue)),
+          catalogueProvider.overrideWithValue(events ?? AsyncData(catalogue)),
           canLoadMoreEventsProvider.overrideWithValue(false),
           currentUserProvider.overrideWithValue(null),
           recommendedEventsProvider.overrideWithValue(const []),
@@ -140,6 +151,110 @@ void main() {
       findsOneWidget,
     );
     expect(find.text(AllEventsCopy.count(2)), findsOneWidget);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets('la tête d’Explorer commence par la bannière, sans recherche', (
+    tester,
+  ) async {
+    await pump(tester);
+    await tester.pump();
+
+    // La recherche et les filtres vivent dans l'onglet « Recherche » et sur
+    // « Tous les événements » : l'accueil ne les répète plus.
+    expect(find.byType(EventSearchBar), findsNothing);
+    expect(find.byType(EventSearchField), findsNothing);
+    expect(find.byType(FilterButton), findsNothing);
+    expect(find.byType(CategoryFilterRail), findsNothing);
+    expect(find.byType(MenuAnchor), findsNothing);
+
+    // Premier élément du fil : la bannière, collée sous la barre.
+    final banner = tester.getTopLeft(find.byType(FeaturedEventCarousel));
+    final toggle = tester.getTopLeft(find.byType(EventLayoutToggle));
+    expect(banner.dy, lessThan(toggle.dy));
+
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets('une requête partagée ne fait plus basculer l’accueil', (
+    tester,
+  ) async {
+    await pump(tester);
+    await tester.pump();
+
+    // Une requête saisie dans l'onglet Recherche vit dans un provider
+    // partagé : l'accueil ne la lit plus, son fil reste éditorialisé.
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(EventListScreen)),
+    );
+    container.read(eventSearchQueryProvider.notifier).set('zzz introuvable');
+    await tester.pump();
+
+    expect(find.byType(FeaturedEventCarousel), findsOneWidget);
+    expect(find.text(AppStrings.noEventsMatch), findsNothing);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets('catalogue vide : bannières éditoriales puis état vide', (
+    tester,
+  ) async {
+    await pump(tester, events: const AsyncData([]));
+    await tester.pump();
+
+    expect(find.byType(FeaturedEventCarousel), findsNothing);
+    expect(find.byType(EditorialBannerCarousel), findsOneWidget);
+    expect(find.text(EditorialBanner.defaults.first.title), findsOneWidget);
+    expect(find.text(AppStrings.noEventsTitle), findsOneWidget);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets('chargement : squelette de bannière, jamais un vide', (
+    tester,
+  ) async {
+    await pump(tester, events: const AsyncLoading());
+    await tester.pump();
+
+    expect(find.byType(FeaturedBannerSkeleton), findsOneWidget);
+    expect(find.byType(FeaturedEventCarousel), findsNothing);
+    expect(find.byType(EditorialBannerCarousel), findsNothing);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets('une bannière éditoriale ouvre le catalogue complet', (
+    tester,
+  ) async {
+    await pump(tester, events: const AsyncData([]));
+    await tester.pump();
+
+    await tester.tap(find.text(EditorialBanner.defaults.first.title));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(AllEventsScreen), findsOneWidget);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets('la bannière « billets » mène à l’onglet Billets', (
+    tester,
+  ) async {
+    await pump(tester, events: const AsyncData([]));
+    await tester.pump();
+
+    // Deux échéances de cinq secondes, chacune suivie de sa transition.
+    for (var page = 0; page < 2; page++) {
+      await tester.pump(FeaturedEventCarousel.defaultInterval);
+      for (var i = 0; i < 9; i++) {
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+    }
+    await tester.tap(find.text(EditorialBanner.defaults[2].title));
+    await tester.pumpAndSettle();
+
+    expect(find.text('écran billets'), findsOneWidget);
 
     await tester.pumpWidget(const SizedBox.shrink());
   });

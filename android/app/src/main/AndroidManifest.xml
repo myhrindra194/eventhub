@@ -11,6 +11,10 @@
          Déclarée seule, la permission rendrait la caméra obligatoire aux yeux
          du Play Store et masquerait l'app sur les appareils sans caméra
          (tablettes, Chromebooks) : d'où `required="false"`. -->
+    <!-- Accès aux photos pour importer une photo de profil ou de couverture :
+         READ_MEDIA_IMAGES à partir d'Android 13, stockage externe en dessous. -->
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"/>
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32"/>
     <uses-permission android:name="android.permission.CAMERA"/>
     <uses-feature android:name="android.hardware.camera" android:required="false"/>
 

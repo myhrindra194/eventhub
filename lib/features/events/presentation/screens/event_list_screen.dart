@@ -6,12 +6,9 @@ import 'package:eventhub/features/auth/application/auth_providers.dart';
 import 'package:eventhub/features/events/application/event_layout_controller.dart';
 import 'package:eventhub/features/events/application/event_providers.dart';
 import 'package:eventhub/features/events/domain/entities/event.dart';
-import 'package:eventhub/features/events/presentation/widgets/event_card.dart';
 import 'package:eventhub/features/events/presentation/widgets/event_collection.dart';
-import 'package:eventhub/features/events/presentation/widgets/event_filters.dart';
 import 'package:eventhub/features/events/presentation/widgets/event_layout_toggle.dart';
 import 'package:eventhub/features/events/presentation/widgets/featured_event_carousel.dart';
-import 'package:eventhub/features/events/presentation/widgets/load_more_events_button.dart';
 import 'package:eventhub/features/notifications/presentation/widgets/notification_bell_button.dart';
 import 'package:eventhub/features/participant/application/recommendation_providers.dart';
 import 'package:eventhub/routes/routes.dart';
@@ -19,26 +16,31 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-/// Accueil participant.
+/// Accueil participant (« Explorer »).
 ///
-/// Deux dispositions derrière un même écran :
-///  * **parcours** (aucun filtre) — un fil éditorialisé : une bannière
-///    animée « À la une », des rails nommés répondant à des intentions
-///    distinctes, une section par activité, puis l’accès au catalogue
-///    complet. Un mur chronologique de cartes, c’est ce que renvoie une base
-///    de données ; des sections, c’est ce qu’offre un produit.
-///  * **filtré** (une catégorie ou une requête est active) — les rails se
-///    replient en une seule liste de résultats, car une fois que
-///    l’utilisateur a exprimé une intention, l’éditorialiser ne fait que
-///    gêner.
+/// Un fil éditorialisé, sans champ de recherche ni filtres : une bannière
+/// animée en tête, des rails nommés répondant à des intentions distinctes,
+/// une section par activité, puis l’accès au catalogue complet. Un mur
+/// chronologique de cartes, c’est ce que renvoie une base de données ; des
+/// sections, c’est ce qu’offre un produit.
 ///
-/// **Pourquoi la bannière vient après la recherche et le rail.** Au-dessus,
-/// une affiche 16:9 pousserait le champ de recherche hors de l’écran d’un
-/// téléphone en paysage (≈ 300 dp de haut) : or chercher et choisir une
-/// activité sont les intentions les plus directes, elles doivent rester dans
-/// le premier écran. La bannière sert celui qui n’a pas encore d’intention —
-/// elle peut attendre un défilement. C’est l’ordre d’Eventbrite (recherche,
-/// puis mise en avant), pas celui d’un site vitrine.
+/// **Pourquoi plus de recherche ici.** L’onglet « Recherche » et l’écran
+/// « Tous les événements » portent déjà champ, filtres et rail de catégories.
+/// Les répéter en tête d’Explorer faisait de l’accueil un troisième écran de
+/// recherche, et le rail de catégories doublonnait les sections « Par
+/// activité » juste en dessous. Explorer sert désormais celui qui n’a pas
+/// encore d’intention — c’est le parti d’Airbnb et de Luma, où l’accueil
+/// inspire et où la recherche vit sur sa propre surface. Conséquence
+/// assumée : l’accueil ne lit plus les providers de requête et de catégorie,
+/// il n’a donc plus de « mode filtré » — une requête saisie dans l’onglet
+/// Recherche ne transforme plus l’accueil à distance.
+///
+/// **Pourquoi la bannière est toujours là.** Catalogue vide, elle montre des
+/// messages éditoriaux réels (découvrir, réserver, retrouver ses billets)
+/// plutôt que de disparaître ; pendant le chargement, un squelette à sa
+/// taille exacte. Le haut de l’écran garde ainsi la même forme dans tous les
+/// états, et un premier lancement sur une base encore vide n’affiche pas une
+/// page nue.
 ///
 /// Les sections suivent la bascule liste / grille ([EventLayoutController]) :
 /// rangées horizontales par défaut, aperçu en grille sur demande.
@@ -49,9 +51,6 @@ class EventListScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(currentUserProvider);
     final now = ref.watch(clockProvider)();
-    final isFiltered =
-        ref.watch(eventSearchQueryProvider).isNotEmpty ||
-        ref.watch(eventCategoryFilterProvider) != null;
 
     final firstName = (user?.name ?? '').split(' ').first;
     final greeting = now.hour >= 18
@@ -80,28 +79,13 @@ class EventListScreen extends ConsumerWidget {
         onRefresh: () async => ref
           ..invalidate(upcomingEventsProvider)
           ..invalidate(catalogueExtraPagesProvider),
-        child: CustomScrollView(
+        child: const CustomScrollView(
           slivers: [
-            SliverPadding(
-              padding: EdgeInsets.fromLTRB(
-                context.gutter,
-                AppSpacing.sm,
-                context.gutter,
-                AppSpacing.lg,
-              ),
-              sliver: SliverToBoxAdapter(
-                child: EventSearchBar(
-                  readOnly: true,
-                  onTap: () => context.go(AppRoutes.search),
-                ),
-              ),
-            ),
-            const SliverToBoxAdapter(child: CategoryFilterRail()),
-            const SliverToBoxAdapter(child: SizedBox(height: AppSpacing.xl)),
-            if (isFiltered) const _FilteredResults() else const _CuratedFeed(),
-            const SliverToBoxAdapter(
-              child: SizedBox(height: AppSizes.navBarInset),
-            ),
+            SliverToBoxAdapter(child: SizedBox(height: AppSpacing.sm)),
+            SliverToBoxAdapter(child: _ExploreBanner()),
+            SliverToBoxAdapter(child: SizedBox(height: AppSpacing.xl)),
+            _CuratedFeed(),
+            SliverToBoxAdapter(child: SizedBox(height: AppSizes.navBarInset)),
           ],
         ),
       ),
@@ -125,6 +109,46 @@ abstract final class _Copy {
 void _openEvent(BuildContext context, Event event) =>
     context.push(AppRoutes.eventDetailPath(event.id));
 
+// ---------------------------------------------------------------- bannière --
+
+/// Tête de l’accueil : affiches d’événements, bannières éditoriales ou
+/// squelette, selon l’état du catalogue.
+///
+/// Isolée dans son propre widget pour que ses reconstructions (et le
+/// minuteur du carrousel) ne dépendent que du catalogue, pas des rails
+/// personnalisés ni de la bascule de disposition.
+class _ExploreBanner extends ConsumerWidget {
+  const _ExploreBanner();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final all = ref.watch(catalogueProvider);
+    final featured = ref.watch(featuredEventsProvider).value ?? const <Event>[];
+
+    if (all.isLoading && !all.hasValue) return const FeaturedBannerSkeleton();
+
+    if (featured.isNotEmpty) {
+      return FeaturedEventCarousel(
+        events: featured,
+        onOpen: (event) => _openEvent(context, event),
+      );
+    }
+
+    // Catalogue vide, en erreur, ou entièrement complet : la bannière reste,
+    // avec des messages produit qui mènent à de vrais écrans. Le catalogue
+    // s’ouvre par `push` (on revient à l’accueil), les billets par `go` :
+    // c’est un onglet de la barre de navigation, pas une page empilée.
+    return EditorialBannerCarousel(
+      onOpen: (banner) => switch (banner.target) {
+        EditorialBannerTarget.catalogue => context.push(
+          AppRoutes.allEventsPath(),
+        ),
+        EditorialBannerTarget.tickets => context.go(AppRoutes.reservations),
+      },
+    );
+  }
+}
+
 // --------------------------------------------------------------- parcours --
 
 class _CuratedFeed extends ConsumerWidget {
@@ -132,7 +156,6 @@ class _CuratedFeed extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final featured = ref.watch(featuredEventsProvider);
     final week = ref.watch(weekEventsProvider);
     final trending = ref.watch(trendingEventsProvider);
     final all = ref.watch(catalogueProvider);
@@ -156,7 +179,6 @@ class _CuratedFeed extends ConsumerWidget {
       );
     }
 
-    final featuredList = featured.value ?? const <Event>[];
     final weekList = week.value ?? const <Event>[];
     final trendingList = trending.value ?? const <Event>[];
     final allList = all.value ?? const <Event>[];
@@ -180,10 +202,6 @@ class _CuratedFeed extends ConsumerWidget {
 
     return SliverList.list(
       children: [
-        if (featuredList.isNotEmpty) ...[
-          FeaturedEventCarousel(events: featuredList, onOpen: open),
-          const SizedBox(height: AppSpacing.xl),
-        ],
         const _FeedToolbar(),
         const SizedBox(height: AppSpacing.xl),
         // Le rail personnel en premier : la bannière donne le ton pour tout
@@ -336,81 +354,8 @@ class _RuleLabel extends StatelessWidget {
   }
 }
 
-// ----------------------------------------------------------------- filtré --
-
-class _FilteredResults extends ConsumerWidget {
-  const _FilteredResults();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final events = ref.watch(filteredEventsProvider);
-    final layout = ref.watch(eventLayoutControllerProvider);
-    final count = events.value?.length;
-    final t = context.tokens;
-
-    return SliverMainAxisGroup(
-      slivers: [
-        // En mode filtré, la bascule reste à portée : c’est précisément
-        // quand on parcourt une longue liste de résultats que la grille sert.
-        SliverPadding(
-          padding: EdgeInsets.fromLTRB(
-            context.gutter,
-            0,
-            context.gutter,
-            AppSpacing.lg,
-          ),
-          sliver: SliverToBoxAdapter(
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    count == null ? '' : _Copy.upcoming(count),
-                    style: Theme.of(context).textTheme.titleSmall
-                        ?.merge(AppTypography.tabular)
-                        .copyWith(color: t.textSecondary),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                const EventLayoutToggle(),
-              ],
-            ),
-          ),
-        ),
-        AsyncValueWidget<List<Event>>(
-          value: events,
-          sliver: true,
-          onRetry: () => ref.invalidate(upcomingEventsProvider),
-          isEmpty: (list) => list.isEmpty,
-          loading: SliverToBoxAdapter(child: _FeedSkeleton(layout: layout)),
-          empty: SliverFillRemaining(
-            hasScrollBody: false,
-            child: EmptyStateView(
-              icon: Icons.search_off_rounded,
-              title: AppStrings.noEventsTitle,
-              message: AppStrings.noEventsMatch,
-              action: AppButton.secondary(
-                label: AppStrings.clearFilters,
-                expand: false,
-                size: AppButtonSize.medium,
-                onPressed: ref.resetEventFilters,
-              ),
-            ),
-          ),
-          data: (list) => SliverEventCollection(
-            events: list,
-            layout: layout,
-            onOpen: (event) => _openEvent(context, event),
-            footer: const LoadMoreEventsButton(),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-/// Squelette du fil, à l’empreinte de la bannière puis de la disposition
-/// active.
+/// Squelette du fil sous la bannière, à l’empreinte de la disposition
+/// active. La bannière porte son propre squelette ([FeaturedBannerSkeleton]).
 class _FeedSkeleton extends StatelessWidget {
   const _FeedSkeleton({required this.layout});
 
@@ -421,11 +366,6 @@ class _FeedSkeleton extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Padding(
-          padding: EdgeInsets.symmetric(horizontal: context.gutter),
-          child: const EventCardSkeleton(aspectRatio: 16 / 9),
-        ),
-        const SizedBox(height: AppSpacing.xxl),
         Padding(
           padding: EdgeInsets.symmetric(horizontal: context.gutter),
           child: const Skeleton(width: 130, height: 20),

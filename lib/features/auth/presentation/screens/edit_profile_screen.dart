@@ -125,15 +125,22 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
 
     // La permission est réglée *avant* d'afficher l'indicateur d'envoi : sinon
     // l'avatar tournerait derrière la feuille d'explication, comme si un envoi
-    // était déjà parti. La galerie n'y passe pas — `image_picker` s'appuie sur
-    // le sélecteur système, qui n'exige aucune permission de l'application.
-    if (choice == PhotoChoice.camera) {
-      final allowed = await ensureCameraAccess(
-        context,
-        ref.read(cameraAccessGateProvider),
-      );
-      if (!allowed || !mounted) return;
-    }
+    // était déjà parti. Caméra et galerie passent toutes deux par une demande
+    // d'autorisation expliquée : le produit veut que l'utilisateur accorde
+    // l'accès en connaissance de cause, même là où le sélecteur système
+    // pourrait s'en passer.
+    final allowed = choice == PhotoChoice.camera
+        ? await ensureMediaAccess(
+            context,
+            ref.read(cameraAccessGateProvider),
+            MediaAccess.camera,
+          )
+        : await ensureMediaAccess(
+            context,
+            ref.read(photoLibraryAccessGateProvider),
+            MediaAccess.photos,
+          );
+    if (!allowed || !mounted) return;
 
     setState(() => cover ? _uploadingCover = true : _uploadingPhoto = true);
     final result = await flow.run(

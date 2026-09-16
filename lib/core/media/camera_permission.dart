@@ -176,6 +176,51 @@ class CameraAccessGate {
   Future<bool> openSettings() => _permission.openSettings();
 }
 
+/// L'accès aux photos de l'appareil, pour importer une photo de profil ou de
+/// couverture depuis la galerie.
+///
+/// **Pourquoi demander alors que le sélecteur système s'en passe.** Sur
+/// Android 13+ et iOS 14+, le sélecteur de photos n'exige aucune permission.
+/// Le produit a pourtant choisi de demander l'autorisation avant d'ouvrir la
+/// galerie, pour que l'utilisateur sache ce qu'EventHub va lire et pourquoi.
+/// `Permission.photos` couvre les deux mondes : `READ_MEDIA_IMAGES` à partir
+/// d'Android 13, et le greffon se replie sur `READ_EXTERNAL_STORAGE` en
+/// dessous (déclarée avec `maxSdkVersion="32"` dans le manifeste).
+///
+/// Sur iOS, un accès « limité » (quelques photos choisies) compte comme
+/// accordé : c'est un choix légitime de l'utilisateur, et le sélecteur saura
+/// s'en contenter.
+class PermissionHandlerPhotoLibraryPermission implements CameraPermission {
+  const PermissionHandlerPhotoLibraryPermission();
+
+  @override
+  bool get isRequired =>
+      cameraPermissionApplies(isWeb: kIsWeb, platform: defaultTargetPlatform);
+
+  @override
+  Future<CameraPermissionState> check() async =>
+      PermissionHandlerCameraPermission.mapPermissionStatus(
+        await Permission.photos.status,
+      );
+
+  @override
+  Future<CameraPermissionState> request() async =>
+      PermissionHandlerCameraPermission.mapPermissionStatus(
+        await Permission.photos.request(),
+      );
+
+  @override
+  Future<bool> openSettings() => openAppSettings();
+}
+
+@Riverpod(keepAlive: true)
+CameraPermission photoLibraryPermission(Ref ref) =>
+    const PermissionHandlerPhotoLibraryPermission();
+
+@Riverpod(keepAlive: true)
+CameraAccessGate photoLibraryAccessGate(Ref ref) =>
+    CameraAccessGate(ref.watch(photoLibraryPermissionProvider));
+
 /// La permission caméra de l'appareil.
 ///
 /// Exposée comme dépendance, dans le même esprit que le sélecteur d'images :

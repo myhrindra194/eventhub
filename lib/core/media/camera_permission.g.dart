@@ -8,6 +8,101 @@ part of 'camera_permission.dart';
 
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // ignore_for_file: type=lint, type=warning
+
+@ProviderFor(photoLibraryPermission)
+final photoLibraryPermissionProvider = PhotoLibraryPermissionProvider._();
+
+final class PhotoLibraryPermissionProvider
+    extends
+        $FunctionalProvider<
+          CameraPermission,
+          CameraPermission,
+          CameraPermission
+        >
+    with $Provider<CameraPermission> {
+  PhotoLibraryPermissionProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'photoLibraryPermissionProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$photoLibraryPermissionHash();
+
+  @$internal
+  @override
+  $ProviderElement<CameraPermission> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  CameraPermission create(Ref ref) {
+    return photoLibraryPermission(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(CameraPermission value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<CameraPermission>(value),
+    );
+  }
+}
+
+String _$photoLibraryPermissionHash() =>
+    r'0d0182488b33abc1567ceb4a8f8ea6cc522aa3cf';
+
+@ProviderFor(photoLibraryAccessGate)
+final photoLibraryAccessGateProvider = PhotoLibraryAccessGateProvider._();
+
+final class PhotoLibraryAccessGateProvider
+    extends
+        $FunctionalProvider<
+          CameraAccessGate,
+          CameraAccessGate,
+          CameraAccessGate
+        >
+    with $Provider<CameraAccessGate> {
+  PhotoLibraryAccessGateProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'photoLibraryAccessGateProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$photoLibraryAccessGateHash();
+
+  @$internal
+  @override
+  $ProviderElement<CameraAccessGate> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  CameraAccessGate create(Ref ref) {
+    return photoLibraryAccessGate(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(CameraAccessGate value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<CameraAccessGate>(value),
+    );
+  }
+}
+
+String _$photoLibraryAccessGateHash() =>
+    r'c3ab014b37ffd6593e353d91f51a7ad4a437888d';
+
 /// La permission caméra de l'appareil.
 ///
 /// Exposée comme dépendance, dans le même esprit que le sélecteur d'images :

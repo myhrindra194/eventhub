@@ -337,8 +337,8 @@ assumé ; l'alternative est d'ignorer complètement le réglage d'accessibilité
 
 ## Apparence personnalisable
 
-`lib/app/theme/appearance.dart` — choisie dans Profil → Apparence et dans
-Paramètres, mémorisée sur l'appareil (`AppearanceController`), appliquée par
+`lib/app/theme/appearance.dart` — le mode se règle dans Profil, la couleur et
+la police dans Paramètres, mémorisée sur l'appareil (`AppearanceController`), appliquée par
 `AppTheme.light/dark(appearance:)`.
 
 | Réglage | Valeurs | Ce qui change | Ce qui ne change jamais |
@@ -349,4 +349,19 @@ Paramètres, mémorisée sur l'appareil (`AppearanceController`), appliquée par
 
 Iris + Moderne reproduisent exactement le thème d'origine : les goldens restent
 la référence de l'apparence par défaut.
+
+## Explorer : bannière, sections, liste / grille
+
+| Composant | Rôle |
+|---|---|
+| `FeaturedEventCarousel` | bannière des événements à la une : 16:9 bornée entre 150 et 380 dp (et 62 % de la hauteur d'écran), dégradé de lisibilité (pas d'ombre), avance toutes les 5 s en boucle (transition 600 ms), pause au toucher, au survol et quand l'écran n'est pas visible ; zoom lent « Ken Burns » (1 → 1,08) sur l'affiche courante, texte qui apparaît en montant de 12 dp, voisines réduites (≈ 0,94) et voilées selon la position du doigt ; indicateur-compte à rebours (la pastille active se remplit sur 5 s, pleine quand l'avance est suspendue) ; animations réduites : ni avance, ni zoom, ni glissement |
+| `EditorialBannerCarousel` | même bannière quand aucun événement n'est à la une (catalogue vide) : trois messages produit réels (découvrir → « Tous les événements », réserver → « Tous les événements », billets → onglet Billets), dégradés `brandGradient` / `accentGradient`, motif au trait rogné par le bord |
+| `FeaturedBannerSkeleton` | squelette à l'empreinte exacte de la bannière pendant le chargement |
+| `EventLayoutToggle` | bascule liste / grille (deux icônes, infobulles et sémantique complètes), mémorisée par `EventLayoutController` |
+| `EventSection` / `SliverEventCollection` | une section (rangée horizontale ou aperçu en grille) et la collection complète ; la grille est construite ligne par ligne, sans ratio imposé, pour qu'aucune carte ne déborde |
+| `eventGridColumns` | 2 colonnes sous 600 dp, 3 sous 840 dp, 4 au-delà — calculées sur la largeur disponible, rail de navigation déduit |
+
+Explorer commence directement par la bannière : la recherche, les filtres et le
+rail de catégories vivent dans l'onglet « Recherche » et sur « Tous les
+événements », et les sections « Par activité » remplacent le rail sur l'accueil.
 

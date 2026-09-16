@@ -5,13 +5,14 @@ import 'package:eventhub/core/extensions/context_x.dart';
 import 'package:eventhub/core/l10n/app_strings.dart';
 import 'package:eventhub/core/result/result.dart';
 import 'package:eventhub/core/utils/date_formats.dart';
-import 'package:eventhub/core/widgets/appearance_settings.dart';
 import 'package:eventhub/core/widgets/design_system.dart';
+import 'package:eventhub/core/widgets/theme_mode_selector.dart';
 import 'package:eventhub/features/admin/application/moderation_providers.dart';
 import 'package:eventhub/features/auth/application/auth_controller.dart';
 import 'package:eventhub/features/auth/application/auth_providers.dart';
 import 'package:eventhub/features/auth/domain/entities/app_user.dart';
 import 'package:eventhub/features/auth/presentation/widgets/email_verification_banner.dart';
+import 'package:eventhub/features/auth/presentation/widgets/profile_image_actions.dart';
 import 'package:eventhub/features/events/application/event_providers.dart';
 import 'package:eventhub/features/reservations/application/reservation_providers.dart';
 import 'package:eventhub/routes/routes.dart';
@@ -80,12 +81,12 @@ class ProfileScreen extends ConsumerWidget {
             const SizedBox(height: AppSpacing.xl),
             _Stats(user: user),
             const SizedBox(height: AppSpacing.xxl),
-            // L'apparence en évidence, pas au fond d'un menu : mode, couleur
-            // et police, pour l'espace participant comme organisateur (le même
-            // écran de profil sert les deux), appliqués à l'instant.
-            const SectionLabel('Apparence'),
+            // Le mode clair / sombre reste à portée de main dans Profil ; la
+            // couleur et la police, réglages qu'on ne change qu'une fois, vivent
+            // dans Paramètres pour ne pas alourdir cet écran.
+            const SectionLabel('Thème'),
             const SizedBox(height: AppSpacing.md),
-            const AppearanceSettings(),
+            const ThemeModeSelector(),
             const SizedBox(height: AppSpacing.xxl),
             const SectionLabel(AppStrings.account),
             const SizedBox(height: AppSpacing.md),
@@ -177,10 +178,34 @@ class ProfileScreen extends ConsumerWidget {
 /// En-tête d’identité en dégradé. Le rôle est affiché sous forme de badge
 /// plutôt qu’en ligne de texte : c’est la seule information qui change ce que
 /// fait toute l’application, elle mérite donc d’être impossible à manquer.
-class _IdentityCard extends StatelessWidget {
+class _IdentityCard extends ConsumerStatefulWidget {
   const _IdentityCard({required this.user});
 
   final AppUser user;
+
+  @override
+  ConsumerState<_IdentityCard> createState() => _IdentityCardState();
+}
+
+/// En-tête d'identité **éditable** : toucher la photo la change, et
+/// « Couverture » change l'image de fond. L'autorisation d'accès (caméra ou
+/// photos) est demandée avant d'ouvrir quoi que ce soit, et l'image est
+/// enregistrée aussitôt — voir [changeProfileImage].
+class _IdentityCardState extends ConsumerState<_IdentityCard> {
+  bool _uploadingPhoto = false;
+  bool _uploadingCover = false;
+
+  AppUser get user => widget.user;
+
+  Future<void> _change({required bool cover}) => changeProfileImage(
+    context,
+    ref,
+    cover: cover,
+    onUploading: (busy) {
+      if (!mounted) return;
+      setState(() => cover ? _uploadingCover = busy : _uploadingPhoto = busy);
+    },
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -192,7 +217,7 @@ class _IdentityCard extends StatelessWidget {
     // elle, le dégradé de marque tient ce rôle.
     final cover = EventImage.providerFor(user.coverUrl);
 
-    return Container(
+    final card = Container(
       padding: const EdgeInsets.all(AppSpacing.xl),
       decoration: BoxDecoration(
         gradient: cover == null ? t.brandGradient : null,
@@ -211,16 +236,67 @@ class _IdentityCard extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Container(
-            padding: const EdgeInsets.all(3),
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(color: Colors.white24, width: 2),
-            ),
-            child: AppAvatar(
-              name: user.name,
-              imageUrl: user.photoUrl,
-              size: 62,
+          // La photo se touche pour être changée : la petite pastille appareil
+          // photo le dit, sans ajouter de bouton à l'en-tête.
+          Semantics(
+            button: true,
+            label: 'Changer la photo de profil',
+            child: GestureDetector(
+              onTap: _uploadingPhoto ? null : () => _change(cover: false),
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(3),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white24, width: 2),
+                    ),
+                    child: AppAvatar(
+                      name: user.name,
+                      imageUrl: user.photoUrl,
+                      size: 62,
+                    ),
+                  ),
+                  if (_uploadingPhoto)
+                    const Positioned.fill(
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Color(0x99101420),
+                        ),
+                        child: Center(
+                          child: SizedBox.square(
+                            dimension: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  Positioned(
+                    right: -2,
+                    bottom: -2,
+                    child: Container(
+                      width: 24,
+                      height: 24,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: t.brand, width: 1.5),
+                      ),
+                      child: Icon(
+                        Icons.photo_camera_outlined,
+                        size: 13,
+                        color: t.brand,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
           const SizedBox(width: AppSpacing.lg),
@@ -291,6 +367,55 @@ class _IdentityCard extends StatelessWidget {
           ),
         ],
       ),
+    );
+
+    return Stack(
+      children: [
+        card,
+        if (_uploadingCover)
+          Positioned.fill(
+            child: DecoratedBox(
+              decoration: const BoxDecoration(
+                color: Color(0x66101420),
+                borderRadius: AppRadius.brXxl,
+              ),
+              child: Center(
+                child: SizedBox.square(
+                  dimension: 22,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: t.textOnBrand,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        // « Couverture » : un bouton texte discret, sur l'image elle-même —
+        // c'est là qu'on cherche à la changer.
+        Positioned(
+          top: AppSpacing.sm,
+          right: AppSpacing.sm,
+          child: TextButton(
+            onPressed: _uploadingCover ? null : () => _change(cover: true),
+            style: TextButton.styleFrom(
+              foregroundColor: Colors.white,
+              backgroundColor: const Color(0x33FFFFFF),
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.md,
+                vertical: AppSpacing.xs,
+              ),
+              minimumSize: const Size(0, 32),
+              shape: const RoundedRectangleBorder(
+                borderRadius: AppRadius.brButton,
+              ),
+              textStyle: text.labelLarge,
+            ),
+            child: Text(
+              user.coverUrl == null ? 'Ajouter une couverture' : 'Couverture',
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

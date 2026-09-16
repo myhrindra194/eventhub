@@ -1,7 +1,7 @@
 import 'package:eventhub/bootstrap.dart';
 import 'package:eventhub/core/config/flavor.dart';
 
-/// Default entrypoint. Flavor comes from `--dart-define=FLAVOR=...`
-/// (defaults to `dev`). See `main_dev.dart` / `main_prod.dart` for
-/// IDE-friendly fixed entrypoints.
+/// Point d'entrée par défaut. Le flavor vient de `--dart-define=FLAVOR=…`
+/// et vaut `dev` à défaut. Voir `main_dev.dart` / `main_prod.dart` pour les
+/// points d'entrée fixes, plus commodes depuis un IDE.
 void main() => bootstrap(Flavor.fromEnvironment());

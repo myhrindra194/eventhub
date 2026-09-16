@@ -1,10 +1,11 @@
 import 'package:flutter/foundation.dart';
 
-/// Minimal [Listenable] used as GoRouter's `refreshListenable`.
+/// [Listenable] minimal utilisé comme `refreshListenable` de GoRouter.
 ///
-/// The router is created once and kept alive; whenever a value the guard
-/// depends on changes (session, onboarding flag), we notify instead of
-/// rebuilding the router — rebuilding would reset the navigation stacks.
+/// Le router est créé une seule fois puis maintenu en vie ; dès qu’une valeur
+/// dont dépend le guard change (session, drapeau d’onboarding), on notifie au
+/// lieu de reconstruire le router — le reconstruire réinitialiserait les
+/// piles de navigation.
 class RouterRefresh extends ChangeNotifier {
   void notify() => notifyListeners();
 }

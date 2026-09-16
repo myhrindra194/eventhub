@@ -1,18 +1,19 @@
 import 'package:eventhub/features/auth/domain/entities/user_role.dart';
 
-/// Central route registry.
+/// Registre central des routes.
 ///
-/// Every location of the application is declared here — nowhere else. The
-/// rest of the codebase never interpolates a path by hand: it calls one of
-/// the `*Path()` builders, so a change of URL shape is a one-file change.
+/// Chaque destination de l’application est déclarée ici — et nulle part
+/// ailleurs. Le reste du code n’interpole jamais un chemin à la main : il
+/// appelle l’un des builders `*Path()`, si bien qu’un changement de forme
+/// d’URL se joue dans un seul fichier.
 ///
-/// Naming convention
-/// -----------------
-/// * `xxx`          → the raw `go_router` pattern (may contain `:params`)
-/// * `xxxName`      → the symbolic name used by `context.goNamed(...)`
-/// * `xxxPath(...)` → a builder producing a concrete, encoded location
+/// Convention de nommage
+/// ---------------------
+/// * `xxx`          → le motif `go_router` brut (peut contenir des `:params`)
+/// * `xxxName`      → le nom symbolique utilisé par `context.goNamed(...)`
+/// * `xxxPath(...)` → un builder produisant une destination concrète, encodée
 abstract final class AppRoutes {
-  // ---------------------------------------------------------------- common
+  // ---------------------------------------------------------------- commun
   static const splash = '/splash';
   static const onboarding = '/onboarding';
   static const login = '/login';
@@ -21,7 +22,7 @@ abstract final class AppRoutes {
   static const completeProfile = '/complete-profile';
   static const welcome = '/welcome';
 
-  // Account & support — shared by both roles.
+  // Compte et support — partagés par les deux rôles.
   static const editProfile = '/account/edit';
   static const help = '/help';
   static const privacyPolicy = '/privacy';
@@ -34,7 +35,7 @@ abstract final class AppRoutes {
   static const privacyPolicyName = 'privacy';
   static const aboutName = 'about';
 
-  // Administration — any role, `admin` claim required (see RouteGuard).
+  // Administration — tous rôles, claim `admin` requis (voir RouteGuard).
   static const adminPrefix = '/admin';
   static const adminModeration = '/admin/moderation';
   static const adminModerationName = 'admin-moderation';
@@ -50,14 +51,15 @@ abstract final class AppRoutes {
   static bool isAdminArea(String location) =>
       location == adminPrefix || location.startsWith('$adminPrefix/');
 
-  // Public organizer profile and follows (F-10) — shared by both roles.
+  // Profil public d’organisateur et abonnements (F-10) — partagés par les
+  // deux rôles.
   static const organizerPublicProfile = '/organizers/:organizerId';
   static const organizerPublicProfileName = 'organizer-public-profile';
   static const following = '/following';
   static const followingName = 'following';
 
-  /// Shared link `https://<host>/e/{id}`, opened by the app through App
-  /// Links; redirects to the event detail.
+  /// Lien partagé `https://<host>/e/{id}`, ouvert par l’application via les
+  /// App Links ; redirige vers le détail de l’événement.
   static const publicEventLink = '/e/:eventId';
   static const publicEventLinkName = 'public-event-link';
 
@@ -83,7 +85,7 @@ abstract final class AppRoutes {
   static const payment = '/reservations/:reservationId/payment';
   static const paymentName = 'payment';
 
-  /// Return URLs of Stripe Checkout (Hosting pages + App Links).
+  /// URL de retour de Stripe Checkout (pages Hosting + App Links).
   static const paySuccess = '/pay/success';
   static const paySuccessName = 'pay-success';
   static const payCancel = '/pay/cancel';
@@ -101,7 +103,7 @@ abstract final class AppRoutes {
   static const reservationConfirmationName = 'reservation-confirmation';
   static const ticketName = 'ticket';
 
-  // ------------------------------------------------------------- organizer
+  // ---------------------------------------------------------- organisateur
   static const organizerPrefix = '/organizer';
   static const organizerEvents = '/organizer/events';
   static const organizerProfile = '/organizer/profile';
@@ -130,12 +132,13 @@ abstract final class AppRoutes {
   static const organizerEventParticipantsName = 'organizer-event-participants';
   static const organizerEventPublishedName = 'organizer-event-published';
 
-  // ---------------------------------------------------------------- params
+  // ------------------------------------------------------------ paramètres
   static const eventIdParam = 'eventId';
   static const reservationIdParam = 'reservationId';
   static const organizerIdParam = 'organizerId';
 
-  /// Query parameter carrying a deep link across the splash and the login.
+  /// Paramètre de requête qui transporte un lien profond à travers le splash
+  /// et la connexion.
   static const fromParam = 'from';
 
   // -------------------------------------------------------------- builders
@@ -172,13 +175,13 @@ abstract final class AppRoutes {
   static String publicEventLinkPath(String eventId) =>
       '/e/${Uri.encodeComponent(eventId)}';
 
-  /// [base] with the location to resume after it, e.g.
+  /// [base] assortie de la destination à reprendre ensuite, p. ex.
   /// `/login?from=%2Fevents%2Fabc`.
   static String withFrom(String base, String location) =>
       Uri(path: base, queryParameters: {fromParam: location}).toString();
 
-  // ----------------------------------------------------------- classifiers
-  /// Locations reachable without a session.
+  // ------------------------------------------------------- classificateurs
+  /// Destinations accessibles sans session.
   static const _publicPaths = <String>{
     splash,
     onboarding,
@@ -187,11 +190,11 @@ abstract final class AppRoutes {
     forgotPassword,
   };
 
-  /// Authenticated locations that belong to **neither** role area: both a
-  /// participant and an organizer must be able to open them. Without this
-  /// set, the role-confinement rule would bounce an organizer out of
-  /// `/change-password` simply because the path does not start with
-  /// `/organizer`.
+  /// Destinations authentifiées qui n’appartiennent à **aucun** des deux
+  /// espaces de rôle : un participant comme un organisateur doit pouvoir les
+  /// ouvrir. Sans cet ensemble, la règle de confinement par rôle éjecterait
+  /// un organisateur de `/change-password` au seul motif que le chemin ne
+  /// commence pas par `/organizer`.
   static const _roleAgnosticPaths = <String>{
     welcome,
     changePassword,
@@ -207,24 +210,26 @@ abstract final class AppRoutes {
       _roleAgnosticPaths.contains(location) ||
       location.startsWith('/organizers/');
 
-  /// Locations an external link may lead to (a shared event, an organizer
-  /// profile). When one is requested before the session is ready, the guard
-  /// remembers it in [fromParam] and resumes it after sign-in. Anything else
-  /// in `from` is ignored — the parameter is user-controlled.
+  /// Destinations vers lesquelles un lien externe peut mener (un événement
+  /// partagé, un profil d’organisateur). Lorsque l’une d’elles est demandée
+  /// avant que la session ne soit prête, le guard la mémorise dans
+  /// [fromParam] et la reprend après la connexion. Tout autre contenu de
+  /// `from` est ignoré — ce paramètre est sous le contrôle de l’utilisateur.
   static bool isDeepLinkTarget(String location) =>
       location.startsWith('/e/') ||
       location.startsWith('/events/') ||
       location.startsWith('/organizers/') ||
       location.startsWith('/pay/');
 
-  /// Locations that belong to the organizer area of the product.
+  /// Destinations qui appartiennent à l’espace organisateur du produit.
   static bool isPublic(String location) => _publicPaths.contains(location);
 
   static bool isOrganizerArea(String location) =>
       location == organizerPrefix || location.startsWith('$organizerPrefix/');
 
-  /// Root tabs of each shell, in navigation-bar order. Used by the shells and
-  /// by the guard to decide where a role "lands".
+  /// Onglets racines de chaque shell, dans l’ordre de la barre de
+  /// navigation. Utilisés par les shells et par le guard pour décider où un
+  /// rôle « atterrit ».
   static const participantTabs = <String>[
     events,
     search,
@@ -240,7 +245,7 @@ abstract final class AppRoutes {
   ];
 }
 
-/// Where a role lands once authenticated.
+/// Là où atterrit un rôle une fois authentifié.
 extension UserRoleRoutes on UserRole {
   String get homePath => switch (this) {
     UserRole.participant => AppRoutes.events,

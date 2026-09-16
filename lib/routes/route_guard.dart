@@ -2,11 +2,12 @@ import 'package:eventhub/features/auth/domain/entities/auth_session.dart';
 import 'package:eventhub/routes/app_routes.dart';
 import 'package:flutter/foundation.dart';
 
-/// Outcome of the boot sequence, as far as navigation is concerned.
+/// Résultat de la séquence de démarrage, du point de vue de la navigation.
 ///
-/// Modelled explicitly (rather than juggling two `AsyncValue`s inside the
-/// redirect callback) so the whole navigation policy becomes a pure function
-/// of a value object — and therefore unit-testable without a widget tree.
+/// Modélisé explicitement (plutôt que de jongler avec deux `AsyncValue` au
+/// cœur du callback de redirection) pour que toute la politique de navigation
+/// devienne une fonction pure d’un objet valeur — et donc testable
+/// unitairement sans arbre de widgets.
 @immutable
 class RouteGuardState {
   const RouteGuardState({
@@ -15,13 +16,14 @@ class RouteGuardState {
     required this.isBooting,
   });
 
-  /// `null` while the session stream has not emitted yet.
+  /// `null` tant que le flux de session n’a rien émis.
   final AuthSession? session;
 
-  /// `null` while the preference has not been read yet.
+  /// `null` tant que la préférence n’a pas encore été lue.
   final bool? onboardingSeen;
 
-  /// True while either of the two above is still unknown on a cold start.
+  /// Vrai tant que l’une des deux valeurs ci-dessus reste inconnue lors d’un
+  /// démarrage à froid.
   final bool isBooting;
 
   @override
@@ -35,28 +37,33 @@ class RouteGuardState {
   int get hashCode => Object.hash(session, onboardingSeen, isBooting);
 }
 
-/// The single place where "who may see what" is decided.
+/// L’unique endroit où se décide « qui a le droit de voir quoi ».
 ///
-/// Rules, in priority order:
-///  1. **Booting** — hold everyone on the splash until the session and the
-///     onboarding flag are known. Prevents the login screen from flashing
-///     for an already-authenticated user.
-///  2. **First launch** — an install that has never seen the onboarding is
-///     routed to it before anything else.
-///  3. **Signed out** — only public locations are reachable; everything else
-///     falls back to `/login`.
-///  4. **Profile missing** — a Firebase account without a Firestore profile
-///     is pinned to `/complete-profile` (no escape, no dead end).
-///  5. **Signed in** — public locations bounce to the role's home, and each
-///     role is confined to its own area (`/organizer/**` vs the rest).
+/// Règles, par ordre de priorité :
+///  1. **Démarrage** — on retient tout le monde sur le splash tant que la
+///     session et le drapeau d’onboarding ne sont pas connus. Évite que
+///     l’écran de connexion n’apparaisse en un éclair à un utilisateur déjà
+///     authentifié.
+///  2. **Premier lancement** — une installation qui n’a jamais vu
+///     l’onboarding y est dirigée avant toute autre chose.
+///  3. **Déconnecté** — seules les destinations publiques sont accessibles ;
+///     tout le reste retombe sur `/login`.
+///  4. **Profil manquant** — un compte Firebase sans profil Firestore est
+///     épinglé sur `/complete-profile` (pas d’échappatoire, pas d’impasse).
+///  5. **Connecté** — les destinations publiques renvoient vers l’accueil du
+///     rôle, et chaque rôle est confiné à son propre espace (`/organizer/**`
+///     face au reste).
 ///
-/// **Deep links.** A shared link usually cold-starts the app, i.e. arrives
-/// while booting or signed out. Its location travels as `?from=` through the
-/// splash and the login, and replaces the role home once signed in (rule 5).
-/// Only [AppRoutes.isDeepLinkTarget] locations are honoured: `from` comes
-/// from outside and must not be able to open an arbitrary screen.
+/// **Liens profonds.** Un lien partagé démarre le plus souvent l’application
+/// à froid, c’est-à-dire qu’il arrive pendant le démarrage ou hors session.
+/// Sa destination voyage dans `?from=` à travers le splash et la connexion,
+/// puis remplace l’accueil du rôle une fois connecté (règle 5). Seules les
+/// destinations reconnues par [AppRoutes.isDeepLinkTarget] sont honorées :
+/// `from` vient de l’extérieur et ne doit pas pouvoir ouvrir un écran
+/// arbitraire.
 ///
-/// Returning `null` means "the requested location is fine, let it through".
+/// Renvoyer `null` signifie « la destination demandée convient, on la laisse
+/// passer ».
 abstract final class RouteGuard {
   static String? redirect({
     required RouteGuardState state,
@@ -67,7 +74,7 @@ abstract final class RouteGuard {
         ? from
         : null;
 
-    // 1. Cold start: nothing is known yet.
+    // 1. Démarrage à froid : on ne sait encore rien.
     if (state.isBooting) {
       if (location == AppRoutes.splash) return null;
       return AppRoutes.isDeepLinkTarget(location)
@@ -96,14 +103,15 @@ abstract final class RouteGuard {
     String location,
     String? pending,
   ) {
-    // 2. First launch on this install.
+    // 2. Premier lancement sur cette installation.
     if (!(state.onboardingSeen ?? true)) {
       return location == AppRoutes.onboarding ? null : AppRoutes.onboarding;
     }
-    // Onboarding already consumed: it is no longer a valid destination.
+    // Onboarding déjà consommé : ce n’est plus une destination valide.
     if (location == AppRoutes.onboarding) return AppRoutes.login;
 
-    // 3. Public locations stay reachable; the splash is transient.
+    // 3. Les destinations publiques restent accessibles ; le splash, lui,
+    // n’est que transitoire.
     final isReachable =
         AppRoutes.isPublic(location) && location != AppRoutes.splash;
     if (isReachable) return null;
@@ -121,31 +129,35 @@ abstract final class RouteGuard {
     required bool isAdmin,
     required String? pending,
   }) {
-    // Administration sits outside both role areas and requires the `admin`
-    // claim. Hiding the screens is comfort only: every read is refused by
-    // the rules and every decision by the callable without the claim.
+    // L’administration se situe hors des deux espaces de rôle et exige le
+    // claim `admin`. Masquer les écrans n’est qu’un confort : sans le claim,
+    // chaque lecture est refusée par les règles et chaque décision par la
+    // callable.
     if (AppRoutes.isAdminArea(location)) return isAdmin ? null : home;
 
-    // Screens both roles share (the post-sign-up celebration, the password
-    // change, public organizer profiles) bypass the confinement rule below.
+    // Les écrans partagés par les deux rôles (la célébration d’après
+    // inscription, le changement de mot de passe, les profils publics
+    // d’organisateurs) court-circuitent la règle de confinement ci-dessous.
     if (AppRoutes.isRoleAgnostic(location)) return null;
 
-    // The account exists: the sign-up funnel is over.
+    // Le compte existe : l’entonnoir d’inscription est terminé.
     if (location == AppRoutes.register ||
         location == AppRoutes.completeProfile) {
       return AppRoutes.welcome;
     }
 
-    // 5. No going back to the public funnel once authenticated — resume the
-    // link that brought the user here, if any. Role confinement still
-    // applies to it on the next pass.
+    // 5. Plus de retour vers l’entonnoir public une fois authentifié — on
+    // reprend le lien qui a amené l’utilisateur ici, s’il y en a un. Le
+    // confinement par rôle s’y appliquera quand même à la passe suivante.
     if (AppRoutes.isPublic(location)) return pending ?? home;
 
-    // A shared link: `/e/{id}` redirects to the event detail at route level.
+    // Un lien partagé : `/e/{id}` redirige vers le détail de l’événement au
+    // niveau des routes.
     if (location.startsWith('/e/')) return null;
 
-    // One account, two spaces: an organizer also browses and books as a
-    // participant; the organizer space stays closed until it is turned on.
+    // Un compte, deux espaces : un organisateur navigue et réserve aussi en
+    // tant que participant ; l’espace organisateur reste fermé tant qu’il
+    // n’a pas été activé.
     if (AppRoutes.isOrganizerArea(location) && !isOrganizer) return home;
 
     return null;

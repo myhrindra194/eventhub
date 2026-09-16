@@ -2,22 +2,25 @@ import 'package:eventhub/app/theme/app_motion.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-/// Navigation motion vocabulary.
+/// Vocabulaire de mouvement de la navigation.
 ///
-/// Material 3 defines three transition patterns; we expose them as first
-/// class page builders so a route declares *intent* ("this is a forward
-/// step", "this is a modal") instead of hand-rolling an animation.
+/// Material 3 définit trois motifs de transition ; on les expose comme des
+/// page builders de premier ordre pour qu’une route déclare une *intention*
+/// (« ceci est un pas en avant », « ceci est une modale ») au lieu de
+/// bricoler une animation à la main.
 ///
-///  * [AppTransition.sharedAxisX] — lateral navigation inside a flow
-///    (list → detail, step 1 → step 2). Slides + fades along the X axis.
-///  * [AppTransition.fadeThrough] — swapping unrelated content (tab
-///    branches, splash → home). Fade out, scale in.
-///  * [AppTransition.modal] — a sheet-like page rising from the bottom.
-///  * [AppTransition.none] — instant, for the splash and guarded redirects.
+///  * [AppTransition.sharedAxisX] — navigation latérale au sein d’un flux
+///    (liste → détail, étape 1 → étape 2). Glissement + fondu sur l’axe X.
+///  * [AppTransition.fadeThrough] — remplacement de contenus sans lien entre
+///    eux (branches d’onglets, splash → accueil). Fondu sortant, mise à
+///    l’échelle entrante.
+///  * [AppTransition.modal] — une page façon feuille qui monte depuis le bas.
+///  * [AppTransition.none] — instantané, pour le splash et les redirections
+///    du guard.
 enum AppTransition { sharedAxisX, fadeThrough, modal, none }
 
-/// A [Page] that carries an [AppTransition]. Use it as the `pageBuilder` of
-/// a `GoRoute`:
+/// Une [Page] qui porte une [AppTransition]. À utiliser comme `pageBuilder`
+/// d’une `GoRoute` :
 ///
 /// ```dart
 /// GoRoute(
@@ -65,11 +68,11 @@ abstract final class AppPage {
     );
   }
 
-  /// Convenience for the very common "plain screen, lateral motion" case.
+  /// Raccourci pour le cas très courant « écran simple, mouvement latéral ».
   static Page<void> screen(GoRouterState state, Widget child) =>
       of(state, child);
 
-  /// Convenience for a full-screen form presented as a modal.
+  /// Raccourci pour un formulaire plein écran présenté en modale.
   static Page<void> modal(GoRouterState state, Widget child) =>
       of(state, child, transition: AppTransition.modal, fullscreenDialog: true);
 }
@@ -81,8 +84,9 @@ Widget _none(
   Widget child,
 ) => child;
 
-/// Incoming page slides in from the right while the outgoing one drifts
-/// left; both cross-fade. 30 px of travel only — long slides feel cheap.
+/// La page entrante glisse depuis la droite pendant que la sortante dérive
+/// vers la gauche ; les deux se croisent en fondu. 30 px de course seulement
+/// — les longs glissements font bon marché.
 Widget _sharedAxisX(
   BuildContext context,
   Animation<double> animation,
@@ -110,7 +114,8 @@ Widget _sharedAxisX(
   );
 }
 
-/// Fade + subtle scale-up. Used when the two pages are unrelated.
+/// Fondu + léger agrandissement. Utilisé quand les deux pages n’ont aucun
+/// lien entre elles.
 Widget _fadeThrough(
   BuildContext context,
   Animation<double> animation,
@@ -130,7 +135,7 @@ Widget _fadeThrough(
   );
 }
 
-/// Rises from the bottom with a rounded, decelerating curve.
+/// Monte depuis le bas avec une courbe arrondie et décélérante.
 Widget _modal(
   BuildContext context,
   Animation<double> animation,
